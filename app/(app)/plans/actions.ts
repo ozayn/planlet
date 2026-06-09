@@ -25,6 +25,11 @@ import {
   updatePlanItemStatus,
   type UpdatePlanItemInput,
 } from "@/lib/plans";
+import {
+  getPlanAccess,
+  removePlanShare,
+  sharePlanWithUser,
+} from "@/lib/plan-sharing";
 import { prisma } from "@/lib/prisma";
 
 async function requireUserId(): Promise<string> {
@@ -38,6 +43,7 @@ async function requireUserId(): Promise<string> {
 function revalidatePlanPaths(planId: string) {
   revalidatePath("/today");
   revalidatePath("/plans");
+  revalidatePath("/dashboard");
   revalidatePath(`/plans/${planId}`);
 }
 
@@ -325,6 +331,47 @@ export async function saveParsedPlanAction(input: unknown) {
   redirect(`/plans/${plan.id}`);
 }
 
+export type ShareActionResult =
+  | { success: true }
+  | { success: false; error: string };
+
+export async function sharePlanWithUserAction(
+  planId: string,
+  targetEmail: string,
+): Promise<ShareActionResult> {
+  const userId = await requireUserId();
+
+  try {
+    await sharePlanWithUser(planId, userId, targetEmail);
+    revalidatePlanPaths(planId);
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to share plan.",
+    };
+  }
+}
+
+export async function removePlanShareAction(
+  planShareId: string,
+): Promise<ShareActionResult> {
+  const userId = await requireUserId();
+
+  try {
+    const planId = await removePlanShare(planShareId, userId);
+    revalidatePlanPaths(planId);
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to remove sharing.",
+    };
+  }
+}
+
 export async function createShareExportAction(
   planId: string,
   format: ShareExportFormat,
@@ -337,12 +384,9 @@ export async function createShareExportAction(
     throw new Error("Share content is empty");
   }
 
-  const plan = await prisma.plan.findFirst({
-    where: { id: planId, userId },
-    select: { id: true },
-  });
+  const access = await getPlanAccess(planId, userId);
 
-  if (!plan) {
+  if (!access) {
     throw new Error("Plan not found");
   }
 

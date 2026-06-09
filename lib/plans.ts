@@ -12,6 +12,7 @@ import type {
 import { PlanType as PlanTypeEnum } from "@/app/generated/prisma/client";
 
 import { getTodayRange } from "@/lib/dates";
+import { canEditPlan, canViewPlan } from "@/lib/plan-sharing";
 import { normalizeProgressForStatus } from "@/lib/plan-status";
 import { prisma } from "@/lib/prisma";
 
@@ -39,8 +40,14 @@ class PlanAccessError extends Error {
 }
 
 async function requirePlanForUser(planId: string, userId: string) {
+  const canEdit = await canEditPlan(planId, userId);
+
+  if (!canEdit) {
+    throw new PlanAccessError("Plan not found");
+  }
+
   const plan = await prisma.plan.findFirst({
-    where: { id: planId, userId },
+    where: { id: planId },
   });
 
   if (!plan) {
@@ -79,8 +86,14 @@ export async function getTodayPlan(userId: string) {
 }
 
 export async function getPlanWithItems(planId: string, userId: string) {
+  const hasAccess = await canViewPlan(planId, userId);
+
+  if (!hasAccess) {
+    return null;
+  }
+
   return prisma.plan.findFirst({
-    where: { id: planId, userId },
+    where: { id: planId },
     include: {
       items: rootItemsInclude,
       shareExports: {

@@ -5,6 +5,7 @@ import { CreateTodayPlanButton } from "@/components/plans/create-today-plan-butt
 import { DashboardCard } from "@/components/dashboard/dashboard-card";
 import { PageHeader } from "@/components/page-header";
 import { PRODUCT } from "@/config/product";
+import { getSharedPlansForUser } from "@/lib/plan-sharing";
 import { getTodayPlan, getPlansByType } from "@/lib/plans";
 
 export default async function DashboardPage() {
@@ -15,13 +16,15 @@ export default async function DashboardPage() {
     return null;
   }
 
-  const [todayPlan, plans] = await Promise.all([
+  const [todayPlan, plans, sharedPlans] = await Promise.all([
     getTodayPlan(userId),
     getPlansByType(userId),
+    getSharedPlansForUser(userId),
   ]);
 
   const todayItemCount = todayPlan?.items.length ?? 0;
   const recentCount = plans.length;
+  const sharedCount = sharedPlans.length;
 
   return (
     <section className="space-y-8">
@@ -87,6 +90,14 @@ export default async function DashboardPage() {
           description="A quiet look at what your plans have been holding."
           accentIndex={0}
         />
+        {sharedCount > 0 ? (
+          <DashboardCard
+            href="/plans"
+            title="Shared with me"
+            description={`${sharedCount} plan${sharedCount === 1 ? "" : "s"} from other users.`}
+            accentIndex={1}
+          />
+        ) : null}
       </div>
     </section>
   );

@@ -79,6 +79,7 @@ Notes:
 | `AUTH_GOOGLE_SECRET` | Yes | Google OAuth client secret |
 | `NEXTAUTH_URL` | Yes (prod) | Canonical app URL (`http://localhost:3000` locally; Railway URL in production). Auth.js v5 also accepts `AUTH_URL` as an alias in many setups — set `NEXTAUTH_URL` for this project. |
 | `ALLOWED_EMAILS` | No | Comma-separated Google emails allowed to sign in (case-insensitive, spaces trimmed). When unset or empty, all Google accounts can sign in (useful for local dev). When set, only listed emails get a session. |
+| `PLANLET_ADMIN_EMAILS` | No | Comma-separated admin emails. Admins are always allowed to sign in (even if missing from `ALLOWED_EMAILS`) and receive the `ADMIN` role. |
 | `PLANLET_AI_PROVIDER` | No | Text plan parser: `openai` (default) or `anthropic` |
 | `OPENAI_API_KEY` | No* | OpenAI API key — required for audio transcription; required for text parsing when `PLANLET_AI_PROVIDER=openai` |
 | `OPENAI_TRANSCRIBE_MODEL` | No | Transcription model (defaults to `gpt-4o-mini-transcribe`) |
@@ -111,14 +112,22 @@ Keep API keys in `.env` locally and in Railway environment variables in producti
 Set `ALLOWED_EMAILS` to restrict sign-in to specific Google accounts. The check runs server-side in the Auth.js `signIn` callback — unauthorized users do not receive a session.
 
 ```bash
-# Single account
-ALLOWED_EMAILS=your-email@example.com
-
-# Multiple accounts (comma-separated, spaces optional)
+# Owner + invited friend
 ALLOWED_EMAILS=your-email@example.com,friend@example.com
+
+# Admin(s) — always allowed; also get ADMIN role and /admin access
+PLANLET_ADMIN_EMAILS=your-email@example.com
 ```
 
-Leave `ALLOWED_EMAILS` empty or unset during local development to avoid accidental lockout. Set it in production (e.g. on Railway) to make the app private.
+Admin emails are always permitted to sign in, even if they are not listed in `ALLOWED_EMAILS`. This helps avoid admin lockout.
+
+Leave `ALLOWED_EMAILS` empty or unset during local development to avoid accidental lockout. Set both variables in production (e.g. on Railway) to keep the app private.
+
+Admins can open `/admin` to see configured allowlists and users who have signed in. To add or remove users today, edit `ALLOWED_EMAILS` in environment variables and redeploy.
+
+### In-platform plan sharing
+
+Plan owners can share individual plans with other Planlet users by email on `/plans/[id]` (**Share inside Planlet**). The recipient must have signed in at least once and be in `ALLOWED_EMAILS`. Shared users get read-only access; owners keep full edit access. Copy/export sharing (Telegram/plain text) is unchanged.
 
 Audio recording requires microphone permission and works best on localhost or HTTPS. Recorded audio is sent only to the transcription API and is not stored.
 
@@ -177,7 +186,8 @@ AUTH_SECRET=           # openssl rand -base64 32
 AUTH_GOOGLE_ID=
 AUTH_GOOGLE_SECRET=
 NEXTAUTH_URL=https://your-app.up.railway.app
-ALLOWED_EMAILS=your-email@example.com  # comma-separated; required for a private workspace
+ALLOWED_EMAILS=your-email@example.com,friend@example.com
+PLANLET_ADMIN_EMAILS=your-email@example.com
 PLANLET_AI_PROVIDER=openai
 OPENAI_API_KEY=        # required for audio; required for text parsing when provider=openai
 OPENAI_TRANSCRIBE_MODEL=  # optional

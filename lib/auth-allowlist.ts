@@ -1,11 +1,11 @@
 /**
  * Server-side email allowlist for Google sign-in.
  * When ALLOWED_EMAILS is unset or empty, all Google accounts are allowed (local dev).
+ * Admin emails in PLANLET_ADMIN_EMAILS are always allowed.
  */
 
-export function getAllowedEmails(): string[] {
-  const raw = process.env.ALLOWED_EMAILS?.trim();
-  if (!raw) {
+function parseEmailList(raw: string | undefined): string[] {
+  if (!raw?.trim()) {
     return [];
   }
 
@@ -15,9 +15,31 @@ export function getAllowedEmails(): string[] {
     .filter(Boolean);
 }
 
+export function getAllowedEmails(): string[] {
+  return parseEmailList(process.env.ALLOWED_EMAILS);
+}
+
+export function getAdminEmails(): string[] {
+  return parseEmailList(process.env.PLANLET_ADMIN_EMAILS);
+}
+
+export function isAdminEmail(email?: string | null): boolean {
+  if (!email?.trim()) {
+    return false;
+  }
+
+  return getAdminEmails().includes(email.trim().toLowerCase());
+}
+
 export function isEmailAllowed(email?: string | null): boolean {
   if (!email?.trim()) {
     return false;
+  }
+
+  const normalized = email.trim().toLowerCase();
+
+  if (isAdminEmail(normalized)) {
+    return true;
   }
 
   const allowed = getAllowedEmails();
@@ -25,5 +47,5 @@ export function isEmailAllowed(email?: string | null): boolean {
     return true;
   }
 
-  return allowed.includes(email.trim().toLowerCase());
+  return allowed.includes(normalized);
 }

@@ -3,20 +3,32 @@
 import { AddItemForm } from "@/components/plans/add-item-form";
 import { PlanItemCard } from "@/components/plans/plan-item-card";
 import { SharePlanPanel } from "@/components/plans/share-plan-panel";
+import { ShareWithUserPanel } from "@/components/plans/share-with-user-panel";
 import { formatDateRange } from "@/lib/dates";
 import { getPlanTypeLabel } from "@/lib/plan-labels";
 import type { SerializedPlan } from "@/lib/plan-serialize";
+
+type PlanShareEntry = {
+  id: string;
+  sharedWithUser: {
+    id: string;
+    name: string | null;
+    email: string | null;
+  };
+};
 
 type PlanEditorProps = {
   plan: SerializedPlan;
   showMeta?: boolean;
   showShare?: boolean;
+  platformShares?: PlanShareEntry[];
 };
 
 export function PlanEditor({
   plan,
   showMeta = true,
   showShare = false,
+  platformShares = [],
 }: PlanEditorProps) {
   const dateStart = new Date(plan.dateStart);
   const dateEnd = new Date(plan.dateEnd);
@@ -70,6 +82,10 @@ export function PlanEditor({
         <AddItemForm planId={plan.id} />
         <p className="text-xs text-muted-light">Good enough counts.</p>
       </section>
+
+      {showShare ? (
+        <ShareWithUserPanel planId={plan.id} shares={platformShares} />
+      ) : null}
     </div>
   );
 }

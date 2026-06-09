@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { PlanletLogo } from "@/components/planlet-logo";
+import { ProfileMenu } from "@/components/profile-menu";
 import { PRODUCT } from "@/config/product";
 
 const navItems = [
@@ -15,9 +16,19 @@ const navItems = [
 
 type DesktopNavProps = {
   userName?: string | null;
+  userEmail?: string | null;
+  userImage?: string | null;
+  isAdmin?: boolean;
+  signOutButton: React.ReactNode;
 };
 
-export function DesktopNav({ userName }: DesktopNavProps) {
+export function DesktopNav({
+  userName,
+  userEmail,
+  userImage,
+  isAdmin = false,
+  signOutButton,
+}: DesktopNavProps) {
   const pathname = usePathname();
 
   return (
@@ -58,13 +69,13 @@ export function DesktopNav({ userName }: DesktopNavProps) {
             );
           })}
         </nav>
-        {userName ? (
-          <p className="max-w-32 truncate text-sm text-muted-light" dir="auto">
-            {userName}
-          </p>
-        ) : (
-          <span className="w-20" />
-        )}
+        <ProfileMenu
+          name={userName}
+          email={userEmail}
+          image={userImage}
+          isAdmin={isAdmin}
+          signOutButton={signOutButton}
+        />
       </div>
     </header>
   );

@@ -1,6 +1,10 @@
+import Link from "next/link";
+
 import { auth } from "@/auth";
 import { PageHeader } from "@/components/page-header";
 import { SignOutButton } from "@/components/sign-out-button";
+import { UserAvatar } from "@/components/user-avatar";
+import { isAdminRole } from "@/lib/auth-roles";
 import { PRODUCT, PWA } from "@/config/product";
 import { APP_TIMEZONE } from "@/config/time";
 import {
@@ -34,17 +38,40 @@ export default async function SettingsPage() {
   const textParserConfigured = isTextParserConfigured();
   const textParserProvider = getTextParserProviderLabel();
   const aiProvider = getPlanletAiProvider();
+  const isAdmin = isAdminRole(session?.user?.role);
 
   return (
     <section className="space-y-4">
       <PageHeader
         title="Settings"
-        subtitle="Account and app information."
+        subtitle="Your profile, sign out, and app information."
       />
 
       <article className="ui-card-padded">
-        <h2 className="text-sm font-semibold text-foreground">Account</h2>
-        <dl className="mt-4 space-y-3 text-sm">
+        <h2 className="text-sm font-semibold text-foreground">Profile</h2>
+
+        <div className="mt-4 flex items-center gap-4">
+          <UserAvatar
+            name={session?.user?.name}
+            email={session?.user?.email}
+            image={session?.user?.image}
+            size="md"
+          />
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-foreground" dir="auto">
+              {session?.user?.name ?? "Signed in"}
+            </p>
+            {session?.user?.email ? (
+              <p className="mt-0.5 text-sm text-muted" dir="auto">
+                Signed in as {session.user.email}
+              </p>
+            ) : (
+              <p className="mt-0.5 text-sm text-muted">Signed in</p>
+            )}
+          </div>
+        </div>
+
+        <dl className="mt-5 space-y-3 border-t border-border-soft pt-5 text-sm">
           <div className="flex justify-between gap-4">
             <dt className="text-muted">Name</dt>
             <dd className="text-end text-foreground bidi-isolate" dir="auto">
@@ -57,7 +84,25 @@ export default async function SettingsPage() {
               {session?.user?.email ?? "—"}
             </dd>
           </div>
+          <div className="flex justify-between gap-4">
+            <dt className="text-muted">Role</dt>
+            <dd className="text-end text-foreground">
+              {isAdmin ? "Admin" : "User"}
+            </dd>
+          </div>
         </dl>
+
+        {isAdmin ? (
+          <div className="mt-5 border-t border-border-soft pt-5">
+            <Link href="/admin" className="ui-btn-secondary inline-flex w-full">
+              Open admin
+            </Link>
+          </div>
+        ) : null}
+
+        <div className="mt-5 border-t border-border-soft pt-5">
+          <SignOutButton className="w-full" />
+        </div>
       </article>
 
       <article className="ui-card-padded">
@@ -142,8 +187,6 @@ export default async function SettingsPage() {
             : " Set OPENAI_API_KEY to enable Transcribe on New plan."}
         </p>
       </article>
-
-      <SignOutButton />
     </section>
   );
 }

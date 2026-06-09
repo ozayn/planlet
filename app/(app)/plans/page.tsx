@@ -3,7 +3,9 @@ import { CreatePlanButtons } from "@/components/plans/create-plan-buttons";
 import { NewPlanLink } from "@/components/plans/new-plan-link";
 import { PlanList } from "@/components/plans/plan-list";
 import { PlansEmptyState } from "@/components/plans/plans-empty-state";
+import { SharedPlanList } from "@/components/plans/shared-plan-list";
 import { PageHeader } from "@/components/page-header";
+import { getSharedPlansForUser } from "@/lib/plan-sharing";
 import { getPlansByType } from "@/lib/plans";
 
 export default async function PlansPage() {
@@ -14,8 +16,12 @@ export default async function PlansPage() {
     return null;
   }
 
-  const plans = await getPlansByType(userId);
+  const [plans, sharedPlans] = await Promise.all([
+    getPlansByType(userId),
+    getSharedPlansForUser(userId),
+  ]);
   const hasPlans = plans.length > 0;
+  const hasSharedPlans = sharedPlans.length > 0;
 
   return (
     <section className="space-y-8">
@@ -25,6 +31,13 @@ export default async function PlansPage() {
       />
 
       <NewPlanLink fullWidth />
+
+      {hasSharedPlans ? (
+        <div>
+          <h2 className="ui-label mb-4">Shared with me</h2>
+          <SharedPlanList plans={sharedPlans} />
+        </div>
+      ) : null}
 
       {hasPlans ? (
         <div>
