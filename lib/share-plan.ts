@@ -2,11 +2,15 @@ import type {
   PlanItemStatus,
   PlanItemType,
   PlanLanguage,
+  PlanType,
   ShareExportFormat,
   TimeHint,
 } from "@/app/generated/prisma/client";
 
+import { formatPlanPeriodForShare } from "@/lib/dates";
 import { getStatusIcon } from "@/lib/plan-status";
+
+export { formatPlanPeriodForShare } from "@/lib/dates";
 
 export type ShareLanguage = "fa" | "en";
 
@@ -22,10 +26,16 @@ export type SharePlanItem = {
 
 export type SharePlan = {
   title: string;
+  type: PlanType;
   summary?: string | null;
   language?: PlanLanguage;
   dateStart: Date;
+  dateEnd: Date;
   items: SharePlanItem[];
+};
+
+export type ShareHeaderOptions = {
+  mode: ShareMode;
 };
 
 export type ShareMode = "PLAN" | "UPDATE";
@@ -213,18 +223,53 @@ function filterItemsForMode(
   return items.filter(shouldIncludeInUpdate);
 }
 
-function getPlanHeader(plan: SharePlan, lang: ShareLanguage): string {
-  return lang === "fa" ? `${plan.title} 🌿` : `${plan.title} 🌿`;
+function titleAlreadyIncludesPeriod(title: string, period: string): boolean {
+  const normalizedTitle = title.toLowerCase();
+  const normalizedPeriod = period.toLowerCase();
+  return normalizedTitle.includes(normalizedPeriod);
 }
 
-function getUpdateHeader(plan: SharePlan, lang: ShareLanguage): string {
-  if (lang === "fa") {
-    const short = plan.title
-      .replace(/برنامه\s*(?:‌ی|ی)?\s*/u, "")
-      .trim();
-    return `آپدیت ${short || plan.title} 🌿`;
+export function buildShareHeader(
+  plan: SharePlan,
+  options: ShareHeaderOptions,
+): string {
+  const period = formatPlanPeriodForShare(plan);
+  const mode = options.mode;
+
+  if (mode === "UPDATE") {
+    const lang = inferShareLanguage(plan);
+    if (lang === "fa") {
+      return `آپدیت — ${period} 🌿`;
+    }
+    return `Update — ${period} 🌿`;
   }
-  return `Update — ${plan.title} 🌿`;
+
+  switch (plan.type) {
+    case "DAY": {
+      if (titleAlreadyIncludesPeriod(plan.title, period)) {
+        return `${plan.title} 🌿`;
+      }
+      return `${plan.title} — ${period} 🌿`;
+    }
+    case "MONTH": {
+      const header = `${period} plan 🌿`;
+      if (titleAlreadyIncludesPeriod(plan.title, period)) {
+        return plan.title.endsWith("🌿") ? plan.title : `${plan.title} 🌿`;
+      }
+      return header;
+    }
+    case "YEAR": {
+      const header = `${period} plan 🌿`;
+      if (titleAlreadyIncludesPeriod(plan.title, period)) {
+        return plan.title.endsWith("🌿") ? plan.title : `${plan.title} 🌿`;
+      }
+      return header;
+    }
+    case "WEEK":
+      return `Week of ${period} 🌿`;
+    default:
+      return `${plan.title} — ${period} 🌿`;
+  }
 }
 
 function renderGroupedBody(
@@ -263,8 +308,7 @@ function formatGroupedShare(
 ): string {
   const lang = inferShareLanguage(plan);
   const mode = options.mode ?? "PLAN";
-  const header =
-    mode === "UPDATE" ? getUpdateHeader(plan, lang) : getPlanHeader(plan, lang);
+  const header = buildShareHeader(plan, { mode });
 
   const lines = [header, "", ...renderGroupedBody(plan, options, lang)];
 
@@ -329,9 +373,11 @@ export function shareUiFormatToExportFormat(
 
 export function serializedPlanToSharePlan(plan: {
   title: string;
+  type: PlanType;
   summary: string | null;
   language: PlanLanguage;
   dateStart: string;
+  dateEnd: string;
   items: Array<{
     title: string;
     status: PlanItemStatus;
@@ -366,9 +412,11 @@ export function serializedPlanToSharePlan(plan: {
 
   return {
     title: plan.title,
+    type: plan.type,
     summary: plan.summary,
     language: plan.language,
     dateStart: new Date(plan.dateStart),
+    dateEnd: new Date(plan.dateEnd),
     items: plan.items.map(mapItem),
   };
 }

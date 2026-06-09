@@ -9,6 +9,7 @@ import {
 } from "date-fns";
 import { fromZonedTime, toZonedTime } from "date-fns-tz";
 
+import type { PlanType } from "@/app/generated/prisma/client";
 import { APP_TIMEZONE } from "@/config/time";
 
 /**
@@ -80,6 +81,68 @@ export function getDateRangeForPlanType(
     }
     default:
       return getTodayRange(now);
+  }
+}
+
+function shareDateFormatter(options: Intl.DateTimeFormatOptions) {
+  return new Intl.DateTimeFormat("en", { ...options, timeZone: APP_TIMEZONE });
+}
+
+export function formatShareDayPeriod(date: Date): string {
+  return shareDateFormatter({
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+  }).format(date);
+}
+
+export function formatShareMonthPeriod(date: Date): string {
+  return shareDateFormatter({
+    month: "long",
+    year: "numeric",
+  }).format(date);
+}
+
+export function formatShareYearPeriod(date: Date): string {
+  return shareDateFormatter({ year: "numeric" }).format(date);
+}
+
+export function formatShareWeekPeriod(start: Date, end: Date): string {
+  const startMonth = shareDateFormatter({ month: "long" }).format(start);
+  const endMonth = shareDateFormatter({ month: "long" }).format(end);
+  const startDay = shareDateFormatter({ day: "numeric" }).format(start);
+  const endDay = shareDateFormatter({ day: "numeric" }).format(end);
+  const startYear = shareDateFormatter({ year: "numeric" }).format(start);
+  const endYear = shareDateFormatter({ year: "numeric" }).format(end);
+
+  if (startMonth === endMonth && startYear === endYear) {
+    return `${startMonth} ${startDay}–${endDay}, ${startYear}`;
+  }
+
+  if (startYear === endYear) {
+    const endMonthShort = shareDateFormatter({ month: "short" }).format(end);
+    return `${startMonth} ${startDay}–${endMonthShort} ${endDay}, ${startYear}`;
+  }
+
+  return formatDateRange(start, end);
+}
+
+export function formatPlanPeriodForShare(plan: {
+  type: PlanType;
+  dateStart: Date;
+  dateEnd: Date;
+}): string {
+  switch (plan.type) {
+    case "DAY":
+      return formatShareDayPeriod(plan.dateStart);
+    case "MONTH":
+      return formatShareMonthPeriod(plan.dateStart);
+    case "YEAR":
+      return formatShareYearPeriod(plan.dateStart);
+    case "WEEK":
+      return formatShareWeekPeriod(plan.dateStart, plan.dateEnd);
+    default:
+      return formatShareDayPeriod(plan.dateStart);
   }
 }
 
