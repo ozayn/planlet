@@ -1,14 +1,22 @@
 import type { AdminUserStatRow } from "@/lib/admin-stats";
 
-function formatDateTime(value: Date | null): string {
-  if (!value) {
-    return "Never";
-  }
-
+function formatDateTime(value: Date): string {
   return value.toLocaleString("en", {
     dateStyle: "medium",
     timeStyle: "short",
   });
+}
+
+function formatLastLogin(user: AdminUserStatRow): string {
+  if (user.lastLoginAt) {
+    return formatDateTime(user.lastLoginAt);
+  }
+
+  if (user.loginCount > 0) {
+    return "Unknown (before tracking)";
+  }
+
+  return "Never";
 }
 
 type AdminUserStatsProps = {
@@ -56,7 +64,7 @@ export function AdminUserStats({ users }: AdminUserStatsProps) {
                   {user.role}
                 </td>
                 <td className="px-3 py-3 align-top text-muted">
-                  {formatDateTime(user.lastLoginAt)}
+                  {formatLastLogin(user)}
                 </td>
                 <td className="px-3 py-3 align-top text-foreground">
                   {user.loginCount}
@@ -107,7 +115,7 @@ export function AdminUserStats({ users }: AdminUserStatsProps) {
               <div>
                 <dt className="text-xs text-muted">Last login</dt>
                 <dd className="text-foreground">
-                  {formatDateTime(user.lastLoginAt)}
+                  {formatLastLogin(user)}
                 </dd>
               </div>
               <div>
