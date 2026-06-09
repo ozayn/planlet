@@ -34,9 +34,9 @@ const QUADRANTS = [
 export function PriorityMatrix({ quadrants }: PriorityMatrixProps) {
   return (
     <section className="ui-card-padded">
-      <h2 className="text-sm font-semibold text-foreground">Priority matrix</h2>
+      <h2 className="ui-section-title">Importance and urgency</h2>
       <p className="mt-1.5 text-sm text-muted">
-        A simple map of importance and urgency — observations, not instructions.
+        A quiet map of how items were labeled — not instructions.
       </p>
 
       <div className="mt-5 grid gap-3 sm:grid-cols-2">

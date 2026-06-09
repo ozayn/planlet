@@ -1,30 +1,15 @@
 "use client";
 
-import type { PlanItemStatus, PlanItemType } from "@/app/generated/prisma/client";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 
-import {
-  deletePlanItemAction,
-  updatePlanItemAction,
-} from "@/app/(app)/plans/actions";
+import { updatePlanItemAction } from "@/app/(app)/plans/actions";
 import { AddItemForm } from "@/components/plans/add-item-form";
 import { ItemDetailsSheet } from "@/components/plans/item-details-sheet";
 import { StatusButton } from "@/components/plans/status-button";
-import { getPlanItemTypeLabel } from "@/lib/plan-labels";
-import { getStatusIcon, STATUS_STYLES } from "@/lib/plan-status";
+import { getPlanItemTypeLabel, getTimeHintLabel } from "@/lib/plan-labels";
+import { STATUS_STYLES } from "@/lib/plan-status";
 import type { SerializedPlanItem } from "@/lib/plan-serialize";
-
-const ITEM_TYPES: PlanItemType[] = [
-  "TASK",
-  "EVENT",
-  "INTENTION",
-  "NOTE",
-  "WORK_BLOCK",
-  "ERRAND",
-  "SOCIAL",
-  "REST",
-];
 
 type PlanItemCardProps = {
   planId: string;
@@ -65,17 +50,16 @@ export function PlanItemCard({ planId, item, depth = 0 }: PlanItemCardProps) {
     });
   }
 
-  function handleDelete() {
-    if (!window.confirm("Delete this item?")) return;
-
-    startTransition(async () => {
-      await deletePlanItemAction(planId, item.id);
-      router.refresh();
-    });
-  }
-
   const subtaskCount = item.subtasks.length;
   const isNested = depth > 0;
+  const timeHintLabel = getTimeHintLabel(item.timeHint);
+  const metaParts = [
+    getPlanItemTypeLabel(item.type),
+    timeHintLabel,
+    subtaskCount > 0
+      ? `${subtaskCount} subtask${subtaskCount === 1 ? "" : "s"}`
+      : null,
+  ].filter(Boolean);
 
   return (
     <article className={isNested ? "ms-4 border-s border-border-soft ps-3" : ""}>
@@ -87,94 +71,53 @@ export function PlanItemCard({ planId, item, depth = 0 }: PlanItemCardProps) {
           aria-hidden="true"
         />
         <div className="flex items-start gap-3 ps-2">
-          <span
-            className={`mt-2 text-base leading-none ${STATUS_STYLES[item.status].icon}`}
-            aria-hidden="true"
-            title={item.status}
-          >
-            {getStatusIcon(item.status)}
-          </span>
+          <StatusButton
+            planId={planId}
+            itemId={item.id}
+            status={item.status}
+            compact
+          />
 
-          <div className="min-w-0 flex-1 space-y-3">
-            <div className="space-y-2">
-              {editingTitle ? (
-                <input
-                  type="text"
-                  value={title}
-                  dir="auto"
-                  autoFocus
-                  onChange={(event) => setTitle(event.target.value)}
-                  onBlur={saveTitle}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") saveTitle();
-                    if (event.key === "Escape") {
-                      setTitle(item.title);
-                      setEditingTitle(false);
-                    }
-                  }}
-                  className="ui-input min-h-11"
-                />
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setEditingTitle(true)}
-                  className="block w-full min-h-11 text-start text-sm font-medium text-foreground"
-                  dir="auto"
-                >
-                  {item.title}
-                </button>
-              )}
-
-              <div className="flex flex-wrap items-center gap-2">
-                <StatusButton
-                  planId={planId}
-                  itemId={item.id}
-                  status={item.status}
-                />
-                <select
-                  value={item.type}
-                  aria-label="Item type"
-                  disabled={isPending}
-                  onChange={(event) => {
-                    startTransition(async () => {
-                      await updatePlanItemAction({
-                        planId,
-                        itemId: item.id,
-                        type: event.target.value as PlanItemType,
-                      });
-                      router.refresh();
-                    });
-                  }}
-                  className="min-h-10 rounded-lg border border-border bg-surface px-2 text-xs text-muted focus:outline-none focus:ring-2 focus:ring-foreground/10"
-                >
-                  {ITEM_TYPES.map((type) => (
-                    <option key={type} value={type}>
-                      {getPlanItemTypeLabel(type)}
-                    </option>
-                  ))}
-                </select>
-                {subtaskCount > 0 ? (
-                  <span className="text-xs text-muted-light">
-                    {subtaskCount} subtask{subtaskCount === 1 ? "" : "s"}
-                  </span>
-                ) : null}
-              </div>
-            </div>
-
-            {item.comment ? (
-              <p
-                className="line-clamp-2 text-sm leading-relaxed text-muted"
+          <div className="min-w-0 flex-1 space-y-2">
+            {editingTitle ? (
+              <input
+                type="text"
+                value={title}
+                dir="auto"
+                autoFocus
+                disabled={isPending}
+                onChange={(event) => setTitle(event.target.value)}
+                onBlur={saveTitle}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter") saveTitle();
+                  if (event.key === "Escape") {
+                    setTitle(item.title);
+                    setEditingTitle(false);
+                  }
+                }}
+                className="ui-input min-h-11"
+                aria-label="Item title"
+              />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setEditingTitle(true)}
+                className="block w-full min-h-11 text-start text-sm font-medium text-foreground"
                 dir="auto"
               >
-                {item.comment}
-              </p>
+                {item.title}
+              </button>
+            )}
+
+            {metaParts.length > 0 ? (
+              <p className="text-xs text-muted-light">{metaParts.join(" · ")}</p>
             ) : null}
 
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 pt-1">
               <button
                 type="button"
                 onClick={() => setDetailsOpen(true)}
-                className="ui-btn-secondary min-h-10 px-3 text-xs"
+                className="ui-text-link"
               >
                 Details
               </button>
@@ -182,19 +125,11 @@ export function PlanItemCard({ planId, item, depth = 0 }: PlanItemCardProps) {
                 <button
                   type="button"
                   onClick={() => setShowSubtaskForm((current) => !current)}
-                  className="ui-btn-secondary min-h-10 px-3 text-xs"
+                  className="ui-text-link"
                 >
-                  {showSubtaskForm ? "Cancel" : "Add subtask"}
+                  {showSubtaskForm ? "Cancel subtask" : "Add subtask"}
                 </button>
               ) : null}
-              <button
-                type="button"
-                disabled={isPending}
-                onClick={handleDelete}
-                className="ui-btn-ghost min-h-10"
-              >
-                Delete
-              </button>
             </div>
           </div>
         </div>

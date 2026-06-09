@@ -26,16 +26,17 @@ export default async function AdminPage() {
     <section className="space-y-6">
       <PageHeader
         title="Admin"
-        subtitle="Workspace access and usage counts. Plan contents are not shown here."
+        subtitle="Workspace access and usage counts."
       />
 
-      <article className="ui-card-padded space-y-4">
-        <h2 className="text-sm font-semibold text-foreground">
-          Access configuration
-        </h2>
+      <p className="-mt-2 text-xs text-muted-light">
+        Counts only — no plan titles, item text, or transcripts.
+      </p>
+
+      <article className="ui-card-padded space-y-4 border border-border-soft">
+        <h2 className="ui-section-title">Access configuration</h2>
         <p className="text-sm text-muted">
-          For now, add or remove users by editing environment variables and
-          redeploying. Database invite management is not available yet.
+          Edit environment variables and redeploy to change who can sign in.
         </p>
 
         <div className="space-y-3 text-sm">
@@ -87,25 +88,21 @@ export default async function AdminPage() {
           />
         </div>
         <p className="mt-3 text-xs text-muted-light">
-          Copy exports: {totals.shareExportCount} total clipboard exports saved.
+          Copy as text exports: {totals.shareExportCount}
         </p>
       </div>
 
-      <article className="ui-card-padded">
-        <h2 className="text-sm font-semibold text-foreground">Users</h2>
-        <p className="mt-1 text-sm text-muted">
-          Counts only — no plan titles, item text, or transcripts.
-        </p>
+      <article className="ui-card-padded border border-border-soft">
+        <h2 className="ui-section-title">Users</h2>
         <div className="mt-4">
           <AdminUserStats users={users} />
         </div>
       </article>
 
-      <article className="ui-card-padded">
-        <h2 className="text-sm font-semibold text-foreground">Recent logins</h2>
+      <article className="ui-card-padded border border-border-soft">
+        <h2 className="ui-section-title">Recent logins</h2>
         <p className="mt-1 text-sm text-muted">
-          Last 25 sign-ins. Stores email, provider, and timestamp only — no IP
-          addresses or plan content.
+          Last 25 sign-ins — email, provider, and time only.
         </p>
 
         {recentLogins.length > 0 ? (

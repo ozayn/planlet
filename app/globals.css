@@ -81,7 +81,8 @@ body {
     color: var(--muted-light);
   }
 
-  .ui-input:focus {
+  .ui-input:focus,
+  .ui-input:focus-visible {
     border-color: rgb(20 18 16 / 0.25);
     outline: none;
     box-shadow: 0 0 0 3px rgb(20 18 16 / 0.08);
@@ -105,7 +106,8 @@ body {
     color: var(--muted-light);
   }
 
-  .ui-textarea:focus {
+  .ui-textarea:focus,
+  .ui-textarea:focus-visible {
     border-color: rgb(20 18 16 / 0.25);
     outline: none;
     box-shadow: 0 0 0 3px rgb(20 18 16 / 0.08);
@@ -200,6 +202,42 @@ body {
 
   .ui-btn-ghost:hover {
     color: var(--accent-red);
+  }
+
+  .ui-btn-ghost:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px rgb(20 18 16 / 0.15);
+  }
+
+  .ui-empty-state {
+    border-radius: 1rem;
+    border: 1px dashed var(--border);
+    background: rgb(255 255 255 / 0.7);
+    padding: 2.5rem 1.25rem;
+    text-align: center;
+  }
+
+  .ui-section-title {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--foreground);
+  }
+
+  .ui-text-link {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--muted);
+    transition: color 0.15s;
+  }
+
+  .ui-text-link:hover {
+    color: var(--foreground);
+  }
+
+  .ui-text-link:focus-visible {
+    outline: none;
+    border-radius: 0.25rem;
+    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px rgb(20 18 16 / 0.15);
   }
 
   .ui-segment {

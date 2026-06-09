@@ -1,4 +1,10 @@
-import type { PlanItemType, PlanType } from "@/app/generated/prisma/client";
+import type {
+  PlanItemType,
+  PlanLanguage,
+  PlanType,
+  PriorityLevel,
+  TimeHint,
+} from "@/app/generated/prisma/client";
 
 export const PLAN_TYPE_LABELS: Record<PlanType, string> = {
   DAY: "Daily",
@@ -24,4 +30,31 @@ export function getPlanTypeLabel(type: PlanType): string {
 
 export function getPlanItemTypeLabel(type: PlanItemType): string {
   return PLAN_ITEM_TYPE_LABELS[type];
+}
+
+export const TIME_HINT_LABELS: Record<TimeHint, string> = {
+  MORNING: "Morning",
+  AFTERNOON: "Afternoon",
+  EVENING: "Evening",
+  ANYTIME: "Anytime",
+  ALL_DAY: "All day",
+  SPECIFIC: "Specific time",
+};
+
+export const PRIORITY_LEVEL_LABELS: Record<PriorityLevel, string> = {
+  LOW: "Low",
+  MEDIUM: "Medium",
+  HIGH: "High",
+};
+
+export const PLAN_LANGUAGE_LABELS: Record<PlanLanguage, string> = {
+  FA: "Farsi",
+  EN: "English",
+  MIXED: "Mixed",
+  UNKNOWN: "Unknown",
+};
+
+export function getTimeHintLabel(hint: TimeHint | null | undefined): string | null {
+  if (!hint) return null;
+  return TIME_HINT_LABELS[hint];
 }

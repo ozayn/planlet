@@ -1,6 +1,7 @@
+import Link from "next/link";
+
 import { auth } from "@/auth";
 import { CreateTodayPlanButton } from "@/components/plans/create-today-plan-button";
-import { NewPlanLink } from "@/components/plans/new-plan-link";
 import { PlanEditor } from "@/components/plans/plan-editor";
 import { PageHeader } from "@/components/page-header";
 import { getTodayPlan } from "@/lib/plans";
@@ -21,27 +22,28 @@ export default async function TodayPage() {
     <section>
       <PageHeader
         title={firstName ? `Today, ${firstName}` : "Today"}
-        subtitle="A calm view of what matters right now."
+        subtitle="What matters right now."
+        action={
+          <Link href="/plans/new" className="ui-text-link">
+            New plan from notes
+          </Link>
+        }
       />
-
-      <div className="mb-8">
-        <NewPlanLink />
-      </div>
 
       {plan ? (
         <PlanEditor plan={serializePlan(plan)} showMeta={false} showShare />
       ) : (
         <div className="space-y-6">
-          <div className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-12 text-center">
-            <p className="text-sm leading-relaxed text-muted" dir="auto">
-              Start with a messy list. You can structure it later — or paste and
-              record on New plan first.
+          <div className="ui-empty-state">
+            <p className="text-sm leading-relaxed text-muted">
+              Start a list for today, or structure notes on{" "}
+              <Link href="/plans/new" className="ui-text-link">
+                New plan
+              </Link>
+              .
             </p>
           </div>
           <CreateTodayPlanButton />
-          <p className="text-center text-xs text-muted-light">
-            Good enough counts.
-          </p>
         </div>
       )}
     </section>

@@ -37,16 +37,11 @@ function ReadOnlyItem({
               <p className="text-sm font-medium text-foreground" dir="auto">
                 {item.title}
               </p>
-              <p className="mt-1 text-xs text-muted">
+              <p className="mt-1 text-xs text-muted-light">
                 {getPlanItemTypeLabel(item.type)}
               </p>
             </div>
           </div>
-          {item.comment ? (
-            <p className="text-sm leading-relaxed text-muted" dir="auto">
-              {item.comment}
-            </p>
-          ) : null}
         </div>
       </div>
       {item.subtasks.length > 0 ? (
@@ -70,7 +65,7 @@ export function PlanReadOnly({ plan, ownerLabel }: PlanReadOnlyProps) {
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0 space-y-2">
             <span className="inline-flex rounded-full bg-accent-cream px-3 py-1 text-xs font-medium text-muted">
-              Shared with you
+              Shared with you · Read-only
             </span>
             <h2
               className="text-xl font-semibold tracking-tight text-foreground"
@@ -94,9 +89,9 @@ export function PlanReadOnly({ plan, ownerLabel }: PlanReadOnlyProps) {
 
       <section className="space-y-3">
         {plan.items.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-10 text-center text-sm text-muted">
-            This plan has no items yet.
-          </p>
+          <div className="ui-empty-state">
+            <p className="text-sm text-muted">This plan has no items yet.</p>
+          </div>
         ) : (
           plan.items.map((item) => <ReadOnlyItem key={item.id} item={item} />)
         )}

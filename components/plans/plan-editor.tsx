@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { AddItemForm } from "@/components/plans/add-item-form";
 import { PlanItemCard } from "@/components/plans/plan-item-card";
 import { SharePlanPanel } from "@/components/plans/share-plan-panel";
@@ -32,15 +34,10 @@ export function PlanEditor({
 }: PlanEditorProps) {
   const dateStart = new Date(plan.dateStart);
   const dateEnd = new Date(plan.dateEnd);
+  const itemCount = plan.items.length;
 
   return (
     <div className="space-y-8">
-      {showShare && !showMeta ? (
-        <div className="flex justify-end">
-          <SharePlanPanel plan={plan} />
-        </div>
-      ) : null}
-
       {showMeta ? (
         <header className="space-y-3">
           <div className="flex items-start justify-between gap-3">
@@ -54,6 +51,9 @@ export function PlanEditor({
               <p className="text-sm text-muted">
                 {getPlanTypeLabel(plan.type)} ·{" "}
                 {formatDateRange(dateStart, dateEnd)}
+                {itemCount > 0
+                  ? ` · ${itemCount} item${itemCount === 1 ? "" : "s"}`
+                  : ""}
               </p>
             </div>
             {showShare ? <SharePlanPanel plan={plan} /> : null}
@@ -64,13 +64,29 @@ export function PlanEditor({
             </p>
           ) : null}
         </header>
-      ) : null}
+      ) : (
+        <header className="flex items-start justify-between gap-3">
+          <p className="text-sm text-muted">
+            {formatDateRange(dateStart, dateEnd)}
+            {itemCount > 0
+              ? ` · ${itemCount} item${itemCount === 1 ? "" : "s"}`
+              : ""}
+          </p>
+          {showShare ? <SharePlanPanel plan={plan} /> : null}
+        </header>
+      )}
 
       <section className="space-y-3">
         {plan.items.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-10 text-center text-sm leading-relaxed text-muted">
-            Start with a messy list. You can structure it later.
-          </p>
+          <div className="ui-empty-state">
+            <p className="text-sm leading-relaxed text-muted">
+              Add an item below, or paste notes on{" "}
+              <Link href="/plans/new" className="ui-text-link">
+                New plan
+              </Link>{" "}
+              to structure first.
+            </p>
+          </div>
         ) : (
           plan.items.map((item) => (
             <PlanItemCard key={item.id} planId={plan.id} item={item} />
@@ -78,9 +94,8 @@ export function PlanEditor({
         )}
       </section>
 
-      <section className="space-y-2">
+      <section>
         <AddItemForm planId={plan.id} />
-        <p className="text-xs text-muted-light">Good enough counts.</p>
       </section>
 
       {showShare ? (

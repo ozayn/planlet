@@ -84,15 +84,16 @@ export function NewPlanFlow() {
   if (step === "review" && draft) {
     return (
       <div className="space-y-6">
+        <p className="ui-label">Step 2 — Review</p>
         <p className="text-sm text-muted">
-          Review the structured plan. Edit anything before saving — your changes
-          override the suggestion.
+          Edit the structured plan before saving. Your changes override the
+          suggestion.
         </p>
 
         <ParsedPlanReview draft={draft} onChange={setDraft} />
 
         {draft.planType === "DAY" ? (
-          <p className="text-sm text-muted">
+          <p className="text-xs text-muted-light">
             If today already has a plan, these items will be added to it.
           </p>
         ) : null}
@@ -112,7 +113,7 @@ export function NewPlanFlow() {
             }}
             className="ui-btn-secondary"
           >
-            Back to text
+            Back to input
           </button>
           <button
             type="button"
@@ -123,14 +124,14 @@ export function NewPlanFlow() {
             {isSaving ? "Saving…" : "Save plan"}
           </button>
         </div>
-
-        <p className="text-xs text-muted-light">Good enough counts.</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-5">
+      <p className="ui-label">Step 1 — Input</p>
+
       <div className="flex gap-2">
         <button
           type="button"
@@ -144,7 +145,7 @@ export function NewPlanFlow() {
           onClick={() => setInputMode("record")}
           className={inputMode === "record" ? "ui-segment-active" : "ui-segment"}
         >
-          Record instead
+          Record
         </button>
       </div>
 
@@ -162,7 +163,7 @@ export function NewPlanFlow() {
 
       <label className="block space-y-2">
         <span className="text-sm font-medium text-foreground">
-          Write or paste a messy plan
+          Messy notes
         </span>
         <textarea
           value={rawInput}
@@ -174,7 +175,7 @@ export function NewPlanFlow() {
         />
       </label>
 
-      <p className="text-sm text-muted">
+      <p className="text-xs text-muted-light">
         Farsi, English, or mixed text is okay.
       </p>
 

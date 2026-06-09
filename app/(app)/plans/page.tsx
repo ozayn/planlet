@@ -27,10 +27,9 @@ export default async function PlansPage() {
     <section className="space-y-8">
       <PageHeader
         title="Plans"
-        subtitle="Daily, monthly, and yearly intentions — structured but flexible."
+        subtitle="Daily, monthly, and yearly intentions."
+        action={<NewPlanLink />}
       />
-
-      <NewPlanLink fullWidth />
 
       {hasSharedPlans ? (
         <div>
@@ -41,7 +40,7 @@ export default async function PlansPage() {
 
       {hasPlans ? (
         <div>
-          <h2 className="ui-label mb-4">Quick actions</h2>
+          <h2 className="ui-label mb-4">Create by type</h2>
           <CreatePlanButtons />
         </div>
       ) : null}

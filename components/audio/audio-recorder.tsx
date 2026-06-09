@@ -188,9 +188,9 @@ export function AudioRecorder({ onTranscript }: AudioRecorderProps) {
   }
 
   return (
-    <div className="ui-card-padded space-y-4">
-      <p className="text-sm text-muted">
-        Farsi, English, or mixed audio is okay.
+    <div className="space-y-4 rounded-2xl border border-border-soft bg-accent-cream/30 p-4">
+      <p className="text-xs text-muted-light">
+        Record in any language. Transcript appears in the notes field.
       </p>
 
       <div className="flex flex-wrap gap-2">
@@ -231,7 +231,7 @@ export function AudioRecorder({ onTranscript }: AudioRecorderProps) {
               type="button"
               onClick={transcribeRecording}
               disabled={status === "transcribing"}
-              className="ui-btn-primary bg-accent-blue hover:bg-accent-blue/90"
+              className="ui-btn-secondary"
             >
               {status === "transcribing" ? "Transcribing…" : "Transcribe"}
             </button>
@@ -251,7 +251,7 @@ export function AudioRecorder({ onTranscript }: AudioRecorderProps) {
       ) : null}
 
       {success ? (
-        <p className="text-sm text-accent-blue">{success}</p>
+        <p className="text-sm text-muted">{success}</p>
       ) : null}
 
       {error ? (

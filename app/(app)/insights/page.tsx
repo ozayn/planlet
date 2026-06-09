@@ -23,10 +23,10 @@ export default async function InsightsPage() {
     <section className="space-y-8">
       <PageHeader
         title="Insights"
-        subtitle="A quiet look at what your plans have been holding."
+        subtitle="What your plans contained this month."
       />
 
-      <p className="text-sm text-muted">{insights.dateLabel}</p>
+      <p className="-mt-4 text-sm text-muted">{insights.dateLabel}</p>
 
       {isEmpty ? (
         <>
@@ -38,7 +38,7 @@ export default async function InsightsPage() {
       ) : (
         <>
           <div>
-            <h2 className="ui-label mb-4">What your plans contained</h2>
+            <h2 className="ui-label mb-4">This month</h2>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <SummaryCard
                 label="Plans"
@@ -53,13 +53,13 @@ export default async function InsightsPage() {
               <SummaryCard
                 label="Done / partial"
                 value={`${insights.totals.done} / ${insights.totals.partial}`}
-                hint="What moved forward"
+                hint="Finished or partly done"
                 accent="yellow"
               />
               <SummaryCard
                 label="Moved / skipped"
                 value={`${insights.totals.moved} / ${insights.totals.skipped}`}
-                hint="What was often moved"
+                hint="Deferred or skipped"
                 accent="blue"
               />
             </div>
@@ -83,15 +83,13 @@ export default async function InsightsPage() {
           <PriorityMatrix quadrants={insights.priorityQuadrants} />
 
           <section className="ui-card-padded">
-            <h2 className="text-sm font-semibold text-foreground">
-              Themes appearing in your plans
-            </h2>
-            <p className="mt-1.5 text-sm text-muted">
-              Repeated intentions this month.
+            <h2 className="ui-section-title">Repeated intentions</h2>
+            <p className="mt-1 text-sm text-muted">
+              Themes that showed up more than once.
             </p>
 
             {insights.intentions.length === 0 ? (
-              <p className="mt-4 text-sm text-muted">No repeated intentions yet.</p>
+              <p className="mt-4 text-sm text-muted">None yet this month.</p>
             ) : (
               <ul className="mt-4 space-y-2">
                 {insights.intentions.map((intention) => (
@@ -113,7 +111,7 @@ export default async function InsightsPage() {
 
           {insights.oftenMovedTypes.length > 0 ? (
             <SimpleBarList
-              title="What was often moved"
+              title="Often moved"
               items={insights.oftenMovedTypes.map((entry) => ({
                 label: getPlanItemTypeLabel(entry.type),
                 count: entry.count,

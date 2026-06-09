@@ -5,7 +5,13 @@ import type {
   ParsedPlanItem,
   ParsedSubtask,
 } from "@/lib/ai/plan-parser-schema";
-import { getPlanItemTypeLabel } from "@/lib/plan-labels";
+import {
+  getPlanItemTypeLabel,
+  getPlanTypeLabel,
+  PLAN_LANGUAGE_LABELS,
+  PRIORITY_LEVEL_LABELS,
+  TIME_HINT_LABELS,
+} from "@/lib/plan-labels";
 
 const PLAN_TYPES = ["DAY", "WEEK", "MONTH", "YEAR"] as const;
 const LANGUAGES = ["FA", "EN", "MIXED", "UNKNOWN"] as const;
@@ -97,7 +103,7 @@ export function ParsedPlanReview({ draft, onChange }: ParsedPlanReviewProps) {
             >
               {PLAN_TYPES.map((type) => (
                 <option key={type} value={type}>
-                  {type}
+                  {getPlanTypeLabel(type)}
                 </option>
               ))}
             </select>
@@ -116,7 +122,7 @@ export function ParsedPlanReview({ draft, onChange }: ParsedPlanReviewProps) {
             >
               {LANGUAGES.map((language) => (
                 <option key={language} value={language}>
-                  {language}
+                  {PLAN_LANGUAGE_LABELS[language]}
                 </option>
               ))}
             </select>
@@ -240,7 +246,7 @@ function ReviewItemCard({
             <option value="">—</option>
             {TIME_HINTS.map((hint) => (
               <option key={hint} value={hint}>
-                {hint}
+                {TIME_HINT_LABELS[hint]}
               </option>
             ))}
           </select>
@@ -262,7 +268,7 @@ function ReviewItemCard({
             <option value="">—</option>
             {PRIORITIES.map((level) => (
               <option key={level} value={level}>
-                {level}
+                {PRIORITY_LEVEL_LABELS[level]}
               </option>
             ))}
           </select>
@@ -284,7 +290,7 @@ function ReviewItemCard({
             <option value="">—</option>
             {PRIORITIES.map((level) => (
               <option key={level} value={level}>
-                {level}
+                {PRIORITY_LEVEL_LABELS[level]}
               </option>
             ))}
           </select>
@@ -300,7 +306,7 @@ function ReviewItemCard({
           }
           className="h-5 w-5 rounded border-border"
         />
-        Shareable
+        Include when copying as text
       </label>
 
       <div className="space-y-2 border-t border-border-soft pt-3">

@@ -7,7 +7,7 @@ const navItems = [
   { href: "/today", label: "Today", accent: "bg-accent-red" },
   { href: "/plans", label: "Plans", accent: "bg-accent-blue" },
   { href: "/insights", label: "Insights", accent: "bg-accent-yellow" },
-  { href: "/settings", label: "Settings", accent: "bg-foreground" },
+  { href: "/settings", label: "Settings", accent: "bg-muted-light" },
 ] as const;
 
 export function BottomNav() {

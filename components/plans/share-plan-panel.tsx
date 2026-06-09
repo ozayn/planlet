@@ -88,17 +88,18 @@ export function SharePlanPanel({ plan }: SharePlanPanelProps) {
         }}
         className="ui-btn-secondary min-h-10"
       >
-        Share
+        Copy as text
       </button>
 
       <SimpleSheet
         open={open}
         onClose={() => setOpen(false)}
-        title="Share plan"
+        title="Copy as text"
       >
         <div className="space-y-5">
           <p className="text-sm text-muted">
-            Copy a calm snapshot to share. Non-shareable items are excluded.
+            Copy a snapshot for messaging apps. Items marked private in Details
+            are excluded.
           </p>
 
           <fieldset className="space-y-3">
@@ -140,24 +141,22 @@ export function SharePlanPanel({ plan }: SharePlanPanelProps) {
               dir="auto"
               value={previewText}
               rows={14}
-              className="ui-textarea bg-accent-cream/50 font-mono"
+              className="ui-textarea bg-accent-cream/50 font-mono text-xs"
             />
           </label>
 
           {copyError ? (
-            <p className="text-sm text-accent-yellow">
+            <p className="text-sm text-muted">
               Clipboard unavailable — select the text above and copy manually.
             </p>
           ) : null}
 
           {copied ? (
-            <p className="text-sm text-accent-blue">
-              Copied{isSaving ? "…" : ""}
-            </p>
+            <p className="text-sm text-muted">Copied{isSaving ? "…" : ""}</p>
           ) : null}
 
           {saveWarning ? (
-            <p className="text-sm text-accent-yellow">
+            <p className="text-sm text-muted">
               Copied, but export history was not saved.
             </p>
           ) : null}
@@ -168,7 +167,7 @@ export function SharePlanPanel({ plan }: SharePlanPanelProps) {
             onClick={handleCopy}
             className="ui-btn-primary w-full"
           >
-            {copied ? "Copied" : "Copy"}
+            {copied ? "Copied" : "Copy to clipboard"}
           </button>
         </div>
       </SimpleSheet>

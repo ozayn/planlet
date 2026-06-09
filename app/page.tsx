@@ -29,24 +29,24 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           <h1 className="text-[2rem] leading-tight font-semibold tracking-tight text-foreground">
             {PRODUCT.tagline}
           </h1>
-          <p className="mx-auto mt-5 max-w-sm text-sm leading-relaxed text-muted" dir="auto">
-            {PRODUCT.description}
+          <p className="mx-auto mt-5 max-w-sm text-sm leading-relaxed text-muted">
+            A mobile-first planner for daily, monthly, and yearly intentions.
+            Soft plans — not a calendar replacement.
           </p>
         </div>
 
         <div className="space-y-4">
           <GoogleSignInButton callbackUrl={callbackUrl ?? "/today"} />
           <p className="text-center text-xs text-muted-light">
-            Soft plans, not a calendar replacement.
+            Farsi-friendly input
           </p>
         </div>
       </main>
 
-      <footer className="flex items-center justify-center gap-3 px-6 py-10 text-xs text-muted-light">
-        <span className="h-2 w-2 rounded-sm bg-accent-red" aria-hidden="true" />
-        <span className="h-2 w-2 rounded-sm bg-accent-blue" aria-hidden="true" />
-        <span className="h-2 w-2 rounded-sm bg-accent-yellow" aria-hidden="true" />
-        <span>Farsi-friendly input · Mobile-first</span>
+      <footer className="flex items-center justify-center gap-2 px-6 py-10 text-xs text-muted-light">
+        <span className="h-1.5 w-4 rounded-sm bg-accent-red" aria-hidden="true" />
+        <span className="h-1.5 w-4 rounded-sm bg-accent-blue" aria-hidden="true" />
+        <span className="h-1.5 w-4 rounded-sm bg-accent-yellow" aria-hidden="true" />
       </footer>
     </div>
   );

@@ -11,8 +11,16 @@ import type {
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 
-import { updatePlanItemAction } from "@/app/(app)/plans/actions";
+import {
+  deletePlanItemAction,
+  updatePlanItemAction,
+} from "@/app/(app)/plans/actions";
 import { SimpleSheet } from "@/components/ui/simple-sheet";
+import {
+  getPlanItemTypeLabel,
+  PRIORITY_LEVEL_LABELS,
+  TIME_HINT_LABELS,
+} from "@/lib/plan-labels";
 import type { SerializedPlanItem } from "@/lib/plan-serialize";
 
 type ItemDetailsSheetProps = {
@@ -141,9 +149,19 @@ export function ItemDetailsSheet({
     });
   }
 
+  function handleDelete() {
+    if (!window.confirm("Delete this item?")) return;
+
+    startTransition(async () => {
+      await deletePlanItemAction(planId, item.id);
+      router.refresh();
+      onClose();
+    });
+  }
+
   return (
-    <SimpleSheet open={open} onClose={onClose} title="Item details">
-      <div className="space-y-4">
+    <SimpleSheet open={open} onClose={onClose} title="Details">
+      <div className="space-y-6">
         <Field label="Title">
           <input
             type="text"
@@ -169,125 +187,146 @@ export function ItemDetailsSheet({
           >
             {ITEM_TYPES.map((type) => (
               <option key={type} value={type}>
-                {formatEnumLabel(type)}
+                {getPlanItemTypeLabel(type)}
               </option>
             ))}
           </select>
         </Field>
 
-        <Field label="Progress">
-          <select
-            value={form.progressLevel}
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                progressLevel: Number.parseInt(event.target.value, 10),
-              }))
-            }
-            className="ui-input min-h-12 py-3"
-          >
-            {PROGRESS_LEVELS.map((level) => (
-              <option key={level} value={level}>
-                {level}%
-              </option>
-            ))}
-          </select>
-        </Field>
+        <DetailGroup title="Progress">
+          <Field label="Progress">
+            <select
+              value={form.progressLevel}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  progressLevel: Number.parseInt(event.target.value, 10),
+                }))
+              }
+              className="ui-input min-h-12 py-3"
+            >
+              {PROGRESS_LEVELS.map((level) => (
+                <option key={level} value={level}>
+                  {level}%
+                </option>
+              ))}
+            </select>
+          </Field>
+        </DetailGroup>
 
-        <div className="grid gap-4 sm:grid-cols-2">
-          <EnumField
-            label="Satisfaction"
-            value={form.satisfactionLevel}
-            options={SATISFACTION_LEVELS}
-            onChange={(value) =>
-              setForm((current) => ({ ...current, satisfactionLevel: value }))
-            }
-          />
-          <EnumField
-            label="Confidence"
-            value={form.confidenceLevel}
-            options={CONFIDENCE_LEVELS}
-            onChange={(value) =>
-              setForm((current) => ({ ...current, confidenceLevel: value }))
-            }
-          />
-          <EnumField
-            label="Excitement"
-            value={form.excitementLevel}
-            options={EXCITEMENT_LEVELS}
-            onChange={(value) =>
-              setForm((current) => ({ ...current, excitementLevel: value }))
-            }
-          />
-          <EnumField
-            label="Importance"
-            value={form.importance}
-            options={PRIORITY_LEVELS}
-            onChange={(value) =>
-              setForm((current) => ({ ...current, importance: value }))
-            }
-          />
-          <EnumField
-            label="Urgency"
-            value={form.urgency}
-            options={PRIORITY_LEVELS}
-            onChange={(value) =>
-              setForm((current) => ({ ...current, urgency: value }))
-            }
-          />
-          <EnumField
-            label="Time hint"
-            value={form.timeHint}
-            options={TIME_HINTS}
-            onChange={(value) =>
-              setForm((current) => ({ ...current, timeHint: value }))
-            }
-          />
-        </div>
+        <DetailGroup title="Feeling">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <EnumField
+              label="Satisfaction"
+              value={form.satisfactionLevel}
+              options={SATISFACTION_LEVELS}
+              onChange={(value) =>
+                setForm((current) => ({ ...current, satisfactionLevel: value }))
+              }
+            />
+            <EnumField
+              label="Confidence"
+              value={form.confidenceLevel}
+              options={CONFIDENCE_LEVELS}
+              onChange={(value) =>
+                setForm((current) => ({ ...current, confidenceLevel: value }))
+              }
+            />
+            <EnumField
+              label="Excitement"
+              value={form.excitementLevel}
+              options={EXCITEMENT_LEVELS}
+              onChange={(value) =>
+                setForm((current) => ({ ...current, excitementLevel: value }))
+              }
+            />
+          </div>
+        </DetailGroup>
 
-        <Field label="Duration (minutes)">
-          <input
-            type="number"
-            min={0}
-            value={form.durationMinutes}
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                durationMinutes: event.target.value,
-              }))
-            }
-            className="ui-input min-h-12 py-3"
-          />
-        </Field>
+        <DetailGroup title="Priority">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <EnumField
+              label="Importance"
+              value={form.importance}
+              options={PRIORITY_LEVELS}
+              labelMap={PRIORITY_LEVEL_LABELS}
+              onChange={(value) =>
+                setForm((current) => ({ ...current, importance: value }))
+              }
+            />
+            <EnumField
+              label="Urgency"
+              value={form.urgency}
+              options={PRIORITY_LEVELS}
+              labelMap={PRIORITY_LEVEL_LABELS}
+              onChange={(value) =>
+                setForm((current) => ({ ...current, urgency: value }))
+              }
+            />
+          </div>
+        </DetailGroup>
 
-        <Field label="Comment">
-          <textarea
-            value={form.comment}
-            dir="auto"
-            rows={3}
-            onChange={(event) =>
-              setForm((current) => ({ ...current, comment: event.target.value }))
-            }
-            className="ui-textarea min-h-12"
-          />
-        </Field>
+        <DetailGroup title="Timing">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <EnumField
+              label="Time hint"
+              value={form.timeHint}
+              options={TIME_HINTS}
+              labelMap={TIME_HINT_LABELS}
+              onChange={(value) =>
+                setForm((current) => ({ ...current, timeHint: value }))
+              }
+            />
+            <Field label="Duration (minutes)">
+              <input
+                type="number"
+                min={0}
+                value={form.durationMinutes}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    durationMinutes: event.target.value,
+                  }))
+                }
+                className="ui-input min-h-12 py-3"
+              />
+            </Field>
+          </div>
+        </DetailGroup>
 
-        <label className="flex min-h-12 items-center gap-3 text-sm text-foreground">
-          <input
-            type="checkbox"
-            checked={form.shareable}
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                shareable: event.target.checked,
-              }))
-            }
-            className="h-5 w-5 rounded border-border"
-          />
-          Include in share exports
-        </label>
+        <DetailGroup title="Sharing">
+          <label className="flex min-h-12 items-center gap-3 text-sm text-foreground">
+            <input
+              type="checkbox"
+              checked={form.shareable}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  shareable: event.target.checked,
+                }))
+              }
+              className="h-5 w-5 rounded border-border"
+            />
+            Include when copying as text
+          </label>
+        </DetailGroup>
 
-        <p className="text-xs text-muted-light">Good enough counts.</p>
+        <DetailGroup title="Notes">
+          <Field label="Comment">
+            <textarea
+              value={form.comment}
+              dir="auto"
+              rows={3}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  comment: event.target.value,
+                }))
+              }
+              className="ui-textarea min-h-12"
+            />
+          </Field>
+        </DetailGroup>
 
         <button
           type="button"
@@ -297,8 +336,32 @@ export function ItemDetailsSheet({
         >
           {isPending ? "Saving…" : "Save details"}
         </button>
+
+        <button
+          type="button"
+          disabled={isPending}
+          onClick={handleDelete}
+          className="ui-btn-ghost w-full"
+        >
+          Delete item
+        </button>
       </div>
     </SimpleSheet>
+  );
+}
+
+function DetailGroup({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="space-y-3 border-t border-border-soft pt-5">
+      <h3 className="ui-label">{title}</h3>
+      {children}
+    </section>
   );
 }
 
@@ -311,9 +374,7 @@ function Field({
 }) {
   return (
     <label className="block space-y-1.5">
-      <span className="ui-label">
-        {label}
-      </span>
+      <span className="text-xs font-medium text-muted">{label}</span>
       {children}
     </label>
   );
@@ -323,11 +384,13 @@ function EnumField({
   label,
   value,
   options,
+  labelMap,
   onChange,
 }: {
   label: string;
   value: string;
   options: readonly string[];
+  labelMap?: Record<string, string>;
   onChange: (value: string) => void;
 }) {
   return (
@@ -340,7 +403,7 @@ function EnumField({
         <option value="">—</option>
         {options.map((option) => (
           <option key={option} value={option}>
-            {formatEnumLabel(option)}
+            {labelMap?.[option] ?? formatEnumLabel(option)}
           </option>
         ))}
       </select>

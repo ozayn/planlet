@@ -6,7 +6,7 @@ export default function NewPlanPage() {
     <section>
       <PageHeader
         title="New plan"
-        subtitle="Paste messy notes, review the structure, then save when it feels right."
+        subtitle="Type or record notes, structure them, then save."
       />
       <NewPlanFlow />
     </section>
