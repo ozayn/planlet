@@ -24,32 +24,32 @@ export const STATUS_STYLES: Record<
 > = {
   OPEN: {
     accentBar: "bg-border",
-    card: "bg-surface",
+    card: "",
     icon: "text-muted",
   },
   DONE: {
-    accentBar: "bg-accent-blue",
-    card: "bg-surface",
+    accentBar: "bg-accent-blue/35",
+    card: "",
     icon: "text-accent-blue",
   },
   PARTIAL: {
-    accentBar: "bg-accent-yellow",
-    card: "bg-surface",
+    accentBar: "bg-accent-yellow/45",
+    card: "",
     icon: "text-foreground",
   },
   MOVED: {
-    accentBar: "bg-muted-light",
-    card: "bg-background",
+    accentBar: "bg-muted-light/40",
+    card: "",
     icon: "text-muted",
   },
   SKIPPED: {
     accentBar: "bg-border-soft",
-    card: "bg-background opacity-90",
+    card: "opacity-80",
     icon: "text-muted-light",
   },
   RELEASED: {
     accentBar: "bg-border-soft",
-    card: "bg-surface/80",
+    card: "opacity-75",
     icon: "text-muted-light",
   },
 };

@@ -21,6 +21,7 @@ export function AddItemForm({
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [isPending, startTransition] = useTransition();
+  const canSubmit = title.trim().length > 0;
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -39,7 +40,10 @@ export function AddItemForm({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex gap-2">
+    <form
+      onSubmit={handleSubmit}
+      className="ui-plan-item flex items-center gap-2 px-2.5 py-2"
+    >
       <input
         type="text"
         value={title}
@@ -47,12 +51,16 @@ export function AddItemForm({
         placeholder={placeholder}
         dir="auto"
         aria-label={placeholder}
-        className="ui-input min-h-12 flex-1"
+        className="ui-input ui-input-compact min-h-9 flex-1 border-transparent bg-transparent px-2 shadow-none focus:border-border focus:bg-surface"
       />
       <button
         type="submit"
-        disabled={isPending || !title.trim()}
-        className="ui-btn-primary min-h-12 shrink-0"
+        disabled={isPending || !canSubmit}
+        className={`ui-btn-compact shrink-0 rounded-lg px-3 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${
+          canSubmit
+            ? "border border-border bg-surface text-foreground hover:bg-accent-cream"
+            : "border border-border-soft bg-transparent text-muted-light"
+        } disabled:cursor-not-allowed disabled:opacity-60`}
       >
         {isPending ? "…" : buttonLabel}
       </button>

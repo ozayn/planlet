@@ -19,34 +19,32 @@ function ReadOnlyItem({
   return (
     <article className={depth > 0 ? "ms-4 border-s border-border-soft ps-3" : ""}>
       <div
-        className={`ui-card relative overflow-hidden p-4 ${STATUS_STYLES[item.status].card}`}
+        className={`ui-plan-item group relative overflow-hidden px-3 py-2.5 ${STATUS_STYLES[item.status].card}`}
       >
         <span
-          className={`absolute inset-y-4 start-0 w-1 rounded-full ${STATUS_STYLES[item.status].accentBar}`}
+          className={`absolute inset-y-2.5 start-0 w-0.5 rounded-full opacity-50 ${STATUS_STYLES[item.status].accentBar}`}
           aria-hidden="true"
         />
-        <div className="space-y-2 ps-2">
-          <div className="flex items-start gap-2">
-            <span
-              className={`mt-0.5 text-base ${STATUS_STYLES[item.status].icon}`}
-              title={getStatusLabel(item.status)}
-              aria-label={getStatusLabel(item.status)}
-            >
-              {getStatusIcon(item.status)}
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-foreground" dir="auto">
-                {item.title}
-              </p>
-              <p className="mt-1 text-xs text-muted-light">
-                {getPlanItemTypeLabel(item.type)}
-              </p>
-            </div>
+        <div className="flex items-start gap-2 ps-1.5">
+          <span
+            className={`mt-0.5 text-sm ${STATUS_STYLES[item.status].icon}`}
+            title={getStatusLabel(item.status)}
+            aria-label={getStatusLabel(item.status)}
+          >
+            {getStatusIcon(item.status)}
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium leading-snug text-foreground" dir="auto">
+              {item.title}
+            </p>
+            <p className="mt-0.5 text-[0.6875rem] text-muted-light">
+              {getPlanItemTypeLabel(item.type)}
+            </p>
           </div>
         </div>
       </div>
       {item.subtasks.length > 0 ? (
-        <div className="mt-3 space-y-3">
+        <div className="mt-2 space-y-2">
           {item.subtasks.map((subtask) => (
             <ReadOnlyItem key={subtask.id} item={subtask} depth={depth + 1} />
           ))}

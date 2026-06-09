@@ -43,10 +43,10 @@ export function StatusButton({
       disabled={isPending}
       aria-label={`Item status, ${currentLabel}`}
       title={currentLabel}
-      className={`min-h-11 shrink-0 rounded-lg border border-border bg-surface text-sm text-foreground transition-colors hover:bg-accent-cream focus:outline-none focus:ring-2 focus:ring-foreground/10 disabled:opacity-50 ${STATUS_STYLES[status].icon} ${
+      className={`shrink-0 rounded-full border border-border-soft bg-surface/80 text-foreground transition-colors hover:border-border hover:bg-accent-cream focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring-subtle)] disabled:opacity-50 ${STATUS_STYLES[status].icon} ${
         compact
-          ? "w-[4.5rem] truncate px-1 text-center sm:w-auto sm:min-w-28 sm:overflow-visible sm:px-2 sm:text-start"
-          : "min-w-28 px-2"
+          ? "min-h-9 max-w-[5.5rem] px-2 py-1 text-xs sm:max-w-none sm:min-w-[6.75rem] sm:px-2.5 sm:text-[0.8125rem]"
+          : "min-h-10 min-w-28 px-2.5 text-sm"
       }`}
       onChange={(event) => {
         startTransition(async () => {

@@ -21,6 +21,7 @@ import {
   createPlanItem,
   deletePlanItem,
   getTodayPlan,
+  reorderPlanItems,
   updatePlanItem,
   updatePlanItemStatus,
   type UpdatePlanItemInput,
@@ -193,6 +194,25 @@ export async function deletePlanItemAction(planId: string, itemId: string) {
 
   await deletePlanItem(itemId, userId);
   revalidatePlanPaths(planId);
+}
+
+export async function reorderPlanItemsAction(
+  planId: string,
+  orderedItemIds: string[],
+): Promise<ShareActionResult> {
+  const userId = await requireUserId();
+
+  try {
+    await reorderPlanItems(planId, userId, orderedItemIds);
+    revalidatePlanPaths(planId);
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to reorder items.",
+    };
+  }
 }
 
 export type ParsePlanTextResult =

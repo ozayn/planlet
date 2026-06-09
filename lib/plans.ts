@@ -16,9 +16,14 @@ import { canEditPlan, canViewPlan } from "@/lib/plan-sharing";
 import { normalizeProgressForStatus } from "@/lib/plan-status";
 import { prisma } from "@/lib/prisma";
 
+const itemOrderBy = [
+  { sortOrder: "asc" as const },
+  { createdAt: "asc" as const },
+];
+
 const planItemInclude = {
   subtasks: {
-    orderBy: { sortOrder: "asc" as const },
+    orderBy: itemOrderBy,
     include: {
       themes: { include: { theme: true } },
     },
@@ -28,7 +33,7 @@ const planItemInclude = {
 
 const rootItemsInclude = {
   where: { parentItemId: null },
-  orderBy: { sortOrder: "asc" as const },
+  orderBy: itemOrderBy,
   include: planItemInclude,
 };
 
@@ -186,6 +191,20 @@ export async function createPlanItem(input: CreatePlanItemInput) {
   const progressLevel =
     input.progressLevel ?? normalizeProgressForStatus(status);
 
+  let sortOrder = input.sortOrder;
+
+  if (sortOrder === undefined) {
+    const lastItem = await prisma.planItem.findFirst({
+      where: {
+        planId: input.planId,
+        parentItemId: input.parentItemId ?? null,
+      },
+      orderBy: { sortOrder: "desc" },
+      select: { sortOrder: true },
+    });
+    sortOrder = lastItem ? lastItem.sortOrder + 100 : 0;
+  }
+
   return prisma.planItem.create({
     data: {
       planId: input.planId,
@@ -206,7 +225,7 @@ export async function createPlanItem(input: CreatePlanItemInput) {
       durationMinutes: input.durationMinutes,
       comment: input.comment,
       shareable: input.shareable,
-      sortOrder: input.sortOrder,
+      sortOrder,
     },
     include: planItemInclude,
   });
@@ -285,4 +304,38 @@ export async function deletePlanItem(itemId: string, userId: string) {
   return prisma.planItem.delete({
     where: { id: itemId },
   });
+}
+
+export async function reorderPlanItems(
+  planId: string,
+  userId: string,
+  orderedItemIds: string[],
+) {
+  await requirePlanForUser(planId, userId);
+
+  const rootItems = await prisma.planItem.findMany({
+    where: { planId, parentItemId: null },
+    select: { id: true },
+  });
+
+  const rootIds = new Set(rootItems.map((item) => item.id));
+
+  if (orderedItemIds.length !== rootItems.length) {
+    throw new PlanAccessError("Invalid item order");
+  }
+
+  for (const itemId of orderedItemIds) {
+    if (!rootIds.has(itemId)) {
+      throw new PlanAccessError("Invalid item order");
+    }
+  }
+
+  await prisma.$transaction(
+    orderedItemIds.map((itemId, index) =>
+      prisma.planItem.update({
+        where: { id: itemId },
+        data: { sortOrder: index * 100 },
+      }),
+    ),
+  );
 }
