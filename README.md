@@ -55,6 +55,7 @@ Shell scripts in `scripts/` wrap common local workflows. Run from anywhere insid
 ./scripts/migrate.sh
 ./scripts/reset-db.sh
 ./scripts/prisma-studio.sh
+node scripts/generate-icons.mjs   # regenerate PWA/OAuth PNGs from public/logo.svg
 ```
 
 If a script is not executable:
@@ -202,6 +203,8 @@ In [Google Cloud Console](https://console.cloud.google.com/), add authorized red
 ```text
 https://<your-railway-domain>/api/auth/callback/google
 ```
+
+For the OAuth consent screen app logo, upload **`public/oauth-logo.png`** (512×512). See [docs/BRANDING.md](docs/BRANDING.md) for palette and icon usage.
 
 ### 4. Database migrations
 
