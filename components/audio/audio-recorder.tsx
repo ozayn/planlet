@@ -187,18 +187,15 @@ export function AudioRecorder({ onTranscript }: AudioRecorderProps) {
     }
   }
 
-  const buttonClass =
-    "min-h-12 rounded-xl border border-stone-200 bg-white px-4 text-sm font-medium text-stone-700 transition-colors hover:border-stone-300 disabled:cursor-not-allowed disabled:opacity-50";
-
   return (
-    <div className="space-y-4 rounded-2xl border border-stone-200 bg-white p-4">
-      <p className="text-sm text-stone-500">
+    <div className="ui-card-padded space-y-4">
+      <p className="text-sm text-muted">
         Farsi, English, or mixed audio is okay.
       </p>
 
       <div className="flex flex-wrap gap-2">
         {status === "recording" ? (
-          <button type="button" onClick={stopRecording} className={buttonClass}>
+          <button type="button" onClick={stopRecording} className="ui-btn-secondary">
             Stop
           </button>
         ) : (
@@ -206,7 +203,7 @@ export function AudioRecorder({ onTranscript }: AudioRecorderProps) {
             type="button"
             onClick={startRecording}
             disabled={status === "transcribing"}
-            className="min-h-12 rounded-xl bg-stone-900 px-4 text-sm font-medium text-white transition-colors hover:bg-stone-800 disabled:opacity-50"
+            className="ui-btn-primary"
           >
             Record plan
           </button>
@@ -218,7 +215,7 @@ export function AudioRecorder({ onTranscript }: AudioRecorderProps) {
               type="button"
               onClick={playRecording}
               disabled={status === "transcribing"}
-              className={buttonClass}
+              className="ui-btn-secondary"
             >
               Play
             </button>
@@ -226,7 +223,7 @@ export function AudioRecorder({ onTranscript }: AudioRecorderProps) {
               type="button"
               onClick={resetRecording}
               disabled={status === "transcribing"}
-              className={buttonClass}
+              className="ui-btn-secondary"
             >
               Delete
             </button>
@@ -234,7 +231,7 @@ export function AudioRecorder({ onTranscript }: AudioRecorderProps) {
               type="button"
               onClick={transcribeRecording}
               disabled={status === "transcribing"}
-              className="min-h-12 rounded-xl bg-teal-800 px-4 text-sm font-medium text-white transition-colors hover:bg-teal-900 disabled:opacity-50"
+              className="ui-btn-primary bg-accent-blue hover:bg-accent-blue/90"
             >
               {status === "transcribing" ? "Transcribing…" : "Transcribe"}
             </button>
@@ -247,15 +244,18 @@ export function AudioRecorder({ onTranscript }: AudioRecorderProps) {
       ) : null}
 
       {status === "recording" ? (
-        <p className="text-sm text-teal-800">Recording…</p>
+        <p className="flex items-center gap-2 text-sm text-accent-red">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-accent-red" aria-hidden="true" />
+          Recording…
+        </p>
       ) : null}
 
       {success ? (
-        <p className="text-sm text-teal-800">{success}</p>
+        <p className="text-sm text-accent-blue">{success}</p>
       ) : null}
 
       {error ? (
-        <p className="text-sm text-red-700">{error}</p>
+        <p className="text-sm text-accent-red">{error}</p>
       ) : null}
     </div>
   );

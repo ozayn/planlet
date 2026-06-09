@@ -5,7 +5,11 @@ import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
 import { updatePlanItemStatusAction } from "@/app/(app)/plans/actions";
-import { getStatusIcon, getStatusLabel } from "@/lib/plan-status";
+import {
+  getStatusIcon,
+  getStatusLabel,
+  STATUS_STYLES,
+} from "@/lib/plan-status";
 
 const STATUSES: PlanItemStatus[] = [
   "OPEN",
@@ -37,7 +41,7 @@ export function StatusButton({
       value={status}
       disabled={isPending}
       aria-label="Item status"
-      className={`min-h-11 shrink-0 rounded-lg border border-stone-200 bg-white text-sm text-stone-700 transition-colors hover:border-stone-300 focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20 disabled:opacity-50 ${
+      className={`min-h-11 shrink-0 rounded-lg border border-border bg-surface text-sm text-foreground transition-colors hover:bg-accent-cream focus:outline-none focus:ring-2 focus:ring-foreground/10 disabled:opacity-50 ${STATUS_STYLES[status].icon} ${
         compact ? "min-w-11 px-1 text-center" : "min-w-28 px-2"
       }`}
       onChange={(event) => {
@@ -53,7 +57,9 @@ export function StatusButton({
     >
       {STATUSES.map((value) => (
         <option key={value} value={value}>
-          {compact ? getStatusIcon(value) : `${getStatusIcon(value)} ${getStatusLabel(value)}`}
+          {compact
+            ? getStatusIcon(value)
+            : `${getStatusIcon(value)} ${getStatusLabel(value)}`}
         </option>
       ))}
     </select>

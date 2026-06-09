@@ -41,6 +41,14 @@ Planlet is a mobile-first planning app that turns Farsi/English daily, monthly, 
 - **User edits override AI** — when AI arrives, suggestions are never authoritative
 - **Farsi-friendly content** — English UI; user content in Farsi, English, or mixed displays well with RTL/LTR-safe layout
 
+## Visual direction
+
+- **Modern minimal** — Plus Jakarta Sans for the English UI; restrained weights and spacing
+- **Restrained Mondrian accents** — warm off-white surfaces, near-black text, and small structural touches of red, blue, and yellow (nav indicators, card bars, status hints)
+- **English UI** — all interface copy in English; no Farsi labels or helper text in the shell
+- **Bilingual user content** — `dir="auto"`, Vazirmatn fallback, and RTL-safe layout for Farsi/English/mixed plan text
+- **No decorative overload** — soft shadows instead of heavy borders; color used sparingly, not playfully
+
 ## Future features
 
 - Intention capture (text, and later voice)

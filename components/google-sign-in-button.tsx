@@ -16,7 +16,7 @@ export function GoogleSignInButton({
     >
       <button
         type="submit"
-        className="flex h-12 w-full items-center justify-center gap-3 rounded-xl bg-stone-900 px-6 text-sm font-medium text-white transition-colors hover:bg-stone-800 active:bg-stone-950"
+        className="ui-btn-primary flex h-12 w-full gap-3"
       >
         <GoogleIcon />
         Continue with Google

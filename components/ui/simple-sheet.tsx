@@ -35,29 +35,33 @@ export function SimpleSheet({ open, onClose, title, children }: SimpleSheetProps
       <button
         type="button"
         aria-label="Close"
-        className="absolute inset-0 bg-stone-900/30"
+        className="absolute inset-0 bg-foreground/20"
         onClick={onClose}
       />
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="sheet-title"
-        className="relative z-10 flex max-h-[85vh] w-full max-w-lg flex-col rounded-t-2xl border border-stone-200 bg-white shadow-lg md:rounded-2xl"
+        className="relative z-10 flex max-h-[85vh] w-full max-w-lg flex-col rounded-t-2xl bg-surface shadow-[0_-8px_32px_rgb(20_18_16/0.12)] md:rounded-2xl"
       >
-        <div className="flex items-center justify-between border-b border-stone-100 px-5 py-4">
-          <h2 id="sheet-title" className="text-base font-medium text-stone-900" dir="auto">
+        <div className="flex items-center justify-between border-b border-border-soft px-5 py-4">
+          <h2
+            id="sheet-title"
+            className="text-base font-semibold text-foreground"
+            dir="auto"
+          >
             {title}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="min-h-10 min-w-10 rounded-lg text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-800"
+            className="min-h-10 min-w-10 rounded-lg text-muted transition-colors hover:bg-accent-cream hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20"
             aria-label="Close details"
           >
             ✕
           </button>
         </div>
-        <div className="overflow-y-auto px-5 py-4">{children}</div>
+        <div className="overflow-y-auto px-5 py-5">{children}</div>
       </div>
     </div>
   );

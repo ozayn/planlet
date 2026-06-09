@@ -12,7 +12,7 @@ export default async function AppLayout({
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <DesktopNav userName={session?.user?.name} />
-      <main className="mx-auto w-full max-w-3xl flex-1 px-4 pb-24 pt-6 md:px-6 md:pb-8">
+      <main className="mx-auto w-full max-w-2xl flex-1 px-5 pb-24 pt-8 md:max-w-3xl md:px-8 md:pb-10">
         {children}
       </main>
       <BottomNav />

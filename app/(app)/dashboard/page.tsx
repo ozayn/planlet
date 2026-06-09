@@ -30,43 +30,46 @@ export default async function DashboardPage() {
         subtitle="A calm home for your plans."
       />
 
-      <div className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
-        <h2 className="text-sm font-medium text-stone-800">Today</h2>
+      <article className="ui-card-padded relative overflow-hidden">
+        <span
+          className="absolute inset-y-5 start-0 w-1 rounded-full ui-accent-bar-red"
+          aria-hidden="true"
+        />
+        <h2 className="ps-3 text-sm font-semibold text-foreground">Today</h2>
         {todayPlan ? (
-          <div className="mt-3 space-y-3">
-            <p className="text-sm text-stone-600" dir="auto">
-              <span className="font-medium text-stone-900">{todayPlan.title}</span>
+          <div className="mt-4 space-y-4 ps-3">
+            <p className="text-sm text-muted" dir="auto">
+              <span className="font-medium text-foreground">{todayPlan.title}</span>
               {" · "}
               {todayItemCount} item{todayItemCount === 1 ? "" : "s"}
             </p>
-            <Link
-              href="/today"
-              className="inline-flex min-h-11 items-center rounded-xl border border-stone-200 px-4 text-sm font-medium text-stone-700 transition-colors hover:border-stone-300"
-            >
+            <Link href="/today" className="ui-btn-secondary inline-flex">
               Open today&apos;s plan
             </Link>
           </div>
         ) : (
-          <div className="mt-3 space-y-3">
-            <p className="text-sm leading-relaxed text-stone-500">
+          <div className="mt-4 space-y-4 ps-3">
+            <p className="text-sm leading-relaxed text-muted">
               No plan for today yet. Start with a messy list — structure it when
               you are ready.
             </p>
             <CreateTodayPlanButton />
           </div>
         )}
-      </div>
+      </article>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <DashboardCard
           href="/today"
           title="Today"
           description="See what matters right now."
+          accentIndex={0}
         />
         <DashboardCard
           href="/plans/new"
           title="New plan"
           description="Paste or record messy notes, then structure them."
+          accentIndex={1}
         />
         <DashboardCard
           href="/plans"
@@ -76,11 +79,13 @@ export default async function DashboardPage() {
               ? `${recentCount} plan${recentCount === 1 ? "" : "s"} saved so far.`
               : "Your daily, monthly, and yearly plans live here."
           }
+          accentIndex={2}
         />
         <DashboardCard
           href="/insights"
           title="Insights"
           description="A quiet look at what your plans have been holding."
+          accentIndex={0}
         />
       </div>
     </section>

@@ -18,8 +18,8 @@ function StatusBadge({ enabled, label }: { enabled: boolean; label: string }) {
     <span
       className={`inline-flex min-h-8 items-center rounded-full px-3 text-xs font-medium ${
         enabled
-          ? "bg-teal-50 text-teal-900"
-          : "bg-stone-100 text-stone-500"
+          ? "bg-accent-cream text-foreground"
+          : "bg-border-soft text-muted"
       }`}
     >
       {label}
@@ -42,92 +42,94 @@ export default async function SettingsPage() {
         subtitle="Account and app information."
       />
 
-      <article className="rounded-2xl border border-stone-200 bg-white p-5">
-        <h2 className="text-sm font-medium text-stone-800">Account</h2>
-        <dl className="mt-3 space-y-2 text-sm">
+      <article className="ui-card-padded">
+        <h2 className="text-sm font-semibold text-foreground">Account</h2>
+        <dl className="mt-4 space-y-3 text-sm">
           <div className="flex justify-between gap-4">
-            <dt className="text-stone-500">Name</dt>
-            <dd className="text-end text-stone-800 bidi-isolate" dir="auto">
+            <dt className="text-muted">Name</dt>
+            <dd className="text-end text-foreground bidi-isolate" dir="auto">
               {session?.user?.name ?? "—"}
             </dd>
           </div>
           <div className="flex justify-between gap-4">
-            <dt className="text-stone-500">Email</dt>
-            <dd className="text-end text-stone-800 bidi-isolate" dir="auto">
+            <dt className="text-muted">Email</dt>
+            <dd className="text-end text-foreground bidi-isolate" dir="auto">
               {session?.user?.email ?? "—"}
             </dd>
           </div>
         </dl>
       </article>
 
-      <article className="rounded-2xl border border-stone-200 bg-white p-5">
-        <h2 className="text-sm font-medium text-stone-800">App</h2>
-        <dl className="mt-3 space-y-2 text-sm">
+      <article className="ui-card-padded">
+        <h2 className="text-sm font-semibold text-foreground">App</h2>
+        <dl className="mt-4 space-y-3 text-sm">
           <div className="flex justify-between gap-4">
-            <dt className="text-stone-500">App name</dt>
-            <dd className="text-stone-800">{PRODUCT.name}</dd>
+            <dt className="text-muted">App name</dt>
+            <dd className="text-foreground">{PRODUCT.name}</dd>
           </div>
           <div className="flex justify-between gap-4">
-            <dt className="text-stone-500">Timezone</dt>
-            <dd className="text-stone-800">{APP_TIMEZONE}</dd>
+            <dt className="text-muted">Timezone</dt>
+            <dd className="text-foreground">{APP_TIMEZONE}</dd>
           </div>
         </dl>
-        <p className="mt-3 text-xs leading-relaxed text-stone-400">
+        <p className="mt-4 text-xs leading-relaxed text-muted-light">
           {PRODUCT.tagline}
         </p>
       </article>
 
-      <article className="rounded-2xl border border-stone-200 bg-white p-5">
-        <h2 className="text-sm font-medium text-stone-800">Install</h2>
-        <p className="mt-2 text-sm leading-relaxed text-stone-500">
+      <article className="ui-card-padded">
+        <h2 className="text-sm font-semibold text-foreground">Install</h2>
+        <p className="mt-3 text-sm leading-relaxed text-muted">
           On mobile, use your browser&apos;s <strong>Add to Home Screen</strong>{" "}
           option to install {PRODUCT.name} as a PWA. Works best over HTTPS.
         </p>
-        <p className="mt-2 text-xs text-stone-400">
+        <p className="mt-2 text-xs text-muted-light">
           Theme color: {PWA.themeColor}
         </p>
       </article>
 
-      <article className="rounded-2xl border border-stone-200 bg-white p-5">
-        <h2 className="text-sm font-medium text-stone-800">Features</h2>
-        <div className="mt-3 space-y-3">
+      <article className="ui-card-padded">
+        <h2 className="text-sm font-semibold text-foreground">Features</h2>
+        <div className="mt-4 space-y-3">
           <div className="flex items-center justify-between gap-4">
-            <span className="text-sm text-stone-600">Text parser provider</span>
-            <span className="text-sm text-stone-800">{textParserProvider}</span>
+            <span className="text-sm text-muted">Text parser provider</span>
+            <span className="text-sm font-medium text-foreground">
+              {textParserProvider}
+            </span>
           </div>
           <div className="flex items-center justify-between gap-4">
-            <span className="text-sm text-stone-600">Text plan parsing</span>
+            <span className="text-sm text-muted">Text plan parsing</span>
             <StatusBadge
               enabled={textParserConfigured}
               label={textParserConfigured ? "Available" : "Not configured"}
             />
           </div>
           <div className="flex items-center justify-between gap-4">
-            <span className="text-sm text-stone-600">OpenAI key configured</span>
+            <span className="text-sm text-muted">OpenAI key configured</span>
             <StatusBadge
               enabled={openaiConfigured}
               label={openaiConfigured ? "Yes" : "No"}
             />
           </div>
           <div className="flex items-center justify-between gap-4">
-            <span className="text-sm text-stone-600">Anthropic key configured</span>
+            <span className="text-sm text-muted">Anthropic key configured</span>
             <StatusBadge
               enabled={anthropicConfigured}
               label={anthropicConfigured ? "Yes" : "No"}
             />
           </div>
           <div className="flex items-center justify-between gap-4">
-            <span className="text-sm text-stone-600">Audio transcription</span>
+            <span className="text-sm text-muted">Audio transcription</span>
             <StatusBadge
               enabled={openaiConfigured}
               label={openaiConfigured ? "OpenAI" : "Not configured"}
             />
           </div>
         </div>
-        <p className="mt-3 text-xs leading-relaxed text-stone-400">
+        <p className="mt-4 text-xs leading-relaxed text-muted-light">
           Text parsing uses{" "}
-          <code className="text-stone-500">PLANLET_AI_PROVIDER</code> (
-          {aiProvider}). Audio transcription always uses OpenAI.
+          <code className="text-muted">PLANLET_AI_PROVIDER</code> ({aiProvider}).
+          Audio transcription always uses OpenAI.
           {aiProvider === "anthropic"
             ? anthropicConfigured
               ? ` Parser model: ${getAnthropicModel()}.`

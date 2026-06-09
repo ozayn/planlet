@@ -26,92 +26,105 @@ export default async function InsightsPage() {
         subtitle="A quiet look at what your plans have been holding."
       />
 
-      <p className="text-sm text-stone-500">{insights.dateLabel}</p>
+      <p className="text-sm text-muted">{insights.dateLabel}</p>
 
       {isEmpty ? (
         <>
           <InsightsEmptyState />
-          <p className="text-sm text-stone-400">
+          <p className="text-sm text-muted-light">
             These are observations, not grades.
           </p>
         </>
       ) : (
         <>
+          <div>
+            <h2 className="ui-label mb-4">What your plans contained</h2>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+              <SummaryCard
+                label="Plans"
+                value={insights.totals.plans}
+                accent="red"
+              />
+              <SummaryCard
+                label="Items"
+                value={insights.totals.items}
+                accent="blue"
+              />
+              <SummaryCard
+                label="Done / partial"
+                value={`${insights.totals.done} / ${insights.totals.partial}`}
+                hint="What moved forward"
+                accent="yellow"
+              />
+              <SummaryCard
+                label="Moved / skipped"
+                value={`${insights.totals.moved} / ${insights.totals.skipped}`}
+                hint="What was often moved"
+                accent="blue"
+              />
+            </div>
+          </div>
 
-      <div>
-        <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-stone-500">
-          What your plans contained
-        </h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <SummaryCard label="Plans" value={insights.totals.plans} />
-          <SummaryCard label="Items" value={insights.totals.items} />
-          <SummaryCard
-            label="Done / partial"
-            value={`${insights.totals.done} / ${insights.totals.partial}`}
-            hint="What moved forward"
+          <SimpleBarList
+            title="Item types"
+            items={insights.byType.map((entry) => ({
+              label: getPlanItemTypeLabel(entry.type),
+              count: entry.count,
+            }))}
+            emptyMessage="No items this month yet."
+            accent="blue"
           />
-          <SummaryCard
-            label="Moved / skipped"
-            value={`${insights.totals.moved} / ${insights.totals.skipped}`}
-            hint="What was often moved"
+
+          <StatusDistribution
+            title="Status distribution"
+            items={insights.byStatus}
           />
-        </div>
-      </div>
 
-      <SimpleBarList
-        title="Item types"
-        items={insights.byType.map((entry) => ({
-          label: getPlanItemTypeLabel(entry.type),
-          count: entry.count,
-        }))}
-        emptyMessage="No items this month yet."
-      />
+          <PriorityMatrix quadrants={insights.priorityQuadrants} />
 
-      <StatusDistribution
-        title="Status distribution"
-        items={insights.byStatus}
-      />
+          <section className="ui-card-padded">
+            <h2 className="text-sm font-semibold text-foreground">
+              Themes appearing in your plans
+            </h2>
+            <p className="mt-1.5 text-sm text-muted">
+              Repeated intentions this month.
+            </p>
 
-      <PriorityMatrix quadrants={insights.priorityQuadrants} />
+            {insights.intentions.length === 0 ? (
+              <p className="mt-4 text-sm text-muted">No repeated intentions yet.</p>
+            ) : (
+              <ul className="mt-4 space-y-2">
+                {insights.intentions.map((intention) => (
+                  <li
+                    key={intention.title}
+                    className="flex min-h-11 items-center justify-between gap-3 rounded-xl bg-accent-cream/40 px-3"
+                  >
+                    <span className="text-sm text-foreground" dir="auto">
+                      {intention.title}
+                    </span>
+                    <span className="text-sm text-muted-light">
+                      {intention.count}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
 
-      <section className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
-        <h2 className="text-sm font-medium text-stone-800">
-          Themes appearing in your plans
-        </h2>
-        <p className="mt-1 text-sm text-stone-500">Repeated intentions this month.</p>
+          {insights.oftenMovedTypes.length > 0 ? (
+            <SimpleBarList
+              title="What was often moved"
+              items={insights.oftenMovedTypes.map((entry) => ({
+                label: getPlanItemTypeLabel(entry.type),
+                count: entry.count,
+              }))}
+              accent="yellow"
+            />
+          ) : null}
 
-        {insights.intentions.length === 0 ? (
-          <p className="mt-4 text-sm text-stone-500">No repeated intentions yet.</p>
-        ) : (
-          <ul className="mt-4 space-y-2">
-            {insights.intentions.map((intention) => (
-              <li
-                key={intention.title}
-                className="flex min-h-11 items-center justify-between gap-3 rounded-xl border border-stone-100 px-3"
-              >
-                <span className="text-sm text-stone-700" dir="auto">
-                  {intention.title}
-                </span>
-                <span className="text-sm text-stone-400">{intention.count}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      {insights.oftenMovedTypes.length > 0 ? (
-        <SimpleBarList
-          title="What was often moved"
-          items={insights.oftenMovedTypes.map((entry) => ({
-            label: getPlanItemTypeLabel(entry.type),
-            count: entry.count,
-          }))}
-        />
-      ) : null}
-
-      <p className="text-sm text-stone-400">
-        These are observations, not grades.
-      </p>
+          <p className="text-sm text-muted-light">
+            These are observations, not grades.
+          </p>
         </>
       )}
     </section>

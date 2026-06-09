@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { GoogleSignInButton } from "@/components/google-sign-in-button";
+import { PlanletLogo } from "@/components/planlet-logo";
 import { PRODUCT } from "@/config/product";
 
 type HomePageProps = {
@@ -17,29 +18,35 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-6 py-12">
-        <div className="mb-10 text-center">
-          <p className="mb-3 text-sm font-medium tracking-wide text-teal-800 uppercase">
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-6 py-16">
+        <div className="mb-12 text-center">
+          <div className="mb-6 flex justify-center">
+            <PlanletLogo size={56} />
+          </div>
+          <p className="mb-3 text-xs font-semibold tracking-[0.2em] text-muted uppercase">
             {PRODUCT.name}
           </p>
-          <h1 className="text-3xl font-medium tracking-tight text-stone-900">
+          <h1 className="text-[2rem] leading-tight font-semibold tracking-tight text-foreground">
             {PRODUCT.tagline}
           </h1>
-          <p className="mt-4 text-sm leading-relaxed text-stone-500" dir="auto">
+          <p className="mx-auto mt-5 max-w-sm text-sm leading-relaxed text-muted" dir="auto">
             {PRODUCT.description}
           </p>
         </div>
 
         <div className="space-y-4">
           <GoogleSignInButton callbackUrl={callbackUrl ?? "/today"} />
-          <p className="text-center text-xs text-stone-400">
+          <p className="text-center text-xs text-muted-light">
             Soft plans, not a calendar replacement.
           </p>
         </div>
       </main>
 
-      <footer className="px-6 py-8 text-center text-xs text-stone-400">
-        Farsi-friendly input · Mobile-first · Calm by design
+      <footer className="flex items-center justify-center gap-3 px-6 py-10 text-xs text-muted-light">
+        <span className="h-2 w-2 rounded-sm bg-accent-red" aria-hidden="true" />
+        <span className="h-2 w-2 rounded-sm bg-accent-blue" aria-hidden="true" />
+        <span className="h-2 w-2 rounded-sm bg-accent-yellow" aria-hidden="true" />
+        <span>Farsi-friendly input · Mobile-first</span>
       </footer>
     </div>
   );

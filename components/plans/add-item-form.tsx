@@ -46,12 +46,13 @@ export function AddItemForm({
         onChange={(event) => setTitle(event.target.value)}
         placeholder={placeholder}
         dir="auto"
-        className="min-h-12 flex-1 rounded-xl border border-stone-200 bg-white px-4 text-sm text-stone-800 placeholder:text-stone-400 focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20"
+        aria-label={placeholder}
+        className="ui-input min-h-12 flex-1"
       />
       <button
         type="submit"
         disabled={isPending || !title.trim()}
-        className="min-h-12 shrink-0 rounded-xl bg-stone-900 px-4 text-sm font-medium text-white transition-colors hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-50"
+        className="ui-btn-primary min-h-12 shrink-0"
       >
         {isPending ? "…" : buttonLabel}
       </button>

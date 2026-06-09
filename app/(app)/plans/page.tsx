@@ -28,17 +28,13 @@ export default async function PlansPage() {
 
       {hasPlans ? (
         <div>
-          <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-stone-500">
-            Quick actions
-          </h2>
+          <h2 className="ui-label mb-4">Quick actions</h2>
           <CreatePlanButtons />
         </div>
       ) : null}
 
       <div>
-        <h2 className="mb-3 text-xs font-medium uppercase tracking-wide text-stone-500">
-          Recent plans
-        </h2>
+        <h2 className="ui-label mb-4">Recent plans</h2>
         {hasPlans ? (
           <PlanList
             plans={plans.map((plan) => ({

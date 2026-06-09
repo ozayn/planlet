@@ -1,5 +1,9 @@
-import Link from "next/link";
+"use client";
 
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+
+import { PlanletLogo } from "@/components/planlet-logo";
 import { PRODUCT } from "@/config/product";
 
 const navItems = [
@@ -14,28 +18,48 @@ type DesktopNavProps = {
 };
 
 export function DesktopNav({ userName }: DesktopNavProps) {
+  const pathname = usePathname();
+
   return (
-    <header className="hidden border-b border-stone-200 bg-white md:block">
-      <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-4">
+    <header className="hidden border-b border-border-soft bg-surface md:block">
+      <div className="mx-auto flex max-w-3xl items-center justify-between gap-6 px-6 py-4">
         <Link
           href="/today"
-          className="text-lg font-medium tracking-tight text-stone-900"
+          className="flex items-center gap-2.5 text-foreground transition-opacity hover:opacity-80"
         >
-          {PRODUCT.name}
+          <PlanletLogo size={32} />
+          <span className="text-base font-semibold tracking-tight">
+            {PRODUCT.name}
+          </span>
         </Link>
-        <nav className="flex items-center gap-6" aria-label="Main navigation">
-          {navItems.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              className="text-sm text-stone-600 transition-colors hover:text-stone-900"
-            >
-              {item.label}
-            </Link>
-          ))}
+        <nav className="flex items-center gap-1" aria-label="Main navigation">
+          {navItems.map((item) => {
+            const isActive =
+              pathname === item.href || pathname.startsWith(`${item.href}/`);
+
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className={`relative rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  isActive
+                    ? "text-foreground"
+                    : "text-muted hover:text-foreground"
+                }`}
+              >
+                {isActive ? (
+                  <span
+                    className="absolute inset-x-3 bottom-1 h-0.5 rounded-full bg-accent-blue"
+                    aria-hidden="true"
+                  />
+                ) : null}
+                {item.label}
+              </Link>
+            );
+          })}
         </nav>
         {userName ? (
-          <p className="max-w-32 truncate text-sm text-stone-500" dir="auto">
+          <p className="max-w-32 truncate text-sm text-muted-light" dir="auto">
             {userName}
           </p>
         ) : (

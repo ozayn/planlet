@@ -12,7 +12,7 @@ import { AddItemForm } from "@/components/plans/add-item-form";
 import { ItemDetailsSheet } from "@/components/plans/item-details-sheet";
 import { StatusButton } from "@/components/plans/status-button";
 import { getPlanItemTypeLabel } from "@/lib/plan-labels";
-import { getStatusIcon } from "@/lib/plan-status";
+import { getStatusIcon, STATUS_STYLES } from "@/lib/plan-status";
 import type { SerializedPlanItem } from "@/lib/plan-serialize";
 
 const ITEM_TYPES: PlanItemType[] = [
@@ -25,15 +25,6 @@ const ITEM_TYPES: PlanItemType[] = [
   "SOCIAL",
   "REST",
 ];
-
-const STATUS_ACCENT: Record<PlanItemStatus, string> = {
-  OPEN: "border-stone-200 bg-white",
-  DONE: "border-teal-200 bg-teal-50/50",
-  PARTIAL: "border-amber-200 bg-amber-50/50",
-  MOVED: "border-stone-300 bg-stone-50",
-  SKIPPED: "border-stone-200 bg-stone-50/80 opacity-90",
-  RELEASED: "border-sky-200 bg-sky-50/40",
-};
 
 type PlanItemCardProps = {
   planId: string;
@@ -87,13 +78,17 @@ export function PlanItemCard({ planId, item, depth = 0 }: PlanItemCardProps) {
   const isNested = depth > 0;
 
   return (
-    <article className={isNested ? "ms-4 border-s-2 border-stone-100 ps-3" : ""}>
+    <article className={isNested ? "ms-4 border-s border-border-soft ps-3" : ""}>
       <div
-        className={`rounded-2xl border p-4 shadow-sm ${STATUS_ACCENT[item.status]}`}
+        className={`ui-card relative overflow-hidden p-4 ${STATUS_STYLES[item.status].card}`}
       >
-        <div className="flex items-start gap-3">
+        <span
+          className={`absolute inset-y-4 start-0 w-1 rounded-full ${STATUS_STYLES[item.status].accentBar}`}
+          aria-hidden="true"
+        />
+        <div className="flex items-start gap-3 ps-2">
           <span
-            className="mt-2 text-lg leading-none"
+            className={`mt-2 text-base leading-none ${STATUS_STYLES[item.status].icon}`}
             aria-hidden="true"
             title={item.status}
           >
@@ -117,13 +112,13 @@ export function PlanItemCard({ planId, item, depth = 0 }: PlanItemCardProps) {
                       setEditingTitle(false);
                     }
                   }}
-                  className="w-full min-h-11 rounded-lg border border-stone-200 bg-white px-3 text-sm text-stone-900 focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20"
+                  className="ui-input min-h-11"
                 />
               ) : (
                 <button
                   type="button"
                   onClick={() => setEditingTitle(true)}
-                  className="block w-full min-h-11 text-start text-sm font-medium text-stone-900"
+                  className="block w-full min-h-11 text-start text-sm font-medium text-foreground"
                   dir="auto"
                 >
                   {item.title}
@@ -150,7 +145,7 @@ export function PlanItemCard({ planId, item, depth = 0 }: PlanItemCardProps) {
                       router.refresh();
                     });
                   }}
-                  className="min-h-10 rounded-lg border border-stone-200 bg-white px-2 text-xs text-stone-600 focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20"
+                  className="min-h-10 rounded-lg border border-border bg-surface px-2 text-xs text-muted focus:outline-none focus:ring-2 focus:ring-foreground/10"
                 >
                   {ITEM_TYPES.map((type) => (
                     <option key={type} value={type}>
@@ -159,7 +154,7 @@ export function PlanItemCard({ planId, item, depth = 0 }: PlanItemCardProps) {
                   ))}
                 </select>
                 {subtaskCount > 0 ? (
-                  <span className="text-xs text-stone-500">
+                  <span className="text-xs text-muted-light">
                     {subtaskCount} subtask{subtaskCount === 1 ? "" : "s"}
                   </span>
                 ) : null}
@@ -168,7 +163,7 @@ export function PlanItemCard({ planId, item, depth = 0 }: PlanItemCardProps) {
 
             {item.comment ? (
               <p
-                className="line-clamp-2 text-sm leading-relaxed text-stone-500"
+                className="line-clamp-2 text-sm leading-relaxed text-muted"
                 dir="auto"
               >
                 {item.comment}
@@ -179,7 +174,7 @@ export function PlanItemCard({ planId, item, depth = 0 }: PlanItemCardProps) {
               <button
                 type="button"
                 onClick={() => setDetailsOpen(true)}
-                className="min-h-10 rounded-lg border border-stone-200 bg-white px-3 text-xs font-medium text-stone-700 transition-colors hover:border-stone-300"
+                className="ui-btn-secondary min-h-10 px-3 text-xs"
               >
                 Details
               </button>
@@ -187,7 +182,7 @@ export function PlanItemCard({ planId, item, depth = 0 }: PlanItemCardProps) {
                 <button
                   type="button"
                   onClick={() => setShowSubtaskForm((current) => !current)}
-                  className="min-h-10 rounded-lg border border-stone-200 bg-white px-3 text-xs font-medium text-stone-700 transition-colors hover:border-stone-300"
+                  className="ui-btn-secondary min-h-10 px-3 text-xs"
                 >
                   {showSubtaskForm ? "Cancel" : "Add subtask"}
                 </button>
@@ -196,7 +191,7 @@ export function PlanItemCard({ planId, item, depth = 0 }: PlanItemCardProps) {
                 type="button"
                 disabled={isPending}
                 onClick={handleDelete}
-                className="min-h-10 rounded-lg px-3 text-xs font-medium text-stone-400 transition-colors hover:text-red-600"
+                className="ui-btn-ghost min-h-10"
               >
                 Delete
               </button>

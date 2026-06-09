@@ -2,16 +2,34 @@ type SummaryCardProps = {
   label: string;
   value: string | number;
   hint?: string;
+  accent?: "red" | "blue" | "yellow";
 };
 
-export function SummaryCard({ label, value, hint }: SummaryCardProps) {
+const ACCENTS = {
+  red: "ui-accent-bar-red",
+  blue: "ui-accent-bar-blue",
+  yellow: "ui-accent-bar-yellow",
+} as const;
+
+export function SummaryCard({
+  label,
+  value,
+  hint,
+  accent = "blue",
+}: SummaryCardProps) {
   return (
-    <article className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
-      <p className="text-xs font-medium uppercase tracking-wide text-stone-500">
+    <article className="ui-card relative overflow-hidden p-5">
+      <span
+        className={`absolute inset-y-5 start-0 w-1 rounded-full ${ACCENTS[accent]}`}
+        aria-hidden="true"
+      />
+      <p className="ps-3 text-xs font-medium tracking-wider text-muted uppercase">
         {label}
       </p>
-      <p className="mt-2 text-2xl font-medium text-stone-900">{value}</p>
-      {hint ? <p className="mt-1 text-xs text-stone-400">{hint}</p> : null}
+      <p className="mt-2 ps-3 text-[1.75rem] font-semibold tracking-tight text-foreground">
+        {value}
+      </p>
+      {hint ? <p className="mt-1 ps-3 text-xs text-muted-light">{hint}</p> : null}
     </article>
   );
 }

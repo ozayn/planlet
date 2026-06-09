@@ -1,25 +1,41 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f8f7f4;
-  --foreground: #1c1917;
-  --accent: #4a7c6f;
+  --background: #faf9f7;
+  --foreground: #141210;
   --surface: #ffffff;
+  --muted: #6b6560;
+  --muted-light: #9c958e;
+  --border: #e8e4df;
+  --border-soft: #f0ece7;
+  --accent-red: #d62828;
+  --accent-blue: #1d4ed8;
+  --accent-yellow: #e9c46a;
+  --accent-cream: #f5f0e8;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --color-accent: var(--accent);
   --color-surface: var(--surface);
-  --font-sans: var(--font-inter);
+  --color-muted: var(--muted);
+  --color-muted-light: var(--muted-light);
+  --color-border: var(--border);
+  --color-border-soft: var(--border-soft);
+  --color-accent-red: var(--accent-red);
+  --color-accent-blue: var(--accent-blue);
+  --color-accent-yellow: var(--accent-yellow);
+  --color-accent-cream: var(--accent-cream);
+  --font-sans: var(--font-ui);
   --font-farsi: var(--font-vazirmatn);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-inter), var(--font-vazirmatn), system-ui, sans-serif;
+  font-family: var(--font-ui), system-ui, sans-serif;
+  font-feature-settings: "ss01", "cv11";
+  line-height: 1.5;
 }
 
 /* Mixed RTL/LTR: isolate bidirectional runs so layout stays stable */
@@ -31,5 +47,206 @@ body {
 /* Prefer Farsi-friendly metrics when content is RTL */
 :lang(fa),
 [dir="rtl"] {
-  font-family: var(--font-vazirmatn), var(--font-inter), system-ui, sans-serif;
+  font-family: var(--font-vazirmatn), var(--font-ui), system-ui, sans-serif;
+}
+
+@layer components {
+  .ui-card {
+    border-radius: 1rem;
+    background: var(--surface);
+    box-shadow: 0 1px 3px rgb(20 18 16 / 0.05);
+  }
+
+  .ui-card-padded {
+    border-radius: 1rem;
+    background: var(--surface);
+    box-shadow: 0 1px 3px rgb(20 18 16 / 0.05);
+    padding: 1.25rem;
+  }
+
+  .ui-input {
+    min-height: 3rem;
+    width: 100%;
+    border-radius: 0.75rem;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    padding-inline: 1rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    color: var(--foreground);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  .ui-input::placeholder {
+    color: var(--muted-light);
+  }
+
+  .ui-input:focus {
+    border-color: rgb(20 18 16 / 0.25);
+    outline: none;
+    box-shadow: 0 0 0 3px rgb(20 18 16 / 0.08);
+  }
+
+  .ui-textarea {
+    min-height: 3rem;
+    width: 100%;
+    resize: vertical;
+    border-radius: 0.75rem;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+    line-height: 1.625;
+    color: var(--foreground);
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+
+  .ui-textarea::placeholder {
+    color: var(--muted-light);
+  }
+
+  .ui-textarea:focus {
+    border-color: rgb(20 18 16 / 0.25);
+    outline: none;
+    box-shadow: 0 0 0 3px rgb(20 18 16 / 0.08);
+  }
+
+  .ui-btn {
+    display: inline-flex;
+    min-height: 3rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem;
+    padding-inline: 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+  }
+
+  .ui-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px rgb(20 18 16 / 0.2);
+  }
+
+  .ui-btn-primary {
+    display: inline-flex;
+    min-height: 3rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem;
+    padding-inline: 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    background: var(--foreground);
+    color: var(--surface);
+    transition: background-color 0.15s;
+  }
+
+  .ui-btn-primary:hover {
+    background: rgb(20 18 16 / 0.9);
+  }
+
+  .ui-btn-primary:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .ui-btn-primary:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px rgb(20 18 16 / 0.2);
+  }
+
+  .ui-btn-secondary {
+    display: inline-flex;
+    min-height: 3rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    padding-inline: 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--foreground);
+    transition: background-color 0.15s;
+  }
+
+  .ui-btn-secondary:hover {
+    background: var(--accent-cream);
+  }
+
+  .ui-btn-secondary:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+  }
+
+  .ui-btn-secondary:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px rgb(20 18 16 / 0.2);
+  }
+
+  .ui-btn-ghost {
+    display: inline-flex;
+    min-height: 2.5rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem;
+    padding-inline: 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--muted-light);
+    transition: color 0.15s;
+  }
+
+  .ui-btn-ghost:hover {
+    color: var(--accent-red);
+  }
+
+  .ui-segment {
+    min-height: 2.75rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    padding-inline: 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--foreground);
+    transition: background-color 0.15s, border-color 0.15s;
+  }
+
+  .ui-segment:hover {
+    background: var(--accent-cream);
+  }
+
+  .ui-segment-active {
+    border-color: rgb(20 18 16 / 0.15);
+    background: var(--accent-cream);
+    box-shadow: inset 0 -2px 0 var(--accent-blue);
+  }
+
+  .ui-label {
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .ui-muted {
+    font-size: 0.875rem;
+    line-height: 1.625;
+    color: var(--muted);
+  }
+
+  .ui-accent-bar-red {
+    background: var(--accent-red);
+  }
+
+  .ui-accent-bar-blue {
+    background: var(--accent-blue);
+  }
+
+  .ui-accent-bar-yellow {
+    background: var(--accent-yellow);
+  }
 }

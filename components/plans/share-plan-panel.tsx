@@ -86,7 +86,7 @@ export function SharePlanPanel({ plan }: SharePlanPanelProps) {
           setCopyError(false);
           setSaveWarning(false);
         }}
-        className="min-h-10 rounded-lg border border-stone-200 bg-white px-4 text-sm font-medium text-stone-700 transition-colors hover:border-stone-300"
+        className="ui-btn-secondary min-h-10"
       >
         Share
       </button>
@@ -96,23 +96,21 @@ export function SharePlanPanel({ plan }: SharePlanPanelProps) {
         onClose={() => setOpen(false)}
         title="Share plan"
       >
-        <div className="space-y-4">
-          <p className="text-sm text-stone-500">
+        <div className="space-y-5">
+          <p className="text-sm text-muted">
             Copy a calm snapshot to share. Non-shareable items are excluded.
           </p>
 
-          <fieldset className="space-y-2">
-            <legend className="text-xs font-medium uppercase tracking-wide text-stone-500">
-              Format
-            </legend>
+          <fieldset className="space-y-3">
+            <legend className="ui-label">Format</legend>
             <div className="flex flex-wrap gap-2">
               {FORMAT_OPTIONS.map((option) => (
                 <label
                   key={option.value}
-                  className={`flex min-h-11 cursor-pointer items-center rounded-xl border px-4 text-sm transition-colors ${
+                  className={`flex min-h-11 cursor-pointer items-center rounded-xl px-4 text-sm transition-colors ${
                     format === option.value
-                      ? "border-teal-700 bg-teal-50 text-teal-900"
-                      : "border-stone-200 bg-white text-stone-700 hover:border-stone-300"
+                      ? "ui-segment-active"
+                      : "ui-segment"
                   }`}
                 >
                   <input
@@ -135,33 +133,31 @@ export function SharePlanPanel({ plan }: SharePlanPanelProps) {
           </fieldset>
 
           <label className="block space-y-2">
-            <span className="text-xs font-medium uppercase tracking-wide text-stone-500">
-              Preview
-            </span>
+            <span className="ui-label">Preview</span>
             <textarea
               ref={textareaRef}
               readOnly
               dir="auto"
               value={previewText}
               rows={14}
-              className="w-full resize-y rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 font-mono text-sm leading-relaxed text-stone-800 focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20"
+              className="ui-textarea bg-accent-cream/50 font-mono"
             />
           </label>
 
           {copyError ? (
-            <p className="text-sm text-amber-700">
+            <p className="text-sm text-accent-yellow">
               Clipboard unavailable — select the text above and copy manually.
             </p>
           ) : null}
 
           {copied ? (
-            <p className="text-sm text-teal-800">
+            <p className="text-sm text-accent-blue">
               Copied{isSaving ? "…" : ""}
             </p>
           ) : null}
 
           {saveWarning ? (
-            <p className="text-sm text-amber-700">
+            <p className="text-sm text-accent-yellow">
               Copied, but export history was not saved.
             </p>
           ) : null}
@@ -170,7 +166,7 @@ export function SharePlanPanel({ plan }: SharePlanPanelProps) {
             type="button"
             disabled={!previewText.trim() || isSaving}
             onClick={handleCopy}
-            className="min-h-12 w-full rounded-xl bg-stone-900 px-4 text-sm font-medium text-white transition-colors hover:bg-stone-800 disabled:cursor-not-allowed disabled:opacity-50"
+            className="ui-btn-primary w-full"
           >
             {copied ? "Copied" : "Copy"}
           </button>

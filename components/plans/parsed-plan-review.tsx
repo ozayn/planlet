@@ -29,11 +29,10 @@ const TIME_HINTS = [
 ] as const;
 const PRIORITIES = ["LOW", "MEDIUM", "HIGH"] as const;
 
-const inputClass =
-  "w-full min-h-11 rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm text-stone-800 focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20";
+const inputClass = "ui-input min-h-11 py-2";
 
 const selectClass =
-  "min-h-11 rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm text-stone-700 focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20";
+  "min-h-11 rounded-xl border border-border bg-surface px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-foreground/10";
 
 type ParsedPlanReviewProps = {
   draft: ParsedPlan;
@@ -71,7 +70,7 @@ export function ParsedPlanReview({ draft, onChange }: ParsedPlanReviewProps) {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-4 rounded-2xl border border-stone-200 bg-white p-5">
+      <div className="space-y-4 rounded-2xl border border-border bg-surface p-5">
         <Field label="Plan title">
           <input
             type="text"
@@ -139,11 +138,11 @@ export function ParsedPlanReview({ draft, onChange }: ParsedPlanReviewProps) {
 
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-3">
-          <h3 className="text-sm font-medium text-stone-800">Items</h3>
+          <h3 className="text-sm font-medium text-foreground">Items</h3>
           <button
             type="button"
             onClick={addItem}
-            className="min-h-10 rounded-lg border border-stone-200 bg-white px-3 text-xs font-medium text-stone-700 hover:border-stone-300"
+            className="min-h-10 rounded-lg border border-border bg-surface px-3 text-xs font-medium text-foreground hover:bg-accent-cream"
           >
             Add item
           </button>
@@ -194,7 +193,7 @@ function ReviewItemCard({
   }
 
   return (
-    <article className="space-y-3 rounded-2xl border border-stone-200 bg-white p-4">
+    <article className="space-y-3 rounded-2xl border border-border bg-surface p-4">
       <Field label="Title">
         <input
           type="text"
@@ -292,27 +291,27 @@ function ReviewItemCard({
         </Field>
       </div>
 
-      <label className="flex min-h-10 items-center gap-3 text-sm text-stone-700">
+      <label className="flex min-h-10 items-center gap-3 text-sm text-foreground">
         <input
           type="checkbox"
           checked={item.shareable ?? true}
           onChange={(event) =>
             onChange({ ...item, shareable: event.target.checked })
           }
-          className="h-5 w-5 rounded border-stone-300"
+          className="h-5 w-5 rounded border-border"
         />
         Shareable
       </label>
 
-      <div className="space-y-2 border-t border-stone-100 pt-3">
+      <div className="space-y-2 border-t border-border-soft pt-3">
         <div className="flex items-center justify-between gap-2">
-          <span className="text-xs font-medium uppercase tracking-wide text-stone-500">
+          <span className="text-xs font-medium uppercase tracking-wide text-muted">
             Subtasks
           </span>
           <button
             type="button"
             onClick={addSubtask}
-            className="text-xs font-medium text-stone-600 hover:text-stone-900"
+            className="text-xs font-medium text-muted hover:text-foreground"
           >
             Add subtask
           </button>
@@ -345,7 +344,7 @@ function ReviewItemCard({
             <button
               type="button"
               onClick={() => removeSubtask(subIndex)}
-              className="min-h-11 px-2 text-xs text-stone-400 hover:text-red-600"
+              className="min-h-11 px-2 text-xs text-muted-light hover:text-accent-red"
             >
               Remove
             </button>
@@ -356,7 +355,7 @@ function ReviewItemCard({
       <button
         type="button"
         onClick={onDelete}
-        className="text-xs font-medium text-stone-400 hover:text-red-600"
+        className="text-xs font-medium text-muted-light hover:text-accent-red"
       >
         Delete item
       </button>
@@ -373,7 +372,7 @@ function Field({
 }) {
   return (
     <label className="block space-y-1.5">
-      <span className="text-xs font-medium uppercase tracking-wide text-stone-500">
+      <span className="text-xs font-medium uppercase tracking-wide text-muted">
         {label}
       </span>
       {children}

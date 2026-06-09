@@ -1,14 +1,15 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Vazirmatn } from "next/font/google";
+import { Plus_Jakarta_Sans, Vazirmatn } from "next/font/google";
 
 import { PRODUCT, PWA } from "@/config/product";
 
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
+const plusJakarta = Plus_Jakarta_Sans({
+  variable: "--font-ui",
   subsets: ["latin"],
   display: "swap",
+  weight: ["400", "500", "600"],
 });
 
 const vazirmatn = Vazirmatn({
@@ -58,13 +59,13 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${vazirmatn.variable} h-full antialiased`}
+      className={`${plusJakarta.variable} ${vazirmatn.variable} h-full antialiased`}
     >
       <head>
         <meta name="mobile-web-app-capable" content="yes" />
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
-      <body className="min-h-full flex flex-col bg-background text-foreground">
+      <body className="min-h-full flex flex-col bg-background font-sans text-foreground">
         {children}
       </body>
     </html>

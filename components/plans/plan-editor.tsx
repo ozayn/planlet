@@ -22,7 +22,7 @@ export function PlanEditor({
   const dateEnd = new Date(plan.dateEnd);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {showShare && !showMeta ? (
         <div className="flex justify-end">
           <SharePlanPanel plan={plan} />
@@ -32,14 +32,14 @@ export function PlanEditor({
       {showMeta ? (
         <header className="space-y-3">
           <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 space-y-1">
+            <div className="min-w-0 space-y-1.5">
               <h2
-                className="text-xl font-medium tracking-tight text-stone-900"
+                className="text-xl font-semibold tracking-tight text-foreground"
                 dir="auto"
               >
                 {plan.title}
               </h2>
-              <p className="text-sm text-stone-500">
+              <p className="text-sm text-muted">
                 {getPlanTypeLabel(plan.type)} ·{" "}
                 {formatDateRange(dateStart, dateEnd)}
               </p>
@@ -47,7 +47,7 @@ export function PlanEditor({
             {showShare ? <SharePlanPanel plan={plan} /> : null}
           </div>
           {plan.summary ? (
-            <p className="text-sm leading-relaxed text-stone-500" dir="auto">
+            <p className="text-sm leading-relaxed text-muted" dir="auto">
               {plan.summary}
             </p>
           ) : null}
@@ -56,7 +56,7 @@ export function PlanEditor({
 
       <section className="space-y-3">
         {plan.items.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-stone-200 bg-white/70 px-5 py-8 text-center text-sm leading-relaxed text-stone-500">
+          <p className="rounded-2xl border border-dashed border-border bg-surface/70 px-5 py-10 text-center text-sm leading-relaxed text-muted">
             Start with a messy list. You can structure it later.
           </p>
         ) : (
@@ -68,7 +68,7 @@ export function PlanEditor({
 
       <section className="space-y-2">
         <AddItemForm planId={plan.id} />
-        <p className="text-xs text-stone-400">Good enough counts.</p>
+        <p className="text-xs text-muted-light">Good enough counts.</p>
       </section>
     </div>
   );

@@ -152,7 +152,7 @@ export function ItemDetailsSheet({
             onChange={(event) =>
               setForm((current) => ({ ...current, title: event.target.value }))
             }
-            className="w-full min-h-12 rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-800 focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20"
+            className="ui-input min-h-12 py-3"
           />
         </Field>
 
@@ -165,7 +165,7 @@ export function ItemDetailsSheet({
                 type: event.target.value as PlanItemType,
               }))
             }
-            className="w-full min-h-12 rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-800 focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20"
+            className="ui-input min-h-12 py-3"
           >
             {ITEM_TYPES.map((type) => (
               <option key={type} value={type}>
@@ -184,7 +184,7 @@ export function ItemDetailsSheet({
                 progressLevel: Number.parseInt(event.target.value, 10),
               }))
             }
-            className="w-full min-h-12 rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-800 focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20"
+            className="ui-input min-h-12 py-3"
           >
             {PROGRESS_LEVELS.map((level) => (
               <option key={level} value={level}>
@@ -256,7 +256,7 @@ export function ItemDetailsSheet({
                 durationMinutes: event.target.value,
               }))
             }
-            className="w-full min-h-12 rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-800 focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20"
+            className="ui-input min-h-12 py-3"
           />
         </Field>
 
@@ -268,11 +268,11 @@ export function ItemDetailsSheet({
             onChange={(event) =>
               setForm((current) => ({ ...current, comment: event.target.value }))
             }
-            className="w-full min-h-12 resize-y rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-800 focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20"
+            className="ui-textarea min-h-12"
           />
         </Field>
 
-        <label className="flex min-h-12 items-center gap-3 text-sm text-stone-700">
+        <label className="flex min-h-12 items-center gap-3 text-sm text-foreground">
           <input
             type="checkbox"
             checked={form.shareable}
@@ -282,18 +282,18 @@ export function ItemDetailsSheet({
                 shareable: event.target.checked,
               }))
             }
-            className="h-5 w-5 rounded border-stone-300"
+            className="h-5 w-5 rounded border-border"
           />
           Include in share exports
         </label>
 
-        <p className="text-xs text-stone-400">Good enough counts.</p>
+        <p className="text-xs text-muted-light">Good enough counts.</p>
 
         <button
           type="button"
           disabled={isPending}
           onClick={handleSave}
-          className="min-h-12 w-full rounded-xl bg-teal-800 px-4 text-sm font-medium text-white transition-colors hover:bg-teal-900 disabled:opacity-50"
+          className="ui-btn-primary w-full disabled:opacity-50"
         >
           {isPending ? "Saving…" : "Save details"}
         </button>
@@ -311,7 +311,7 @@ function Field({
 }) {
   return (
     <label className="block space-y-1.5">
-      <span className="text-xs font-medium uppercase tracking-wide text-stone-500">
+      <span className="ui-label">
         {label}
       </span>
       {children}
@@ -335,7 +335,7 @@ function EnumField({
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="w-full min-h-12 rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm text-stone-800 focus:border-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-700/20"
+        className="ui-input min-h-12 py-3"
       >
         <option value="">—</option>
         {options.map((option) => (

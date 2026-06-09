@@ -4,10 +4,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const navItems = [
-  { href: "/today", label: "Today" },
-  { href: "/plans", label: "Plans" },
-  { href: "/insights", label: "Insights" },
-  { href: "/settings", label: "Settings" },
+  { href: "/today", label: "Today", accent: "bg-accent-red" },
+  { href: "/plans", label: "Plans", accent: "bg-accent-blue" },
+  { href: "/insights", label: "Insights", accent: "bg-accent-yellow" },
+  { href: "/settings", label: "Settings", accent: "bg-foreground" },
 ] as const;
 
 export function BottomNav() {
@@ -15,7 +15,7 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-stone-200 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+      className="fixed inset-x-0 bottom-0 z-50 border-t border-border-soft bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
       aria-label="Main navigation"
     >
       <ul className="mx-auto flex max-w-lg items-stretch justify-around">
@@ -27,12 +27,16 @@ export function BottomNav() {
             <li key={item.href} className="flex-1">
               <Link
                 href={item.href}
-                className={`flex min-h-14 flex-col items-center justify-center gap-0.5 px-2 text-xs transition-colors ${
-                  isActive
-                    ? "text-teal-800"
-                    : "text-stone-500 hover:text-stone-800"
+                className={`relative flex min-h-[3.75rem] flex-col items-center justify-center gap-1 px-2 text-[0.6875rem] font-medium tracking-wide transition-colors ${
+                  isActive ? "text-foreground" : "text-muted hover:text-foreground"
                 }`}
               >
+                {isActive ? (
+                  <span
+                    className={`absolute inset-x-5 top-0 h-0.5 rounded-full ${item.accent}`}
+                    aria-hidden="true"
+                  />
+                ) : null}
                 <NavIcon href={item.href} active={isActive} />
                 <span dir="auto">{item.label}</span>
               </Link>
@@ -45,7 +49,7 @@ export function BottomNav() {
 }
 
 function NavIcon({ href, active }: { href: string; active: boolean }) {
-  const className = `h-5 w-5 ${active ? "stroke-teal-800" : "stroke-stone-400"}`;
+  const className = `h-5 w-5 ${active ? "stroke-foreground" : "stroke-muted-light"}`;
 
   switch (href) {
     case "/today":
