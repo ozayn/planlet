@@ -123,7 +123,7 @@ Admin emails are always permitted to sign in, even if they are not listed in `AL
 
 Leave `ALLOWED_EMAILS` empty or unset during local development to avoid accidental lockout. Set both variables in production (e.g. on Railway) to keep the app private.
 
-Admins can open `/admin` to see configured allowlists and users who have signed in. To add or remove users today, edit `ALLOWED_EMAILS` in environment variables and redeploy.
+Admins can open `/admin` to see configured allowlists, per-user usage counts, and recent sign-in activity. The admin page shows **counts only** — not plan titles, item text, or export contents. See [docs/ADMIN.md](docs/ADMIN.md). To add or remove users today, edit `ALLOWED_EMAILS` in environment variables and redeploy.
 
 ### In-platform plan sharing
 

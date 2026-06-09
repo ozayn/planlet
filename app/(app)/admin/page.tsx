@@ -1,45 +1,38 @@
-import { notFound } from "next/navigation";
-
-import { auth } from "@/auth";
+import { AdminUserStats } from "@/components/admin/admin-user-stats";
+import { SummaryCard } from "@/components/insights/summary-card";
 import { PageHeader } from "@/components/page-header";
 import {
   getAdminEmails,
   getAllowedEmails,
 } from "@/lib/auth-allowlist";
-import { isAdminRole } from "@/lib/auth-roles";
-import { prisma } from "@/lib/prisma";
+import { getAdminUserStats } from "@/lib/admin-stats";
+
+function formatLoginTime(value: Date): string {
+  return value.toLocaleString("en", {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+}
 
 export default async function AdminPage() {
-  const session = await auth();
-
-  if (!session?.user?.id || !isAdminRole(session.user.role)) {
-    notFound();
-  }
-
-  const [users, allowedEmails, adminEmails] = await Promise.all([
-    prisma.user.findMany({
-      orderBy: { createdAt: "asc" },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        createdAt: true,
-      },
-    }),
-    Promise.resolve(getAllowedEmails()),
-    Promise.resolve(getAdminEmails()),
-  ]);
+  const [{ users, totals, recentLogins }, allowedEmails, adminEmails] =
+    await Promise.all([
+      getAdminUserStats(),
+      Promise.resolve(getAllowedEmails()),
+      Promise.resolve(getAdminEmails()),
+    ]);
 
   return (
     <section className="space-y-6">
       <PageHeader
         title="Admin"
-        subtitle="Private workspace access overview."
+        subtitle="Workspace access and usage counts. Plan contents are not shown here."
       />
 
       <article className="ui-card-padded space-y-4">
-        <h2 className="text-sm font-semibold text-foreground">Access control</h2>
+        <h2 className="text-sm font-semibold text-foreground">
+          Access configuration
+        </h2>
         <p className="text-sm text-muted">
           For now, add or remove users by editing environment variables and
           redeploying. Database invite management is not available yet.
@@ -80,42 +73,60 @@ export default async function AdminPage() {
         </div>
       </article>
 
+      <div>
+        <h2 className="ui-label mb-4">Overview</h2>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <SummaryCard label="Users" value={totals.userCount} accent="blue" />
+          <SummaryCard label="Admins" value={totals.adminCount} accent="red" />
+          <SummaryCard label="Plans" value={totals.planCount} accent="yellow" />
+          <SummaryCard label="Items" value={totals.itemCount} accent="blue" />
+          <SummaryCard
+            label="Plan shares"
+            value={totals.planShareCount}
+            accent="red"
+          />
+        </div>
+        <p className="mt-3 text-xs text-muted-light">
+          Copy exports: {totals.shareExportCount} total clipboard exports saved.
+        </p>
+      </div>
+
       <article className="ui-card-padded">
-        <h2 className="text-sm font-semibold text-foreground">
-          Signed-in users
-        </h2>
+        <h2 className="text-sm font-semibold text-foreground">Users</h2>
         <p className="mt-1 text-sm text-muted">
-          {users.length} user{users.length === 1 ? "" : "s"} in the database.
+          Counts only — no plan titles, item text, or transcripts.
+        </p>
+        <div className="mt-4">
+          <AdminUserStats users={users} />
+        </div>
+      </article>
+
+      <article className="ui-card-padded">
+        <h2 className="text-sm font-semibold text-foreground">Recent logins</h2>
+        <p className="mt-1 text-sm text-muted">
+          Last 25 sign-ins. Stores email, provider, and timestamp only — no IP
+          addresses or plan content.
         </p>
 
-        {users.length > 0 ? (
+        {recentLogins.length > 0 ? (
           <ul className="mt-4 space-y-2">
-            {users.map((user) => (
+            {recentLogins.map((event) => (
               <li
-                key={user.id}
-                className="rounded-xl bg-accent-cream/40 px-4 py-3 text-sm"
+                key={event.id}
+                className="flex flex-col gap-1 rounded-xl bg-accent-cream/40 px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="font-medium text-foreground" dir="auto">
-                      {user.name ?? "—"}
-                    </p>
-                    <p className="text-muted" dir="auto">
-                      {user.email ?? "—"}
-                    </p>
-                  </div>
-                  <span className="shrink-0 rounded-full bg-surface px-2.5 py-1 text-xs font-medium text-foreground">
-                    {user.role}
-                  </span>
-                </div>
-                <p className="mt-2 text-xs text-muted-light">
-                  Joined {user.createdAt.toLocaleDateString("en")}
-                </p>
+                <span className="text-foreground" dir="auto">
+                  {event.email}
+                </span>
+                <span className="text-muted">
+                  {formatLoginTime(event.createdAt)}
+                  {event.provider ? ` · ${event.provider}` : ""}
+                </span>
               </li>
             ))}
           </ul>
         ) : (
-          <p className="mt-4 text-sm text-muted">No users yet.</p>
+          <p className="mt-4 text-sm text-muted">No login events yet.</p>
         )}
       </article>
     </section>

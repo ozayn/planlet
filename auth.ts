@@ -3,6 +3,7 @@ import NextAuth from "next-auth";
 
 import { authConfig } from "@/auth.config";
 import { syncUserRoleOnSignIn } from "@/lib/auth-roles";
+import { recordUserLogin } from "@/lib/login-activity";
 import { prisma } from "@/lib/prisma";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
@@ -13,9 +14,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     strategy: "jwt",
   },
   events: {
-    async signIn({ user }) {
+    async signIn({ user, account }) {
       if (user.id && user.email) {
         await syncUserRoleOnSignIn(user.id, user.email);
+        await recordUserLogin(user.id, user.email, account?.provider);
       }
     },
   },

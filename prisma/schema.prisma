@@ -99,14 +99,29 @@ model User {
   emailVerified DateTime?
   image         String?
   role          UserRole    @default(USER)
+  lastLoginAt   DateTime?
+  loginCount    Int         @default(0)
   accounts      Account[]
   sessions      Session[]
   plans         Plan[]
   themes        Theme[]
   planSharesOwned    PlanShare[] @relation("PlanShareOwner")
   planSharesReceived PlanShare[] @relation("PlanShareRecipient")
+  loginEvents   LoginEvent[]
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
+}
+
+model LoginEvent {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  email     String
+  provider  String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([createdAt])
 }
 
 model Account {
