@@ -26,18 +26,11 @@ export default async function AdminPage() {
     <section className="space-y-6">
       <PageHeader
         title="Admin"
-        subtitle="Workspace access and usage counts."
+        subtitle="Workspace access and usage counts. No plan contents shown."
       />
-
-      <p className="-mt-2 text-xs text-muted-light">
-        Counts only — no plan titles, item text, or transcripts.
-      </p>
 
       <article className="ui-card-padded space-y-4 border border-border-soft">
         <h2 className="ui-section-title">Access configuration</h2>
-        <p className="text-sm text-muted">
-          Edit environment variables and redeploy to change who can sign in.
-        </p>
 
         <div className="space-y-3 text-sm">
           <div>

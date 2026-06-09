@@ -77,7 +77,6 @@ const ITEM_TYPES: PlanItemType[] = [
 
 function buildFormState(item: SerializedPlanItem) {
   return {
-    title: item.title,
     type: item.type,
     progressLevel: item.progressLevel,
     satisfactionLevel: item.satisfactionLevel ?? "",
@@ -121,7 +120,6 @@ export function ItemDetailsSheet({
       await updatePlanItemAction({
         planId,
         itemId: item.id,
-        title: form.title.trim() || item.title,
         type: form.type,
         progressLevel: form.progressLevel,
         satisfactionLevel: form.satisfactionLevel
@@ -162,18 +160,6 @@ export function ItemDetailsSheet({
   return (
     <SimpleSheet open={open} onClose={onClose} title="Details">
       <div className="space-y-6">
-        <Field label="Title">
-          <input
-            type="text"
-            value={form.title}
-            dir="auto"
-            onChange={(event) =>
-              setForm((current) => ({ ...current, title: event.target.value }))
-            }
-            className="ui-input min-h-12 py-3"
-          />
-        </Field>
-
         <Field label="Type">
           <select
             value={form.type}
@@ -194,24 +180,23 @@ export function ItemDetailsSheet({
         </Field>
 
         <DetailGroup title="Progress">
-          <Field label="Progress">
-            <select
-              value={form.progressLevel}
-              onChange={(event) =>
-                setForm((current) => ({
-                  ...current,
-                  progressLevel: Number.parseInt(event.target.value, 10),
-                }))
-              }
-              className="ui-input min-h-12 py-3"
-            >
-              {PROGRESS_LEVELS.map((level) => (
-                <option key={level} value={level}>
-                  {level}%
-                </option>
-              ))}
-            </select>
-          </Field>
+          <select
+            value={form.progressLevel}
+            aria-label="Progress"
+            onChange={(event) =>
+              setForm((current) => ({
+                ...current,
+                progressLevel: Number.parseInt(event.target.value, 10),
+              }))
+            }
+            className="ui-input min-h-12 py-3"
+          >
+            {PROGRESS_LEVELS.map((level) => (
+              <option key={level} value={level}>
+                {level}%
+              </option>
+            ))}
+          </select>
         </DetailGroup>
 
         <DetailGroup title="Feeling">

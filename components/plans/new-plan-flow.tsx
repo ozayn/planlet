@@ -85,10 +85,7 @@ export function NewPlanFlow() {
     return (
       <div className="space-y-6">
         <p className="ui-label">Step 2 — Review</p>
-        <p className="text-sm text-muted">
-          Edit the structured plan before saving. Your changes override the
-          suggestion.
-        </p>
+        <p className="text-sm text-muted">Edit before saving.</p>
 
         <ParsedPlanReview draft={draft} onChange={setDraft} />
 

@@ -98,8 +98,7 @@ export function SharePlanPanel({ plan }: SharePlanPanelProps) {
       >
         <div className="space-y-5">
           <p className="text-sm text-muted">
-            Copy a snapshot for messaging apps. Items marked private in Details
-            are excluded.
+            For messaging apps. Private items are excluded.
           </p>
 
           <fieldset className="space-y-3">

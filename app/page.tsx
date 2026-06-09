@@ -37,9 +37,6 @@ export default async function HomePage({ searchParams }: HomePageProps) {
 
         <div className="space-y-4">
           <GoogleSignInButton callbackUrl={callbackUrl ?? "/today"} />
-          <p className="text-center text-xs text-muted-light">
-            Farsi-friendly input
-          </p>
         </div>
       </main>
 

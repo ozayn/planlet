@@ -74,12 +74,11 @@ export function ShareWithUserPanel({ planId, shares }: ShareWithUserPanelProps) 
       >
         <div>
           <h3 className="ui-section-title">Share inside Planlet</h3>
-          <p className="mt-1 text-sm text-muted">
-            Read-only access for another signed-in user.
-            {shares.length > 0 && !expanded
-              ? ` Shared with ${shares.length}.`
-              : ""}
-          </p>
+          {shares.length > 0 && !expanded ? (
+            <p className="mt-1 text-sm text-muted">
+              Shared with {shares.length}.
+            </p>
+          ) : null}
         </div>
         <span className="shrink-0 pt-0.5 text-sm text-muted-light" aria-hidden="true">
           {expanded ? "−" : "+"}
@@ -88,9 +87,8 @@ export function ShareWithUserPanel({ planId, shares }: ShareWithUserPanelProps) 
 
       {expanded ? (
         <div className="mt-4 space-y-4">
-          <p className="text-xs text-muted-light">
-            The recipient must already have a Planlet account and be allowed to
-            sign in.
+          <p className="text-sm text-muted">
+            Read-only. Recipient must already have signed in.
           </p>
 
           <div className="flex flex-col gap-2 sm:flex-row">

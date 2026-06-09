@@ -189,10 +189,6 @@ export function AudioRecorder({ onTranscript }: AudioRecorderProps) {
 
   return (
     <div className="space-y-4 rounded-2xl border border-border-soft bg-accent-cream/30 p-4">
-      <p className="text-xs text-muted-light">
-        Record in any language. Transcript appears in the notes field.
-      </p>
-
       <div className="flex flex-wrap gap-2">
         {status === "recording" ? (
           <button type="button" onClick={stopRecording} className="ui-btn-secondary">

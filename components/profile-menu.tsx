@@ -92,14 +92,6 @@ export function ProfileMenu({
           </div>
 
           <div className="space-y-1 p-1">
-            <Link
-              href="/settings"
-              role="menuitem"
-              onClick={() => setOpen(false)}
-              className="flex min-h-10 items-center rounded-xl px-3 text-sm text-foreground transition-colors hover:bg-accent-cream"
-            >
-              Settings
-            </Link>
             {isAdmin ? (
               <Link
                 href="/admin"

@@ -25,23 +25,21 @@ export default async function TodayPage() {
         subtitle="What matters right now."
         action={
           <Link href="/plans/new" className="ui-text-link">
-            New plan from notes
+            New plan
           </Link>
         }
       />
 
       {plan ? (
-        <PlanEditor plan={serializePlan(plan)} showMeta={false} showShare />
+        <PlanEditor
+          plan={serializePlan(plan)}
+          showMeta={false}
+          showCopyExport
+        />
       ) : (
         <div className="space-y-6">
           <div className="ui-empty-state">
-            <p className="text-sm leading-relaxed text-muted">
-              Start a list for today, or structure notes on{" "}
-              <Link href="/plans/new" className="ui-text-link">
-                New plan
-              </Link>
-              .
-            </p>
+            <p className="text-sm text-muted">No list for today yet.</p>
           </div>
           <CreateTodayPlanButton />
         </div>

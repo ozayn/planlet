@@ -1,10 +1,7 @@
-import Link from "next/link";
-
 import { auth } from "@/auth";
 import { PageHeader } from "@/components/page-header";
 import { SignOutButton } from "@/components/sign-out-button";
 import { UserAvatar } from "@/components/user-avatar";
-import { isAdminRole } from "@/lib/auth-roles";
 import { PRODUCT, PWA } from "@/config/product";
 import { APP_TIMEZONE } from "@/config/time";
 import { isOpenAIConfigured, isTextParserConfigured } from "@/lib/env";
@@ -13,8 +10,6 @@ export default async function SettingsPage() {
   const session = await auth();
   const textParserConfigured = isTextParserConfigured();
   const openaiConfigured = isOpenAIConfigured();
-  const isAdmin = isAdminRole(session?.user?.role);
-
   return (
     <section className="space-y-4">
       <PageHeader title="Settings" subtitle="Profile and app information." />
@@ -40,14 +35,6 @@ export default async function SettingsPage() {
             ) : null}
           </div>
         </div>
-
-        {isAdmin ? (
-          <div className="mt-5 border-t border-border-soft pt-5">
-            <Link href="/admin" className="ui-btn-secondary inline-flex w-full">
-              Admin
-            </Link>
-          </div>
-        ) : null}
 
         <div className="mt-5 border-t border-border-soft pt-5">
           <SignOutButton className="w-full" />

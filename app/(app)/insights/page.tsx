@@ -29,12 +29,7 @@ export default async function InsightsPage() {
       <p className="-mt-4 text-sm text-muted">{insights.dateLabel}</p>
 
       {isEmpty ? (
-        <>
-          <InsightsEmptyState />
-          <p className="text-sm text-muted-light">
-            These are observations, not grades.
-          </p>
-        </>
+        <InsightsEmptyState />
       ) : (
         <>
           <div>

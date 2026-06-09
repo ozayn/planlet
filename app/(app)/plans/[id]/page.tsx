@@ -59,7 +59,8 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
     <section>
       <PlanEditor
         plan={serialized}
-        showShare
+        showCopyExport
+        showPlatformShare
         platformShares={platformShares}
       />
     </section>

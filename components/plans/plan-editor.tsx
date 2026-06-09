@@ -1,7 +1,5 @@
 "use client";
 
-import Link from "next/link";
-
 import { AddItemForm } from "@/components/plans/add-item-form";
 import { PlanItemCard } from "@/components/plans/plan-item-card";
 import { SharePlanPanel } from "@/components/plans/share-plan-panel";
@@ -22,14 +20,16 @@ type PlanShareEntry = {
 type PlanEditorProps = {
   plan: SerializedPlan;
   showMeta?: boolean;
-  showShare?: boolean;
+  showCopyExport?: boolean;
+  showPlatformShare?: boolean;
   platformShares?: PlanShareEntry[];
 };
 
 export function PlanEditor({
   plan,
   showMeta = true,
-  showShare = false,
+  showCopyExport = false,
+  showPlatformShare = false,
   platformShares = [],
 }: PlanEditorProps) {
   const dateStart = new Date(plan.dateStart);
@@ -56,7 +56,7 @@ export function PlanEditor({
                   : ""}
               </p>
             </div>
-            {showShare ? <SharePlanPanel plan={plan} /> : null}
+            {showCopyExport ? <SharePlanPanel plan={plan} /> : null}
           </div>
           {plan.summary ? (
             <p className="text-sm leading-relaxed text-muted" dir="auto">
@@ -72,20 +72,14 @@ export function PlanEditor({
               ? ` · ${itemCount} item${itemCount === 1 ? "" : "s"}`
               : ""}
           </p>
-          {showShare ? <SharePlanPanel plan={plan} /> : null}
+          {showCopyExport ? <SharePlanPanel plan={plan} /> : null}
         </header>
       )}
 
       <section className="space-y-3">
         {plan.items.length === 0 ? (
           <div className="ui-empty-state">
-            <p className="text-sm leading-relaxed text-muted">
-              Add an item below, or paste notes on{" "}
-              <Link href="/plans/new" className="ui-text-link">
-                New plan
-              </Link>{" "}
-              to structure first.
-            </p>
+            <p className="text-sm text-muted">Add an item below.</p>
           </div>
         ) : (
           plan.items.map((item) => (
@@ -98,7 +92,7 @@ export function PlanEditor({
         <AddItemForm planId={plan.id} />
       </section>
 
-      {showShare ? (
+      {showPlatformShare ? (
         <ShareWithUserPanel planId={plan.id} shares={platformShares} />
       ) : null}
     </div>
