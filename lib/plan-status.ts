@@ -1,12 +1,12 @@
 import type { PlanItemStatus } from "@/app/generated/prisma/client";
 
 const STATUS_ICONS: Record<PlanItemStatus, string> = {
-  OPEN: "○",
-  DONE: "●",
+  OPEN: "☐",
+  DONE: "✅",
   PARTIAL: "◐",
-  MOVED: "→",
-  SKIPPED: "—",
-  RELEASED: "·",
+  MOVED: "↪️",
+  SKIPPED: "⏭",
+  RELEASED: "🕊",
 };
 
 const STATUS_LABELS: Record<PlanItemStatus, string> = {
@@ -83,4 +83,8 @@ export function getStatusLabel(status: PlanItemStatus): string {
 
 export function getStatusIcon(status: PlanItemStatus): string {
   return STATUS_ICONS[status];
+}
+
+export function getStatusOptionLabel(status: PlanItemStatus): string {
+  return `${getStatusIcon(status)} ${getStatusLabel(status)}`;
 }

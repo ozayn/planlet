@@ -1,8 +1,9 @@
 import { auth } from "@/auth";
 import { PageHeader } from "@/components/page-header";
 import { SignOutButton } from "@/components/sign-out-button";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { UserAvatar } from "@/components/user-avatar";
-import { PRODUCT, PWA } from "@/config/product";
+import { PRODUCT } from "@/config/product";
 import { APP_TIMEZONE } from "@/config/time";
 import { isOpenAIConfigured, isTextParserConfigured } from "@/lib/env";
 
@@ -42,6 +43,10 @@ export default async function SettingsPage() {
       </article>
 
       <article className="ui-card-padded">
+        <ThemeToggle />
+      </article>
+
+      <article className="ui-card-padded">
         <h2 className="ui-section-title">App</h2>
         <dl className="mt-4 space-y-3 text-sm">
           <div className="flex justify-between gap-4">
@@ -74,7 +79,7 @@ export default async function SettingsPage() {
           install {PRODUCT.name}. Works best over HTTPS.
         </p>
         <p className="mt-2 text-xs text-muted-light">
-          Theme color: {PWA.themeColor}
+          Browser theme color follows your Day or Night choice.
         </p>
       </article>
     </section>

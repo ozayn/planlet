@@ -1,10 +1,15 @@
 @import "tailwindcss";
 
+@variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #faf9f7;
   --foreground: #141210;
+  --text: #141210;
   --surface: #ffffff;
+  --surface-muted: rgb(255 255 255 / 0.7);
   --muted: #6b6560;
+  --muted-text: #6b6560;
   --muted-light: #9c958e;
   --border: #e8e4df;
   --border-soft: #f0ece7;
@@ -12,11 +17,48 @@
   --accent-blue: #1d4ed8;
   --accent-yellow: #e9c46a;
   --accent-cream: #f5f0e8;
+  --focus-ring: rgb(20 18 16 / 0.2);
+  --focus-ring-subtle: rgb(20 18 16 / 0.08);
+  --border-strong: rgb(20 18 16 / 0.25);
+  --border-subtle: rgb(20 18 16 / 0.15);
+  --primary-hover: rgb(20 18 16 / 0.9);
+  --shadow-card: 0 1px 3px rgb(20 18 16 / 0.05);
+  --shadow-elevated: 0 8px 24px rgb(20 18 16 / 0.1);
+  --shadow-sheet: 0 -8px 32px rgb(20 18 16 / 0.12);
+  --overlay: rgb(20 18 16 / 0.4);
+}
+
+.dark {
+  --background: #141210;
+  --foreground: #f5f0e8;
+  --text: #f5f0e8;
+  --surface: #1f1c19;
+  --surface-muted: rgb(31 28 25 / 0.85);
+  --muted: #a39e96;
+  --muted-text: #a39e96;
+  --muted-light: #7a756e;
+  --border: #2e2a26;
+  --border-soft: #252220;
+  --accent-red: #e05555;
+  --accent-blue: #5b8def;
+  --accent-yellow: #d4b05c;
+  --accent-cream: #2a2622;
+  --focus-ring: rgb(245 240 232 / 0.28);
+  --focus-ring-subtle: rgb(245 240 232 / 0.12);
+  --border-strong: rgb(245 240 232 / 0.22);
+  --border-subtle: rgb(245 240 232 / 0.12);
+  --primary-hover: rgb(245 240 232 / 0.88);
+  --shadow-card: 0 1px 3px rgb(0 0 0 / 0.28);
+  --shadow-elevated: 0 8px 24px rgb(0 0 0 / 0.38);
+  --shadow-sheet: 0 -8px 32px rgb(0 0 0 / 0.42);
+  --overlay: rgb(0 0 0 / 0.55);
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-text: var(--text);
+  --color-muted-text: var(--muted-text);
   --color-surface: var(--surface);
   --color-muted: var(--muted);
   --color-muted-light: var(--muted-light);
@@ -54,13 +96,13 @@ body {
   .ui-card {
     border-radius: 1rem;
     background: var(--surface);
-    box-shadow: 0 1px 3px rgb(20 18 16 / 0.05);
+    box-shadow: var(--shadow-card);
   }
 
   .ui-card-padded {
     border-radius: 1rem;
     background: var(--surface);
-    box-shadow: 0 1px 3px rgb(20 18 16 / 0.05);
+    box-shadow: var(--shadow-card);
     padding: 1.25rem;
   }
 
@@ -83,9 +125,9 @@ body {
 
   .ui-input:focus,
   .ui-input:focus-visible {
-    border-color: rgb(20 18 16 / 0.25);
+    border-color: var(--border-strong);
     outline: none;
-    box-shadow: 0 0 0 3px rgb(20 18 16 / 0.08);
+    box-shadow: 0 0 0 3px var(--focus-ring-subtle);
   }
 
   .ui-textarea {
@@ -108,9 +150,9 @@ body {
 
   .ui-textarea:focus,
   .ui-textarea:focus-visible {
-    border-color: rgb(20 18 16 / 0.25);
+    border-color: var(--border-strong);
     outline: none;
-    box-shadow: 0 0 0 3px rgb(20 18 16 / 0.08);
+    box-shadow: 0 0 0 3px var(--focus-ring-subtle);
   }
 
   .ui-btn {
@@ -127,7 +169,7 @@ body {
 
   .ui-btn:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px rgb(20 18 16 / 0.2);
+    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--focus-ring);
   }
 
   .ui-btn-primary {
@@ -140,12 +182,12 @@ body {
     font-size: 0.875rem;
     font-weight: 500;
     background: var(--foreground);
-    color: var(--surface);
+    color: var(--background);
     transition: background-color 0.15s;
   }
 
   .ui-btn-primary:hover {
-    background: rgb(20 18 16 / 0.9);
+    background: var(--primary-hover);
   }
 
   .ui-btn-primary:disabled {
@@ -155,7 +197,7 @@ body {
 
   .ui-btn-primary:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px rgb(20 18 16 / 0.2);
+    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--focus-ring);
   }
 
   .ui-btn-secondary {
@@ -184,7 +226,7 @@ body {
 
   .ui-btn-secondary:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px rgb(20 18 16 / 0.2);
+    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--focus-ring);
   }
 
   .ui-btn-ghost {
@@ -206,13 +248,13 @@ body {
 
   .ui-btn-ghost:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px rgb(20 18 16 / 0.15);
+    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--focus-ring);
   }
 
   .ui-empty-state {
     border-radius: 1rem;
     border: 1px dashed var(--border);
-    background: rgb(255 255 255 / 0.7);
+    background: var(--surface-muted);
     padding: 2.5rem 1.25rem;
     text-align: center;
   }
@@ -237,7 +279,7 @@ body {
   .ui-text-link:focus-visible {
     outline: none;
     border-radius: 0.25rem;
-    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px rgb(20 18 16 / 0.15);
+    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--focus-ring);
   }
 
   .ui-segment {
@@ -257,7 +299,7 @@ body {
   }
 
   .ui-segment-active {
-    border-color: rgb(20 18 16 / 0.15);
+    border-color: var(--border-subtle);
     background: var(--accent-cream);
     box-shadow: inset 0 -2px 0 var(--accent-blue);
   }
@@ -286,5 +328,13 @@ body {
 
   .ui-accent-bar-yellow {
     background: var(--accent-yellow);
+  }
+
+  .ui-shadow-elevated {
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .ui-shadow-sheet {
+    box-shadow: var(--shadow-sheet);
   }
 }

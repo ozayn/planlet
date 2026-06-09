@@ -1,7 +1,7 @@
 import { SharePlanPanel } from "@/components/plans/share-plan-panel";
 import { formatDateRange } from "@/lib/dates";
 import { getPlanItemTypeLabel } from "@/lib/plan-labels";
-import { getStatusIcon, STATUS_STYLES } from "@/lib/plan-status";
+import { getStatusIcon, getStatusLabel, STATUS_STYLES } from "@/lib/plan-status";
 import type { SerializedPlan } from "@/lib/plan-serialize";
 
 type PlanReadOnlyProps = {
@@ -29,7 +29,8 @@ function ReadOnlyItem({
           <div className="flex items-start gap-2">
             <span
               className={`mt-0.5 text-base ${STATUS_STYLES[item.status].icon}`}
-              aria-hidden="true"
+              title={getStatusLabel(item.status)}
+              aria-label={getStatusLabel(item.status)}
             >
               {getStatusIcon(item.status)}
             </span>

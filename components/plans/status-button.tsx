@@ -6,8 +6,8 @@ import { useTransition } from "react";
 
 import { updatePlanItemStatusAction } from "@/app/(app)/plans/actions";
 import {
-  getStatusIcon,
   getStatusLabel,
+  getStatusOptionLabel,
   STATUS_STYLES,
 } from "@/lib/plan-status";
 
@@ -35,14 +35,18 @@ export function StatusButton({
 }: StatusButtonProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const currentLabel = getStatusLabel(status);
 
   return (
     <select
       value={status}
       disabled={isPending}
-      aria-label="Item status"
+      aria-label={`Item status, ${currentLabel}`}
+      title={currentLabel}
       className={`min-h-11 shrink-0 rounded-lg border border-border bg-surface text-sm text-foreground transition-colors hover:bg-accent-cream focus:outline-none focus:ring-2 focus:ring-foreground/10 disabled:opacity-50 ${STATUS_STYLES[status].icon} ${
-        compact ? "min-w-11 px-1 text-center" : "min-w-28 px-2"
+        compact
+          ? "w-[4.5rem] truncate px-1 text-center sm:w-auto sm:min-w-28 sm:overflow-visible sm:px-2 sm:text-start"
+          : "min-w-28 px-2"
       }`}
       onChange={(event) => {
         startTransition(async () => {
@@ -56,10 +60,8 @@ export function StatusButton({
       }}
     >
       {STATUSES.map((value) => (
-        <option key={value} value={value}>
-          {compact
-            ? getStatusIcon(value)
-            : `${getStatusIcon(value)} ${getStatusLabel(value)}`}
+        <option key={value} value={value} title={getStatusLabel(value)}>
+          {getStatusOptionLabel(value)}
         </option>
       ))}
     </select>

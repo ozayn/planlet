@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 
+import { ThemeToggle } from "@/components/theme-toggle";
 import { UserAvatar } from "@/components/user-avatar";
 
 type ProfileMenuProps = {
@@ -61,7 +62,7 @@ export function ProfileMenu({
         aria-haspopup="menu"
         aria-controls={menuId}
         onClick={() => setOpen((current) => !current)}
-        className="flex items-center gap-2 rounded-full border border-border bg-surface py-1 ps-1 pe-3 text-sm transition-colors hover:bg-accent-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20"
+        className="flex items-center gap-2 rounded-full border border-border bg-surface py-1 ps-1 pe-3 text-sm transition-colors hover:bg-accent-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
       >
         <UserAvatar name={name} email={email} image={image} size="sm" />
         <span className="max-w-28 truncate font-medium text-foreground" dir="auto">
@@ -73,7 +74,7 @@ export function ProfileMenu({
         <div
           id={menuId}
           role="menu"
-          className="absolute end-0 z-50 mt-2 w-64 rounded-2xl border border-border-soft bg-surface p-2 shadow-[0_8px_24px_rgb(20_18_16/0.1)]"
+          className="absolute end-0 z-50 mt-2 w-64 rounded-2xl border border-border-soft bg-surface p-2 ui-shadow-elevated"
         >
           <div className="border-b border-border-soft px-3 py-3">
             <div className="flex items-center gap-3">
@@ -89,6 +90,11 @@ export function ProfileMenu({
                 ) : null}
               </div>
             </div>
+          </div>
+
+          <div className="border-b border-border-soft px-3 py-3">
+            <p className="mb-2 text-xs text-muted">Appearance</p>
+            <ThemeToggle compact />
           </div>
 
           <div className="space-y-1 p-1">

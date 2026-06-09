@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, Vazirmatn } from "next/font/google";
 
+import { ThemeColorMeta } from "@/components/theme-color-meta";
+import { ThemeProvider } from "@/components/theme-provider";
 import { PRODUCT, PWA } from "@/config/product";
 
 import "./globals.css";
@@ -44,7 +46,10 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: PWA.themeColor,
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: PWA.backgroundColor },
+    { media: "(prefers-color-scheme: dark)", color: PWA.themeColor },
+  ],
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -59,6 +64,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${plusJakarta.variable} ${vazirmatn.variable} h-full antialiased`}
     >
       <head>
@@ -66,7 +72,10 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
       <body className="min-h-full flex flex-col bg-background font-sans text-foreground">
-        {children}
+        <ThemeProvider>
+          <ThemeColorMeta />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

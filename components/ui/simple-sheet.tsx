@@ -35,14 +35,14 @@ export function SimpleSheet({ open, onClose, title, children }: SimpleSheetProps
       <button
         type="button"
         aria-label="Close"
-        className="absolute inset-0 bg-foreground/20"
+        className="absolute inset-0 bg-[var(--overlay)]"
         onClick={onClose}
       />
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="sheet-title"
-        className="relative z-10 flex max-h-[85vh] w-full max-w-lg flex-col rounded-t-2xl bg-surface shadow-[0_-8px_32px_rgb(20_18_16/0.12)] md:rounded-2xl"
+        className="relative z-10 flex max-h-[85vh] w-full max-w-lg flex-col rounded-t-2xl bg-surface ui-shadow-sheet md:rounded-2xl"
       >
         <div className="flex items-center justify-between border-b border-border-soft px-5 py-4">
           <h2
@@ -55,7 +55,7 @@ export function SimpleSheet({ open, onClose, title, children }: SimpleSheetProps
           <button
             type="button"
             onClick={onClose}
-            className="min-h-10 min-w-10 rounded-lg text-muted transition-colors hover:bg-accent-cream hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-foreground/20"
+            className="min-h-10 min-w-10 rounded-lg text-muted transition-colors hover:bg-accent-cream hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
             aria-label="Close details"
           >
             ✕
