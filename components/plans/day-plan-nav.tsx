@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   CalendarIcon,
@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/action-icons";
 import {
   formatDateString,
+  formatDayNavLabel,
   shiftDateString,
 } from "@/lib/dates";
 import { ACTION_LABELS } from "@/lib/action-labels";
@@ -28,12 +29,27 @@ export function DayPlanNav({
   const router = useRouter();
   const today = formatDateString(new Date());
   const [pickerValue, setPickerValue] = useState(currentDate);
+  const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setPickerValue(currentDate);
+    setIsDatePickerOpen(false);
   }, [currentDate]);
 
+  useEffect(() => {
+    if (!isDatePickerOpen) {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      dateInputRef.current?.focus();
+    });
+  }, [isDatePickerOpen]);
+
   function openDate(dateString: string) {
+    setIsDatePickerOpen(false);
+
     if (dateString === today && showTodayLink) {
       router.push("/today");
       return;
@@ -41,6 +57,11 @@ export function DayPlanNav({
 
     router.push(`/plans/day/${dateString}`);
   }
+
+  const centerHref =
+    currentDate === today && showTodayLink
+      ? "/today"
+      : `/plans/day/${currentDate}`;
 
   return (
     <nav className="ui-plan-date-nav" aria-label="Day plan navigation">
@@ -58,14 +79,14 @@ export function DayPlanNav({
 
         {showTodayLink ? (
           <Link
-            href="/today"
+            href={centerHref}
             className={`ui-plan-date-nav-btn ui-plan-date-nav-btn-today${
               currentDate === today ? " ui-plan-date-nav-btn-active" : ""
             }`}
             aria-current={currentDate === today ? "page" : undefined}
             {...passwordManagerSafeControlProps}
           >
-            Today
+            {formatDayNavLabel(currentDate)}
           </Link>
         ) : null}
 
@@ -79,12 +100,34 @@ export function DayPlanNav({
           <ChevronRightIcon className="ui-plan-date-nav-btn-glyph" aria-hidden="true" />
           <span className="ui-plan-date-nav-btn-text">Next day</span>
         </Link>
+
+        <button
+          type="button"
+          className="ui-plan-date-nav-btn ui-plan-date-nav-btn-icon ui-plan-date-nav-btn-calendar"
+          aria-label={ACTION_LABELS.chooseDate.ariaLabel}
+          title={ACTION_LABELS.chooseDate.title}
+          aria-expanded={isDatePickerOpen}
+          aria-controls="day-plan-nav-date"
+          onClick={() => setIsDatePickerOpen((open) => !open)}
+          {...passwordManagerSafeControlProps}
+        >
+          <CalendarIcon className="ui-plan-date-nav-btn-glyph" aria-hidden="true" />
+          <span className="ui-plan-date-nav-btn-text">
+            {ACTION_LABELS.chooseDate.title}
+          </span>
+        </button>
       </div>
 
-      <label htmlFor="day-plan-nav-date" className="ui-plan-date-nav-date">
+      <label
+        htmlFor="day-plan-nav-date"
+        className={`ui-plan-date-nav-date${
+          isDatePickerOpen ? "" : " ui-plan-date-nav-date--mobile-collapsed"
+        }`}
+      >
         <CalendarIcon className="ui-plan-date-nav-date-icon" aria-hidden="true" />
         <span className="ui-plan-date-nav-date-label">Date</span>
         <input
+          ref={dateInputRef}
           id="day-plan-nav-date"
           name="dayPlanNavDate"
           type="date"

@@ -121,11 +121,11 @@ export const ACTION_LABELS = {
     ariaLabel: "Next week",
   },
   chooseDate: {
-    title: "Date",
-    ariaLabel: "Choose plan date",
+    title: "Choose date",
+    ariaLabel: "Choose date",
   },
   chooseWeek: {
-    title: "Week",
+    title: "Choose week",
     ariaLabel: "Choose week",
   },
   itemStatus: {

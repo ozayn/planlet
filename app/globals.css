@@ -1127,10 +1127,18 @@ body {
       white-space: nowrap;
       border: 0;
     }
+
+    .ui-plan-date-nav-date--mobile-collapsed {
+      display: none;
+    }
   }
 
   @media (min-width: 640px) {
     .ui-plan-date-nav-btn-icon .ui-plan-date-nav-btn-glyph {
+      display: none;
+    }
+
+    .ui-plan-date-nav-btn-calendar {
       display: none;
     }
 

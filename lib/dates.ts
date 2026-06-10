@@ -223,6 +223,51 @@ function shareDateFormatter(options: Intl.DateTimeFormatOptions) {
   return new Intl.DateTimeFormat("en", { ...options, timeZone: APP_TIMEZONE });
 }
 
+/** Compact label for day plan nav center (Today, Yesterday, Wed, Jun 10, …). */
+export function formatDayNavLabel(dateString: string): string {
+  const today = formatDateString(new Date());
+
+  if (dateString === today) {
+    return "Today";
+  }
+
+  if (dateString === shiftDateString(today, -1)) {
+    return "Yesterday";
+  }
+
+  if (dateString === shiftDateString(today, 1)) {
+    return "Tomorrow";
+  }
+
+  return shareDateFormatter({
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+  }).format(parseDateString(dateString));
+}
+
+/** Compact label for week plan nav center (This week, Jun 2–8, …). */
+export function formatWeekNavLabel(weekStartString: string): string {
+  const thisWeekStart = formatWeekStartString(new Date());
+
+  if (weekStartString === thisWeekStart) {
+    return "This week";
+  }
+
+  const start = parseDateString(weekStartString);
+  const { end } = getWeekRange(start);
+  const startMonth = shareDateFormatter({ month: "short" }).format(start);
+  const endMonth = shareDateFormatter({ month: "short" }).format(end);
+  const startDay = shareDateFormatter({ day: "numeric" }).format(start);
+  const endDay = shareDateFormatter({ day: "numeric" }).format(end);
+
+  if (startMonth === endMonth) {
+    return `${startMonth} ${startDay}–${endDay}`;
+  }
+
+  return `${startMonth} ${startDay} – ${endMonth} ${endDay}`;
+}
+
 export function formatShareDayPeriod(date: Date): string {
   return shareDateFormatter({
     weekday: "long",
