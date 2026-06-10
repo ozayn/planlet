@@ -24,6 +24,7 @@ import { APP_TIMEZONE } from "@/config/time";
 import { ACTION_LABELS } from "@/lib/action-labels";
 import type { SerializedGratitude } from "@/lib/gratitude";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
+import { shouldSubmitTextareaOnEnter } from "@/lib/textarea-keydown";
 
 type GratitudeSectionProps = {
   planId: string;
@@ -104,18 +105,17 @@ export function GratitudeSection({
   }
 
   function handleBodyKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
-    if (event.key !== "Enter" || event.shiftKey) {
+    if (!shouldSubmitTextareaOnEnter(event)) {
       return;
     }
 
     event.preventDefault();
 
-    const trimmed = body.trim();
-    if (!trimmed || isSubmitting) {
+    if (!body.trim() || isSubmitting) {
       return;
     }
 
-    handleAdd(trimmed);
+    handleAdd();
   }
 
   function startEdit(gratitude: SerializedGratitude) {
@@ -168,18 +168,17 @@ export function GratitudeSection({
       return;
     }
 
-    if (event.key !== "Enter" || event.shiftKey) {
+    if (!shouldSubmitTextareaOnEnter(event)) {
       return;
     }
 
     event.preventDefault();
 
-    const trimmed = editBody.trim();
-    if (!trimmed || isSubmitting) {
+    if (!editBody.trim() || isSubmitting) {
       return;
     }
 
-    handleSaveEdit(gratitudeId, trimmed);
+    handleSaveEdit(gratitudeId);
   }
 
   function handleDelete(gratitudeId: string) {
@@ -284,6 +283,9 @@ export function GratitudeSection({
                       aria-label={ACTION_LABELS.editGratitude.ariaLabel}
                       className="ui-input min-h-9 w-full resize-y py-2"
                     />
+                    <p className="text-xs text-muted-light">
+                      Enter to save · Shift+Enter for a new line
+                    </p>
                     <div className="flex gap-2">
                       <button
                         type="button"

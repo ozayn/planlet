@@ -3,7 +3,14 @@
 import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useState, useTransition } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useTransition,
+  type KeyboardEvent,
+} from "react";
 
 import type { ObservationCategory } from "@/app/generated/prisma/client";
 import {
@@ -20,6 +27,7 @@ import { OBSERVATION_CATEGORIES } from "@/lib/observation-constants";
 import { getObservationCategoryLabel } from "@/lib/observation-labels";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 import type { SerializedObservation } from "@/lib/observations";
+import { shouldSubmitTextareaOnEnter } from "@/lib/textarea-keydown";
 
 type PrivateObservationsSectionProps = {
   planId: string;
@@ -37,6 +45,8 @@ export function PrivateObservationsSection({
 }: PrivateObservationsSectionProps) {
   const router = useRouter();
   const panelId = useId();
+  const bodyInputRef = useRef<HTMLTextAreaElement>(null);
+  const editInputRef = useRef<HTMLTextAreaElement>(null);
   const [observations, setObservations] =
     useState<SerializedObservation[]>(initialObservations);
   const [expanded, setExpanded] = useState(false);
@@ -62,15 +72,30 @@ export function PrivateObservationsSection({
     }
   }, [initialObservations.length]);
 
+  useEffect(() => {
+    if (!editingId) {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      editInputRef.current?.focus();
+    });
+  }, [editingId]);
+
   const collapsedCount = String(observations.length);
 
-  function handleAdd() {
+  function handleAdd(textOverride?: string) {
+    const textToSubmit = (textOverride ?? body).trim();
+    if (!textToSubmit) {
+      return;
+    }
+
     setError(null);
 
     startSubmit(async () => {
       const result = await addPlanObservationAction(planId, {
         category,
-        body,
+        body: textToSubmit,
       });
 
       if (!result.success) {
@@ -82,7 +107,24 @@ export function PrivateObservationsSection({
       setExpanded(true);
       setObservations((current) => [...current, result.observation]);
       router.refresh();
+      requestAnimationFrame(() => {
+        bodyInputRef.current?.focus();
+      });
     });
+  }
+
+  function handleBodyKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (!shouldSubmitTextareaOnEnter(event)) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (!body.trim() || isSubmitting) {
+      return;
+    }
+
+    handleAdd();
   }
 
   function startEdit(observation: SerializedObservation) {
@@ -99,13 +141,18 @@ export function PrivateObservationsSection({
     setError(null);
   }
 
-  function handleSaveEdit(observationId: string) {
+  function handleSaveEdit(observationId: string, textOverride?: string) {
+    const textToSubmit = (textOverride ?? editBody).trim();
+    if (!textToSubmit) {
+      return;
+    }
+
     setError(null);
 
     startSubmit(async () => {
       const result = await updatePlanObservationAction(observationId, {
         category: editCategory,
-        body: editBody,
+        body: textToSubmit,
       });
 
       if (!result.success) {
@@ -122,6 +169,29 @@ export function PrivateObservationsSection({
       setEditBody("");
       router.refresh();
     });
+  }
+
+  function handleEditKeyDown(
+    event: KeyboardEvent<HTMLTextAreaElement>,
+    observationId: string,
+  ) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      cancelEdit();
+      return;
+    }
+
+    if (!shouldSubmitTextareaOnEnter(event)) {
+      return;
+    }
+
+    event.preventDefault();
+
+    if (!editBody.trim() || isSubmitting) {
+      return;
+    }
+
+    handleSaveEdit(observationId);
   }
 
   function handleDelete(observationId: string) {
@@ -195,21 +265,28 @@ export function PrivateObservationsSection({
                 </option>
               ))}
             </select>
-            <textarea
-              id="observation-body"
-              name="observationBody"
-              {...passwordManagerSafeControlProps}
-              value={body}
-              onChange={(event) => setBody(event.target.value)}
-              placeholder="What did you notice?"
-              rows={2}
-              dir="auto"
-              aria-label="What did you notice?"
-              className="ui-input min-h-9 flex-1 resize-y py-2"
-            />
+            <div className="min-w-0 flex-1 space-y-1">
+              <textarea
+                ref={bodyInputRef}
+                id="observation-body"
+                name="observationBody"
+                {...passwordManagerSafeControlProps}
+                value={body}
+                onChange={(event) => setBody(event.target.value)}
+                onKeyDown={handleBodyKeyDown}
+                placeholder="What did you notice?"
+                rows={2}
+                dir="auto"
+                aria-label="What did you notice?"
+                className="ui-input min-h-9 w-full resize-y py-2"
+              />
+              <p className="text-xs text-muted-light">
+                Enter to add · Shift+Enter for a new line
+              </p>
+            </div>
             <button
               type="button"
-              onClick={handleAdd}
+              onClick={() => handleAdd()}
               disabled={isSubmitting || !body.trim()}
               {...passwordManagerSafeControlProps}
               className="ui-btn-secondary ui-btn-compact min-h-9 shrink-0 px-4"
@@ -243,17 +320,26 @@ export function PrivateObservationsSection({
                           </option>
                         ))}
                       </select>
-                      <textarea
-                        id={`observation-edit-body-${observation.id}`}
-                        name={`observationEditBody-${observation.id}`}
-                        {...passwordManagerSafeControlProps}
-                        value={editBody}
-                        onChange={(event) => setEditBody(event.target.value)}
-                        rows={2}
-                        dir="auto"
-                        aria-label={ACTION_LABELS.editObservation.ariaLabel}
-                        className="ui-input min-h-9 flex-1 resize-y py-2"
-                      />
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <textarea
+                          ref={editInputRef}
+                          id={`observation-edit-body-${observation.id}`}
+                          name={`observationEditBody-${observation.id}`}
+                          {...passwordManagerSafeControlProps}
+                          value={editBody}
+                          onChange={(event) => setEditBody(event.target.value)}
+                          onKeyDown={(event) =>
+                            handleEditKeyDown(event, observation.id)
+                          }
+                          rows={2}
+                          dir="auto"
+                          aria-label={ACTION_LABELS.editObservation.ariaLabel}
+                          className="ui-input min-h-9 w-full resize-y py-2"
+                        />
+                        <p className="text-xs text-muted-light">
+                          Enter to save · Shift+Enter for a new line
+                        </p>
+                      </div>
                     </div>
                     <div className="flex gap-2">
                       <button
