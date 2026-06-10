@@ -3,6 +3,7 @@ import type {
   NotificationType,
 } from "@/app/generated/prisma/client";
 import { getKudosNotificationPhrase } from "@/lib/kudos-labels";
+import { sendPushToUser } from "@/lib/push";
 import { prisma } from "@/lib/prisma";
 
 export class NotificationAccessError extends Error {
@@ -77,13 +78,21 @@ export async function createPlanKudosNotification(input: {
     input.senderName?.trim() || input.senderEmail?.trim() || "Someone";
   const phrase = getKudosNotificationPhrase(input.kudosType);
 
-  return createNotification({
+  const title = "You received kudos";
+  const body = `${senderLabel} ${phrase} ${input.planTitle}`;
+  const href = `/plans/${input.planId}`;
+
+  const notification = await createNotification({
     userId: input.recipientUserId,
     type: "PLAN_KUDOS",
-    title: "You received kudos",
-    body: `${senderLabel} ${phrase} ${input.planTitle}`,
-    href: `/plans/${input.planId}`,
+    title,
+    body,
+    href,
   });
+
+  void sendPushToUser(input.recipientUserId, { title, body, url: href });
+
+  return notification;
 }
 
 export async function createPlanSharedNotification(input: {
@@ -96,11 +105,19 @@ export async function createPlanSharedNotification(input: {
   const ownerLabel =
     input.ownerName?.trim() || input.ownerEmail?.trim() || "Someone";
 
-  return createNotification({
+  const title = "A plan was shared with you";
+  const body = `${ownerLabel} shared ${input.planTitle}`;
+  const href = `/plans/${input.planId}`;
+
+  const notification = await createNotification({
     userId: input.recipientUserId,
     type: "PLAN_SHARED",
-    title: "A plan was shared with you",
-    body: `${ownerLabel} shared ${input.planTitle}`,
-    href: `/plans/${input.planId}`,
+    title,
+    body,
+    href,
   });
+
+  void sendPushToUser(input.recipientUserId, { title, body, url: href });
+
+  return notification;
 }

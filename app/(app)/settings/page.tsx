@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { PushNotificationSettings } from "@/components/notifications/push-notification-settings";
 import { PageHeader } from "@/components/page-header";
 import { PlanItemViewSettings } from "@/components/settings/plan-item-view-settings";
 import { SignOutButton } from "@/components/sign-out-button";
@@ -61,6 +62,10 @@ export default async function SettingsPage() {
       </article>
 
       <article className="ui-card-padded">
+        <PushNotificationSettings />
+      </article>
+
+      <article className="ui-card-padded">
         <PlanItemViewSettings value={planItemView} />
       </article>
 
@@ -101,6 +106,10 @@ export default async function SettingsPage() {
         <p className="mt-3 text-sm leading-relaxed text-muted">
           On mobile, use your browser&apos;s Add to Home Screen option to
           install {PRODUCT.name}. Works best over HTTPS.
+        </p>
+        <p className="mt-2 text-sm leading-relaxed text-muted">
+          On iPhone, install Planlet to your Home Screen before enabling phone
+          notifications.
         </p>
         <p className="mt-2 text-xs text-muted-light">
           Browser theme color follows your Day or Night choice.

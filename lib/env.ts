@@ -54,3 +54,16 @@ export function isTextParserConfigured(): boolean {
 export function getTextParserProviderLabel(): string {
   return getPlanletAiProvider() === "anthropic" ? "Claude" : "OpenAI";
 }
+
+export function isWebPushConfigured(): boolean {
+  return Boolean(
+    process.env.WEB_PUSH_PUBLIC_KEY?.trim() &&
+      process.env.WEB_PUSH_PRIVATE_KEY?.trim() &&
+      process.env.WEB_PUSH_SUBJECT?.trim(),
+  );
+}
+
+export function getWebPushPublicKey(): string | undefined {
+  const publicKey = process.env.WEB_PUSH_PUBLIC_KEY?.trim();
+  return publicKey || undefined;
+}
