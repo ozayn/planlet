@@ -5,6 +5,7 @@ import { CreateTodayPlanButton } from "@/components/plans/create-today-plan-butt
 import { DayPlanNav } from "@/components/plans/day-plan-nav";
 import { PlanEditor } from "@/components/plans/plan-editor";
 import { PageHeader } from "@/components/page-header";
+import { getKudosForPlan } from "@/lib/kudos";
 import { formatDateString } from "@/lib/dates";
 import { getTodayPlan } from "@/lib/plans";
 import { serializePlan } from "@/lib/plan-serialize";
@@ -22,6 +23,7 @@ export default async function TodayPage() {
     getTodayPlan(userId),
     getPlanItemViewForUser(userId),
   ]);
+  const kudos = plan ? await getKudosForPlan(plan.id, userId) : [];
   const firstName = session.user?.name?.split(" ")[0];
   const todayDate = formatDateString(new Date());
 
@@ -46,6 +48,11 @@ export default async function TodayPage() {
             showMeta={false}
             showCopyExport
             fullPlanHref={`/plans/${plan.id}`}
+            kudos={kudos.map((entry) => ({
+              id: entry.id,
+              type: entry.type,
+              sender: entry.sender,
+            }))}
             itemView={planItemView}
           />
         </div>
