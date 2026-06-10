@@ -29,6 +29,18 @@ const STATUS_DESCRIPTIONS: Record<PlanItemStatus, string> = {
   RELEASED: "Let go",
 };
 
+const MOBILE_MENU_WIDTH = 176;
+const DESKTOP_MENU_MIN_WIDTH = 220;
+const MENU_GAP = 4;
+const VIEWPORT_PADDING = 8;
+
+type MenuPosition = {
+  left: number;
+  width: number;
+  top?: number;
+  bottom?: number;
+};
+
 type StatusButtonProps = {
   planId: string;
   itemId: string;
@@ -38,6 +50,11 @@ type StatusButtonProps = {
   /** Task cards: icon-only below md, pill at md+ */
   mobileIconOnly?: boolean;
 };
+
+function estimateMenuHeight(compactMenu: boolean): number {
+  const rowHeight = compactMenu ? 44 : 56;
+  return STATUSES.length * rowHeight + 8;
+}
 
 export function StatusButton({
   planId,
@@ -50,11 +67,15 @@ export function StatusButton({
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0, width: 0 });
+  const [menuPosition, setMenuPosition] = useState<MenuPosition>({
+    left: 0,
+    width: MOBILE_MENU_WIDTH,
+  });
   const [isPending, startTransition] = useTransition();
   const menuId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const currentLabel = getStatusLabel(status);
   const isExpressive = isExpressiveItemView(itemView);
 
@@ -67,12 +88,38 @@ export function StatusButton({
 
     function updatePosition() {
       if (!triggerRef.current) return;
+
       const rect = triggerRef.current.getBoundingClientRect();
-      setMenuPosition({
-        top: rect.bottom + 4,
-        left: rect.left,
-        width: Math.max(rect.width, 220),
-      });
+      const compactMenu = window.innerWidth < 640;
+      const menuWidth = compactMenu
+        ? MOBILE_MENU_WIDTH
+        : Math.max(rect.width, DESKTOP_MENU_MIN_WIDTH);
+      const menuHeight =
+        menuRef.current?.offsetHeight ?? estimateMenuHeight(compactMenu);
+
+      const left = Math.max(
+        VIEWPORT_PADDING,
+        Math.min(rect.left, window.innerWidth - menuWidth - VIEWPORT_PADDING),
+      );
+
+      const spaceBelow =
+        window.innerHeight - rect.bottom - MENU_GAP - VIEWPORT_PADDING;
+      const spaceAbove = rect.top - MENU_GAP - VIEWPORT_PADDING;
+      const openAbove = spaceBelow < menuHeight && spaceAbove >= spaceBelow;
+
+      if (openAbove) {
+        setMenuPosition({
+          left,
+          width: menuWidth,
+          bottom: window.innerHeight - rect.top + MENU_GAP,
+        });
+      } else {
+        setMenuPosition({
+          left,
+          width: menuWidth,
+          top: rect.bottom + MENU_GAP,
+        });
+      }
     }
 
     function handlePointerDown(event: MouseEvent) {
@@ -93,6 +140,8 @@ export function StatusButton({
     }
 
     updatePosition();
+    requestAnimationFrame(updatePosition);
+
     document.addEventListener("mousedown", handlePointerDown);
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("resize", updatePosition);
@@ -144,18 +193,22 @@ export function StatusButton({
     open && mounted
       ? createPortal(
           <div
+            ref={menuRef}
             id={menuId}
             role="menu"
             aria-label="Item status"
-            className="ui-shadow-elevated fixed z-[70] max-h-[min(20rem,calc(100dvh-1rem))] overflow-y-auto rounded-xl border border-border bg-surface py-1"
+            className="ui-status-menu ui-shadow-elevated fixed z-[70] max-h-[min(70dvh,20rem)] overflow-y-auto rounded-xl border border-border bg-surface py-1"
             style={{
               top: menuPosition.top,
+              bottom: menuPosition.bottom,
               left: menuPosition.left,
               width: menuPosition.width,
+              maxWidth: "calc(100vw - 1rem)",
             }}
           >
             {STATUSES.map((value) => {
               const selected = value === status;
+              const label = getStatusLabel(value);
               const description = STATUS_DESCRIPTIONS[value];
 
               return (
@@ -164,9 +217,10 @@ export function StatusButton({
                   type="button"
                   role="menuitemradio"
                   aria-checked={selected}
+                  aria-label={`${label}, ${description}`}
                   disabled={isPending}
                   onClick={() => selectStatus(value)}
-                  className={`flex w-full min-h-10 items-center gap-2.5 px-3 py-2 text-start transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none disabled:opacity-50 ${
+                  className={`flex w-full min-h-11 items-center gap-2.5 px-3 py-2 text-start transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none disabled:opacity-50 sm:min-h-10 sm:gap-2.5 sm:py-2 ${
                     selected ? "bg-accent-cream/70" : ""
                   }`}
                 >
@@ -181,10 +235,10 @@ export function StatusButton({
                     />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-medium text-foreground">
-                      {getStatusLabel(value)}
+                    <span className="block text-sm font-medium leading-tight text-foreground">
+                      {label}
                     </span>
-                    <span className="block text-xs text-muted">
+                    <span className="mt-0.5 hidden text-xs leading-tight text-muted sm:block">
                       {description}
                     </span>
                   </span>

@@ -17,7 +17,7 @@ type PlanItemSectionsProps = {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <h3 className="text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-muted-light">
+    <h3 className="ui-section-label text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-muted-light">
       {children}
     </h3>
   );
@@ -35,9 +35,9 @@ export function PlanItemSections({
   }
 
   return (
-    <div className="ui-plan-item-sections space-y-5">
+    <div className="ui-plan-item-sections space-y-6">
       {tasks.length > 0 ? (
-        <section className="space-y-2">
+        <section className="ui-plan-section space-y-2">
           <SectionLabel>Tasks</SectionLabel>
           <SortablePlanItemList
             planId={planId}
@@ -49,7 +49,7 @@ export function PlanItemSections({
       ) : null}
 
       {intentions.length > 0 ? (
-        <section className="space-y-2">
+        <section className="ui-plan-section ui-plan-section-follows-tasks space-y-2">
           <SectionLabel>Intentions</SectionLabel>
           <ul className="space-y-1.5">
             {intentions.map((item) => (
@@ -66,7 +66,7 @@ export function PlanItemSections({
       ) : null}
 
       {notes.length > 0 ? (
-        <section className="space-y-2">
+        <section className="ui-plan-section space-y-2">
           <SectionLabel>Notes & reflections</SectionLabel>
           <p className="text-xs text-muted-light">
             Plan-level thoughts included when you share or copy this plan.
