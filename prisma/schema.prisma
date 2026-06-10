@@ -116,7 +116,7 @@ model User {
   emailVerified DateTime?
   image         String?
   role          UserRole    @default(USER)
-  planItemView  PlanItemView @default(MINIMAL)
+  planItemView  PlanItemView @default(CHECKLIST)
   lastLoginAt   DateTime?
   loginCount    Int         @default(0)
   accounts      Account[]

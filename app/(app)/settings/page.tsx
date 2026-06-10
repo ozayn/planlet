@@ -21,7 +21,7 @@ export default async function SettingsPage() {
   const imageExtractionConfigured = isImageExtractionConfigured();
   const planItemView = session?.user?.id
     ? await getPlanItemViewForUser(session.user.id)
-    : "MINIMAL";
+    : "CHECKLIST";
 
   return (
     <section className="space-y-4">

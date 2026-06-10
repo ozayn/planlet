@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "User" ALTER COLUMN "planItemView" SET DEFAULT 'CHECKLIST';

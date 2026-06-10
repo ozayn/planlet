@@ -9,7 +9,7 @@ export async function getPlanItemViewForUser(
     select: { planItemView: true },
   });
 
-  return user?.planItemView ?? "MINIMAL";
+  return user?.planItemView ?? "CHECKLIST";
 }
 
 export async function updatePlanItemView(
