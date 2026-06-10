@@ -11,6 +11,13 @@ import {
   parseDateString,
 } from "@/lib/dates";
 import {
+  dateStringToMonthValue,
+  dateStringToYearValue,
+  formatPlanForLabel,
+  monthValueToDateString,
+  yearValueToDateString,
+} from "@/lib/plan-target";
+import {
   getPlanItemTypeLabel,
   getPlanTypeLabel,
   PLAN_LANGUAGE_LABELS,
@@ -58,7 +65,10 @@ type ParsedPlanReviewProps = {
   onPlanDateChange?: (planDate: string) => void;
   existingDayPlan?: boolean;
   existingWeekPlan?: boolean;
+  existingMonthPlan?: boolean;
+  existingYearPlan?: boolean;
   imageDateHint?: ImageDateHintContext | null;
+  showPlanForSummary?: boolean;
 };
 
 export function ParsedPlanReview({
@@ -68,7 +78,10 @@ export function ParsedPlanReview({
   onPlanDateChange,
   existingDayPlan = false,
   existingWeekPlan = false,
+  existingMonthPlan = false,
+  existingYearPlan = false,
   imageDateHint = null,
+  showPlanForSummary = false,
 }: ParsedPlanReviewProps) {
   function updateItem(index: number, item: ParsedPlanItem) {
     const items = [...draft.items];
@@ -104,8 +117,20 @@ export function ParsedPlanReview({
     weekPeriodLabel = formatPlanDateLabel(start, "WEEK", end);
   }
 
+  const planForLabel =
+    planDate && showPlanForSummary
+      ? formatPlanForLabel(draft.planType, planDate)
+      : null;
+
   return (
     <div className="space-y-6">
+      {planForLabel ? (
+        <p className="text-sm text-muted">
+          Plan for:{" "}
+          <span className="font-medium text-foreground">{planForLabel}</span>
+        </p>
+      ) : null}
+
       <div className="space-y-4 rounded-2xl border border-border bg-surface p-5">
         <Field label="Plan title">
           <input
@@ -214,6 +239,55 @@ export function ParsedPlanReview({
             {existingWeekPlan ? (
               <p className="text-sm text-muted">
                 This will be added to the existing plan for this week.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {draft.planType === "MONTH" && planDate && onPlanDateChange ? (
+          <div className="space-y-2 border-t border-border-soft pt-4">
+            <Field label="Month">
+              <input
+                type="month"
+                value={dateStringToMonthValue(planDate)}
+                onChange={(event) =>
+                  onPlanDateChange(monthValueToDateString(event.target.value))
+                }
+                className={inputClass}
+              />
+            </Field>
+            <p className="text-sm text-muted">
+              Month: {formatPlanDateLabel(parseDateString(planDate), "MONTH")}
+            </p>
+            {existingMonthPlan ? (
+              <p className="text-sm text-muted">
+                This will be added to the existing plan for this month.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {draft.planType === "YEAR" && planDate && onPlanDateChange ? (
+          <div className="space-y-2 border-t border-border-soft pt-4">
+            <Field label="Year">
+              <input
+                type="number"
+                min={2000}
+                max={2100}
+                step={1}
+                value={dateStringToYearValue(planDate)}
+                onChange={(event) =>
+                  onPlanDateChange(yearValueToDateString(event.target.value))
+                }
+                className={inputClass}
+              />
+            </Field>
+            <p className="text-sm text-muted">
+              Year: {formatPlanDateLabel(parseDateString(planDate), "YEAR")}
+            </p>
+            {existingYearPlan ? (
+              <p className="text-sm text-muted">
+                This will be added to the existing plan for this year.
               </p>
             ) : null}
           </div>

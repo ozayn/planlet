@@ -13,10 +13,14 @@ import { PlanType as PlanTypeEnum } from "@/app/generated/prisma/client";
 
 import {
   formatDayPlanTitle,
+  formatMonthPlanTitle,
   formatWeekPlanTitle,
+  formatYearPlanTitle,
   getDayRange,
+  getMonthRange,
   getTodayRange,
   getWeekRange,
+  getYearRange,
 } from "@/lib/dates";
 import { canEditPlan, canViewPlan } from "@/lib/plan-sharing";
 import { normalizeProgressForStatus } from "@/lib/plan-status";
@@ -180,6 +184,36 @@ export async function getOrCreateWeekPlan(
       dateStart: start,
       dateEnd: end,
       language: "UNKNOWN",
+    },
+    include: {
+      items: rootItemsInclude,
+    },
+  });
+}
+
+export async function getMonthPlan(userId: string, date: Date) {
+  const { start } = getMonthRange(date);
+
+  return prisma.plan.findFirst({
+    where: {
+      userId,
+      type: PlanTypeEnum.MONTH,
+      dateStart: start,
+    },
+    include: {
+      items: rootItemsInclude,
+    },
+  });
+}
+
+export async function getYearPlan(userId: string, date: Date) {
+  const { start } = getYearRange(date);
+
+  return prisma.plan.findFirst({
+    where: {
+      userId,
+      type: PlanTypeEnum.YEAR,
+      dateStart: start,
     },
     include: {
       items: rootItemsInclude,

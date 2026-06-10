@@ -2,16 +2,20 @@
 
 import { useEffect, useState, useTransition } from "react";
 
+import type { PlanType } from "@/app/generated/prisma/client";
 import {
   dayPlanExistsAction,
+  monthPlanExistsAction,
   parsePlanTextAction,
   saveParsedPlanAction,
   weekPlanExistsAction,
+  yearPlanExistsAction,
 } from "@/app/(app)/plans/actions";
 import { AudioRecorder } from "@/components/audio/audio-recorder";
 import { ImageTextImporter } from "@/components/image/image-text-importer";
 import type { ImageExtractionResult } from "@/components/image/image-text-importer";
 import { ParsedPlanReview } from "@/components/plans/parsed-plan-review";
+import { PlanTargetSelector } from "@/components/plans/plan-target-selector";
 import type { DateHintConfidence } from "@/lib/ai/date-hints";
 import { formatDetectedDateLabel } from "@/lib/ai/date-hints";
 import type { ParsedPlan } from "@/lib/ai/plan-parser-schema";
@@ -22,59 +26,95 @@ type InputMode = "text" | "record" | "image";
 
 const IMAGE_EXTRACT_DIVIDER = "--- Extracted from image ---";
 
-type ImageDateHintContext = {
+type ImageDateSuggestion = {
+  dateString: string;
   rawText: string;
   confidence: DateHintConfidence;
   explanation?: string;
 };
 
 export function NewPlanFlow() {
+  const defaultTodayDate = formatDateString(new Date());
+
   const [step, setStep] = useState<Step>("input");
   const [inputMode, setInputMode] = useState<InputMode>("text");
   const [rawInput, setRawInput] = useState("");
   const [draft, setDraft] = useState<ParsedPlan | null>(null);
-  const [planDate, setPlanDate] = useState(formatDateString(new Date()));
+  const [targetPlanType, setTargetPlanType] = useState<PlanType>("DAY");
+  const [selectedDate, setSelectedDate] = useState(defaultTodayDate);
   const [existingDayPlan, setExistingDayPlan] = useState(false);
   const [existingWeekPlan, setExistingWeekPlan] = useState(false);
-  const [imageDateHint, setImageDateHint] = useState<ImageDateHintContext | null>(
-    null,
-  );
+  const [existingMonthPlan, setExistingMonthPlan] = useState(false);
+  const [existingYearPlan, setExistingYearPlan] = useState(false);
+  const [imageDateSuggestion, setImageDateSuggestion] =
+    useState<ImageDateSuggestion | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isParsing, startParse] = useTransition();
   const [isSaving, startSave] = useTransition();
 
   useEffect(() => {
-    if (step !== "review" || !planDate) {
+    if (step !== "review" || !selectedDate || !draft) {
       setExistingDayPlan(false);
       setExistingWeekPlan(false);
+      setExistingMonthPlan(false);
+      setExistingYearPlan(false);
       return;
     }
 
     let cancelled = false;
+    const reviewDraft = draft;
 
-    if (draft?.planType === "DAY") {
-      dayPlanExistsAction(planDate).then((exists) => {
+    async function checkExistingPlan() {
+      if (reviewDraft.planType === "DAY") {
+        const exists = await dayPlanExistsAction(selectedDate);
         if (!cancelled) {
           setExistingDayPlan(exists);
           setExistingWeekPlan(false);
+          setExistingMonthPlan(false);
+          setExistingYearPlan(false);
         }
-      });
-    } else if (draft?.planType === "WEEK") {
-      weekPlanExistsAction(planDate).then((exists) => {
+        return;
+      }
+
+      if (reviewDraft.planType === "WEEK") {
+        const exists = await weekPlanExistsAction(selectedDate);
         if (!cancelled) {
           setExistingWeekPlan(exists);
           setExistingDayPlan(false);
+          setExistingMonthPlan(false);
+          setExistingYearPlan(false);
         }
-      });
-    } else {
-      setExistingDayPlan(false);
-      setExistingWeekPlan(false);
+        return;
+      }
+
+      if (reviewDraft.planType === "MONTH") {
+        const exists = await monthPlanExistsAction(selectedDate);
+        if (!cancelled) {
+          setExistingMonthPlan(exists);
+          setExistingDayPlan(false);
+          setExistingWeekPlan(false);
+          setExistingYearPlan(false);
+        }
+        return;
+      }
+
+      if (reviewDraft.planType === "YEAR") {
+        const exists = await yearPlanExistsAction(selectedDate);
+        if (!cancelled) {
+          setExistingYearPlan(exists);
+          setExistingDayPlan(false);
+          setExistingWeekPlan(false);
+          setExistingMonthPlan(false);
+        }
+      }
     }
+
+    void checkExistingPlan();
 
     return () => {
       cancelled = true;
     };
-  }, [step, draft?.planType, planDate]);
+  }, [step, draft, selectedDate]);
 
   function handleStructure() {
     setError(null);
@@ -87,12 +127,10 @@ export function NewPlanFlow() {
         return;
       }
 
-      const nextDraft =
-        imageDateHint && planDate
-          ? { ...result.draft, planType: "DAY" as const }
-          : result.draft;
-
-      setDraft(nextDraft);
+      setDraft({
+        ...result.draft,
+        planType: targetPlanType,
+      });
       setStep("review");
     });
   }
@@ -128,10 +166,7 @@ export function NewPlanFlow() {
           planType: draft.planType,
           language: draft.language,
           summary: draft.summary?.trim() || undefined,
-          planDate:
-            draft.planType === "DAY" || draft.planType === "WEEK"
-              ? planDate
-              : undefined,
+          planDate: selectedDate,
           items: cleanedItems,
         });
       } catch (saveError) {
@@ -144,6 +179,39 @@ export function NewPlanFlow() {
     });
   }
 
+  function handleImageExtracted(result: ImageExtractionResult) {
+    setRawInput((current) => {
+      const trimmed = current.trim();
+      if (!trimmed) {
+        return result.text;
+      }
+
+      return `${trimmed}\n\n${IMAGE_EXTRACT_DIVIDER}\n\n${result.text}`;
+    });
+
+    if (result.dateHint.detected && result.dateHint.dateString) {
+      const suggestion: ImageDateSuggestion = {
+        dateString: result.dateHint.dateString,
+        rawText: result.dateHint.rawText ?? result.dateHint.dateString,
+        confidence: result.dateHint.confidence,
+        explanation: result.dateHint.explanation,
+      };
+      setImageDateSuggestion(suggestion);
+
+      if (
+        result.dateHint.confidence === "HIGH" &&
+        selectedDate === defaultTodayDate
+      ) {
+        setSelectedDate(result.dateHint.dateString);
+      }
+    } else {
+      setImageDateSuggestion(null);
+    }
+
+    setInputMode("text");
+    setError(null);
+  }
+
   if (step === "review" && draft) {
     return (
       <div className="space-y-6">
@@ -153,19 +221,22 @@ export function NewPlanFlow() {
         <ParsedPlanReview
           draft={draft}
           onChange={setDraft}
-          planDate={
-            draft.planType === "DAY" || draft.planType === "WEEK"
-              ? planDate
-              : undefined
-          }
-          onPlanDateChange={
-            draft.planType === "DAY" || draft.planType === "WEEK"
-              ? setPlanDate
-              : undefined
-          }
+          planDate={selectedDate}
+          onPlanDateChange={setSelectedDate}
           existingDayPlan={existingDayPlan}
           existingWeekPlan={existingWeekPlan}
-          imageDateHint={imageDateHint}
+          existingMonthPlan={existingMonthPlan}
+          existingYearPlan={existingYearPlan}
+          imageDateHint={
+            imageDateSuggestion
+              ? {
+                  rawText: imageDateSuggestion.rawText,
+                  confidence: imageDateSuggestion.confidence,
+                  explanation: imageDateSuggestion.explanation,
+                }
+              : null
+          }
+          showPlanForSummary
         />
 
         {error ? (
@@ -202,28 +273,44 @@ export function NewPlanFlow() {
     <div className="space-y-5">
       <p className="ui-label">Step 1 — Input</p>
 
-      <div className="flex gap-2">
-        <button
-          type="button"
-          onClick={() => setInputMode("text")}
-          className={inputMode === "text" ? "ui-segment-active" : "ui-segment"}
-        >
-          Type
-        </button>
-        <button
-          type="button"
-          onClick={() => setInputMode("record")}
-          className={inputMode === "record" ? "ui-segment-active" : "ui-segment"}
-        >
-          Record
-        </button>
-        <button
-          type="button"
-          onClick={() => setInputMode("image")}
-          className={inputMode === "image" ? "ui-segment-active" : "ui-segment"}
-        >
-          Image
-        </button>
+      <PlanTargetSelector
+        planType={targetPlanType}
+        selectedDate={selectedDate}
+        onPlanTypeChange={setTargetPlanType}
+        onSelectedDateChange={setSelectedDate}
+      />
+
+      <div className="space-y-2">
+        <p className="text-sm font-medium text-foreground">Input mode</p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setInputMode("text")}
+            className={
+              inputMode === "text" ? "ui-segment-active" : "ui-segment"
+            }
+          >
+            Write
+          </button>
+          <button
+            type="button"
+            onClick={() => setInputMode("record")}
+            className={
+              inputMode === "record" ? "ui-segment-active" : "ui-segment"
+            }
+          >
+            Record
+          </button>
+          <button
+            type="button"
+            onClick={() => setInputMode("image")}
+            className={
+              inputMode === "image" ? "ui-segment-active" : "ui-segment"
+            }
+          >
+            Image
+          </button>
+        </div>
       </div>
 
       {inputMode === "record" ? (
@@ -239,72 +326,40 @@ export function NewPlanFlow() {
       ) : null}
 
       {inputMode === "image" ? (
-        <ImageTextImporter
-          onExtracted={(result: ImageExtractionResult) => {
-            setRawInput((current) => {
-              const trimmed = current.trim();
-              if (!trimmed) {
-                return result.text;
-              }
-
-              return `${trimmed}\n\n${IMAGE_EXTRACT_DIVIDER}\n\n${result.text}`;
-            });
-
-            if (result.dateHint.detected) {
-              if (result.dateHint.dateString) {
-                setPlanDate(result.dateHint.dateString);
-              }
-
-              if (result.dateHint.rawText) {
-                setImageDateHint({
-                  rawText: result.dateHint.rawText,
-                  confidence: result.dateHint.confidence,
-                  explanation: result.dateHint.explanation,
-                });
-              } else {
-                setImageDateHint(null);
-              }
-            } else {
-              setImageDateHint(null);
-            }
-
-            setInputMode("text");
-            setError(null);
-          }}
-        />
+        <ImageTextImporter onExtracted={handleImageExtracted} />
       ) : null}
 
       {inputMode === "text" ? (
         <>
-          {imageDateHint ? (
+          {imageDateSuggestion ? (
             <div className="space-y-2 rounded-2xl border border-border-soft bg-accent-cream/35 px-4 py-3">
               <p className="text-sm font-medium text-foreground">
-                {imageDateHint.confidence === "LOW"
+                {imageDateSuggestion.confidence === "LOW"
                   ? "Possible date detected"
-                  : `Detected date: ${formatDetectedDateLabel(planDate)}`}
+                  : `Detected date: ${formatDetectedDateLabel(imageDateSuggestion.dateString)}`}
               </p>
-              <label className="block space-y-1.5">
-                <span className="text-xs font-medium text-muted-light">
-                  Confirm plan date
-                </span>
-                <input
-                  type="date"
-                  value={planDate}
-                  onChange={(event) => setPlanDate(event.target.value)}
-                  className="ui-input min-h-11 py-2"
-                />
-              </label>
+              {imageDateSuggestion.dateString !== selectedDate ? (
+                <button
+                  type="button"
+                  onClick={() => setSelectedDate(imageDateSuggestion.dateString)}
+                  className="ui-btn-secondary text-sm"
+                >
+                  Use this date
+                </button>
+              ) : (
+                <p className="text-xs text-muted">Using detected date.</p>
+              )}
               <p className="text-xs text-muted">
-                From image: {imageDateHint.rawText}
+                From image: {imageDateSuggestion.rawText}
               </p>
-              {imageDateHint.explanation ? (
+              {imageDateSuggestion.explanation ? (
                 <p className="text-xs text-muted-light">
-                  {imageDateHint.explanation}
+                  {imageDateSuggestion.explanation}
                 </p>
               ) : null}
-              {imageDateHint.confidence === "LOW" ? (
+              {imageDateSuggestion.confidence === "LOW" ? (
                 <p className="text-xs text-muted">
-                  Please confirm or change this date before structuring.
+                  Please confirm or change the plan date above before structuring.
                 </p>
               ) : null}
             </div>

@@ -23,8 +23,10 @@ import { APP_TIMEZONE } from "@/config/time";
 import {
   formatDateString,
   formatDayPlanTitle,
+  formatMonthPlanTitle,
   formatWeekPlanTitle,
   formatWeekStartString,
+  formatYearPlanTitle,
   getDateRangeForPlanType,
   getMonthRange,
   getTodayRange,
@@ -38,10 +40,12 @@ import {
   createPlanItem,
   deletePlanItem,
   getDayPlan,
+  getMonthPlan,
   getOrCreateDayPlan,
   getOrCreateWeekPlan,
   getTodayPlan,
   getWeekPlan,
+  getYearPlan,
   reorderPlanItems,
   updatePlanItem,
   updatePlanItemStatus,
@@ -132,6 +136,28 @@ export async function weekPlanExistsAction(dateString: string): Promise<boolean>
   }
 
   const plan = await getWeekPlan(userId, parseDateString(dateString));
+  return Boolean(plan);
+}
+
+export async function monthPlanExistsAction(dateString: string): Promise<boolean> {
+  const userId = await requireUserId();
+
+  if (!isValidDateString(dateString)) {
+    return false;
+  }
+
+  const plan = await getMonthPlan(userId, parseDateString(dateString));
+  return Boolean(plan);
+}
+
+export async function yearPlanExistsAction(dateString: string): Promise<boolean> {
+  const userId = await requireUserId();
+
+  if (!isValidDateString(dateString)) {
+    return false;
+  }
+
+  const plan = await getYearPlan(userId, parseDateString(dateString));
   return Boolean(plan);
 }
 
@@ -373,11 +399,70 @@ export async function saveParsedPlanAction(input: unknown) {
   }
 
   const data: SaveParsedPlanInput = parsed.data;
-  const referenceDate =
-    (data.planType === "DAY" || data.planType === "WEEK") && data.planDate
-      ? parseDateString(data.planDate)
-      : new Date();
+  const referenceDate = data.planDate
+    ? parseDateString(data.planDate)
+    : new Date();
   const { start, end } = getDateRangeForPlanType(data.planType, referenceDate);
+
+  if (data.planType === "YEAR") {
+    const existing = await getYearPlan(userId, referenceDate);
+
+    if (existing) {
+      const rootItemCount = await prisma.planItem.count({
+        where: { planId: existing.id, parentItemId: null },
+      });
+
+      await prisma.plan.update({
+        where: { id: existing.id },
+        data: {
+          rawInput: mergeRawInput(existing.rawInput, data.rawInput),
+          ...(!existing.summary?.trim() && data.summary?.trim()
+            ? { summary: data.summary.trim() }
+            : {}),
+        },
+      });
+
+      await appendParsedItemsToPlan(
+        userId,
+        existing.id,
+        data.items,
+        rootItemCount,
+      );
+
+      revalidatePath("/plans");
+      redirect(`/plans/${existing.id}`);
+    }
+  }
+
+  if (data.planType === "MONTH") {
+    const existing = await getMonthPlan(userId, referenceDate);
+
+    if (existing) {
+      const rootItemCount = await prisma.planItem.count({
+        where: { planId: existing.id, parentItemId: null },
+      });
+
+      await prisma.plan.update({
+        where: { id: existing.id },
+        data: {
+          rawInput: mergeRawInput(existing.rawInput, data.rawInput),
+          ...(!existing.summary?.trim() && data.summary?.trim()
+            ? { summary: data.summary.trim() }
+            : {}),
+        },
+      });
+
+      await appendParsedItemsToPlan(
+        userId,
+        existing.id,
+        data.items,
+        rootItemCount,
+      );
+
+      revalidatePath("/plans");
+      redirect(`/plans/${existing.id}`);
+    }
+  }
 
   if (data.planType === "WEEK") {
     const existing = await getWeekPlan(userId, referenceDate);
@@ -452,7 +537,11 @@ export async function saveParsedPlanAction(input: unknown) {
         ? data.title.trim() || formatDayPlanTitle(referenceDate)
         : data.planType === "WEEK"
           ? data.title.trim() || formatWeekPlanTitle(referenceDate)
-          : data.title.trim(),
+          : data.planType === "MONTH"
+            ? data.title.trim() || formatMonthPlanTitle(referenceDate)
+            : data.planType === "YEAR"
+              ? data.title.trim() || formatYearPlanTitle(referenceDate)
+              : data.title.trim(),
     dateStart: start,
     dateEnd: end,
     rawInput: data.rawInput,
