@@ -4,7 +4,11 @@ import { auth } from "@/auth";
 import { PlanEditor } from "@/components/plans/plan-editor";
 import { PlanReadOnly } from "@/components/plans/plan-read-only";
 import { getKudosForPlan, getViewerKudosForPlan } from "@/lib/kudos";
-import { getPlanAccess, getPlanSharesForOwner } from "@/lib/plan-sharing";
+import {
+  getPlanAccess,
+  getPlanSharesForOwner,
+  getRecentShareRecipients,
+} from "@/lib/plan-sharing";
 import { getObservationsForPlan } from "@/lib/observations";
 import { getPeriodSummaryHref } from "@/lib/period-summary-links";
 import { getPlanWithItems } from "@/lib/plans";
@@ -70,11 +74,13 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
     );
   }
 
-  const [platformShares, kudos, observations] = await Promise.all([
-    getPlanSharesForOwner(id, userId),
-    getKudosForPlan(id, userId),
-    getObservationsForPlan(id, userId),
-  ]);
+  const [platformShares, kudos, observations, recentShareRecipients] =
+    await Promise.all([
+      getPlanSharesForOwner(id, userId),
+      getKudosForPlan(id, userId),
+      getObservationsForPlan(id, userId),
+      getRecentShareRecipients(userId, id),
+    ]);
 
   const periodSummaryHref =
     plan.type === "MONTH" || plan.type === "YEAR"
@@ -96,6 +102,7 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
         showDeletePlan
         deleteRedirectTo="/plans"
         platformShares={platformShares}
+        recentShareRecipients={recentShareRecipients}
         kudos={kudos.map((entry) => ({
           id: entry.id,
           type: entry.type,

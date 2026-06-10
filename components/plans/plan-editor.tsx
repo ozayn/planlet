@@ -19,6 +19,7 @@ import { formatPlanCardDate } from "@/lib/dates";
 import { getPlanTypeLabel } from "@/lib/plan-labels";
 import type { SerializedObservation } from "@/lib/observations";
 import type { SerializedPlan } from "@/lib/plan-serialize";
+import type { RecentShareRecipient } from "@/lib/plan-sharing";
 
 type PlanShareEntry = {
   id: string;
@@ -36,6 +37,7 @@ type PlanEditorProps = {
   fullPlanHref?: string;
   showPlatformShare?: boolean;
   platformShares?: PlanShareEntry[];
+  recentShareRecipients?: RecentShareRecipient[];
   kudos?: PlanKudosEntry[];
   itemView?: PlanItemView;
   showDeletePlan?: boolean;
@@ -52,6 +54,7 @@ export function PlanEditor({
   fullPlanHref,
   showPlatformShare = false,
   platformShares = [],
+  recentShareRecipients = [],
   kudos = [],
   itemView = "MINIMAL",
   showDeletePlan = false,
@@ -125,7 +128,11 @@ export function PlanEditor({
       )}
 
       {showPlatformShare ? (
-        <ShareWithUserPanel planId={plan.id} shares={platformShares} />
+        <ShareWithUserPanel
+          planId={plan.id}
+          shares={platformShares}
+          recentRecipients={recentShareRecipients}
+        />
       ) : null}
 
       <PlanKudosSummary kudos={kudos} />

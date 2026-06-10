@@ -194,6 +194,77 @@ export async function getPlanSharesForOwner(planId: string, ownerId: string) {
   });
 }
 
+export type RecentShareRecipient = {
+  id: string;
+  name: string | null;
+  email: string | null;
+  image: string | null;
+  lastSharedAt: Date;
+};
+
+const RECENT_SHARE_RECIPIENTS_LIMIT = 8;
+
+export async function getRecentShareRecipients(
+  ownerId: string,
+  currentPlanId?: string,
+): Promise<RecentShareRecipient[]> {
+  const [shares, currentPlanShares] = await Promise.all([
+    prisma.planShare.findMany({
+      where: { ownerId },
+      orderBy: { createdAt: "desc" },
+      include: {
+        sharedWithUser: {
+          select: { id: true, name: true, email: true, image: true },
+        },
+      },
+    }),
+    currentPlanId
+      ? prisma.planShare.findMany({
+          where: { planId: currentPlanId, ownerId },
+          select: { sharedWithUserId: true },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  const alreadySharedUserIds = new Set(
+    currentPlanShares.map((share) => share.sharedWithUserId),
+  );
+  const seenRecipientIds = new Set<string>();
+  const recipients: RecentShareRecipient[] = [];
+
+  for (const share of shares) {
+    const user = share.sharedWithUser;
+
+    if (!user?.id || user.id === ownerId) {
+      continue;
+    }
+
+    if (alreadySharedUserIds.has(user.id) || seenRecipientIds.has(user.id)) {
+      continue;
+    }
+
+    const email = user.email?.trim().toLowerCase();
+    if (!email || !isEmailAllowed(email)) {
+      continue;
+    }
+
+    seenRecipientIds.add(user.id);
+    recipients.push({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      image: user.image,
+      lastSharedAt: share.createdAt,
+    });
+
+    if (recipients.length >= RECENT_SHARE_RECIPIENTS_LIMIT) {
+      break;
+    }
+  }
+
+  return recipients;
+}
+
 export type SharedPlanEntry = {
   shareId: string;
   planId: string;

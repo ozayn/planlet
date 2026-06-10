@@ -7,7 +7,10 @@ import { DayPlanNav } from "@/components/plans/day-plan-nav";
 import { PlanEditor } from "@/components/plans/plan-editor";
 import { PageHeader } from "@/components/page-header";
 import { formatPlanDateLabel, isValidDateString, parseDateString } from "@/lib/dates";
-import { getPlanSharesForOwner } from "@/lib/plan-sharing";
+import {
+  getPlanSharesForOwner,
+  getRecentShareRecipients,
+} from "@/lib/plan-sharing";
 import { getObservationsForPlan } from "@/lib/observations";
 import { getDayPlan } from "@/lib/plans";
 import { serializePlan } from "@/lib/plan-serialize";
@@ -58,11 +61,13 @@ export default async function DayPlanPage({ params }: DayPlanPageProps) {
     );
   }
 
-  const [platformShares, planItemView, observations] = await Promise.all([
-    getPlanSharesForOwner(plan.id, userId),
-    getPlanItemViewForUser(userId),
-    getObservationsForPlan(plan.id, userId),
-  ]);
+  const [platformShares, planItemView, observations, recentShareRecipients] =
+    await Promise.all([
+      getPlanSharesForOwner(plan.id, userId),
+      getPlanItemViewForUser(userId),
+      getObservationsForPlan(plan.id, userId),
+      getRecentShareRecipients(userId, plan.id),
+    ]);
 
   return (
     <section className="space-y-6">
@@ -83,6 +88,7 @@ export default async function DayPlanPage({ params }: DayPlanPageProps) {
         showCopyExport
         showPlatformShare
         platformShares={platformShares}
+        recentShareRecipients={recentShareRecipients}
         itemView={planItemView}
         observations={observations}
       />

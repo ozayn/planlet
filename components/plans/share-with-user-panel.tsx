@@ -7,6 +7,8 @@ import {
   removePlanShareAction,
   sharePlanWithUserAction,
 } from "@/app/(app)/plans/actions";
+import { UserAvatar } from "@/components/user-avatar";
+import type { RecentShareRecipient } from "@/lib/plan-sharing";
 
 type PlanShareEntry = {
   id: string;
@@ -20,9 +22,18 @@ type PlanShareEntry = {
 type ShareWithUserPanelProps = {
   planId: string;
   shares: PlanShareEntry[];
+  recentRecipients?: RecentShareRecipient[];
 };
 
-export function ShareWithUserPanel({ planId, shares }: ShareWithUserPanelProps) {
+function recipientLabel(recipient: RecentShareRecipient): string {
+  return recipient.name?.trim() || recipient.email || "User";
+}
+
+export function ShareWithUserPanel({
+  planId,
+  shares,
+  recentRecipients = [],
+}: ShareWithUserPanelProps) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -109,6 +120,52 @@ export function ShareWithUserPanel({ planId, shares }: ShareWithUserPanelProps) 
             {isSharing ? "Sharing…" : "Share"}
           </button>
         </div>
+
+        {recentRecipients.length > 0 ? (
+          <div className="space-y-1.5">
+            <p className="text-xs font-medium text-muted">Recent</p>
+            <div className="flex flex-wrap gap-2">
+              {recentRecipients.map((recipient) => {
+                const label = recipientLabel(recipient);
+                const isSelected =
+                  recipient.email &&
+                  email.trim().toLowerCase() === recipient.email.toLowerCase();
+
+                return (
+                  <button
+                    key={recipient.id}
+                    type="button"
+                    onClick={() => {
+                      setError(null);
+                      setEmail(recipient.email ?? "");
+                    }}
+                    className={`inline-flex min-h-9 items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs text-foreground transition-colors hover:bg-accent-cream/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-blue/40${
+                      isSelected
+                        ? " border-accent-blue/45 bg-accent-cream/55"
+                        : " border-border-soft bg-surface"
+                    }`}
+                    aria-label={`Select ${label} to share with`}
+                    title={
+                      recipient.email
+                        ? `${label} · ${recipient.email}`
+                        : label
+                    }
+                  >
+                    <UserAvatar
+                      name={recipient.name}
+                      email={recipient.email}
+                      image={recipient.image}
+                      size="xs"
+                    />
+                    <span className="max-w-[8rem] truncate" dir="auto">
+                      {label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
 
         {error ? (
           <p className="text-xs text-accent-red" role="alert">
