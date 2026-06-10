@@ -54,6 +54,10 @@ export const saveParsedPlanSchema = z.object({
   planType: planTypeSchema,
   language: planLanguageSchema,
   summary: z.string().optional(),
+  planDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD")
+    .optional(),
   items: z.array(parsedPlanItemSchema).min(1),
 });
 

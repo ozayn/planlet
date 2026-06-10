@@ -11,7 +11,11 @@ import type {
 } from "@/app/generated/prisma/client";
 import { PlanType as PlanTypeEnum } from "@/app/generated/prisma/client";
 
-import { getTodayRange } from "@/lib/dates";
+import {
+  formatDayPlanTitle,
+  getDayRange,
+  getTodayRange,
+} from "@/lib/dates";
 import { canEditPlan, canViewPlan } from "@/lib/plan-sharing";
 import { normalizeProgressForStatus } from "@/lib/plan-status";
 import { prisma } from "@/lib/prisma";
@@ -75,8 +79,8 @@ async function requirePlanItemForUser(itemId: string, userId: string) {
   return item;
 }
 
-export async function getTodayPlan(userId: string) {
-  const { start, end } = getTodayRange();
+export async function getDayPlan(userId: string, date: Date) {
+  const { start, end } = getDayRange(date);
 
   return prisma.plan.findFirst({
     where: {
@@ -86,6 +90,54 @@ export async function getTodayPlan(userId: string) {
     },
     include: {
       items: rootItemsInclude,
+    },
+  });
+}
+
+export async function getTodayPlan(userId: string) {
+  return getDayPlan(userId, new Date());
+}
+
+export async function getOrCreateDayPlan(
+  userId: string,
+  date: Date,
+  title?: string,
+) {
+  const existing = await getDayPlan(userId, date);
+
+  if (existing) {
+    return existing;
+  }
+
+  const { start, end } = getDayRange(date);
+
+  return prisma.plan.create({
+    data: {
+      userId,
+      type: PlanTypeEnum.DAY,
+      title: title ?? formatDayPlanTitle(date),
+      dateStart: start,
+      dateEnd: end,
+      language: "UNKNOWN",
+    },
+    include: {
+      items: rootItemsInclude,
+    },
+  });
+}
+
+export async function getUpcomingDayPlans(userId: string) {
+  const { start } = getTodayRange();
+
+  return prisma.plan.findMany({
+    where: {
+      userId,
+      type: PlanTypeEnum.DAY,
+      dateStart: { gte: start },
+    },
+    orderBy: { dateStart: "asc" },
+    include: {
+      _count: { select: { items: true } },
     },
   });
 }

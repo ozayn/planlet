@@ -78,7 +78,9 @@ export async function sharePlanWithUser(
   }
 
   if (!isEmailAllowed(email)) {
-    throw new PlanSharingError("That email is not allowed to use Planlet.");
+    throw new PlanSharingError(
+      "This email is not allowed to use this Planlet workspace.",
+    );
   }
 
   const targetUser = await prisma.user.findFirst({
@@ -88,7 +90,7 @@ export async function sharePlanWithUser(
 
   if (!targetUser) {
     throw new PlanSharingError(
-      "No Planlet user found with that email. They need to sign in once first.",
+      "This person needs to sign in to Planlet once before you can share with them.",
     );
   }
 

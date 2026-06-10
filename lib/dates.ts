@@ -3,6 +3,7 @@ import {
   endOfDay,
   endOfMonth,
   endOfYear,
+  format,
   startOfDay,
   startOfMonth,
   startOfYear,
@@ -11,6 +12,8 @@ import { fromZonedTime, toZonedTime } from "date-fns-tz";
 
 import type { PlanType } from "@/app/generated/prisma/client";
 import { APP_TIMEZONE } from "@/config/time";
+
+const DATE_STRING_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 /**
  * Planlet stores DateTime values in UTC (PostgreSQL timestamptz / Prisma DateTime).
@@ -35,12 +38,48 @@ function zonedDate(date: Date): Date {
   return toZonedTime(date, APP_TIMEZONE);
 }
 
-export function getTodayRange(now = new Date()): DateRange {
-  const zonedNow = zonedDate(now);
+export function getDayRange(date: Date): DateRange {
+  const zoned = zonedDate(date);
   return {
-    start: toUtcRangeStart(startOfDay(zonedNow)),
-    end: toUtcRangeEnd(endOfDay(zonedNow)),
+    start: toUtcRangeStart(startOfDay(zoned)),
+    end: toUtcRangeEnd(endOfDay(zoned)),
   };
+}
+
+export function getTodayRange(now = new Date()): DateRange {
+  return getDayRange(now);
+}
+
+export function isValidDateString(dateString: string): boolean {
+  if (!DATE_STRING_PATTERN.test(dateString)) {
+    return false;
+  }
+
+  const [year, month, day] = dateString.split("-").map(Number);
+  const parsed = new Date(year, month - 1, day);
+
+  return (
+    parsed.getFullYear() === year &&
+    parsed.getMonth() === month - 1 &&
+    parsed.getDate() === day
+  );
+}
+
+export function parseDateString(dateString: string): Date {
+  if (!isValidDateString(dateString)) {
+    throw new Error("Invalid date format. Use YYYY-MM-DD.");
+  }
+
+  return fromZonedTime(new Date(`${dateString}T12:00:00`), APP_TIMEZONE);
+}
+
+export function formatDateString(date: Date): string {
+  return format(zonedDate(date), "yyyy-MM-dd");
+}
+
+export function shiftDateString(dateString: string, days: number): string {
+  const zoned = startOfDay(zonedDate(parseDateString(dateString)));
+  return format(addDays(zoned, days), "yyyy-MM-dd");
 }
 
 export function getMonthRange(date: Date): DateRange {
@@ -61,18 +100,18 @@ export function getYearRange(date: Date): DateRange {
 
 export function getDateRangeForPlanType(
   type: "DAY" | "WEEK" | "MONTH" | "YEAR",
-  now = new Date(),
+  date = new Date(),
 ): DateRange {
   switch (type) {
     case "DAY":
-      return getTodayRange(now);
+      return getDayRange(date);
     case "MONTH":
-      return getMonthRange(now);
+      return getMonthRange(date);
     case "YEAR":
-      return getYearRange(now);
+      return getYearRange(date);
     case "WEEK": {
-      const zonedNow = zonedDate(now);
-      const weekStart = startOfDay(zonedNow);
+      const zoned = zonedDate(date);
+      const weekStart = startOfDay(zoned);
       const weekEnd = endOfDay(addDays(weekStart, 6));
       return {
         start: toUtcRangeStart(weekStart),
@@ -80,12 +119,43 @@ export function getDateRangeForPlanType(
       };
     }
     default:
-      return getTodayRange(now);
+      return getDayRange(date);
+  }
+}
+
+export function formatPlanDateLabel(
+  dateStart: Date,
+  type: PlanType,
+  dateEnd?: Date,
+): string {
+  switch (type) {
+    case "DAY":
+      return formatShareDayPeriod(dateStart);
+    case "MONTH":
+      return formatShareMonthPeriod(dateStart);
+    case "YEAR":
+      return formatShareYearPeriod(dateStart);
+    case "WEEK":
+      return `Week of ${formatShareWeekPeriod(dateStart, dateEnd ?? dateStart)}`;
+    default:
+      return formatShareDayPeriod(dateStart);
   }
 }
 
 function shareDateFormatter(options: Intl.DateTimeFormatOptions) {
   return new Intl.DateTimeFormat("en", { ...options, timeZone: APP_TIMEZONE });
+}
+
+export function formatDayPlanTitle(date: Date, now = new Date()): string {
+  const selected = getDayRange(date).start.getTime();
+  const today = getTodayRange(now).start.getTime();
+
+  if (selected === today) {
+    return "Today's plan";
+  }
+
+  const weekday = shareDateFormatter({ weekday: "long" }).format(date);
+  return `${weekday} plan`;
 }
 
 export function formatShareDayPeriod(date: Date): string {

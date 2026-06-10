@@ -18,7 +18,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useId, useState, useTransition } from "react";
 
 import { reorderPlanItemsAction } from "@/app/(app)/plans/actions";
 import { PlanItemCard } from "@/components/plans/plan-item-card";
@@ -28,6 +28,22 @@ type SortablePlanItemListProps = {
   planId: string;
   items: SerializedPlanItem[];
 };
+
+function StaticPlanItemList({
+  planId,
+  items,
+}: {
+  planId: string;
+  items: SerializedPlanItem[];
+}) {
+  return (
+    <>
+      {items.map((item) => (
+        <PlanItemCard key={item.id} planId={planId} item={item} />
+      ))}
+    </>
+  );
+}
 
 function SortablePlanItemRow({
   planId,
@@ -65,18 +81,16 @@ function SortablePlanItemRow({
   );
 }
 
-export function SortablePlanItemList({
+function SortablePlanItemRows({
   planId,
-  items: initialItems,
-}: SortablePlanItemListProps) {
-  const router = useRouter();
-  const [items, setItems] = useState(initialItems);
-  const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
-
-  useEffect(() => {
-    setItems(initialItems);
-  }, [initialItems]);
+  items,
+  onDragEnd,
+}: {
+  planId: string;
+  items: SerializedPlanItem[];
+  onDragEnd: (event: DragEndEvent) => void;
+}) {
+  const dndId = useId();
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -86,6 +100,43 @@ export function SortablePlanItemList({
       coordinateGetter: sortableKeyboardCoordinates,
     }),
   );
+
+  return (
+    <DndContext
+      id={dndId}
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={onDragEnd}
+    >
+      <SortableContext
+        items={items.map((item) => item.id)}
+        strategy={verticalListSortingStrategy}
+      >
+        {items.map((item) => (
+          <SortablePlanItemRow key={item.id} planId={planId} item={item} />
+        ))}
+      </SortableContext>
+    </DndContext>
+  );
+}
+
+export function SortablePlanItemList({
+  planId,
+  items: initialItems,
+}: SortablePlanItemListProps) {
+  const router = useRouter();
+  const [items, setItems] = useState(initialItems);
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    setItems(initialItems);
+  }, [initialItems]);
 
   function handleDragEnd(event: DragEndEvent) {
     const { active, over } = event;
@@ -123,20 +174,15 @@ export function SortablePlanItemList({
 
   return (
     <div className="space-y-2">
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragEnd={handleDragEnd}
-      >
-        <SortableContext
-          items={items.map((item) => item.id)}
-          strategy={verticalListSortingStrategy}
-        >
-          {items.map((item) => (
-            <SortablePlanItemRow key={item.id} planId={planId} item={item} />
-          ))}
-        </SortableContext>
-      </DndContext>
+      {mounted ? (
+        <SortablePlanItemRows
+          planId={planId}
+          items={items}
+          onDragEnd={handleDragEnd}
+        />
+      ) : (
+        <StaticPlanItemList planId={planId} items={items} />
+      )}
 
       {error ? (
         <p className="text-xs text-accent-red" role="alert">

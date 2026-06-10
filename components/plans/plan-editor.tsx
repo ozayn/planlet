@@ -76,6 +76,10 @@ export function PlanEditor({
         </header>
       )}
 
+      {showPlatformShare ? (
+        <ShareWithUserPanel planId={plan.id} shares={platformShares} />
+      ) : null}
+
       <section className="space-y-2">
         {plan.items.length === 0 ? (
           <div className="ui-empty-state">
@@ -89,10 +93,6 @@ export function PlanEditor({
       <section>
         <AddItemForm planId={plan.id} />
       </section>
-
-      {showPlatformShare ? (
-        <ShareWithUserPanel planId={plan.id} shares={platformShares} />
-      ) : null}
     </div>
   );
 }

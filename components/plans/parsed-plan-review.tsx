@@ -6,6 +6,10 @@ import type {
   ParsedSubtask,
 } from "@/lib/ai/plan-parser-schema";
 import {
+  formatPlanDateLabel,
+  parseDateString,
+} from "@/lib/dates";
+import {
   getPlanItemTypeLabel,
   getPlanTypeLabel,
   PLAN_LANGUAGE_LABELS,
@@ -43,9 +47,18 @@ const selectClass =
 type ParsedPlanReviewProps = {
   draft: ParsedPlan;
   onChange: (draft: ParsedPlan) => void;
+  planDate?: string;
+  onPlanDateChange?: (planDate: string) => void;
+  existingDayPlan?: boolean;
 };
 
-export function ParsedPlanReview({ draft, onChange }: ParsedPlanReviewProps) {
+export function ParsedPlanReview({
+  draft,
+  onChange,
+  planDate,
+  onPlanDateChange,
+  existingDayPlan = false,
+}: ParsedPlanReviewProps) {
   function updateItem(index: number, item: ParsedPlanItem) {
     const items = [...draft.items];
     items[index] = item;
@@ -140,6 +153,27 @@ export function ParsedPlanReview({ draft, onChange }: ParsedPlanReviewProps) {
             className={`${inputClass} resize-y`}
           />
         </Field>
+
+        {draft.planType === "DAY" && planDate && onPlanDateChange ? (
+          <div className="space-y-2 border-t border-border-soft pt-4">
+            <Field label="Plan date">
+              <input
+                type="date"
+                value={planDate}
+                onChange={(event) => onPlanDateChange(event.target.value)}
+                className={inputClass}
+              />
+            </Field>
+            <p className="text-sm text-muted">
+              Plan date: {formatPlanDateLabel(parseDateString(planDate), "DAY")}
+            </p>
+            {existingDayPlan ? (
+              <p className="text-sm text-muted">
+                This will be added to the existing plan for this date.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
       <div className="space-y-3">

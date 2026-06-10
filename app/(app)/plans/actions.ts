@@ -15,11 +15,22 @@ import {
 import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 import { APP_TIMEZONE } from "@/config/time";
-import { getDateRangeForPlanType, getMonthRange, getTodayRange, getYearRange } from "@/lib/dates";
+import {
+  formatDateString,
+  formatDayPlanTitle,
+  getDateRangeForPlanType,
+  getMonthRange,
+  getTodayRange,
+  getYearRange,
+  isValidDateString,
+  parseDateString,
+} from "@/lib/dates";
 import {
   createPlan,
   createPlanItem,
   deletePlanItem,
+  getDayPlan,
+  getOrCreateDayPlan,
   getTodayPlan,
   reorderPlanItems,
   updatePlanItem,
@@ -41,34 +52,49 @@ async function requireUserId(): Promise<string> {
   return session.user.id;
 }
 
-function revalidatePlanPaths(planId: string) {
+function revalidatePlanPaths(planId: string, dateString?: string) {
   revalidatePath("/today");
   revalidatePath("/plans");
   revalidatePath("/dashboard");
   revalidatePath(`/plans/${planId}`);
+  if (dateString) {
+    revalidatePath(`/plans/day/${dateString}`);
+  }
+}
+
+function parseActionDateString(dateString: string): Date {
+  if (!isValidDateString(dateString)) {
+    throw new Error("Invalid date format. Use YYYY-MM-DD.");
+  }
+
+  return parseDateString(dateString);
 }
 
 export async function createTodayPlanAction() {
   const userId = await requireUserId();
-  const existing = await getTodayPlan(userId);
+  await getOrCreateDayPlan(userId, new Date());
+  revalidatePath("/today");
+  revalidatePath("/plans");
+}
 
-  if (existing) {
-    revalidatePath("/today");
-    return;
+export async function createDayPlanForDateAction(dateString: string) {
+  const userId = await requireUserId();
+  const date = parseActionDateString(dateString);
+  const plan = await getOrCreateDayPlan(userId, date);
+
+  revalidatePlanPaths(plan.id, dateString);
+  redirect(`/plans/day/${dateString}`);
+}
+
+export async function dayPlanExistsAction(dateString: string): Promise<boolean> {
+  const userId = await requireUserId();
+
+  if (!isValidDateString(dateString)) {
+    return false;
   }
 
-  const { start, end } = getTodayRange();
-
-  await createPlan({
-    userId,
-    type: "DAY",
-    title: "Today's plan",
-    dateStart: start,
-    dateEnd: end,
-    language: "UNKNOWN",
-  });
-
-  revalidatePath("/today");
+  const plan = await getDayPlan(userId, parseDateString(dateString));
+  return Boolean(plan);
 }
 
 export async function createPlanAction(type: PlanType) {
@@ -300,10 +326,14 @@ export async function saveParsedPlanAction(input: unknown) {
   }
 
   const data: SaveParsedPlanInput = parsed.data;
-  const { start, end } = getDateRangeForPlanType(data.planType);
+  const referenceDate =
+    data.planType === "DAY" && data.planDate
+      ? parseDateString(data.planDate)
+      : new Date();
+  const { start, end } = getDateRangeForPlanType(data.planType, referenceDate);
 
   if (data.planType === "DAY") {
-    const existing = await getTodayPlan(userId);
+    const existing = await getDayPlan(userId, referenceDate);
 
     if (existing) {
       const rootItemCount = await prisma.planItem.count({
@@ -329,6 +359,9 @@ export async function saveParsedPlanAction(input: unknown) {
 
       revalidatePath("/plans");
       revalidatePath("/today");
+      revalidatePath(
+        `/plans/day/${data.planDate ?? formatDateString(referenceDate)}`,
+      );
       redirect(`/plans/${existing.id}`);
     }
   }
@@ -336,7 +369,10 @@ export async function saveParsedPlanAction(input: unknown) {
   const plan = await createPlan({
     userId,
     type: data.planType,
-    title: data.title.trim(),
+    title:
+      data.planType === "DAY"
+        ? data.title.trim() || formatDayPlanTitle(referenceDate)
+        : data.title.trim(),
     dateStart: start,
     dateEnd: end,
     rawInput: data.rawInput,
@@ -348,6 +384,11 @@ export async function saveParsedPlanAction(input: unknown) {
 
   revalidatePath("/plans");
   revalidatePath("/today");
+  if (data.planType === "DAY") {
+    revalidatePath(
+      `/plans/day/${data.planDate ?? formatDateString(referenceDate)}`,
+    );
+  }
   redirect(`/plans/${plan.id}`);
 }
 

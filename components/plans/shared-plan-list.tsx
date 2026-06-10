@@ -11,7 +11,7 @@ type SharedPlanListProps = {
 
 export function SharedPlanList({
   plans,
-  emptyMessage = "No plans shared with you yet.",
+  emptyMessage = "No plans have been shared with you yet.",
 }: SharedPlanListProps) {
   if (plans.length === 0) {
     return (

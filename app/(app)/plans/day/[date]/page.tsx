@@ -1,0 +1,83 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+
+import { auth } from "@/auth";
+import { CreateDayPlanButton } from "@/components/plans/create-day-plan-button";
+import { DayPlanNav } from "@/components/plans/day-plan-nav";
+import { PlanEditor } from "@/components/plans/plan-editor";
+import { PageHeader } from "@/components/page-header";
+import { formatPlanDateLabel, isValidDateString, parseDateString } from "@/lib/dates";
+import { getPlanSharesForOwner } from "@/lib/plan-sharing";
+import { getDayPlan } from "@/lib/plans";
+import { serializePlan } from "@/lib/plan-serialize";
+
+type DayPlanPageProps = {
+  params: Promise<{ date: string }>;
+};
+
+export default async function DayPlanPage({ params }: DayPlanPageProps) {
+  const session = await auth();
+  const userId = session?.user?.id;
+
+  if (!userId) {
+    return null;
+  }
+
+  const { date: dateString } = await params;
+
+  if (!isValidDateString(dateString)) {
+    notFound();
+  }
+
+  const date = parseDateString(dateString);
+  const plan = await getDayPlan(userId, date);
+  const dateLabel = formatPlanDateLabel(date, "DAY");
+
+  if (!plan) {
+    return (
+      <section className="space-y-6">
+        <PageHeader
+          title={dateLabel}
+          subtitle="Daily plan"
+          action={
+            <Link href="/plans" className="ui-text-link">
+              All plans
+            </Link>
+          }
+        />
+
+        <DayPlanNav currentDate={dateString} />
+
+        <div className="ui-empty-state space-y-4">
+          <p className="text-sm text-muted">No plan for this date yet.</p>
+          <CreateDayPlanButton dateString={dateString} />
+        </div>
+      </section>
+    );
+  }
+
+  const platformShares = await getPlanSharesForOwner(plan.id, userId);
+
+  return (
+    <section className="space-y-6">
+      <PageHeader
+        title={dateLabel}
+        subtitle="Daily plan"
+        action={
+          <Link href="/plans" className="ui-text-link">
+            All plans
+          </Link>
+        }
+      />
+
+      <DayPlanNav currentDate={dateString} />
+
+      <PlanEditor
+        plan={serializePlan(plan)}
+        showCopyExport
+        showPlatformShare
+        platformShares={platformShares}
+      />
+    </section>
+  );
+}

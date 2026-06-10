@@ -2,8 +2,10 @@ import Link from "next/link";
 
 import { auth } from "@/auth";
 import { CreateTodayPlanButton } from "@/components/plans/create-today-plan-button";
+import { DayPlanNav } from "@/components/plans/day-plan-nav";
 import { PlanEditor } from "@/components/plans/plan-editor";
 import { PageHeader } from "@/components/page-header";
+import { formatDateString } from "@/lib/dates";
 import { getTodayPlan } from "@/lib/plans";
 import { serializePlan } from "@/lib/plan-serialize";
 
@@ -17,9 +19,10 @@ export default async function TodayPage() {
 
   const plan = await getTodayPlan(userId);
   const firstName = session.user?.name?.split(" ")[0];
+  const todayDate = formatDateString(new Date());
 
   return (
-    <section>
+    <section className="space-y-6">
       <PageHeader
         title={firstName ? `Today, ${firstName}` : "Today"}
         subtitle="What matters right now."
@@ -30,12 +33,21 @@ export default async function TodayPage() {
         }
       />
 
+      <DayPlanNav currentDate={todayDate} />
+
       {plan ? (
-        <PlanEditor
-          plan={serializePlan(plan)}
-          showMeta={false}
-          showCopyExport
-        />
+        <div className="space-y-4">
+          <PlanEditor
+            plan={serializePlan(plan)}
+            showMeta={false}
+            showCopyExport
+          />
+          <p className="text-sm">
+            <Link href={`/plans/${plan.id}`} className="ui-text-link">
+              Open full plan to share inside Planlet
+            </Link>
+          </p>
+        </div>
       ) : (
         <div className="space-y-6">
           <div className="ui-empty-state">

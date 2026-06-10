@@ -1,14 +1,16 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 import {
+  dayPlanExistsAction,
   parsePlanTextAction,
   saveParsedPlanAction,
 } from "@/app/(app)/plans/actions";
 import { AudioRecorder } from "@/components/audio/audio-recorder";
 import { ParsedPlanReview } from "@/components/plans/parsed-plan-review";
 import type { ParsedPlan } from "@/lib/ai/plan-parser-schema";
+import { formatDateString } from "@/lib/dates";
 
 type Step = "input" | "review";
 type InputMode = "text" | "record";
@@ -18,9 +20,30 @@ export function NewPlanFlow() {
   const [inputMode, setInputMode] = useState<InputMode>("text");
   const [rawInput, setRawInput] = useState("");
   const [draft, setDraft] = useState<ParsedPlan | null>(null);
+  const [planDate, setPlanDate] = useState(formatDateString(new Date()));
+  const [existingDayPlan, setExistingDayPlan] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isParsing, startParse] = useTransition();
   const [isSaving, startSave] = useTransition();
+
+  useEffect(() => {
+    if (step !== "review" || draft?.planType !== "DAY" || !planDate) {
+      setExistingDayPlan(false);
+      return;
+    }
+
+    let cancelled = false;
+
+    dayPlanExistsAction(planDate).then((exists) => {
+      if (!cancelled) {
+        setExistingDayPlan(exists);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [step, draft?.planType, planDate]);
 
   function handleStructure() {
     setError(null);
@@ -69,6 +92,7 @@ export function NewPlanFlow() {
           planType: draft.planType,
           language: draft.language,
           summary: draft.summary?.trim() || undefined,
+          planDate: draft.planType === "DAY" ? planDate : undefined,
           items: cleanedItems,
         });
       } catch (saveError) {
@@ -87,13 +111,15 @@ export function NewPlanFlow() {
         <p className="ui-label">Step 2 — Review</p>
         <p className="text-sm text-muted">Edit before saving.</p>
 
-        <ParsedPlanReview draft={draft} onChange={setDraft} />
-
-        {draft.planType === "DAY" ? (
-          <p className="text-xs text-muted-light">
-            If today already has a plan, these items will be added to it.
-          </p>
-        ) : null}
+        <ParsedPlanReview
+          draft={draft}
+          onChange={setDraft}
+          planDate={draft.planType === "DAY" ? planDate : undefined}
+          onPlanDateChange={
+            draft.planType === "DAY" ? setPlanDate : undefined
+          }
+          existingDayPlan={existingDayPlan}
+        />
 
         {error ? (
           <p className="rounded-xl border border-accent-red/20 bg-accent-cream px-4 py-3 text-sm text-accent-red">
