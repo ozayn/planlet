@@ -24,7 +24,11 @@ import { APP_TIMEZONE } from "@/config/time";
 import { ACTION_LABELS } from "@/lib/action-labels";
 import type { SerializedGratitude } from "@/lib/gratitude";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
-import { shouldSubmitTextareaOnEnter } from "@/lib/textarea-keydown";
+import {
+  focusQuickAddInput,
+  preventQuickAddButtonBlur,
+  shouldSubmitTextareaOnEnter,
+} from "@/lib/textarea-keydown";
 
 type GratitudeSectionProps = {
   planId: string;
@@ -98,9 +102,7 @@ export function GratitudeSection({
       setExpanded(true);
       setGratitudes((current) => [...current, result.gratitude]);
       router.refresh();
-      requestAnimationFrame(() => {
-        bodyInputRef.current?.focus();
-      });
+      focusQuickAddInput(bodyInputRef);
     });
   }
 
@@ -246,15 +248,17 @@ export function GratitudeSection({
                 placeholder="What are you grateful for?"
                 rows={2}
                 dir="auto"
+                enterKeyHint="send"
                 aria-label="What are you grateful for?"
                 className="ui-input min-h-9 w-full resize-y py-2"
               />
-              <p className="text-xs text-muted-light">
+              <p className="hidden text-xs text-muted-light sm:block">
                 Enter to add · Shift+Enter for a new line
               </p>
             </div>
             <button
               type="button"
+              onMouseDown={preventQuickAddButtonBlur}
               onClick={() => handleAdd()}
               disabled={isSubmitting || !body.trim()}
               aria-label="Add gratitude"
@@ -283,7 +287,7 @@ export function GratitudeSection({
                       aria-label={ACTION_LABELS.editGratitude.ariaLabel}
                       className="ui-input min-h-9 w-full resize-y py-2"
                     />
-                    <p className="text-xs text-muted-light">
+                    <p className="hidden text-xs text-muted-light sm:block">
                       Enter to save · Shift+Enter for a new line
                     </p>
                     <div className="flex gap-2">

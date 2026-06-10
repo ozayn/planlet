@@ -27,7 +27,11 @@ import { OBSERVATION_CATEGORIES } from "@/lib/observation-constants";
 import { getObservationCategoryLabel } from "@/lib/observation-labels";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 import type { SerializedObservation } from "@/lib/observations";
-import { shouldSubmitTextareaOnEnter } from "@/lib/textarea-keydown";
+import {
+  focusQuickAddInput,
+  preventQuickAddButtonBlur,
+  shouldSubmitTextareaOnEnter,
+} from "@/lib/textarea-keydown";
 
 type PrivateObservationsSectionProps = {
   planId: string;
@@ -107,9 +111,7 @@ export function PrivateObservationsSection({
       setExpanded(true);
       setObservations((current) => [...current, result.observation]);
       router.refresh();
-      requestAnimationFrame(() => {
-        bodyInputRef.current?.focus();
-      });
+      focusQuickAddInput(bodyInputRef);
     });
   }
 
@@ -277,15 +279,17 @@ export function PrivateObservationsSection({
                 placeholder="What did you notice?"
                 rows={2}
                 dir="auto"
+                enterKeyHint="send"
                 aria-label="What did you notice?"
                 className="ui-input min-h-9 w-full resize-y py-2"
               />
-              <p className="text-xs text-muted-light">
+              <p className="hidden text-xs text-muted-light sm:block">
                 Enter to add · Shift+Enter for a new line
               </p>
             </div>
             <button
               type="button"
+              onMouseDown={preventQuickAddButtonBlur}
               onClick={() => handleAdd()}
               disabled={isSubmitting || !body.trim()}
               {...passwordManagerSafeControlProps}
@@ -336,7 +340,7 @@ export function PrivateObservationsSection({
                           aria-label={ACTION_LABELS.editObservation.ariaLabel}
                           className="ui-input min-h-9 w-full resize-y py-2"
                         />
-                        <p className="text-xs text-muted-light">
+                        <p className="hidden text-xs text-muted-light sm:block">
                           Enter to save · Shift+Enter for a new line
                         </p>
                       </div>
