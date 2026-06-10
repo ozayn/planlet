@@ -5,9 +5,15 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import {
+  CalendarIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+} from "@/components/ui/action-icons";
+import {
   formatDateString,
   shiftDateString,
 } from "@/lib/dates";
+import { ACTION_LABELS } from "@/lib/action-labels";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 
 type DayPlanNavProps = {
@@ -42,8 +48,8 @@ export function DayPlanNav({
         <Link
           href={`/plans/day/${shiftDateString(currentDate, -1)}`}
           className="ui-plan-date-nav-btn ui-plan-date-nav-btn-icon"
-          aria-label="Previous day"
-          title="Previous day"
+          aria-label={ACTION_LABELS.previousDay.ariaLabel}
+          title={ACTION_LABELS.previousDay.title}
           {...passwordManagerSafeControlProps}
         >
           <ChevronLeftIcon className="ui-plan-date-nav-btn-glyph" aria-hidden="true" />
@@ -66,8 +72,8 @@ export function DayPlanNav({
         <Link
           href={`/plans/day/${shiftDateString(currentDate, 1)}`}
           className="ui-plan-date-nav-btn ui-plan-date-nav-btn-icon"
-          aria-label="Next day"
-          title="Next day"
+          aria-label={ACTION_LABELS.nextDay.ariaLabel}
+          title={ACTION_LABELS.nextDay.title}
           {...passwordManagerSafeControlProps}
         >
           <ChevronRightIcon className="ui-plan-date-nav-btn-glyph" aria-hidden="true" />
@@ -92,58 +98,9 @@ export function DayPlanNav({
             }
           }}
           className="ui-plan-date-nav-date-input"
-          aria-label="Choose plan date"
+          aria-label={ACTION_LABELS.chooseDate.ariaLabel}
         />
       </label>
     </nav>
-  );
-}
-
-function ChevronLeftIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      strokeWidth={1.75}
-      stroke="currentColor"
-      aria-hidden="true"
-    >
-      <path strokeLinecap="round" strokeLinejoin="round" d="m15 18-6-6 6-6" />
-    </svg>
-  );
-}
-
-function ChevronRightIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      strokeWidth={1.75}
-      stroke="currentColor"
-      aria-hidden="true"
-    >
-      <path strokeLinecap="round" strokeLinejoin="round" d="m9 18 6-6-6-6" />
-    </svg>
-  );
-}
-
-function CalendarIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      strokeWidth={1.75}
-      stroke="currentColor"
-      aria-hidden="true"
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"
-      />
-    </svg>
   );
 }

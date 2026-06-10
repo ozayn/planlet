@@ -4,6 +4,8 @@ import Link from "next/link";
 
 import type { PlanType } from "@/app/generated/prisma/client";
 import { DeletePlanMenu } from "@/components/plans/delete-plan-menu";
+import { FileTextIcon } from "@/components/ui/action-icons";
+import { ACTION_LABELS } from "@/lib/action-labels";
 import {
   formatDateString,
   formatPlanCardDate,
@@ -72,9 +74,12 @@ export function PlanListItem({
           <Link
             href={summaryHref}
             onClick={(event) => event.stopPropagation()}
-            className="ui-btn-ghost min-h-8 px-2 text-xs"
+            aria-label={ACTION_LABELS.summary.ariaLabel}
+            title={ACTION_LABELS.summary.title}
+            className="ui-btn-ghost inline-flex min-h-8 items-center gap-1 px-2 text-xs"
           >
-            Summary
+            <FileTextIcon className="h-3.5 w-3.5 shrink-0 text-muted" />
+            <span>{ACTION_LABELS.summary.title}</span>
           </Link>
         ) : null}
         <DeletePlanMenu planId={id} />

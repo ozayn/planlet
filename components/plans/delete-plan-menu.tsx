@@ -4,7 +4,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 
 import { deletePlanAction } from "@/app/(app)/plans/actions";
+import { MoreHorizontalIcon, Trash2Icon } from "@/components/ui/action-icons";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ACTION_LABELS } from "@/lib/action-labels";
+import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 
 type DeletePlanMenuProps = {
   planId: string;
@@ -75,30 +78,38 @@ export function DeletePlanMenu({ planId, redirectTo }: DeletePlanMenuProps) {
       <div ref={containerRef} className="relative">
         <button
           type="button"
+          {...passwordManagerSafeControlProps}
           aria-expanded={menuOpen}
           aria-haspopup="menu"
           aria-controls={menuId}
-          aria-label="Plan actions"
+          aria-label={ACTION_LABELS.morePlan.ariaLabel}
+          title={ACTION_LABELS.morePlan.title}
           onClick={() => setMenuOpen((current) => !current)}
-          className="ui-btn-ghost min-h-9 min-w-9 rounded-lg px-2 text-muted-light"
+          className="ui-icon-action-quiet"
         >
-          ⋯
+          <MoreHorizontalIcon className="h-4 w-4" aria-hidden="true" />
+          <span className="ui-tooltip-bubble" role="tooltip">
+            {ACTION_LABELS.morePlan.title}
+          </span>
         </button>
 
         {menuOpen ? (
           <div
             id={menuId}
             role="menu"
-            className="absolute end-0 z-50 mt-1 min-w-40 rounded-xl border border-border-soft bg-surface py-1 ui-shadow-elevated"
+            aria-label={ACTION_LABELS.planActions.ariaLabel}
+            className="absolute end-0 z-50 mt-1 min-w-40 overflow-y-auto rounded-xl border border-border-soft bg-surface py-1 ui-shadow-elevated"
           >
             <button
               type="button"
               role="menuitem"
-              aria-label="Delete plan"
+              aria-label={ACTION_LABELS.deletePlan.ariaLabel}
+              {...passwordManagerSafeControlProps}
               onClick={openConfirm}
-              className="flex min-h-10 w-full items-center px-3 text-left text-sm text-accent-red transition-colors hover:bg-accent-cream"
+              className="flex min-h-10 w-full items-center gap-2.5 px-3 text-left text-sm text-accent-red transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none"
             >
-              Delete plan
+              <Trash2Icon className="h-4 w-4 shrink-0" />
+              <span>{ACTION_LABELS.deletePlan.title}</span>
             </button>
           </div>
         ) : null}
@@ -107,7 +118,7 @@ export function DeletePlanMenu({ planId, redirectTo }: DeletePlanMenuProps) {
       <ConfirmDialog
         open={confirmOpen}
         title="Delete this plan?"
-        confirmLabel="Delete plan"
+        confirmLabel={ACTION_LABELS.deletePlan.title}
         onConfirm={handleConfirm}
         onCancel={() => {
           if (!isDeleting) {

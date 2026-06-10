@@ -7,7 +7,9 @@ import {
   markAllNotificationsReadAction,
   markNotificationReadAction,
 } from "@/app/(app)/notifications/actions";
+import { BellIcon } from "@/components/ui/action-icons";
 import { APP_TIMEZONE } from "@/config/time";
+import { ACTION_LABELS } from "@/lib/action-labels";
 import type { SerializedNotification } from "@/lib/notification-serialize";
 
 type NotificationBellProps = {
@@ -101,7 +103,7 @@ export function NotificationBell({
             ? `Notifications, ${unreadCount} unread`
             : "Notifications"
         }
-        title="Notifications"
+        title={ACTION_LABELS.notifications.title}
         onClick={() => setOpen((current) => !current)}
         className="relative flex min-h-11 min-w-11 items-center justify-center rounded-full border border-border bg-surface text-muted transition-colors hover:bg-accent-cream hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
       >
@@ -117,7 +119,7 @@ export function NotificationBell({
         <div
           id={menuId}
           role="menu"
-          aria-label="Notifications"
+          aria-label={ACTION_LABELS.notifications.ariaLabel}
           className="absolute end-0 z-[70] mt-2 w-80 max-w-[calc(100vw-2.5rem)] rounded-2xl border border-border-soft bg-surface ui-shadow-elevated"
         >
           <div className="flex items-center justify-between gap-3 border-b border-border-soft px-4 py-3">
@@ -187,21 +189,5 @@ export function NotificationBell({
         </div>
       ) : null}
     </div>
-  );
-}
-
-function BellIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      strokeWidth={1.75}
-      stroke="currentColor"
-      aria-hidden="true"
-    >
-      <path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.2V11a6 6 0 1 0-12 0v3.2c0 .5-.2 1-.6 1.4L4 17h5" />
-      <path d="M10 20a2 2 0 0 0 4 0" />
-    </svg>
   );
 }

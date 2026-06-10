@@ -11,7 +11,9 @@ import {
   deletePlanObservationAction,
   updatePlanObservationAction,
 } from "@/app/(app)/plans/actions";
+import { ChevronDownIcon, LockIcon } from "@/components/ui/action-icons";
 import { APP_TIMEZONE } from "@/config/time";
+import { ACTION_LABELS } from "@/lib/action-labels";
 import { OBSERVATION_CATEGORIES } from "@/lib/observation-constants";
 import { getObservationCategoryLabel } from "@/lib/observation-labels";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
@@ -148,7 +150,8 @@ export function PrivateObservationsSection({
         type="button"
         aria-expanded={expanded}
         aria-controls={panelId}
-        aria-label="Private observations"
+        aria-label={ACTION_LABELS.privateObservations.ariaLabel}
+        title={ACTION_LABELS.privateObservations.title}
         onClick={() => setExpanded((current) => !current)}
         {...passwordManagerSafeControlProps}
         className="ui-observations-disclosure-summary flex w-full min-h-10 items-center justify-between gap-3 rounded-lg text-start transition-colors hover:bg-accent-cream/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
@@ -163,7 +166,7 @@ export function PrivateObservationsSection({
           {observations.length > 0 ? (
             <span className="text-xs tabular-nums">{collapsedCount}</span>
           ) : null}
-          <ChevronIcon
+          <ChevronDownIcon
             className={`h-4 w-4 transition-transform duration-200 ${
               expanded ? "rotate-180" : ""
             }`}
@@ -328,36 +331,5 @@ export function PrivateObservationsSection({
         </div>
       ) : null}
     </section>
-  );
-}
-
-function LockIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      strokeWidth={1.75}
-      stroke="currentColor"
-      aria-hidden="true"
-    >
-      <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
-      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-    </svg>
-  );
-}
-
-function ChevronIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      strokeWidth={1.75}
-      stroke="currentColor"
-      aria-hidden="true"
-    >
-      <path d="m6 9 6 6 6-6" />
-    </svg>
   );
 }

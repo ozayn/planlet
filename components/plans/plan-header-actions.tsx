@@ -4,6 +4,8 @@ import type { SerializedPlan } from "@/lib/plan-serialize";
 
 import { PlanMoreMenu } from "@/components/plans/plan-more-menu";
 import { SharePlanPanel } from "@/components/plans/share-plan-panel";
+import { UserPlusIcon } from "@/components/ui/action-icons";
+import { ACTION_LABELS } from "@/lib/action-labels";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 
 type PlanHeaderActionsProps = {
@@ -42,8 +44,8 @@ export function PlanHeaderActions({
         <button
           type="button"
           {...passwordManagerSafeControlProps}
-          aria-label="Share inside Planlet"
-          title="Share inside Planlet"
+          aria-label={ACTION_LABELS.shareInsidePlanlet.ariaLabel}
+          title={ACTION_LABELS.shareInsidePlanlet.title}
           aria-expanded={shareOpen}
           onClick={onShareToggle}
           className="ui-icon-action"
@@ -64,22 +66,5 @@ export function PlanHeaderActions({
         />
       ) : null}
     </div>
-  );
-}
-
-function UserPlusIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      strokeWidth={1.75}
-      stroke="currentColor"
-      aria-hidden="true"
-    >
-      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M19 8v6M22 11h-6" />
-    </svg>
   );
 }

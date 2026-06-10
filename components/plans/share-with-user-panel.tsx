@@ -8,6 +8,8 @@ import {
   sharePlanWithUserAction,
 } from "@/app/(app)/plans/actions";
 import { UserAvatar } from "@/components/user-avatar";
+import { ChevronDownIcon, UserPlusIcon } from "@/components/ui/action-icons";
+import { ACTION_LABELS } from "@/lib/action-labels";
 import type { RecentShareRecipient } from "@/lib/plan-sharing";
 
 type PlanShareEntry = {
@@ -93,7 +95,7 @@ export function ShareWithUserPanel({
     >
       <summary
         className="ui-share-disclosure-summary"
-        aria-label="Share inside Planlet"
+        aria-label={ACTION_LABELS.shareInsidePlanlet.ariaLabel}
       >
         <span className="flex min-w-0 flex-1 items-center gap-2">
           <UserPlusIcon
@@ -102,7 +104,7 @@ export function ShareWithUserPanel({
           />
           <span className="truncate text-sm text-foreground">{summaryLabel}</span>
         </span>
-        <ChevronIcon className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-open:rotate-180" />
+        <ChevronDownIcon className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-open:rotate-180" />
       </summary>
 
       <div className="ui-share-disclosure-body">
@@ -240,37 +242,5 @@ function SharedUserRow({
         {isRemoving ? "Removing…" : "Remove"}
       </button>
     </li>
-  );
-}
-
-function UserPlusIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      strokeWidth={1.75}
-      stroke="currentColor"
-      aria-hidden="true"
-    >
-      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-      <circle cx="9" cy="7" r="4" />
-      <path d="M19 8v6M22 11h-6" />
-    </svg>
-  );
-}
-
-function ChevronIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      strokeWidth={1.75}
-      stroke="currentColor"
-      aria-hidden="true"
-    >
-      <path d="m6 9 6 6 6-6" />
-    </svg>
   );
 }

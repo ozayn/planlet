@@ -14,7 +14,9 @@ import {
   TrashIcon,
 } from "@/components/plans/item-action-icons";
 import { getItemActionLabels } from "@/components/plans/item-action-labels";
+import { MoreHorizontalIcon } from "@/components/ui/action-icons";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ACTION_LABELS } from "@/lib/action-labels";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 
 type ItemActionsMenuProps = {
@@ -142,8 +144,16 @@ export function ItemActionsMenu({
 
   const menuShowsEdit = canEdit && !overflowOnly;
   const menuShowsAddSubtask =
-    canEdit && !isSubtask && Boolean(onAddSubtask) && !overflowOnly;
-  const menuShowsTaskNote = canEdit && Boolean(onTaskNote) && !overflowOnly;
+    canEdit &&
+    !isSubtask &&
+    itemType === "TASK" &&
+    Boolean(onAddSubtask) &&
+    !overflowOnly;
+  const menuShowsTaskNote =
+    canEdit &&
+    itemType !== "NOTE" &&
+    Boolean(onTaskNote) &&
+    !overflowOnly;
   const menuShowsComments = Boolean(onComments) && !overflowOnly;
   const menuShowsDelete = canEdit;
 
@@ -160,7 +170,7 @@ export function ItemActionsMenu({
           <div
             id={menuId}
             role="menu"
-            aria-label="Item actions"
+            aria-label={ACTION_LABELS.itemActions.ariaLabel}
             className="ui-shadow-elevated fixed z-[70] max-h-[min(20rem,calc(100dvh-1rem))] overflow-y-auto rounded-xl border border-border-soft bg-surface py-1"
             style={{
               top: menuPosition.top,
@@ -185,7 +195,7 @@ export function ItemActionsMenu({
               <button
                 type="button"
                 role="menuitem"
-                aria-label="Add subtask"
+                aria-label={ACTION_LABELS.addSubtask.ariaLabel}
                 {...passwordManagerSafeControlProps}
                 onClick={() => runAction(onAddSubtask!)}
                 className="flex min-h-10 w-full items-center gap-2.5 px-3 text-left text-sm text-foreground transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none"
@@ -198,7 +208,7 @@ export function ItemActionsMenu({
               <button
                 type="button"
                 role="menuitem"
-                aria-label="Task note"
+                aria-label={ACTION_LABELS.taskNote.ariaLabel}
                 {...passwordManagerSafeControlProps}
                 onClick={() => runAction(onTaskNote!)}
                 className="flex min-h-10 w-full items-center gap-2.5 px-3 text-left text-sm text-foreground transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none"
@@ -211,7 +221,7 @@ export function ItemActionsMenu({
               <button
                 type="button"
                 role="menuitem"
-                aria-label="Comments"
+                aria-label={ACTION_LABELS.comments.ariaLabel}
                 {...passwordManagerSafeControlProps}
                 onClick={() => onComments && runAction(onComments)}
                 className="flex min-h-10 w-full items-center justify-between gap-2 px-3 text-left text-sm text-foreground transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none"
@@ -257,15 +267,15 @@ export function ItemActionsMenu({
           aria-expanded={menuOpen}
           aria-haspopup="menu"
           aria-controls={menuOpen ? menuId : undefined}
-          aria-label="More item actions"
-          title="More"
+          aria-label={ACTION_LABELS.moreItem.ariaLabel}
+          title={ACTION_LABELS.moreItem.title}
           onClick={toggleMenu}
           onPointerDown={(event) => event.stopPropagation()}
           className="ui-icon-action-quiet"
         >
-          <MoreIcon className="h-4 w-4" />
+          <MoreHorizontalIcon className="h-4 w-4" />
           <span className="ui-tooltip-bubble" role="tooltip">
-            More
+            {ACTION_LABELS.moreItem.title}
           </span>
         </button>
       </div>
@@ -292,20 +302,5 @@ export function ItemActionsMenu({
         </ConfirmDialog>
       ) : null}
     </>
-  );
-}
-
-function MoreIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      fill="currentColor"
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-    >
-      <circle cx="5" cy="12" r="1.75" />
-      <circle cx="12" cy="12" r="1.75" />
-      <circle cx="19" cy="12" r="1.75" />
-    </svg>
   );
 }

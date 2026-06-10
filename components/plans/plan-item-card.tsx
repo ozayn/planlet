@@ -22,6 +22,8 @@ import { ItemActionsMenu } from "@/components/plans/item-actions-menu";
 import { ItemDetailsSheet } from "@/components/plans/item-details-sheet";
 import { InlineItemTitle } from "@/components/plans/inline-item-title";
 import { StatusButton } from "@/components/plans/status-button";
+import { GripVerticalIcon } from "@/components/ui/action-icons";
+import { ACTION_LABELS } from "@/lib/action-labels";
 import {
   getPlanItemTypeLabel,
   getTimeHintLabel,
@@ -158,7 +160,7 @@ export function PlanItemCard({
                 {...dragHandleAttributes}
                 {...dragHandleListeners}
               >
-                <DragHandleIcon />
+                <GripVerticalIcon className="h-4 w-3" />
               </button>
             ) : isNested ? (
               <span
@@ -244,12 +246,12 @@ export function PlanItemCard({
                     onClick={() => setDetailsOpen(true)}
                     {...passwordManagerSafeControlProps}
                     className="ui-plan-item-desktop-action hidden md:inline-flex ui-icon-action-quiet"
-                    aria-label="Task note"
-                    title="Task note"
+                    aria-label={ACTION_LABELS.taskNote.ariaLabel}
+                    title={ACTION_LABELS.taskNote.title}
                   >
                     <StickyNoteIcon className="h-4 w-4" />
                     <span className="ui-tooltip-bubble" role="tooltip">
-                      Task note
+                      {ACTION_LABELS.taskNote.title}
                     </span>
                   </button>
                 </>
@@ -327,23 +329,5 @@ export function PlanItemCard({
         />
       ) : null}
     </article>
-  );
-}
-
-function DragHandleIcon() {
-  return (
-    <svg
-      className="h-4 w-3"
-      viewBox="0 0 12 16"
-      fill="currentColor"
-      aria-hidden="true"
-    >
-      <circle cx="4" cy="3" r="1.25" />
-      <circle cx="8" cy="3" r="1.25" />
-      <circle cx="4" cy="8" r="1.25" />
-      <circle cx="8" cy="8" r="1.25" />
-      <circle cx="4" cy="13" r="1.25" />
-      <circle cx="8" cy="13" r="1.25" />
-    </svg>
   );
 }

@@ -3,7 +3,9 @@
 import { useMemo, useRef, useState } from "react";
 
 import { createShareExportAction } from "@/app/(app)/plans/actions";
+import { ClipboardCopyIcon } from "@/components/ui/action-icons";
 import { SimpleSheet } from "@/components/ui/simple-sheet";
+import { ACTION_LABELS } from "@/lib/action-labels";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 import type { SerializedPlan } from "@/lib/plan-serialize";
 import {
@@ -20,8 +22,6 @@ type SharePlanPanelProps = {
 };
 
 const FORMAT_OPTIONS: ShareUiFormat[] = ["plan", "plain", "update"];
-const COPY_TOOLTIP = "Copy as text";
-const COPY_ARIA_LABEL = "Copy plan as text";
 
 export function SharePlanPanel({ plan }: SharePlanPanelProps) {
   const [open, setOpen] = useState(false);
@@ -89,13 +89,13 @@ export function SharePlanPanel({ plan }: SharePlanPanelProps) {
         type="button"
         onClick={openPanel}
         {...passwordManagerSafeControlProps}
-        aria-label={COPY_ARIA_LABEL}
-        title={COPY_TOOLTIP}
+        aria-label={ACTION_LABELS.copy.ariaLabel}
+        title={ACTION_LABELS.copy.title}
         className="ui-icon-action"
       >
         <ClipboardCopyIcon className="h-4 w-4" aria-hidden="true" />
         <span className="ui-tooltip-bubble" role="tooltip">
-          {COPY_TOOLTIP}
+          {ACTION_LABELS.copy.title}
         </span>
       </button>
 
@@ -187,28 +187,5 @@ export function SharePlanPanel({ plan }: SharePlanPanelProps) {
         </div>
       </SimpleSheet>
     </>
-  );
-}
-
-function ClipboardCopyIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      strokeWidth={1.75}
-      stroke="currentColor"
-    >
-      <rect width="8" height="4" x="8" y="2" rx="1" ry="1" />
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"
-      />
-      <path strokeLinecap="round" d="M12 11h4" />
-      <path strokeLinecap="round" d="M12 16h4" />
-      <path strokeLinecap="round" d="M8 11h.01" />
-      <path strokeLinecap="round" d="M8 16h.01" />
-    </svg>
   );
 }

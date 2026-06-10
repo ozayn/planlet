@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { CommentIcon } from "@/components/plans/item-action-icons";
 import { ItemCommentsPanel } from "@/components/plans/item-comments-panel";
+import { ACTION_LABELS } from "@/lib/action-labels";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 
 type ItemCommentsButtonProps = {
@@ -44,8 +45,8 @@ export function ItemCommentsButton({
         onClick={() => setOpen(true)}
         {...passwordManagerSafeControlProps}
         className={`ui-icon-action-quiet${buttonClassName ? ` ${buttonClassName}` : ""}`}
-        aria-label="Comments"
-        title="Comments"
+        aria-label={ACTION_LABELS.comments.ariaLabel}
+        title={ACTION_LABELS.comments.title}
       >
         <CommentIcon className="h-4 w-4" />
         {commentCount > 0 ? (
@@ -54,7 +55,8 @@ export function ItemCommentsButton({
           </span>
         ) : null}
         <span className="ui-tooltip-bubble" role="tooltip">
-          Comments{commentCount > 0 ? ` (${commentCount})` : ""}
+          {ACTION_LABELS.comments.title}
+          {commentCount > 0 ? ` (${commentCount})` : ""}
         </span>
       </button>
       ) : null}

@@ -1,6 +1,7 @@
 import type { KudosType } from "@/app/generated/prisma/client";
 
 import { UserAvatar } from "@/components/user-avatar";
+import { SparklesIcon } from "@/components/ui/action-icons";
 import { getSenderKudosTooltip } from "@/lib/kudos-labels";
 
 const MAX_VISIBLE_AVATARS = 3;
@@ -34,7 +35,7 @@ export function PlanKudosSummary({ kudos }: PlanKudosSummaryProps) {
 
   return (
     <div className="flex items-center gap-2 py-0.5">
-      <KudosSparkIcon className="h-3.5 w-3.5 shrink-0 text-muted-light" />
+      <SparklesIcon className="h-3.5 w-3.5 shrink-0 text-muted-light" />
       <div
         className="flex min-w-0 items-center gap-2"
         aria-label={groupLabel}
@@ -77,21 +78,5 @@ export function PlanKudosSummary({ kudos }: PlanKudosSummaryProps) {
         </div>
       </div>
     </div>
-  );
-}
-
-function KudosSparkIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      strokeWidth={1.75}
-      stroke="currentColor"
-      aria-hidden="true"
-    >
-      <path d="m12 3 1.2 3.6L17 8l-3.8 1.4L12 13l-1.2-3.6L7 8l3.8-1.4L12 3z" />
-      <path d="M5 17l.8 2.2L8 20l-2.2.8L5 23l-.8-2.2L2 20l2.2-.8L5 17z" />
-    </svg>
   );
 }

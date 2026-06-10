@@ -7,6 +7,8 @@ import { createPortal } from "react-dom";
 
 import { updatePlanItemStatusAction } from "@/app/(app)/plans/actions";
 import { PlanItemStatusVisual } from "@/components/plans/plan-item-status-visual";
+import { CheckIcon, ChevronDownIcon } from "@/components/ui/action-icons";
+import { ACTION_LABELS } from "@/lib/action-labels";
 import { isExpressiveItemView } from "@/lib/plan-item-view";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 import { getStatusLabel, STATUS_STYLES } from "@/lib/plan-status";
@@ -196,7 +198,7 @@ export function StatusButton({
             ref={menuRef}
             id={menuId}
             role="menu"
-            aria-label="Item status"
+            aria-label={ACTION_LABELS.itemStatus.ariaLabel}
             className="ui-status-menu ui-shadow-elevated fixed z-[70] max-h-[min(70dvh,20rem)] overflow-y-auto rounded-xl border border-border bg-surface py-1"
             style={{
               top: menuPosition.top,
@@ -288,7 +290,7 @@ export function StatusButton({
         <span className="ui-status-trigger-label min-w-0 flex-1 truncate text-start">
           {currentLabel}
         </span>
-        <ChevronIcon
+        <ChevronDownIcon
           className={`ui-status-trigger-chevron h-3 w-3 shrink-0 text-muted-light transition-transform ${
             open ? "rotate-180" : ""
           }`}
@@ -296,21 +298,5 @@ export function StatusButton({
       </button>
       {menu}
     </div>
-  );
-}
-
-function ChevronIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor" aria-hidden="true">
-      <path d="m6 9 6 6 6-6" />
-    </svg>
-  );
-}
-
-function CheckIcon({ className }: { className?: string }) {
-  return (
-    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden="true">
-      <path d="m5 12 4 4 10-10" />
-    </svg>
   );
 }
