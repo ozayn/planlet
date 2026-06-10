@@ -112,8 +112,43 @@ export function ItemCommentsPanel({
   }
 
   return (
-    <SimpleSheet open={open} onClose={onClose} title="Comments">
-      <div className="space-y-5">
+    <SimpleSheet
+      open={open}
+      onClose={onClose}
+      title="Comments"
+      footer={
+        <div className="space-y-2">
+          <label htmlFor={`comment-${itemId}`} className="block space-y-1.5">
+            <span className="text-xs font-medium text-muted">Add a comment</span>
+            <textarea
+              id={`comment-${itemId}`}
+              name={`comment-${itemId}`}
+              value={body}
+              dir="auto"
+              rows={2}
+              maxLength={MAX_ITEM_COMMENT_LENGTH}
+              placeholder="Add a comment…"
+              onChange={(event) => setBody(event.target.value)}
+              className="ui-textarea min-h-16"
+            />
+          </label>
+          {error ? (
+            <p className="text-sm text-accent-red" role="alert">
+              {error}
+            </p>
+          ) : null}
+          <button
+            type="button"
+            disabled={isSubmitting || !body.trim()}
+            onClick={handleAddComment}
+            className="ui-btn-primary w-full disabled:opacity-50"
+          >
+            {isSubmitting ? "Adding…" : "Add comment"}
+          </button>
+        </div>
+      }
+    >
+      <div className="space-y-4">
         <p className="text-sm text-muted" dir="auto">
           {itemTitle}
         </p>
@@ -154,7 +189,7 @@ export function ItemCommentsPanel({
                           type="button"
                           onClick={() => handleDelete(comment.id)}
                           disabled={deletingId === comment.id}
-                          className="ui-btn-ghost min-h-8 px-2 text-xs"
+                          className="ui-btn-ghost min-h-10 min-w-10 px-2 text-xs"
                           aria-label="Delete comment"
                         >
                           {deletingId === comment.id ? "…" : "Delete"}
@@ -173,36 +208,6 @@ export function ItemCommentsPanel({
             ))}
           </ul>
         )}
-
-        <div className="space-y-2 border-t border-border-soft pt-4">
-          <label htmlFor={`comment-${itemId}`} className="block space-y-1.5">
-            <span className="text-xs font-medium text-muted">Add a comment</span>
-            <textarea
-              id={`comment-${itemId}`}
-              name={`comment-${itemId}`}
-              value={body}
-              dir="auto"
-              rows={3}
-              maxLength={MAX_ITEM_COMMENT_LENGTH}
-              placeholder="Add a comment…"
-              onChange={(event) => setBody(event.target.value)}
-              className="ui-textarea min-h-20"
-            />
-          </label>
-          {error ? (
-            <p className="text-sm text-accent-red" role="alert">
-              {error}
-            </p>
-          ) : null}
-          <button
-            type="button"
-            disabled={isSubmitting || !body.trim()}
-            onClick={handleAddComment}
-            className="ui-btn-primary w-full disabled:opacity-50"
-          >
-            {isSubmitting ? "Adding…" : "Add comment"}
-          </button>
-        </div>
       </div>
     </SimpleSheet>
   );

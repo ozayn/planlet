@@ -183,7 +183,31 @@ export function ItemDetailsSheet({
   const commentFieldId = `task-note-${item.id}`;
 
   return (
-    <SimpleSheet open={open} onClose={handleCancel} title={labels.sheetTitle}>
+    <SimpleSheet
+      open={open}
+      onClose={handleCancel}
+      title={labels.sheetTitle}
+      footer={
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={handleCancel}
+            className="ui-btn-secondary flex-1"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={isPending || !form.title.trim()}
+            onClick={handleSave}
+            className="ui-btn-primary flex-1 disabled:opacity-50"
+          >
+            {isPending ? "Saving…" : "Save changes"}
+          </button>
+        </div>
+      }
+    >
       <div className="space-y-6">
         <Field label="Title" fieldId={titleFieldId}>
           {isNote ? (
@@ -431,24 +455,6 @@ export function ItemDetailsSheet({
           </Field>
         </DetailGroup>
 
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <button
-            type="button"
-            disabled={isPending}
-            onClick={handleCancel}
-            className="ui-btn-secondary flex-1"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            disabled={isPending || !form.title.trim()}
-            onClick={handleSave}
-            className="ui-btn-primary flex-1 disabled:opacity-50"
-          >
-            {isPending ? "Saving…" : "Save changes"}
-          </button>
-        </div>
       </div>
     </SimpleSheet>
   );

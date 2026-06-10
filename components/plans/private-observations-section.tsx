@@ -50,7 +50,7 @@ export function PrivateObservationsSection({
   const panelId = useId();
   const [observations, setObservations] =
     useState<SerializedObservation[]>(initialObservations);
-  const [expanded, setExpanded] = useState(initialObservations.length > 0);
+  const [expanded, setExpanded] = useState(false);
   const [category, setCategory] = useState<ObservationCategory>("BODY");
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -64,6 +64,13 @@ export function PrivateObservationsSection({
   useEffect(() => {
     setObservations(initialObservations);
   }, [initialObservations]);
+
+  useEffect(() => {
+    const isMobile = window.matchMedia("(max-width: 767px)").matches;
+    if (!isMobile && initialObservations.length > 0) {
+      setExpanded(true);
+    }
+  }, [initialObservations.length]);
 
   const countLabel = formatObservationCount(observations.length);
   const categorySummary = formatCategorySummary(observations);
@@ -175,10 +182,7 @@ export function PrivateObservationsSection({
           {expanded ? (
             <p className="text-xs text-muted-light">Only you can see these.</p>
           ) : (
-            <>
-              <p className="text-xs text-muted-light">Only you can see these.</p>
-              <p className="text-xs text-muted">{collapsedSummary}</p>
-            </>
+            <p className="text-xs text-muted">{collapsedSummary}</p>
           )}
         </div>
         <ChevronIcon

@@ -101,8 +101,33 @@ export function SharePlanPanel({ plan }: SharePlanPanelProps) {
         open={open}
         onClose={() => setOpen(false)}
         title="Copy as text"
+        footer={
+          <div className="space-y-2">
+            {copyError ? (
+              <p className="text-sm text-muted">
+                Clipboard unavailable — select the text above and copy manually.
+              </p>
+            ) : null}
+            {copied ? (
+              <p className="text-sm text-muted">Copied{isSaving ? "…" : ""}</p>
+            ) : null}
+            {saveWarning ? (
+              <p className="text-sm text-muted">
+                Copied, but export history was not saved.
+              </p>
+            ) : null}
+            <button
+              type="button"
+              disabled={!previewText.trim() || isSaving}
+              onClick={handleCopy}
+              className="ui-btn-primary w-full"
+            >
+              {copied ? "Copied" : "Copy to clipboard"}
+            </button>
+          </div>
+        }
       >
-        <div className="space-y-5">
+        <div className="space-y-4">
           <p className="text-sm text-muted">
             For messaging apps. Private items are excluded.
           </p>
@@ -153,35 +178,10 @@ export function SharePlanPanel({ plan }: SharePlanPanelProps) {
               readOnly
               dir="auto"
               value={previewText}
-              rows={14}
-              className="ui-textarea bg-accent-cream/50 font-mono text-xs"
+              rows={8}
+              className="ui-textarea max-h-48 bg-accent-cream/50 font-mono text-xs sm:max-h-64"
             />
           </label>
-
-          {copyError ? (
-            <p className="text-sm text-muted">
-              Clipboard unavailable — select the text above and copy manually.
-            </p>
-          ) : null}
-
-          {copied ? (
-            <p className="text-sm text-muted">Copied{isSaving ? "…" : ""}</p>
-          ) : null}
-
-          {saveWarning ? (
-            <p className="text-sm text-muted">
-              Copied, but export history was not saved.
-            </p>
-          ) : null}
-
-          <button
-            type="button"
-            disabled={!previewText.trim() || isSaving}
-            onClick={handleCopy}
-            className="ui-btn-primary w-full"
-          >
-            {copied ? "Copied" : "Copy to clipboard"}
-          </button>
         </div>
       </SimpleSheet>
     </>

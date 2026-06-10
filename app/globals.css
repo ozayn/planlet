@@ -354,6 +354,22 @@ body {
     color: var(--foreground);
   }
 
+  @media (max-width: 767px) {
+    .ui-icon-action {
+      height: 2.75rem;
+      width: 2.75rem;
+    }
+
+    .ui-icon-action-quiet {
+      height: 2.75rem;
+      width: 2.75rem;
+    }
+  }
+
+  .pb-safe-nav {
+    padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
+  }
+
   .ui-item-card-actions {
     opacity: 1;
     transition: opacity 0.15s;

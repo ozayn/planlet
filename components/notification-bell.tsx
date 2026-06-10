@@ -103,7 +103,7 @@ export function NotificationBell({
         }
         title="Notifications"
         onClick={() => setOpen((current) => !current)}
-        className="relative flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface text-muted transition-colors hover:bg-accent-cream hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+        className="relative flex min-h-11 min-w-11 items-center justify-center rounded-full border border-border bg-surface text-muted transition-colors hover:bg-accent-cream hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
       >
         <BellIcon className="h-4 w-4" />
         {unreadCount > 0 ? (
@@ -118,7 +118,7 @@ export function NotificationBell({
           id={menuId}
           role="menu"
           aria-label="Notifications"
-          className="absolute end-0 z-50 mt-2 w-80 max-w-[calc(100vw-2.5rem)] rounded-2xl border border-border-soft bg-surface ui-shadow-elevated"
+          className="absolute end-0 z-[70] mt-2 w-80 max-w-[calc(100vw-2.5rem)] rounded-2xl border border-border-soft bg-surface ui-shadow-elevated"
         >
           <div className="flex items-center justify-between gap-3 border-b border-border-soft px-4 py-3">
             <h2 className="text-sm font-semibold text-foreground">
@@ -141,7 +141,7 @@ export function NotificationBell({
               No notifications yet.
             </p>
           ) : (
-            <ul className="max-h-80 overflow-y-auto p-2">
+            <ul className="max-h-[min(20rem,calc(100dvh-10rem))] overflow-y-auto p-2">
               {notifications.map((notification) => {
                 const isUnread = !notification.readAt;
 

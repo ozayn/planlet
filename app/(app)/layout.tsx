@@ -47,7 +47,7 @@ export default async function AppLayout({
         unreadNotificationCount={unreadNotificationCount}
         notifications={serializedNotifications}
       />
-      <main className="mx-auto w-full max-w-2xl flex-1 px-5 pb-24 pt-5 md:max-w-3xl md:px-8 md:pb-10 md:pt-8">
+      <main className="mx-auto w-full max-w-2xl flex-1 px-5 pb-safe-nav pt-5 md:max-w-3xl md:px-8 md:pb-10 md:pt-8">
         {children}
       </main>
       <BottomNav />

@@ -139,7 +139,7 @@ export function StatusButton({
             id={menuId}
             role="menu"
             aria-label="Item status"
-            className="ui-shadow-elevated fixed z-50 max-h-[min(20rem,calc(100vh-1rem))] overflow-y-auto rounded-xl border border-border bg-surface py-1"
+            className="ui-shadow-elevated fixed z-[70] max-h-[min(20rem,calc(100dvh-1rem))] overflow-y-auto rounded-xl border border-border bg-surface py-1"
             style={{
               top: menuPosition.top,
               left: menuPosition.left,
