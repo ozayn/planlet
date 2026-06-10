@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { SettingsPlatformDetails } from "@/components/settings/settings-platform-details";
 import {
   isInstalledPwa,
   isIosDevice,
@@ -205,11 +206,10 @@ export function PushNotificationSettings({
           <p className="text-xs text-muted-light">Not available right now.</p>
         ) : null}
 
-        {state === "ios-install" ? (
+        {state === "ios-install" && !embedded ? (
           <p className="text-xs text-muted-light">
-            {embedded
-              ? "Install Planlet first."
-              : "Install Planlet to your Home Screen first, then open it from the icon."}
+            Install Planlet to your Home Screen first, then open it from the
+            icon.
           </p>
         ) : null}
 
@@ -248,6 +248,22 @@ export function PushNotificationSettings({
           <p className="text-sm text-accent-red" role="alert">
             {error}
           </p>
+        ) : null}
+
+        {embedded ? (
+          <div className="mt-2 space-y-0">
+            <SettingsPlatformDetails label="Apple / iPhone">
+              <p className="text-xs leading-relaxed text-muted">
+                Install Planlet to your Home Screen first. Then open it from the
+                new icon to enable notifications.
+              </p>
+            </SettingsPlatformDetails>
+            <SettingsPlatformDetails label="Android">
+              <p className="text-xs leading-relaxed text-muted">
+                Open Planlet in Chrome and allow notifications when prompted.
+              </p>
+            </SettingsPlatformDetails>
+          </div>
         ) : null}
       </div>
     </div>

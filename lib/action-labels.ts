@@ -72,6 +72,18 @@ export const ACTION_LABELS = {
     title: "Gratitude",
     ariaLabel: "Gratitude",
   },
+  moreGratitude: {
+    title: "More",
+    ariaLabel: "Gratitude actions",
+  },
+  editGratitude: {
+    title: "Edit",
+    ariaLabel: "Edit gratitude",
+  },
+  deleteGratitude: {
+    title: "Delete",
+    ariaLabel: "Delete gratitude",
+  },
   notifications: {
     title: "Notifications",
     ariaLabel: "Notifications",

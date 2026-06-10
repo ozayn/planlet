@@ -1,3 +1,5 @@
+import { SettingsPlatformDetails } from "@/components/settings/settings-platform-details";
+
 const APPLE_STEPS = [
   "Open Planlet in Safari.",
   "Tap Share.",
@@ -22,28 +24,6 @@ function InstallSteps({ steps }: { steps: readonly string[] }) {
   );
 }
 
-function InstallPlatformDetails({
-  label,
-  steps,
-}: {
-  label: string;
-  steps: readonly string[];
-}) {
-  return (
-    <details className="ui-settings-instruction-details group">
-      <summary className="ui-settings-instruction-summary">
-        <span>{label}</span>
-        <span className="text-muted-light" aria-hidden="true">
-          ▾
-        </span>
-      </summary>
-      <div className="pb-2 pt-1">
-        <InstallSteps steps={steps} />
-      </div>
-    </details>
-  );
-}
-
 export function SettingsInstallPlanlet() {
   return (
     <div className="ui-settings-row-block">
@@ -53,14 +33,13 @@ export function SettingsInstallPlanlet() {
       </p>
 
       <div className="mt-2 space-y-0">
-        <InstallPlatformDetails label="Apple / iPhone" steps={APPLE_STEPS} />
-        <InstallPlatformDetails label="Android" steps={ANDROID_STEPS} />
+        <SettingsPlatformDetails label="Apple / iPhone">
+          <InstallSteps steps={APPLE_STEPS} />
+        </SettingsPlatformDetails>
+        <SettingsPlatformDetails label="Android">
+          <InstallSteps steps={ANDROID_STEPS} />
+        </SettingsPlatformDetails>
       </div>
-
-      <p className="mt-2 text-xs text-muted-light">
-        <span className="text-muted">Note:</span> On iPhone, install Planlet to
-        your Home Screen before enabling phone notifications.
-      </p>
     </div>
   );
 }

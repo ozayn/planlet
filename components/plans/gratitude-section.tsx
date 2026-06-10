@@ -3,13 +3,21 @@
 import { format } from "date-fns";
 import { toZonedTime } from "date-fns-tz";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useState, useTransition } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useTransition,
+  type KeyboardEvent,
+} from "react";
 
 import {
   addPlanGratitudeAction,
   deletePlanGratitudeAction,
   updatePlanGratitudeAction,
 } from "@/app/(app)/plans/actions";
+import { GratitudeItemMenu } from "@/components/plans/gratitude-item-menu";
 import { ChevronDownIcon, LockIcon, SparklesIcon } from "@/components/ui/action-icons";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { APP_TIMEZONE } from "@/config/time";
@@ -34,6 +42,8 @@ export function GratitudeSection({
 }: GratitudeSectionProps) {
   const router = useRouter();
   const panelId = useId();
+  const bodyInputRef = useRef<HTMLTextAreaElement>(null);
+  const editInputRef = useRef<HTMLTextAreaElement>(null);
   const [gratitudes, setGratitudes] =
     useState<SerializedGratitude[]>(initialGratitudes);
   const [expanded, setExpanded] = useState(false);
@@ -56,13 +66,28 @@ export function GratitudeSection({
     }
   }, [initialGratitudes.length]);
 
+  useEffect(() => {
+    if (!editingId) {
+      return;
+    }
+
+    requestAnimationFrame(() => {
+      editInputRef.current?.focus();
+    });
+  }, [editingId]);
+
   const collapsedCount = String(gratitudes.length);
 
-  function handleAdd() {
+  function handleAdd(textOverride?: string) {
+    const textToSubmit = (textOverride ?? body).trim();
+    if (!textToSubmit) {
+      return;
+    }
+
     setError(null);
 
     startSubmit(async () => {
-      const result = await addPlanGratitudeAction(planId, body);
+      const result = await addPlanGratitudeAction(planId, textToSubmit);
 
       if (!result.success) {
         setError(result.error);
@@ -73,7 +98,25 @@ export function GratitudeSection({
       setExpanded(true);
       setGratitudes((current) => [...current, result.gratitude]);
       router.refresh();
+      requestAnimationFrame(() => {
+        bodyInputRef.current?.focus();
+      });
     });
+  }
+
+  function handleBodyKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+    if (event.key !== "Enter" || event.shiftKey) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const trimmed = body.trim();
+    if (!trimmed || isSubmitting) {
+      return;
+    }
+
+    handleAdd(trimmed);
   }
 
   function startEdit(gratitude: SerializedGratitude) {
@@ -89,11 +132,16 @@ export function GratitudeSection({
     setError(null);
   }
 
-  function handleSaveEdit(gratitudeId: string) {
+  function handleSaveEdit(gratitudeId: string, textOverride?: string) {
+    const textToSubmit = (textOverride ?? editBody).trim();
+    if (!textToSubmit) {
+      return;
+    }
+
     setError(null);
 
     startSubmit(async () => {
-      const result = await updatePlanGratitudeAction(gratitudeId, editBody);
+      const result = await updatePlanGratitudeAction(gratitudeId, textToSubmit);
 
       if (!result.success) {
         setError(result.error);
@@ -109,6 +157,30 @@ export function GratitudeSection({
       setEditBody("");
       router.refresh();
     });
+  }
+
+  function handleEditKeyDown(
+    event: KeyboardEvent<HTMLTextAreaElement>,
+    gratitudeId: string,
+  ) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      cancelEdit();
+      return;
+    }
+
+    if (event.key !== "Enter" || event.shiftKey) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const trimmed = editBody.trim();
+    if (!trimmed || isSubmitting) {
+      return;
+    }
+
+    handleSaveEdit(gratitudeId, trimmed);
   }
 
   function handleDelete(gratitudeId: string) {
@@ -165,22 +237,30 @@ export function GratitudeSection({
         <div id={panelId} className="mt-3 space-y-3">
           <p className="text-xs text-muted-light">{PRIVATE_SECTION_HELPER}</p>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
-            <textarea
-              id="gratitude-body"
-              name="gratitudeBody"
-              {...passwordManagerSafeControlProps}
-              value={body}
-              onChange={(event) => setBody(event.target.value)}
-              placeholder="What are you grateful for?"
-              rows={2}
-              dir="auto"
-              aria-label="What are you grateful for?"
-              className="ui-input min-h-9 flex-1 resize-y py-2"
-            />
+            <div className="min-w-0 flex-1 space-y-1">
+              <textarea
+                ref={bodyInputRef}
+                id="gratitude-body"
+                name="gratitudeBody"
+                {...passwordManagerSafeControlProps}
+                value={body}
+                onChange={(event) => setBody(event.target.value)}
+                onKeyDown={handleBodyKeyDown}
+                placeholder="What are you grateful for?"
+                rows={2}
+                dir="auto"
+                aria-label="What are you grateful for?"
+                className="ui-input min-h-9 w-full resize-y py-2"
+              />
+              <p className="text-xs text-muted-light">
+                Enter to add · Shift+Enter for a new line
+              </p>
+            </div>
             <button
               type="button"
-              onClick={handleAdd}
+              onClick={() => handleAdd()}
               disabled={isSubmitting || !body.trim()}
+              aria-label="Add gratitude"
               {...passwordManagerSafeControlProps}
               className="ui-btn-secondary ui-btn-compact min-h-9 shrink-0 px-4"
             >
@@ -189,22 +269,21 @@ export function GratitudeSection({
           </div>
 
           {gratitudes.length > 0 ? (
-            <ul className="space-y-2">
+            <ul className="divide-y divide-border-soft/70">
               {gratitudes.map((gratitude) =>
                 editingId === gratitude.id ? (
-                  <li
-                    key={gratitude.id}
-                    className="space-y-2 rounded-xl border border-border-soft bg-surface px-3 py-2.5"
-                  >
+                  <li key={gratitude.id} className="space-y-2 py-2.5">
                     <textarea
+                      ref={editInputRef}
                       id={`gratitude-edit-body-${gratitude.id}`}
                       name={`gratitudeEditBody-${gratitude.id}`}
                       {...passwordManagerSafeControlProps}
                       value={editBody}
                       onChange={(event) => setEditBody(event.target.value)}
+                      onKeyDown={(event) => handleEditKeyDown(event, gratitude.id)}
                       rows={2}
                       dir="auto"
-                      aria-label="Edit gratitude"
+                      aria-label={ACTION_LABELS.editGratitude.ariaLabel}
                       className="ui-input min-h-9 w-full resize-y py-2"
                     />
                     <div className="flex gap-2">
@@ -230,7 +309,7 @@ export function GratitudeSection({
                 ) : (
                   <li
                     key={gratitude.id}
-                    className="group flex items-start justify-between gap-3 rounded-xl border border-border-soft/80 bg-surface/60 px-3 py-2.5"
+                    className="flex items-start justify-between gap-2 py-2.5"
                   >
                     <div className="min-w-0 flex-1">
                       <p
@@ -243,27 +322,11 @@ export function GratitudeSection({
                         {formatGratitudeTime(gratitude.createdAt)}
                       </p>
                     </div>
-                    <div className="flex shrink-0 items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
-                      <button
-                        type="button"
-                        onClick={() => startEdit(gratitude)}
-                        {...passwordManagerSafeControlProps}
-                        className="ui-btn-ghost min-h-8 px-2 text-xs"
-                        aria-label="Edit gratitude"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setConfirmDeleteId(gratitude.id)}
-                        disabled={deletingId === gratitude.id}
-                        {...passwordManagerSafeControlProps}
-                        className="ui-btn-ghost min-h-8 px-2 text-xs text-muted"
-                        aria-label="Delete gratitude"
-                      >
-                        Delete
-                      </button>
-                    </div>
+                    <GratitudeItemMenu
+                      onEdit={() => startEdit(gratitude)}
+                      onDelete={() => setConfirmDeleteId(gratitude.id)}
+                      deleting={deletingId === gratitude.id}
+                    />
                   </li>
                 ),
               )}
@@ -276,8 +339,8 @@ export function GratitudeSection({
 
       <ConfirmDialog
         open={confirmDeleteId !== null}
-        title="Delete gratitude?"
-        confirmLabel="Delete"
+        title="Delete this gratitude?"
+        confirmLabel={ACTION_LABELS.deleteGratitude.title}
         onConfirm={() => {
           if (confirmDeleteId) {
             handleDelete(confirmDeleteId);
