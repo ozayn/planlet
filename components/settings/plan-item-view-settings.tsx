@@ -5,7 +5,12 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { updatePlanItemViewAction } from "@/app/(app)/settings/actions";
-import { PLAN_ITEM_VIEW_OPTIONS } from "@/lib/plan-item-view";
+import { PlanItemStatusVisual } from "@/components/plans/plan-item-status-visual";
+import {
+  isExpressiveItemView,
+  PLAN_ITEM_VIEW_OPTIONS,
+} from "@/lib/plan-item-view";
+import { getStatusIcon } from "@/lib/plan-status";
 
 type PlanItemViewSettingsProps = {
   value: PlanItemView;
@@ -47,8 +52,8 @@ export function PlanItemViewSettings({ value }: PlanItemViewSettingsProps) {
       <h2 className="ui-label">Planning preferences</h2>
 
       <fieldset className="space-y-2">
-        <legend className="sr-only">Plan item view</legend>
-        <p className="text-sm font-medium text-foreground">Plan item view</p>
+        <legend className="sr-only">Plan item style</legend>
+        <p className="text-sm font-medium text-foreground">Plan item style</p>
 
         <div className="flex flex-wrap gap-2">
           {PLAN_ITEM_VIEW_OPTIONS.map((option) => (
@@ -73,6 +78,26 @@ export function PlanItemViewSettings({ value }: PlanItemViewSettingsProps) {
         </div>
 
         <p className="text-xs text-muted-light">{activeOption.helper}</p>
+
+        <div className="flex flex-wrap items-center gap-4 pt-1 text-sm text-muted">
+          {isExpressiveItemView(selected) ? (
+            <>
+              <span>{getStatusIcon("OPEN")} Open</span>
+              <span>{getStatusIcon("DONE")} Done</span>
+            </>
+          ) : (
+            <>
+              <span className="inline-flex items-center gap-1.5">
+                <PlanItemStatusVisual status="OPEN" itemView="MINIMAL" className="h-3.5 w-3.5" />
+                Open
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <PlanItemStatusVisual status="DONE" itemView="MINIMAL" className="h-3.5 w-3.5" />
+                Done
+              </span>
+            </>
+          )}
+        </div>
       </fieldset>
 
       {error ? (

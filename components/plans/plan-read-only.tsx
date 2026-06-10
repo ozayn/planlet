@@ -1,13 +1,13 @@
 import type { KudosType, PlanItemView } from "@/app/generated/prisma/client";
 
-import { PlanItemStatusIcon } from "@/components/plans/plan-item-status-icon";
-
+import { PlanItemStatusVisual } from "@/components/plans/plan-item-status-visual";
 import { SendKudosPanel } from "@/components/plans/send-kudos-panel";
 import { SharePlanPanel } from "@/components/plans/share-plan-panel";
 import { formatDateRange } from "@/lib/dates";
 import { getPlanItemTypeLabel } from "@/lib/plan-labels";
+import { isExpressiveItemView } from "@/lib/plan-item-view";
 import { partitionPlanItems } from "@/lib/plan-item-sections";
-import { getStatusIcon, getStatusLabel, STATUS_STYLES } from "@/lib/plan-status";
+import { getStatusLabel, STATUS_STYLES } from "@/lib/plan-status";
 import type { SerializedPlan, SerializedPlanItem } from "@/lib/plan-serialize";
 
 type ViewerKudos = {
@@ -39,7 +39,7 @@ function ReadOnlyTaskItem({
   depth?: number;
   itemView?: PlanItemView;
 }) {
-  const isChecklist = itemView === "CHECKLIST";
+  const isExpressive = isExpressiveItemView(itemView);
   return (
     <article className={depth > 0 ? "ms-4 border-s border-border-soft ps-3" : ""}>
       <div
@@ -50,23 +50,19 @@ function ReadOnlyTaskItem({
           aria-hidden="true"
         />
         <div className="flex items-center gap-2 ps-1.5">
-          {isChecklist ? (
-            <span
-              className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-border bg-surface/80 ${STATUS_STYLES[item.status].icon}`}
-              title={getStatusLabel(item.status)}
-              aria-label={getStatusLabel(item.status)}
-            >
-              <PlanItemStatusIcon status={item.status} className="h-5 w-5" />
-            </span>
-          ) : (
-            <span
-              className={`text-sm ${STATUS_STYLES[item.status].icon}`}
-              title={getStatusLabel(item.status)}
-              aria-label={getStatusLabel(item.status)}
-            >
-              {getStatusIcon(item.status)}
-            </span>
-          )}
+          <span
+            className={`inline-flex shrink-0 items-center justify-center ${STATUS_STYLES[item.status].icon} ${
+              isExpressive ? "text-base leading-none" : ""
+            }`}
+            title={getStatusLabel(item.status)}
+            aria-label={getStatusLabel(item.status)}
+          >
+            <PlanItemStatusVisual
+              status={item.status}
+              itemView={itemView}
+              className={isExpressive ? "text-base leading-none" : "h-3.5 w-3.5"}
+            />
+          </span>
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-foreground" dir="auto">
               {item.title}

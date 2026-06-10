@@ -1,6 +1,7 @@
 import type { PlanItemStatus } from "@/app/generated/prisma/client";
 
-const STATUS_ICONS: Record<PlanItemStatus, string> = {
+/** Expressive (CHECKLIST) view — prominent emoji status icons. */
+export const EXPRESSIVE_STATUS_ICONS: Record<PlanItemStatus, string> = {
   OPEN: "☐",
   DONE: "✅",
   PARTIAL: "◐",
@@ -8,6 +9,8 @@ const STATUS_ICONS: Record<PlanItemStatus, string> = {
   SKIPPED: "⏭",
   RELEASED: "🕊",
 };
+
+const STATUS_ICONS = EXPRESSIVE_STATUS_ICONS;
 
 const STATUS_LABELS: Record<PlanItemStatus, string> = {
   OPEN: "Open",

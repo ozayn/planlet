@@ -6,7 +6,8 @@ import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 
 import { updatePlanItemStatusAction } from "@/app/(app)/plans/actions";
-import { PlanItemStatusIcon } from "@/components/plans/plan-item-status-icon";
+import { PlanItemStatusVisual } from "@/components/plans/plan-item-status-visual";
+import { isExpressiveItemView } from "@/lib/plan-item-view";
 import { getStatusLabel, STATUS_STYLES } from "@/lib/plan-status";
 
 const STATUSES: PlanItemStatus[] = [
@@ -51,6 +52,7 @@ export function StatusButton({
   const containerRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const currentLabel = getStatusLabel(status);
+  const isExpressive = isExpressiveItemView(itemView);
 
   useEffect(() => {
     setMounted(true);
@@ -118,13 +120,17 @@ export function StatusButton({
     });
   }
 
-  const isChecklist = itemView === "CHECKLIST";
-  const triggerClass = isChecklist
-    ? "h-9 w-9 justify-center rounded-full border-2 p-0"
+  const triggerClass = isExpressive
+    ? compact
+      ? "min-h-8 min-w-[6.5rem] gap-1.5 px-2 text-xs sm:min-w-[7rem] sm:text-sm"
+      : "min-h-10 min-w-[8rem] gap-2 px-2.5 text-sm"
     : compact
       ? "h-8 min-w-[5.5rem] max-w-[6.5rem] gap-1 px-2 text-[0.6875rem] sm:min-w-[6rem] sm:text-xs"
       : "min-h-10 min-w-[7.5rem] gap-1.5 px-2.5 text-sm";
-  const iconClass = isChecklist ? "h-5 w-5" : "h-3.5 w-3.5";
+  const iconClass = isExpressive
+    ? "text-base leading-none"
+    : "h-3.5 w-3.5";
+  const menuIconClass = isExpressive ? "text-base leading-none" : "h-3.5 w-3.5";
 
   const menu =
     open && mounted
@@ -160,7 +166,11 @@ export function StatusButton({
                     className={`flex h-4 w-4 shrink-0 items-center justify-center ${STATUS_STYLES[value].icon}`}
                     aria-hidden="true"
                   >
-                    <PlanItemStatusIcon status={value} className="h-3.5 w-3.5" />
+                    <PlanItemStatusVisual
+                      status={value}
+                      itemView={itemView}
+                      className={menuIconClass}
+                    />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-medium text-foreground">
@@ -195,31 +205,25 @@ export function StatusButton({
         aria-label={`Item status, ${currentLabel}`}
         title={currentLabel}
         onClick={() => setOpen((current) => !current)}
-        className={`inline-flex items-center rounded-full border bg-surface/80 font-medium text-foreground transition-colors hover:border-border hover:bg-accent-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-subtle)] disabled:opacity-50 ${STATUS_STYLES[status].icon} ${
-          isChecklist
-            ? "border-border"
-            : "border-border-soft"
-        } ${triggerClass}`}
+        className={`inline-flex items-center rounded-full border border-border-soft bg-surface/80 font-medium text-foreground transition-colors hover:border-border hover:bg-accent-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-subtle)] disabled:opacity-50 ${STATUS_STYLES[status].icon} ${triggerClass}`}
       >
         <span
           className={`flex shrink-0 items-center justify-center ${
-            isChecklist ? "" : "h-4 w-4"
+            isExpressive ? "" : "h-4 w-4"
           }`}
         >
-          <PlanItemStatusIcon status={status} className={iconClass} />
+          <PlanItemStatusVisual
+            status={status}
+            itemView={itemView}
+            className={iconClass}
+          />
         </span>
-        {!isChecklist ? (
-          <>
-            <span className="min-w-0 flex-1 truncate text-start">
-              {currentLabel}
-            </span>
-            <ChevronIcon
-              className={`h-3 w-3 shrink-0 text-muted-light transition-transform ${
-                open ? "rotate-180" : ""
-              }`}
-            />
-          </>
-        ) : null}
+        <span className="min-w-0 flex-1 truncate text-start">{currentLabel}</span>
+        <ChevronIcon
+          className={`h-3 w-3 shrink-0 text-muted-light transition-transform ${
+            open ? "rotate-180" : ""
+          }`}
+        />
       </button>
       {menu}
     </div>
