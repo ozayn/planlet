@@ -269,6 +269,124 @@ body {
     color: var(--foreground);
   }
 
+  .ui-settings-page {
+    padding-bottom: 0.5rem;
+  }
+
+  .ui-settings-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .ui-settings-section-title {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted-light);
+  }
+
+  .ui-settings-section-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.625rem;
+    border-radius: 0.75rem;
+    border: 1px solid var(--border-soft);
+    background: var(--surface);
+    padding: 0.75rem;
+  }
+
+  .ui-settings-profile {
+    min-height: 2.5rem;
+  }
+
+  .ui-settings-sign-out {
+    min-height: 2.75rem;
+    align-self: flex-start;
+    padding-inline: 0.125rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--muted);
+    transition: color 0.15s;
+  }
+
+  .ui-settings-sign-out:hover {
+    color: var(--foreground);
+  }
+
+  .ui-settings-sign-out:focus-visible {
+    outline: none;
+    border-radius: 0.25rem;
+    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--focus-ring);
+  }
+
+  .ui-settings-row-block {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .ui-settings-row-block + .ui-settings-row-block {
+    padding-top: 0.625rem;
+    border-top: 1px solid var(--border-soft);
+  }
+
+  .ui-settings-fieldset {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    min-width: 0;
+  }
+
+  .ui-settings-details {
+    border-radius: 0.75rem;
+    border: 1px solid var(--border-soft);
+    background: var(--surface);
+  }
+
+  .ui-settings-details-summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 0.75rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted-light);
+  }
+
+  .ui-settings-details-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .ui-settings-details-summary::before {
+    content: "▸ ";
+  }
+
+  .ui-settings-details[open] .ui-settings-details-summary::before {
+    content: "▾ ";
+  }
+
+  .ui-settings-details-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    border-top: 1px solid var(--border-soft);
+    padding: 0.625rem 0.75rem 0.75rem;
+  }
+
+  .ui-settings-info-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    font-size: 0.8125rem;
+    line-height: 1.35;
+  }
+
   .ui-plans-page {
     padding-bottom: 0.5rem;
   }

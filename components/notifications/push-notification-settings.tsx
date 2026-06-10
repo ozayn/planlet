@@ -25,7 +25,14 @@ type PushSettingsState =
   | "subscribed"
   | "denied";
 
-export function PushNotificationSettings() {
+type PushNotificationSettingsProps = {
+  /** When true, omit section heading and use compact copy for settings list. */
+  embedded?: boolean;
+};
+
+export function PushNotificationSettings({
+  embedded = false,
+}: PushNotificationSettingsProps) {
   const [state, setState] = useState<PushSettingsState>("loading");
   const [error, setError] = useState<string | null>(null);
   const [isWorking, setIsWorking] = useState(false);
@@ -175,67 +182,62 @@ export function PushNotificationSettings() {
     }
   }
 
-  return (
-    <div className="space-y-3">
-      <h2 className="ui-label">Notifications</h2>
+  const rowClass = embedded ? "ui-settings-row-block" : "space-y-2";
 
-      <div className="space-y-2">
+  return (
+    <div className={embedded ? "" : "space-y-3"}>
+      {embedded ? null : <h2 className="ui-label">Notifications</h2>}
+
+      <div className={rowClass}>
         <p className="text-sm font-medium text-foreground">Phone notifications</p>
 
         {state === "loading" ? (
-          <p className="text-sm text-muted">Checking notification support…</p>
+          <p className="text-xs text-muted-light">Checking…</p>
         ) : null}
 
         {state === "unsupported" ? (
-          <p className="text-sm text-muted">
-            Phone notifications are not supported in this browser.
+          <p className="text-xs text-muted-light">
+            Not supported in this browser.
           </p>
         ) : null}
 
         {state === "disabled" ? (
-          <p className="text-sm text-muted">
-            Phone notifications are not available right now.
-          </p>
+          <p className="text-xs text-muted-light">Not available right now.</p>
         ) : null}
 
         {state === "ios-install" ? (
-          <p className="text-sm text-muted">
-            On iPhone, add Planlet to your Home Screen first, then open it from
-            the icon to enable notifications.
+          <p className="text-xs text-muted-light">
+            {embedded
+              ? "On iPhone, install Planlet first."
+              : "On iPhone, add Planlet to your Home Screen first, then open it from the icon to enable notifications."}
           </p>
         ) : null}
 
         {state === "denied" ? (
-          <p className="text-sm text-muted">
-            Notifications are blocked in your browser settings.
+          <p className="text-xs text-muted-light">
+            Blocked in your browser settings.
           </p>
         ) : null}
 
         {state === "default" ? (
-          <div className="space-y-2">
-            <p className="text-xs text-muted-light">
-              Get a system notification when someone shares a plan with you or
-              sends kudos.
-            </p>
-            <button
-              type="button"
-              onClick={handleEnable}
-              disabled={isWorking}
-              className="ui-btn-secondary"
-            >
-              {isWorking ? "Enabling…" : "Enable notifications"}
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={handleEnable}
+            disabled={isWorking}
+            className="ui-btn-secondary ui-btn-compact min-h-10"
+          >
+            {isWorking ? "Enabling…" : "Enable notifications"}
+          </button>
         ) : null}
 
         {state === "subscribed" ? (
-          <div className="flex flex-wrap items-center gap-3">
-            <p className="text-sm text-muted">Notifications enabled</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-muted-light">Enabled</span>
             <button
               type="button"
               onClick={handleDisable}
               disabled={isWorking}
-              className="ui-btn-secondary ui-btn-compact"
+              className="ui-btn-secondary ui-btn-compact min-h-9 px-3 text-xs"
             >
               {isWorking ? "Turning off…" : "Turn off"}
             </button>

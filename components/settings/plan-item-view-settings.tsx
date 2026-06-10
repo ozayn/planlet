@@ -6,6 +6,7 @@ import { useState, useTransition } from "react";
 
 import { updatePlanItemViewAction } from "@/app/(app)/settings/actions";
 import { PlanItemStatusVisual } from "@/components/plans/plan-item-status-visual";
+import { SettingsSection } from "@/components/settings/settings-section";
 import {
   isExpressiveItemView,
   PLAN_ITEM_VIEW_OPTIONS,
@@ -21,10 +22,6 @@ export function PlanItemViewSettings({ value }: PlanItemViewSettingsProps) {
   const [selected, setSelected] = useState(value);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-
-  const activeOption =
-    PLAN_ITEM_VIEW_OPTIONS.find((option) => option.value === selected) ??
-    PLAN_ITEM_VIEW_OPTIONS[0];
 
   function handleChange(nextValue: PlanItemView) {
     if (nextValue === selected || isPending) {
@@ -48,18 +45,16 @@ export function PlanItemViewSettings({ value }: PlanItemViewSettingsProps) {
   }
 
   return (
-    <div className="space-y-3">
-      <h2 className="ui-label">Planning preferences</h2>
+    <SettingsSection title="Planning">
+      <fieldset className="ui-settings-fieldset">
+        <legend className="sr-only">Item style</legend>
+        <p className="text-sm font-medium text-foreground">Item style</p>
 
-      <fieldset className="space-y-2">
-        <legend className="sr-only">Plan item style</legend>
-        <p className="text-sm font-medium text-foreground">Plan item style</p>
-
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5">
           {PLAN_ITEM_VIEW_OPTIONS.map((option) => (
             <label
               key={option.value}
-              className={`flex min-h-11 cursor-pointer items-center rounded-xl px-4 text-sm transition-colors ${
+              className={`flex min-h-10 cursor-pointer items-center rounded-lg px-3 text-sm transition-colors ${
                 selected === option.value ? "ui-segment-active" : "ui-segment"
               }`}
             >
@@ -78,27 +73,41 @@ export function PlanItemViewSettings({ value }: PlanItemViewSettingsProps) {
           ))}
         </div>
 
-        <p className="text-xs text-muted-light">{activeOption.helper}</p>
+        {isExpressiveItemView(selected) ? (
+          <p className="text-xs text-muted-light">
+            Expressive uses visible status marks.
+          </p>
+        ) : null}
 
-        <div className="flex flex-wrap items-center gap-4 pt-1 text-sm text-muted">
+        <p className="flex flex-wrap items-center gap-3 text-xs text-muted-light">
           {isExpressiveItemView(selected) ? (
             <>
               <span>{getStatusIcon("OPEN")} Open</span>
+              <span aria-hidden="true">·</span>
               <span>{getStatusIcon("DONE")} Done</span>
             </>
           ) : (
             <>
               <span className="inline-flex items-center gap-1.5">
-                <PlanItemStatusVisual status="OPEN" itemView="MINIMAL" className="h-3.5 w-3.5" />
+                <PlanItemStatusVisual
+                  status="OPEN"
+                  itemView="MINIMAL"
+                  className="h-3.5 w-3.5"
+                />
                 Open
               </span>
+              <span aria-hidden="true">·</span>
               <span className="inline-flex items-center gap-1.5">
-                <PlanItemStatusVisual status="DONE" itemView="MINIMAL" className="h-3.5 w-3.5" />
+                <PlanItemStatusVisual
+                  status="DONE"
+                  itemView="MINIMAL"
+                  className="h-3.5 w-3.5"
+                />
                 Done
               </span>
             </>
           )}
-        </div>
+        </p>
       </fieldset>
 
       {error ? (
@@ -106,6 +115,6 @@ export function PlanItemViewSettings({ value }: PlanItemViewSettingsProps) {
           {error}
         </p>
       ) : null}
-    </div>
+    </SettingsSection>
   );
 }

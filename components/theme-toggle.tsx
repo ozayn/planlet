@@ -35,20 +35,14 @@ export function ThemeToggle({ variant = "full" }: ThemeToggleProps) {
     }
 
     return (
-      <div className="space-y-3">
-        <h2 className="ui-label">Appearance</h2>
-        <div className="flex items-center gap-3">
-          <span className={LABEL_CLASS} aria-hidden="true">
-            Day
-          </span>
-          <TogglePlaceholder variant="full" />
-          <span className={LABEL_CLASS} aria-hidden="true">
-            Night
-          </span>
-        </div>
-        <p className="text-xs text-muted-light">
-          Choose the app&apos;s color mode.
-        </p>
+      <div className="flex items-center gap-3">
+        <span className={LABEL_CLASS} aria-hidden="true">
+          Day
+        </span>
+        <TogglePlaceholder variant="full" />
+        <span className={LABEL_CLASS} aria-hidden="true">
+          Night
+        </span>
       </div>
     );
   }
@@ -99,28 +93,22 @@ export function ThemeToggle({ variant = "full" }: ThemeToggleProps) {
   }
 
   return (
-    <div className="space-y-3">
-      <h2 className="ui-label">Appearance</h2>
-      <div className="flex items-center gap-3">
-        <span
-          className={`${LABEL_CLASS} ${
-            !isNight ? "text-foreground" : "text-muted"
-          }`}
-        >
-          Day
-        </span>
-        {switchControl}
-        <span
-          className={`${LABEL_CLASS} ${
-            isNight ? "text-foreground" : "text-muted"
-          }`}
-        >
-          Night
-        </span>
-      </div>
-      <p className="text-xs text-muted-light">
-        Choose the app&apos;s color mode.
-      </p>
+    <div className="flex items-center gap-3">
+      <span
+        className={`${LABEL_CLASS} ${
+          !isNight ? "text-foreground" : "text-muted"
+        }`}
+      >
+        Day
+      </span>
+      {switchControl}
+      <span
+        className={`${LABEL_CLASS} ${
+          isNight ? "text-foreground" : "text-muted"
+        }`}
+      >
+        Night
+      </span>
     </div>
   );
 }
