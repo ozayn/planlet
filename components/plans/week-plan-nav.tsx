@@ -9,6 +9,7 @@ import {
   parseDateString,
   shiftWeekString,
 } from "@/lib/dates";
+import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 
 type WeekPlanNavProps = {
   currentWeekStart: string;
@@ -33,6 +34,7 @@ export function WeekPlanNav({ currentWeekStart }: WeekPlanNavProps) {
         <Link
           href={`/plans/week/${shiftWeekString(currentWeekStart, -1)}`}
           className="ui-plan-date-nav-btn"
+          {...passwordManagerSafeControlProps}
         >
           Previous week
         </Link>
@@ -43,6 +45,7 @@ export function WeekPlanNav({ currentWeekStart }: WeekPlanNavProps) {
             currentWeekStart === thisWeekStart ? " ui-plan-date-nav-btn-active" : ""
           }`}
           aria-current={currentWeekStart === thisWeekStart ? "page" : undefined}
+          {...passwordManagerSafeControlProps}
         >
           This week
         </Link>
@@ -50,6 +53,7 @@ export function WeekPlanNav({ currentWeekStart }: WeekPlanNavProps) {
         <Link
           href={`/plans/week/${shiftWeekString(currentWeekStart, 1)}`}
           className="ui-plan-date-nav-btn"
+          {...passwordManagerSafeControlProps}
         >
           Next week
         </Link>
@@ -61,6 +65,7 @@ export function WeekPlanNav({ currentWeekStart }: WeekPlanNavProps) {
           id="week-plan-nav-date"
           name="weekPlanNavDate"
           type="date"
+          {...passwordManagerSafeControlProps}
           value={pickerValue}
           onChange={(event) => {
             const value = event.target.value;

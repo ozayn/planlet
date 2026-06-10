@@ -27,8 +27,8 @@ export function MobileAppBar({
   notifications = [],
 }: MobileAppBarProps) {
   return (
-    <header className="sticky top-0 z-40 border-b border-border-soft bg-surface/95 pt-[env(safe-area-inset-top,0px)] backdrop-blur md:hidden">
-      <div className="mx-auto flex max-w-2xl items-center justify-between gap-3 px-5 py-2.5">
+    <header className="ui-mobile-app-bar sticky top-0 z-40 border-b border-border-soft bg-surface/95 pt-[env(safe-area-inset-top,0px)] backdrop-blur md:hidden">
+      <div className="ui-mobile-app-bar-inner mx-auto flex max-w-2xl items-center justify-between gap-3 px-5 py-2.5">
         <Link
           href="/today"
           className="flex items-center text-foreground transition-opacity hover:opacity-80"

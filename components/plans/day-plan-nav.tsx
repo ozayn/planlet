@@ -8,6 +8,7 @@ import {
   formatDateString,
   shiftDateString,
 } from "@/lib/dates";
+import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 
 type DayPlanNavProps = {
   currentDate: string;
@@ -41,6 +42,7 @@ export function DayPlanNav({
         <Link
           href={`/plans/day/${shiftDateString(currentDate, -1)}`}
           className="ui-plan-date-nav-btn"
+          {...passwordManagerSafeControlProps}
         >
           Previous day
         </Link>
@@ -52,6 +54,7 @@ export function DayPlanNav({
               currentDate === today ? " ui-plan-date-nav-btn-active" : ""
             }`}
             aria-current={currentDate === today ? "page" : undefined}
+            {...passwordManagerSafeControlProps}
           >
             Today
           </Link>
@@ -60,6 +63,7 @@ export function DayPlanNav({
         <Link
           href={`/plans/day/${shiftDateString(currentDate, 1)}`}
           className="ui-plan-date-nav-btn"
+          {...passwordManagerSafeControlProps}
         >
           Next day
         </Link>
@@ -71,6 +75,7 @@ export function DayPlanNav({
           id="day-plan-nav-date"
           name="dayPlanNavDate"
           type="date"
+          {...passwordManagerSafeControlProps}
           value={pickerValue}
           onChange={(event) => {
             const value = event.target.value;

@@ -101,6 +101,40 @@
 - Focus rings via `--focus-ring` in day and night mode
 - Touch targets ≥44px on primary mobile icon actions
 
+## Mobile landscape (phone rotated)
+
+**Target:** `max-height: 520px` + `orientation: landscape` (e.g. 667×375, 844×390, 915×412)
+
+### Behavior
+
+| Area | Portrait mobile | Phone landscape |
+|------|-----------------|-----------------|
+| Task title lines | 1 line (`line-clamp-1`) | 2 lines (`line-clamp-2`) |
+| Task metadata (type · time · subtasks) | Shown below title | Hidden to save vertical space |
+| Status control | Standard compact width | Narrower (~4.25–5rem) |
+| Item action icons | 44×44px | 36×36px (still tappable) |
+| Bottom nav | Icon + label, 60px tall | Icon-only (sr-only labels), ~44px |
+| Page / plan spacing | Default | Tighter section gaps |
+| Add item form | Stacked kind + input row | Single horizontal row when possible |
+
+### Fixes
+
+- Added landscape media block in `app/globals.css` with hooks on plan item, editor, header, nav, and form classes.
+- `plan-item-card.tsx`: semantic row/content/title classes; title uses `line-clamp` instead of hard `truncate`.
+- Touch landscape width ≥768px no longer hides item actions until hover (`pointer: fine` required) — fixes missing action icons on rotated phones.
+- Sheets/menus unchanged; `dvh` sizing still applies in landscape.
+
+### Screens checked (landscape)
+
+- `/today` — task list, add item, date nav, copy sheet
+- `/plans/[id]` — plan editor header + tasks
+
+### Landscape limitations
+
+- Very long titles still clamp at 2 lines in landscape; tap to edit for full text.
+- Bottom nav labels are visually hidden in landscape (icons remain; labels stay for screen readers).
+- Intention/note cards do not yet get the 2-line title treatment (tasks only).
+
 ## Remaining recommendations
 
 1. **Keyboard overlap:** Long forms in task details may still need manual scroll when the software keyboard opens; consider `visualViewport` resize padding if reported in the field.
@@ -151,3 +185,13 @@
 
 - [ ] Notification panel scrolls
 - [ ] Profile menu fits on screen
+
+### `/today` mobile landscape (667×375, 844×390, 915×412)
+
+- [ ] Long English task title shows more text than portrait (2 lines vs 1)
+- [ ] Long Persian task title shows more text than portrait
+- [ ] Status menu still opens
+- [ ] Item action icons visible and tappable
+- [ ] Bottom nav does not cover content
+- [ ] Copy as text modal — Copy to clipboard still reachable
+- [ ] Day / night mode stable

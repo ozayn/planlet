@@ -77,13 +77,13 @@ export function AddItemForm({
       onSubmit={handleSubmit}
       className={
         compact
-          ? "space-y-1.5"
-          : "space-y-2"
+          ? "ui-add-item-form ui-add-item-form-compact space-y-1.5"
+          : "ui-add-item-form space-y-2"
       }
     >
       {showKindSelector ? (
         <div
-          className="flex flex-wrap gap-1.5"
+          className="ui-add-item-kind flex flex-wrap gap-1.5"
           role="group"
           aria-label="Item type"
         >
@@ -107,8 +107,8 @@ export function AddItemForm({
       <div
         className={
           compact
-            ? "flex items-center gap-1.5 rounded-lg border border-dashed border-border-soft bg-surface-muted/50 px-2 py-1"
-            : "ui-plan-item flex items-center gap-2 px-3 py-2"
+            ? "ui-add-item-row flex items-center gap-1.5 rounded-lg border border-dashed border-border-soft bg-surface-muted/50 px-2 py-1"
+            : "ui-add-item-row ui-plan-item flex items-center gap-2 px-3 py-2"
         }
       >
         <input

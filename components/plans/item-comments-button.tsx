@@ -4,26 +4,46 @@ import { useState } from "react";
 
 import { CommentIcon } from "@/components/plans/item-action-icons";
 import { ItemCommentsPanel } from "@/components/plans/item-comments-panel";
+import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 
 type ItemCommentsButtonProps = {
   itemId: string;
   itemTitle: string;
   commentCount?: number;
+  showButton?: boolean;
+  buttonClassName?: string;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 export function ItemCommentsButton({
   itemId,
   itemTitle,
   commentCount = 0,
+  showButton = true,
+  buttonClassName = "",
+  open: controlledOpen,
+  onOpenChange,
 }: ItemCommentsButtonProps) {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+
+  function setOpen(nextOpen: boolean) {
+    if (onOpenChange) {
+      onOpenChange(nextOpen);
+      return;
+    }
+    setInternalOpen(nextOpen);
+  }
 
   return (
     <>
+      {showButton ? (
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="ui-icon-action-quiet"
+        {...passwordManagerSafeControlProps}
+        className={`ui-icon-action-quiet${buttonClassName ? ` ${buttonClassName}` : ""}`}
         aria-label="Comments"
         title="Comments"
       >
@@ -37,6 +57,7 @@ export function ItemCommentsButton({
           Comments{commentCount > 0 ? ` (${commentCount})` : ""}
         </span>
       </button>
+      ) : null}
 
       <ItemCommentsPanel
         itemId={itemId}

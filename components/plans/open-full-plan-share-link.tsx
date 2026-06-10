@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
+
 const LABEL = "Open full plan to share inside Planlet";
 
 type OpenFullPlanShareLinkProps = {
@@ -13,6 +15,7 @@ export function OpenFullPlanShareLink({ href }: OpenFullPlanShareLinkProps) {
       aria-label={LABEL}
       title={LABEL}
       className="ui-icon-action"
+      {...passwordManagerSafeControlProps}
     >
       <ShareIcon className="h-4 w-4" aria-hidden="true" />
       <span className="ui-tooltip-bubble" role="tooltip">

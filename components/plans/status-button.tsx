@@ -8,6 +8,7 @@ import { createPortal } from "react-dom";
 import { updatePlanItemStatusAction } from "@/app/(app)/plans/actions";
 import { PlanItemStatusVisual } from "@/components/plans/plan-item-status-visual";
 import { isExpressiveItemView } from "@/lib/plan-item-view";
+import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 import { getStatusLabel, STATUS_STYLES } from "@/lib/plan-status";
 
 const STATUSES: PlanItemStatus[] = [
@@ -199,16 +200,17 @@ export function StatusButton({
         ref={triggerRef}
         type="button"
         disabled={isPending}
+        {...passwordManagerSafeControlProps}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
-        aria-label={`Item status, ${currentLabel}`}
+        aria-label={`Change status: ${currentLabel}`}
         title={currentLabel}
         onClick={() => setOpen((current) => !current)}
-        className={`inline-flex items-center rounded-full border border-border-soft bg-surface/80 font-medium text-foreground transition-colors hover:border-border hover:bg-accent-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-subtle)] disabled:opacity-50 ${STATUS_STYLES[status].icon} ${triggerClass}`}
+        className={`ui-status-trigger inline-flex items-center rounded-full border border-border-soft bg-surface/80 font-medium text-foreground transition-colors hover:border-border hover:bg-accent-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-subtle)] disabled:opacity-50 ${STATUS_STYLES[status].icon} ${triggerClass}`}
       >
         <span
-          className={`flex shrink-0 items-center justify-center ${
+          className={`ui-status-trigger-icon flex shrink-0 items-center justify-center ${
             isExpressive ? "" : "h-4 w-4"
           }`}
         >
@@ -218,9 +220,11 @@ export function StatusButton({
             className={iconClass}
           />
         </span>
-        <span className="min-w-0 flex-1 truncate text-start">{currentLabel}</span>
+        <span className="ui-status-trigger-label min-w-0 flex-1 truncate text-start">
+          {currentLabel}
+        </span>
         <ChevronIcon
-          className={`h-3 w-3 shrink-0 text-muted-light transition-transform ${
+          className={`ui-status-trigger-chevron h-3 w-3 shrink-0 text-muted-light transition-transform ${
             open ? "rotate-180" : ""
           }`}
         />

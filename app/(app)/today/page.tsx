@@ -34,7 +34,7 @@ export default async function TodayPage() {
   const todayDate = formatDateString(new Date());
 
   return (
-    <section className="space-y-6">
+    <section className="ui-page-stack space-y-6">
       <PageHeader
         title={firstName ? `Today, ${firstName}` : "Today"}
         subtitle="What matters right now."

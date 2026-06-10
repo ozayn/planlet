@@ -14,10 +14,10 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-border-soft bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+      className="ui-bottom-nav fixed inset-x-0 bottom-0 z-50 border-t border-border-soft bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
       aria-label="Main navigation"
     >
-      <ul className="mx-auto flex max-w-lg items-stretch justify-around">
+      <ul className="ui-bottom-nav-list mx-auto flex max-w-lg items-stretch justify-around">
         {navItems.map((item) => {
           const isActive =
             pathname === item.href || pathname.startsWith(`${item.href}/`);
@@ -26,7 +26,7 @@ export function BottomNav() {
             <li key={item.href} className="flex-1">
               <Link
                 href={item.href}
-                className={`relative flex min-h-[3.75rem] flex-col items-center justify-center gap-1 px-2 text-[0.6875rem] font-medium tracking-wide transition-colors ${
+                className={`ui-bottom-nav-link relative flex min-h-[3.75rem] flex-col items-center justify-center gap-1 px-2 text-[0.6875rem] font-medium tracking-wide transition-colors ${
                   isActive ? "text-foreground" : "text-muted hover:text-foreground"
                 }`}
               >
@@ -37,7 +37,9 @@ export function BottomNav() {
                   />
                 ) : null}
                 <NavIcon href={item.href} active={isActive} />
-                <span dir="auto">{item.label}</span>
+                <span className="ui-bottom-nav-label" dir="auto">
+                  {item.label}
+                </span>
               </Link>
             </li>
           );

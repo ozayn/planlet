@@ -18,6 +18,7 @@ const vazirmatn = Vazirmatn({
   variable: "--font-vazirmatn",
   subsets: ["arabic", "latin"],
   display: "swap",
+  preload: false,
 });
 
 export const metadata: Metadata = {
@@ -70,7 +71,6 @@ export default function RootLayout({
     >
       <head>
         <meta name="mobile-web-app-capable" content="yes" />
-        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
       <body className="min-h-full flex flex-col bg-background font-sans text-foreground">
         <ThemeProvider>

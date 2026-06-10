@@ -6,7 +6,7 @@ type PageHeaderProps = {
 
 export function PageHeader({ title, subtitle, action }: PageHeaderProps) {
   return (
-    <header className="mb-6">
+    <header className="ui-page-header mb-6">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
           <h1

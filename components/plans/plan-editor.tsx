@@ -93,9 +93,9 @@ export function PlanEditor({
     ) : null;
 
   return (
-    <div className="space-y-6">
+    <div className="ui-plan-editor space-y-6">
       {showMeta ? (
-        <header className="space-y-3">
+        <header className="ui-plan-editor-header space-y-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 space-y-1.5">
               <EditablePlanTitle planId={plan.id} title={plan.title} />
@@ -117,7 +117,7 @@ export function PlanEditor({
           ) : null}
         </header>
       ) : (
-        <header className="space-y-3">
+        <header className="ui-plan-editor-header space-y-3">
           <EditablePlanTitle planId={plan.id} title={plan.title} />
           <div className="flex items-start justify-between gap-3">
           <p className="text-sm text-muted">

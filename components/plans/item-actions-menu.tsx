@@ -8,13 +8,19 @@ import { createPortal } from "react-dom";
 import { deletePlanItemAction } from "@/app/(app)/plans/actions";
 import { getItemActionLabels } from "@/components/plans/item-action-labels";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 
 type ItemActionsMenuProps = {
   planId: string;
   itemId: string;
   itemType: PlanItemType;
   isSubtask?: boolean;
+  canEdit?: boolean;
   onEdit: () => void;
+  onAddSubtask?: () => void;
+  onTaskNote?: () => void;
+  onComments?: () => void;
+  commentCount?: number;
 };
 
 export function ItemActionsMenu({
@@ -22,7 +28,12 @@ export function ItemActionsMenu({
   itemId,
   itemType,
   isSubtask = false,
+  canEdit = true,
   onEdit,
+  onAddSubtask,
+  onTaskNote,
+  onComments,
+  commentCount = 0,
 }: ItemActionsMenuProps) {
   const router = useRouter();
   const labels = getItemActionLabels(itemType, isSubtask);
@@ -46,7 +57,7 @@ export function ItemActionsMenu({
     function updatePosition() {
       if (!triggerRef.current) return;
       const rect = triggerRef.current.getBoundingClientRect();
-      const menuWidth = 144;
+      const menuWidth = 176;
       setMenuPosition({
         top: rect.bottom + 4,
         left: Math.max(8, rect.right - menuWidth),
@@ -91,6 +102,11 @@ export function ItemActionsMenu({
     setMenuOpen((current) => !current);
   }
 
+  function runAction(action: () => void) {
+    setMenuOpen(false);
+    action();
+  }
+
   function openConfirm() {
     setMenuOpen(false);
     setError(null);
@@ -113,6 +129,12 @@ export function ItemActionsMenu({
     });
   }
 
+  const showEdit = canEdit;
+  const showAddSubtask = canEdit && !isSubtask && onAddSubtask;
+  const showTaskNote = canEdit && onTaskNote;
+  const showComments = Boolean(onComments);
+  const showDelete = canEdit;
+
   const menu =
     menuOpen && mounted
       ? createPortal(
@@ -120,33 +142,67 @@ export function ItemActionsMenu({
             id={menuId}
             role="menu"
             aria-label={labels.more}
-            className="ui-shadow-elevated fixed z-[60] rounded-xl border border-border-soft bg-surface py-1"
+            className="ui-shadow-elevated fixed z-[70] max-h-[min(20rem,calc(100dvh-1rem))] overflow-y-auto rounded-xl border border-border-soft bg-surface py-1"
             style={{
               top: menuPosition.top,
               left: menuPosition.left,
               width: menuPosition.width,
             }}
           >
-            <button
-              type="button"
-              role="menuitem"
-              onClick={() => {
-                setMenuOpen(false);
-                onEdit();
-              }}
-              className="flex min-h-10 w-full items-center px-3 text-left text-sm text-foreground transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none"
-            >
-              {labels.edit}
-            </button>
-            <button
-              type="button"
-              role="menuitem"
-              aria-label={labels.delete}
-              onClick={openConfirm}
-              className="flex min-h-10 w-full items-center px-3 text-left text-sm text-accent-red transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none"
-            >
-              {labels.delete}
-            </button>
+            {showEdit ? (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => runAction(onEdit)}
+                className="flex min-h-10 w-full items-center px-3 text-left text-sm text-foreground transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none"
+              >
+                {labels.edit}
+              </button>
+            ) : null}
+            {showAddSubtask ? (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => runAction(onAddSubtask)}
+                className="ui-item-menu-mobile-only flex min-h-10 w-full items-center px-3 text-left text-sm text-foreground transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none"
+              >
+                Add subtask
+              </button>
+            ) : null}
+            {showTaskNote ? (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => runAction(onTaskNote)}
+                className="ui-item-menu-mobile-only flex min-h-10 w-full items-center px-3 text-left text-sm text-foreground transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none"
+              >
+                Task note
+              </button>
+            ) : null}
+            {showComments ? (
+              <button
+                type="button"
+                role="menuitem"
+                onClick={() => onComments && runAction(onComments)}
+                className="ui-item-menu-mobile-only flex min-h-10 w-full items-center justify-between gap-2 px-3 text-left text-sm text-foreground transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none"
+              >
+                <span>Comments</span>
+                {commentCount > 0 ? (
+                  <span className="text-xs text-muted">{commentCount}</span>
+                ) : null}
+              </button>
+            ) : null}
+            {showDelete ? (
+              <button
+                type="button"
+                role="menuitem"
+                aria-label={labels.delete}
+                onClick={openConfirm}
+                className="flex min-h-10 w-full items-center px-3 text-left text-sm text-accent-red transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none"
+              >
+                {labels.delete}
+              </button>
+            ) : null}
           </div>,
           document.body,
         )
@@ -158,6 +214,7 @@ export function ItemActionsMenu({
         <button
           ref={triggerRef}
           type="button"
+          {...passwordManagerSafeControlProps}
           aria-expanded={menuOpen}
           aria-haspopup="menu"
           aria-controls={menuOpen ? menuId : undefined}
@@ -176,23 +233,25 @@ export function ItemActionsMenu({
 
       {menu}
 
-      <ConfirmDialog
-        open={confirmOpen}
-        title={labels.deleteTitle}
-        confirmLabel={labels.deleteConfirm}
-        onConfirm={handleDelete}
-        onCancel={() => {
-          if (!isDeleting) {
-            setConfirmOpen(false);
-            setError(null);
-          }
-        }}
-        isConfirming={isDeleting}
-        confirmDanger
-      >
-        <p>{labels.deleteBody}</p>
-        {error ? <p className="mt-3 text-sm text-accent-red">{error}</p> : null}
-      </ConfirmDialog>
+      {showDelete ? (
+        <ConfirmDialog
+          open={confirmOpen}
+          title={labels.deleteTitle}
+          confirmLabel={labels.deleteConfirm}
+          onConfirm={handleDelete}
+          onCancel={() => {
+            if (!isDeleting) {
+              setConfirmOpen(false);
+              setError(null);
+            }
+          }}
+          isConfirming={isDeleting}
+          confirmDanger
+        >
+          <p>{labels.deleteBody}</p>
+          {error ? <p className="mt-3 text-sm text-accent-red">{error}</p> : null}
+        </ConfirmDialog>
+      ) : null}
     </>
   );
 }

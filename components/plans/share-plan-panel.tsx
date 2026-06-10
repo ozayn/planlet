@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 
 import { createShareExportAction } from "@/app/(app)/plans/actions";
 import { SimpleSheet } from "@/components/ui/simple-sheet";
+import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 import type { SerializedPlan } from "@/lib/plan-serialize";
 import {
   generateShareText,
@@ -87,6 +88,7 @@ export function SharePlanPanel({ plan }: SharePlanPanelProps) {
       <button
         type="button"
         onClick={openPanel}
+        {...passwordManagerSafeControlProps}
         aria-label={COPY_ARIA_LABEL}
         title={COPY_TOOLTIP}
         className="ui-icon-action"

@@ -9,6 +9,7 @@ import { getItemActionLabels } from "@/components/plans/item-action-labels";
 import { ItemCommentsButton } from "@/components/plans/item-comments-button";
 import { ItemActionsMenu } from "@/components/plans/item-actions-menu";
 import { ItemDetailsSheet } from "@/components/plans/item-details-sheet";
+import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 import type { SerializedPlanItem } from "@/lib/plan-serialize";
 
 type IntentionItemCardProps = {
@@ -86,6 +87,7 @@ export function IntentionItemCard({ planId, item }: IntentionItemCardProps) {
               <button
                 type="button"
                 onClick={() => setEditingTitle(true)}
+                {...passwordManagerSafeControlProps}
                 className="block w-full truncate text-start text-sm font-medium leading-tight text-foreground"
                 dir="auto"
               >
@@ -98,6 +100,7 @@ export function IntentionItemCard({ planId, item }: IntentionItemCardProps) {
             <button
               type="button"
               onClick={() => setDetailsOpen(true)}
+              {...passwordManagerSafeControlProps}
               className="ui-icon-action-quiet"
               aria-label={actionLabels.edit}
               title={actionLabels.edit}

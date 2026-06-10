@@ -33,7 +33,7 @@ export function PlanItemSections({
   }
 
   return (
-    <div className="space-y-5">
+    <div className="ui-plan-item-sections space-y-5">
       {tasks.length > 0 ? (
         <section className="space-y-2">
           <SectionLabel>Tasks</SectionLabel>
