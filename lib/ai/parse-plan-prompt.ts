@@ -21,7 +21,16 @@ Rules:
   - "برنامه دوشنبه" means Monday's plan; use as title/date context, not a task.
   - "Today's plan", "Weekly plan", and "Plan for Monday" are titles, not tasks.
   - "برنامه هفته" and "This week's plan" are weekly titles, not tasks.
+  - Date-only section labels such as "جون ۸", "جون ۹", "June 8", and "June 9" are section context, not tasks.
 - If a line is a heading for a section, do not import it as an item.
+- OCR status markers at the start of a line map to item status. Remove the marker from the title:
+  - "✅" → status DONE
+  - "☐" → status OPEN
+  - "◐" → status PARTIAL
+  - Do not keep these symbols in the item title.
+  Examples:
+  - "✅ ۱ ساعت روی Claude Code" → title "۱ ساعت روی Claude Code", status DONE
+  - "☐ نیم ساعت بوت" → title "نیم ساعت بوت", status OPEN
 - Do not force reflective writing into TASK. When unsure between NOTE and TASK, prefer NOTE for non-actionable reflection.
 - Treat outings like "کافه با نینا" as SOCIAL unless a specific venue/time makes EVENT more appropriate.
 - Treat "عصر" as EVENING timeHint.
@@ -46,6 +55,7 @@ JSON schema:
     {
       "title": string,
       "description": string (optional),
+      "status": "OPEN" | "DONE" | "PARTIAL" | "MOVED" | "SKIPPED" | "RELEASED" (optional),
       "type": "TASK" | "EVENT" | "INTENTION" | "NOTE" | "WORK_BLOCK" | "ERRAND" | "SOCIAL" | "REST",
       "timeHint": "MORNING" | "AFTERNOON" | "EVENING" | "ANYTIME" | "ALL_DAY" | "SPECIFIC" (optional),
       "importance": "LOW" | "MEDIUM" | "HIGH" (optional),

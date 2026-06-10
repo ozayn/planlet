@@ -47,6 +47,8 @@ export default async function TodayPage() {
             plan={serializePlan(plan)}
             showMeta={false}
             showCopyExport
+            showDeletePlan
+            deleteRedirectTo="/today"
             fullPlanHref={`/plans/${plan.id}`}
             kudos={kudos.map((entry) => ({
               id: entry.id,

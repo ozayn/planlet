@@ -79,6 +79,8 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
         plan={serialized}
         showCopyExport
         showPlatformShare
+        showDeletePlan
+        deleteRedirectTo="/plans"
         platformShares={platformShares}
         kudos={kudos.map((entry) => ({
           id: entry.id,

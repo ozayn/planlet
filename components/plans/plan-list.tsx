@@ -1,13 +1,6 @@
-import Link from "next/link";
-
 import type { PlanType } from "@/app/generated/prisma/client";
-import {
-  formatDateRange,
-  formatDateString,
-  formatWeekStartString,
-  getTodayRange,
-  getWeekRange,
-} from "@/lib/dates";
+import { PlanListItem } from "@/components/plans/plan-list-item";
+import { getTodayRange, getWeekRange } from "@/lib/dates";
 import { getPlanTypeLabel } from "@/lib/plan-labels";
 
 export type PlanListEntry = {
@@ -72,38 +65,17 @@ export function PlanList({ plans }: PlanListProps) {
             {getPlanTypeLabel(group.type)}
           </h3>
           <ul className="space-y-1.5">
-            {group.plans.map((plan) => {
-              const href =
-                plan.type === "DAY"
-                  ? `/plans/day/${formatDateString(plan.dateStart)}`
-                  : plan.type === "WEEK"
-                    ? `/plans/week/${formatWeekStartString(plan.dateStart)}`
-                    : `/plans/${plan.id}`;
-
-              return (
-                <li key={plan.id}>
-                  <Link
-                    href={href}
-                    className="ui-card flex min-h-11 items-center justify-between gap-3 px-3 py-2 transition-colors hover:bg-accent-cream/40"
-                  >
-                    <div className="min-w-0">
-                      <p
-                        className="truncate text-sm font-medium text-foreground"
-                        dir="auto"
-                      >
-                        {plan.title}
-                      </p>
-                      <p className="text-xs text-muted">
-                        {formatDateRange(plan.dateStart, plan.dateEnd)}
-                      </p>
-                    </div>
-                    <span className="shrink-0 text-xs text-muted-light">
-                      {plan.itemCount} item{plan.itemCount === 1 ? "" : "s"}
-                    </span>
-                  </Link>
-                </li>
-              );
-            })}
+            {group.plans.map((plan) => (
+              <PlanListItem
+                key={plan.id}
+                id={plan.id}
+                title={plan.title}
+                type={plan.type}
+                dateStart={plan.dateStart}
+                dateEnd={plan.dateEnd}
+                itemCount={plan.itemCount}
+              />
+            ))}
           </ul>
         </section>
       ))}

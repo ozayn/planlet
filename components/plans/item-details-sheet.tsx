@@ -3,6 +3,7 @@
 import type {
   ConfidenceLevel,
   ExcitementLevel,
+  PlanItemStatus,
   PlanItemType,
   PriorityLevel,
   SatisfactionLevel,
@@ -11,16 +12,15 @@ import type {
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 
-import {
-  deletePlanItemAction,
-  updatePlanItemAction,
-} from "@/app/(app)/plans/actions";
+import { updatePlanItemAction } from "@/app/(app)/plans/actions";
+import { getItemActionLabels } from "@/components/plans/item-action-labels";
 import { SimpleSheet } from "@/components/ui/simple-sheet";
 import {
   getPlanItemTypeLabel,
   PRIORITY_LEVEL_LABELS,
   TIME_HINT_LABELS,
 } from "@/lib/plan-labels";
+import { getStatusLabel } from "@/lib/plan-status";
 import type { SerializedPlanItem } from "@/lib/plan-serialize";
 
 type ItemDetailsSheetProps = {
@@ -28,9 +28,19 @@ type ItemDetailsSheetProps = {
   item: SerializedPlanItem;
   open: boolean;
   onClose: () => void;
+  isSubtask?: boolean;
 };
 
 const PROGRESS_LEVELS = [0, 25, 50, 75, 100] as const;
+
+const STATUS_LEVELS: PlanItemStatus[] = [
+  "OPEN",
+  "DONE",
+  "PARTIAL",
+  "MOVED",
+  "SKIPPED",
+  "RELEASED",
+];
 
 const SATISFACTION_LEVELS: SatisfactionLevel[] = [
   "LOW",
@@ -77,7 +87,9 @@ const ITEM_TYPES: PlanItemType[] = [
 
 function buildFormState(item: SerializedPlanItem) {
   return {
+    title: item.title,
     type: item.type,
+    status: item.status,
     progressLevel: item.progressLevel,
     satisfactionLevel: item.satisfactionLevel ?? "",
     confidenceLevel: item.confidenceLevel ?? "",
@@ -104,13 +116,13 @@ export function ItemDetailsSheet({
   item,
   open,
   onClose,
+  isSubtask = false,
 }: ItemDetailsSheetProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [form, setForm] = useState(() => buildFormState(item));
-  const isNote = item.type === "NOTE";
-  const isIntention = item.type === "INTENTION";
-  const sheetTitle = isNote ? "Note" : isIntention ? "Intention" : "Details";
+  const labels = getItemActionLabels(item.type, isSubtask);
+  const isNote = form.type === "NOTE";
 
   useEffect(() => {
     if (open) {
@@ -118,12 +130,24 @@ export function ItemDetailsSheet({
     }
   }, [open, item]);
 
+  function handleCancel() {
+    setForm(buildFormState(item));
+    onClose();
+  }
+
   function handleSave() {
+    const trimmedTitle = form.title.trim();
+    if (!trimmedTitle) {
+      return;
+    }
+
     startTransition(async () => {
       await updatePlanItemAction({
         planId,
         itemId: item.id,
+        title: trimmedTitle,
         type: form.type,
+        status: isNote ? undefined : form.status,
         progressLevel: form.progressLevel,
         satisfactionLevel: form.satisfactionLevel
           ? (form.satisfactionLevel as SatisfactionLevel)
@@ -150,19 +174,39 @@ export function ItemDetailsSheet({
     });
   }
 
-  function handleDelete() {
-    if (!window.confirm("Delete this item?")) return;
-
-    startTransition(async () => {
-      await deletePlanItemAction(planId, item.id);
-      router.refresh();
-      onClose();
-    });
-  }
-
   return (
-    <SimpleSheet open={open} onClose={onClose} title={sheetTitle}>
+    <SimpleSheet open={open} onClose={handleCancel} title={labels.sheetTitle}>
       <div className="space-y-6">
+        <Field label="Title">
+          {isNote ? (
+            <textarea
+              value={form.title}
+              dir="auto"
+              rows={4}
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  title: event.target.value,
+                }))
+              }
+              className="ui-textarea min-h-24"
+            />
+          ) : (
+            <input
+              type="text"
+              value={form.title}
+              dir="auto"
+              onChange={(event) =>
+                setForm((current) => ({
+                  ...current,
+                  title: event.target.value,
+                }))
+              }
+              className="ui-input min-h-12 py-3"
+            />
+          )}
+        </Field>
+
         <Field label="Type">
           <select
             value={form.type}
@@ -182,7 +226,7 @@ export function ItemDetailsSheet({
           </select>
         </Field>
 
-        {isNote ? (
+        {form.type === "NOTE" ? (
           <p className="text-sm text-muted">
             Notes are for reflections and context — not checkable tasks.
           </p>
@@ -190,105 +234,133 @@ export function ItemDetailsSheet({
 
         {!isNote ? (
           <>
-        <DetailGroup title="Progress">
-          <select
-            value={form.progressLevel}
-            aria-label="Progress"
-            onChange={(event) =>
-              setForm((current) => ({
-                ...current,
-                progressLevel: Number.parseInt(event.target.value, 10),
-              }))
-            }
-            className="ui-input min-h-12 py-3"
-          >
-            {PROGRESS_LEVELS.map((level) => (
-              <option key={level} value={level}>
-                {level}%
-              </option>
-            ))}
-          </select>
-        </DetailGroup>
-
-        <DetailGroup title="Feeling">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <EnumField
-              label="Satisfaction"
-              value={form.satisfactionLevel}
-              options={SATISFACTION_LEVELS}
-              onChange={(value) =>
-                setForm((current) => ({ ...current, satisfactionLevel: value }))
-              }
-            />
-            <EnumField
-              label="Confidence"
-              value={form.confidenceLevel}
-              options={CONFIDENCE_LEVELS}
-              onChange={(value) =>
-                setForm((current) => ({ ...current, confidenceLevel: value }))
-              }
-            />
-            <EnumField
-              label="Excitement"
-              value={form.excitementLevel}
-              options={EXCITEMENT_LEVELS}
-              onChange={(value) =>
-                setForm((current) => ({ ...current, excitementLevel: value }))
-              }
-            />
-          </div>
-        </DetailGroup>
-
-        <DetailGroup title="Priority">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <EnumField
-              label="Importance"
-              value={form.importance}
-              options={PRIORITY_LEVELS}
-              labelMap={PRIORITY_LEVEL_LABELS}
-              onChange={(value) =>
-                setForm((current) => ({ ...current, importance: value }))
-              }
-            />
-            <EnumField
-              label="Urgency"
-              value={form.urgency}
-              options={PRIORITY_LEVELS}
-              labelMap={PRIORITY_LEVEL_LABELS}
-              onChange={(value) =>
-                setForm((current) => ({ ...current, urgency: value }))
-              }
-            />
-          </div>
-        </DetailGroup>
-
-        <DetailGroup title="Timing">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <EnumField
-              label="Time hint"
-              value={form.timeHint}
-              options={TIME_HINTS}
-              labelMap={TIME_HINT_LABELS}
-              onChange={(value) =>
-                setForm((current) => ({ ...current, timeHint: value }))
-              }
-            />
-            <Field label="Duration (minutes)">
-              <input
-                type="number"
-                min={0}
-                value={form.durationMinutes}
+            <Field label="Status">
+              <select
+                value={form.status}
                 onChange={(event) =>
                   setForm((current) => ({
                     ...current,
-                    durationMinutes: event.target.value,
+                    status: event.target.value as PlanItemStatus,
                   }))
                 }
                 className="ui-input min-h-12 py-3"
-              />
+              >
+                {STATUS_LEVELS.map((status) => (
+                  <option key={status} value={status}>
+                    {getStatusLabel(status)}
+                  </option>
+                ))}
+              </select>
             </Field>
-          </div>
-        </DetailGroup>
+
+            <DetailGroup title="Progress">
+              <select
+                value={form.progressLevel}
+                aria-label="Progress"
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    progressLevel: Number.parseInt(event.target.value, 10),
+                  }))
+                }
+                className="ui-input min-h-12 py-3"
+              >
+                {PROGRESS_LEVELS.map((level) => (
+                  <option key={level} value={level}>
+                    {level}%
+                  </option>
+                ))}
+              </select>
+            </DetailGroup>
+
+            <DetailGroup title="Feeling">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <EnumField
+                  label="Satisfaction"
+                  value={form.satisfactionLevel}
+                  options={SATISFACTION_LEVELS}
+                  onChange={(value) =>
+                    setForm((current) => ({
+                      ...current,
+                      satisfactionLevel: value,
+                    }))
+                  }
+                />
+                <EnumField
+                  label="Confidence"
+                  value={form.confidenceLevel}
+                  options={CONFIDENCE_LEVELS}
+                  onChange={(value) =>
+                    setForm((current) => ({
+                      ...current,
+                      confidenceLevel: value,
+                    }))
+                  }
+                />
+                <EnumField
+                  label="Excitement"
+                  value={form.excitementLevel}
+                  options={EXCITEMENT_LEVELS}
+                  onChange={(value) =>
+                    setForm((current) => ({
+                      ...current,
+                      excitementLevel: value,
+                    }))
+                  }
+                />
+              </div>
+            </DetailGroup>
+
+            <DetailGroup title="Priority">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <EnumField
+                  label="Importance"
+                  value={form.importance}
+                  options={PRIORITY_LEVELS}
+                  labelMap={PRIORITY_LEVEL_LABELS}
+                  onChange={(value) =>
+                    setForm((current) => ({ ...current, importance: value }))
+                  }
+                />
+                <EnumField
+                  label="Urgency"
+                  value={form.urgency}
+                  options={PRIORITY_LEVELS}
+                  labelMap={PRIORITY_LEVEL_LABELS}
+                  onChange={(value) =>
+                    setForm((current) => ({ ...current, urgency: value }))
+                  }
+                />
+              </div>
+            </DetailGroup>
+
+            <DetailGroup title="Timing">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <EnumField
+                  label="Time hint"
+                  value={form.timeHint}
+                  options={TIME_HINTS}
+                  labelMap={TIME_HINT_LABELS}
+                  onChange={(value) =>
+                    setForm((current) => ({ ...current, timeHint: value }))
+                  }
+                />
+                <Field label="Duration (minutes)">
+                  <input
+                    type="number"
+                    min={0}
+                    value={form.durationMinutes}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        durationMinutes: event.target.value,
+                      }))
+                    }
+                    className="ui-input min-h-12 py-3"
+                  />
+                </Field>
+              </div>
+            </DetailGroup>
           </>
         ) : null}
 
@@ -326,23 +398,24 @@ export function ItemDetailsSheet({
           </Field>
         </DetailGroup>
 
-        <button
-          type="button"
-          disabled={isPending}
-          onClick={handleSave}
-          className="ui-btn-primary w-full disabled:opacity-50"
-        >
-          {isPending ? "Saving…" : "Save details"}
-        </button>
-
-        <button
-          type="button"
-          disabled={isPending}
-          onClick={handleDelete}
-          className="ui-btn-ghost w-full"
-        >
-          {isNote ? "Delete note" : isIntention ? "Delete intention" : "Delete item"}
-        </button>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={handleCancel}
+            className="ui-btn-secondary flex-1"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            disabled={isPending || !form.title.trim()}
+            onClick={handleSave}
+            className="ui-btn-primary flex-1 disabled:opacity-50"
+          >
+            {isPending ? "Saving…" : "Save changes"}
+          </button>
+        </div>
       </div>
     </SimpleSheet>
   );

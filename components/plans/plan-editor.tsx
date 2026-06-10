@@ -3,6 +3,7 @@
 import type { PlanItemView } from "@/app/generated/prisma/client";
 
 import { AddItemForm } from "@/components/plans/add-item-form";
+import { DeletePlanMenu } from "@/components/plans/delete-plan-menu";
 import { OpenFullPlanShareLink } from "@/components/plans/open-full-plan-share-link";
 import { PlanItemSections } from "@/components/plans/plan-item-sections";
 import {
@@ -33,6 +34,8 @@ type PlanEditorProps = {
   platformShares?: PlanShareEntry[];
   kudos?: PlanKudosEntry[];
   itemView?: PlanItemView;
+  showDeletePlan?: boolean;
+  deleteRedirectTo?: string;
 };
 
 export function PlanEditor({
@@ -44,16 +47,24 @@ export function PlanEditor({
   platformShares = [],
   kudos = [],
   itemView = "MINIMAL",
+  showDeletePlan = false,
+  deleteRedirectTo,
 }: PlanEditorProps) {
   const dateStart = new Date(plan.dateStart);
   const dateEnd = new Date(plan.dateEnd);
   const itemCount = plan.items.length;
 
-  const exportActions =
-    showCopyExport || fullPlanHref ? (
-      <div className="flex shrink-0 items-center gap-2">
+  const headerActions =
+    showCopyExport || fullPlanHref || showDeletePlan ? (
+      <div className="flex shrink-0 items-center gap-1">
         {showCopyExport ? <SharePlanPanel plan={plan} /> : null}
         {fullPlanHref ? <OpenFullPlanShareLink href={fullPlanHref} /> : null}
+        {showDeletePlan ? (
+          <DeletePlanMenu
+            planId={plan.id}
+            redirectTo={deleteRedirectTo}
+          />
+        ) : null}
       </div>
     ) : null;
 
@@ -77,7 +88,7 @@ export function PlanEditor({
                   : ""}
               </p>
             </div>
-            {exportActions}
+            {headerActions}
           </div>
           {plan.summary ? (
             <p className="text-sm leading-relaxed text-muted" dir="auto">
@@ -93,7 +104,7 @@ export function PlanEditor({
               ? ` · ${itemCount} item${itemCount === 1 ? "" : "s"}`
               : ""}
           </p>
-          {exportActions}
+          {headerActions}
         </header>
       )}
 

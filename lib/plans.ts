@@ -453,6 +453,21 @@ export async function deletePlanItem(itemId: string, userId: string) {
   });
 }
 
+export async function deletePlan(planId: string, userId: string) {
+  const plan = await requirePlanForUser(planId, userId);
+
+  await prisma.$transaction([
+    prisma.notification.deleteMany({
+      where: { href: `/plans/${planId}` },
+    }),
+    prisma.plan.delete({
+      where: { id: planId },
+    }),
+  ]);
+
+  return plan;
+}
+
 export async function reorderPlanItems(
   planId: string,
   userId: string,

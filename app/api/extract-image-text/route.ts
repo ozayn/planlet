@@ -73,6 +73,10 @@ export async function POST(request: Request) {
       text: result.text,
       language: result.language,
       dateHint: result.dateHint,
+      removedHeaderLines: result.removedHeaderLines,
+      possibleTitle: result.possibleTitle ?? null,
+      itemHints: result.itemHints,
+      multipleDateSectionsDetected: result.multipleDateSectionsDetected,
     });
   } catch (error) {
     const message =

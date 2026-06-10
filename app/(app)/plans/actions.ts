@@ -38,6 +38,7 @@ import {
 import {
   createPlan,
   createPlanItem,
+  deletePlan,
   deletePlanItem,
   getDayPlan,
   getMonthPlan,
@@ -74,6 +75,7 @@ function revalidatePlanPaths(
   revalidatePath("/today");
   revalidatePath("/plans");
   revalidatePath("/dashboard");
+  revalidatePath("/insights");
   revalidatePath(`/plans/${planId}`);
   if (options?.dayDate) {
     revalidatePath(`/plans/day/${options.dayDate}`);
@@ -81,6 +83,21 @@ function revalidatePlanPaths(
   if (options?.weekDate) {
     revalidatePath(`/plans/week/${options.weekDate}`);
   }
+}
+
+function revalidateAfterPlanDelete(plan: {
+  id: string;
+  type: PlanType;
+  dateStart: Date;
+}) {
+  revalidatePlanPaths(plan.id, {
+    dayDate:
+      plan.type === "DAY" ? formatDateString(plan.dateStart) : undefined,
+    weekDate:
+      plan.type === "WEEK"
+        ? formatWeekStartString(plan.dateStart)
+        : undefined,
+  });
 }
 
 function parseActionDateString(dateString: string): Date {
@@ -295,6 +312,36 @@ export async function deletePlanItemAction(planId: string, itemId: string) {
   revalidatePlanPaths(planId);
 }
 
+export type DeletePlanResult =
+  | { success: true }
+  | { success: false; error: string };
+
+export async function deletePlanAction(
+  planId: string,
+  options?: { redirectTo?: string },
+): Promise<DeletePlanResult> {
+  const userId = await requireUserId();
+  let plan;
+
+  try {
+    plan = await deletePlan(planId, userId);
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to delete plan.",
+    };
+  }
+
+  revalidateAfterPlanDelete(plan);
+
+  if (options?.redirectTo) {
+    redirect(options.redirectTo);
+  }
+
+  return { success: true };
+}
+
 export async function reorderPlanItemsAction(
   planId: string,
   orderedItemIds: string[],
@@ -366,6 +413,7 @@ async function appendParsedItemsToPlan(
       title: item.title.trim(),
       description: item.description?.trim(),
       type: item.type,
+      status: item.status,
       timeHint: item.timeHint,
       importance: item.importance,
       urgency: item.urgency,

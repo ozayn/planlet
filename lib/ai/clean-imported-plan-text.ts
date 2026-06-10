@@ -61,6 +61,9 @@ const ACTION_VERB_PATTERNS = [
   /(تماس|خرید|رفتن|اضافه کردن|تصمیم|کار|وقت|فیلم|ماشین)/u,
 ];
 
+const DATE_SECTION_HEADER_PATTERN =
+  /^(?:(?:جون|ژوئن|january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sep|sept|october|oct|november|nov|december|dec|ژانویه|فوریه|مارس|آوریل|می|جولای|آگوست|سپتامبر|اکتبر|نوامبر|دسامبر)\s+[\d۰-۹٠-٩]{1,2}|[\d۰-۹٠-٩]{1,2}\s+(?:جون|ژوئن|january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sep|sept|october|oct|november|nov|december|dec|ژانویه|فوریه|مارس|آوریل|می|جولای|آگوست|سپتامبر|اکتبر|نوامبر|دسامبر))$/iu;
+
 const ENGLISH_HEADER_PATTERNS = [
   /\btoday['’]s plan\b/i,
   /\btomorrow['’]s plan\b/i,
@@ -144,6 +147,10 @@ function isLikelyHeaderLine(line: string): boolean {
   }
 
   if (matchesEnglishHeaderPattern(trimmed)) {
+    return true;
+  }
+
+  if (DATE_SECTION_HEADER_PATTERN.test(trimmed.replace(/\u200c/g, ""))) {
     return true;
   }
 
@@ -306,6 +313,15 @@ export const CLEAN_IMPORTED_PLAN_TEXT_EXAMPLES: CleanImportExample[] = [
     input: "- برنامه ریزی برای سفر",
     expectedCleanedText: "- برنامه ریزی برای سفر",
     expectedRemovedHeaders: [],
+  },
+  {
+    name: "Persian transliterated June date header",
+    input: `جون ۸
+✅ ۱ ساعت روی Claude Code
+☐ نیم ساعت بوت`,
+    expectedCleanedText: `✅ ۱ ساعت روی Claude Code
+☐ نیم ساعت بوت`,
+    expectedRemovedHeaders: ["جون ۸"],
   },
   {
     name: "Persian Monday plan screenshot OCR",

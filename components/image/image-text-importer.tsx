@@ -2,17 +2,26 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import type { ImageDateHint } from "@/lib/ai/extract-image-text";
+import type {
+  ExtractImageTextResult,
+  ImageDateHint,
+} from "@/lib/ai/extract-image-text";
 import {
   formatFileSize,
   MAX_IMAGE_UPLOAD_BYTES,
   PICKER_IMAGE_ACCEPT,
 } from "@/lib/image/constants";
 
-export type ImageExtractionResult = {
-  text: string;
+export type ImageExtractionResult = Pick<
+  ExtractImageTextResult,
+  | "text"
+  | "dateHint"
+  | "removedHeaderLines"
+  | "possibleTitle"
+  | "itemHints"
+  | "multipleDateSectionsDetected"
+> & {
   language?: string;
-  dateHint: ImageDateHint;
 };
 
 type ImageTextImporterProps = {
@@ -133,13 +142,19 @@ export function ImageTextImporter({ onExtracted }: ImageTextImporterProps) {
         text: data.text.trim(),
         language: data.language,
         dateHint: data.dateHint ?? { detected: false, confidence: "LOW" },
+        removedHeaderLines: data.removedHeaderLines ?? [],
+        possibleTitle: data.possibleTitle ?? undefined,
+        itemHints: data.itemHints ?? [],
+        multipleDateSectionsDetected: data.multipleDateSectionsDetected ?? false,
       });
 
       const dateMessage = data.dateHint?.detected
         ? " Review the detected date before structuring."
         : "";
 
-      setSuccess(`Text extracted.${dateMessage} You can edit it before structuring.`);
+      setSuccess(
+        `Text extracted.${dateMessage} Handwriting extraction may be imperfect — please review before structuring.`,
+      );
       setStatus("ready");
     } catch (extractError) {
       setError(
@@ -233,6 +248,10 @@ export function ImageTextImporter({ onExtracted }: ImageTextImporterProps) {
       {success ? <p className="text-sm text-muted">{success}</p> : null}
 
       {error ? <p className="text-sm text-accent-red">{error}</p> : null}
+
+      <p className="text-xs text-muted-light">
+        Handwriting extraction may be imperfect. Please review before structuring.
+      </p>
 
       <p className="text-xs text-muted-light">
         JPEG, PNG, or WebP up to {formatFileSize(MAX_IMAGE_UPLOAD_BYTES)}. Images

@@ -7,59 +7,122 @@ import {
   resolveDateHint,
 } from "@/lib/ai/date-hints";
 import {
+  buildTextareaContentFromExtraction,
+  type ImageItemHint,
+} from "@/lib/ai/image-extraction-format";
+import {
   DEFAULT_VISION_MODEL,
   getOpenAIClient,
 } from "@/lib/ai/openai-client";
 import { parseModelJsonResponse } from "@/lib/ai/parse-model-json";
 import { APP_TIMEZONE } from "@/config/time";
 
-const EXTRACT_IMAGE_TEXT_PROMPT = `Extract written plan text and any visible date information from this image.
+const EXTRACT_IMAGE_TEXT_PROMPT = `You are reading a handwritten planning note from a real notebook photo.
+Extract only useful planning content. Do not expect perfect OCR.
 
 Return valid JSON only. Do not wrap the JSON in markdown code fences.
 Use this shape:
 {
-  "text": "extracted plan text",
+  "text": "cleaned plan text for a notes textarea",
   "language": "FA" | "EN" | "MIXED" | "UNKNOWN",
   "dateHint": {
     "detected": true | false,
-    "rawText": "visible date phrase if any",
+    "rawText": "strongest visible date phrase or null",
     "confidence": "LOW" | "MEDIUM" | "HIGH",
-    "explanation": "short source note"
-  }
+    "explanation": "short source note or null"
+  },
+  "removedHeaderLines": ["header lines removed from tasks"],
+  "possibleTitle": "best title/context phrase or null",
+  "multipleDateSectionsDetected": true | false,
+  "itemHints": [
+    {
+      "text": "item text without checkbox symbols",
+      "status": "OPEN" | "DONE" | "PARTIAL" | "MOVED" | "SKIPPED" | "RELEASED" | "UNKNOWN",
+      "type": "TASK" | "NOTE" | "INTENTION" | "UNKNOWN",
+      "dateRawText": "section date label such as جون ۸ or null",
+      "confidence": "LOW" | "MEDIUM" | "HIGH"
+    }
+  ]
 }
 
-Rules for text:
-- Preserve line breaks when helpful.
-- Preserve the original language. Do not translate.
-- Do not summarize or rewrite.
-- Do not infer missing tasks or content that is not visible.
-- If handwriting is unclear, mark uncertain words with [?] or preserve your best guess.
+Pay attention to:
+
+1. Dates or section headers:
+   - جون ۸, جون ۹, June 8, June 9
+   - today / tomorrow / امروز / فردا
+   - weekday names
+   - chat app date separators when present
+   These are date/title/context, not tasks.
+
+2. Checkboxes and marks:
+   - empty checkbox → status OPEN
+   - checked checkbox or checkmark → status DONE
+   - crossed-out item → DONE if clearly checked off, otherwise UNKNOWN
+   - do not include checkbox symbols inside item text
+
+3. Mixed language:
+   - Preserve words like Claude Code, Expo Print, FIQ exactly if readable
+   - Keep Persian text Persian
+   - Do not translate
+
+4. Layout:
+   - Read right-to-left Persian lists correctly
+   - If multiple dated sections exist, keep them separated in itemHints using dateRawText
+   - Set multipleDateSectionsDetected=true when more than one date section is visible
+   - If layout is ambiguous, preserve line breaks and mark uncertain parts with [?]
+   - Do not invent tasks from arrows or scribbles; uncertain scribbles may be NOTE with UNKNOWN type
+
+5. Do not treat headers as tasks:
+   - جون ۸, جون ۹, برنامه دوشنبه, امروز واقعا
+   Put these in removedHeaderLines, possibleTitle, or dateRawText — not as task itemHints.
+
+6. Quality rules:
+   - Preserve original language. Do not translate.
+   - Do not invent missing words.
+   - Mark uncertain handwriting with [?].
+   - Do not summarize or rewrite planning content.
+   - text should be the cleaned textarea version with headers removed and checkbox symbols stripped.
+   - itemHints should list actual planning lines in reading order when you can identify them.
 
 Rules for dateHint:
-- Look for visible dates anywhere in the image:
-  - chat app date separators (Telegram, WhatsApp, iMessage, etc.)
-  - handwritten dates
-  - printed notebook dates
-  - weekday names
-  - relative words like today / tomorrow / امروز / فردا
-- rawText should be the visible date phrase only, such as "08 June", "Jun 8", "Monday", or "امروز".
-- Do not use plan-title weekday words as the date unless no stronger date is visible.
-- If the year is missing, leave year out of rawText and lower confidence if needed.
-- If there is a weekday conflict with a stronger month/day date, prefer the month/day date and explain the conflict.
-- If no date is visible, set detected=false and omit rawText.
-- explanation should be short, e.g. "Detected from chat header: 08 June".`;
+- Use the strongest single date for the overall image (prefer month/day over weekday alone).
+- If multiple dates appear, still pick the strongest primary date for dateHint and set multipleDateSectionsDetected=true.
+- If no date is visible, set detected=false and rawText=null.
+- explanation should be short, e.g. "Detected from notebook header: جون ۸".`;
 
 const visionDateHintSchema = z.object({
   detected: z.boolean(),
-  rawText: z.string().optional(),
+  rawText: z.string().nullable().optional(),
   confidence: z.enum(["LOW", "MEDIUM", "HIGH"]).optional(),
-  explanation: z.string().optional(),
+  explanation: z.string().nullable().optional(),
+});
+
+const visionItemHintSchema = z.object({
+  text: z.string().min(1),
+  status: z
+    .enum([
+      "OPEN",
+      "DONE",
+      "PARTIAL",
+      "MOVED",
+      "SKIPPED",
+      "RELEASED",
+      "UNKNOWN",
+    ])
+    .optional(),
+  type: z.enum(["TASK", "NOTE", "INTENTION", "UNKNOWN"]).optional(),
+  dateRawText: z.string().nullable().optional(),
+  confidence: z.enum(["LOW", "MEDIUM", "HIGH"]).optional(),
 });
 
 const visionResponseSchema = z.object({
   text: z.string().min(1),
   language: z.enum(["FA", "EN", "MIXED", "UNKNOWN"]).optional(),
   dateHint: visionDateHintSchema.optional(),
+  removedHeaderLines: z.array(z.string()).optional(),
+  possibleTitle: z.string().nullable().optional(),
+  multipleDateSectionsDetected: z.boolean().optional(),
+  itemHints: z.array(visionItemHintSchema).optional(),
 });
 
 export type ImageDateHint = {
@@ -79,6 +142,10 @@ export type ExtractImageTextResult = {
   text: string;
   language: PlanLanguage;
   dateHint: ImageDateHint;
+  removedHeaderLines: string[];
+  possibleTitle?: string;
+  itemHints: ImageItemHint[];
+  multipleDateSectionsDetected: boolean;
 };
 
 function inferLanguage(text: string): PlanLanguage {
@@ -104,11 +171,12 @@ function finalizeDateHint(
   hint: z.infer<typeof visionDateHintSchema> | undefined,
   now = new Date(),
 ): ImageDateHint {
-  if (!hint?.detected || !hint.rawText?.trim()) {
+  const rawText = hint?.rawText?.trim();
+
+  if (!hint?.detected || !rawText) {
     return { detected: false, confidence: "LOW" };
   }
 
-  const rawText = hint.rawText.trim();
   const resolved = resolveDateHint(rawText, now, APP_TIMEZONE);
 
   return {
@@ -118,6 +186,24 @@ function finalizeDateHint(
     confidence: mergeDateHintConfidence(hint.confidence, resolved.confidence),
     explanation: hint.explanation?.trim() || resolved.explanation,
   };
+}
+
+function normalizeItemHints(
+  hints: z.infer<typeof visionItemHintSchema>[] | undefined,
+): ImageItemHint[] {
+  if (!hints?.length) {
+    return [];
+  }
+
+  return hints
+    .map((hint) => ({
+      text: hint.text.trim(),
+      status: hint.status ?? "UNKNOWN",
+      type: hint.type ?? "UNKNOWN",
+      dateRawText: hint.dateRawText?.trim() || undefined,
+      confidence: hint.confidence,
+    }))
+    .filter((hint) => hint.text.length > 0);
 }
 
 export async function extractImageText(
@@ -163,18 +249,38 @@ export async function extractImageText(
     throw new Error("Image extraction returned an unexpected shape.");
   }
 
-  const text = parsed.data.text.trim();
+  const removedHeaderLines = (parsed.data.removedHeaderLines ?? [])
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  const itemHints = normalizeItemHints(parsed.data.itemHints);
+  const dateHint = finalizeDateHint(parsed.data.dateHint);
+
+  const text = buildTextareaContentFromExtraction({
+    text: parsed.data.text.trim(),
+    removedHeaderLines,
+    possibleTitle: parsed.data.possibleTitle,
+    itemHints,
+    multipleDateSectionsDetected: parsed.data.multipleDateSectionsDetected,
+  });
 
   if (!text) {
     throw new Error("No text could be extracted from the image.");
   }
 
   const language = parsed.data.language ?? inferLanguage(text);
-  const dateHint = finalizeDateHint(parsed.data.dateHint);
+
+  const multipleDateSectionsDetected =
+    parsed.data.multipleDateSectionsDetected ??
+    (removedHeaderLines.length > 1 ||
+      itemHints.filter((hint) => hint.dateRawText).length > 1);
 
   return {
     text,
     language,
     dateHint,
+    removedHeaderLines,
+    possibleTitle: parsed.data.possibleTitle?.trim() || undefined,
+    itemHints,
+    multipleDateSectionsDetected,
   };
 }

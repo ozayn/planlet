@@ -10,6 +10,12 @@ import { useEffect, useState, useTransition } from "react";
 
 import { updatePlanItemAction } from "@/app/(app)/plans/actions";
 import { AddItemForm } from "@/components/plans/add-item-form";
+import {
+  AddSubtaskIcon,
+  EditItemIcon,
+} from "@/components/plans/item-action-icons";
+import { getItemActionLabels } from "@/components/plans/item-action-labels";
+import { ItemActionsMenu } from "@/components/plans/item-actions-menu";
 import { ItemDetailsSheet } from "@/components/plans/item-details-sheet";
 import { StatusButton } from "@/components/plans/status-button";
 import { getPlanItemTypeLabel, getTimeHintLabel } from "@/lib/plan-labels";
@@ -71,6 +77,7 @@ export function PlanItemCard({
 
   const subtaskCount = item.subtasks.length;
   const isNested = depth > 0;
+  const actionLabels = getItemActionLabels(item.type, isNested);
   const timeHintLabel = getTimeHintLabel(item.timeHint);
   const metaParts = [
     getPlanItemTypeLabel(item.type),
@@ -160,12 +167,12 @@ export function PlanItemCard({
               type="button"
               onClick={() => setDetailsOpen(true)}
               className="ui-icon-action-quiet"
-              aria-label="Open item details"
-              title="Details"
+              aria-label={actionLabels.edit}
+              title={actionLabels.edit}
             >
-              <SlidersHorizontalIcon className="h-4 w-4" />
+              <EditItemIcon className="h-4 w-4" />
               <span className="ui-tooltip-bubble" role="tooltip">
-                Details
+                {actionLabels.edit}
               </span>
             </button>
             {!isNested ? (
@@ -180,12 +187,19 @@ export function PlanItemCard({
                 }
                 title={showSubtaskForm ? "Cancel subtask" : "Add subtask"}
               >
-                <ListPlusIcon className="h-4 w-4" />
+                <AddSubtaskIcon className="h-4 w-4" />
                 <span className="ui-tooltip-bubble" role="tooltip">
                   {showSubtaskForm ? "Cancel subtask" : "Add subtask"}
                 </span>
               </button>
             ) : null}
+            <ItemActionsMenu
+              planId={planId}
+              itemId={item.id}
+              itemType={item.type}
+              isSubtask={isNested}
+              onEdit={() => setDetailsOpen(true)}
+            />
           </div>
         </div>
       </div>
@@ -221,6 +235,7 @@ export function PlanItemCard({
         item={item}
         open={detailsOpen}
         onClose={() => setDetailsOpen(false)}
+        isSubtask={isNested}
       />
     </article>
   );
@@ -244,35 +259,3 @@ function DragHandleIcon() {
   );
 }
 
-function SlidersHorizontalIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      strokeWidth={1.75}
-      stroke="currentColor"
-      aria-hidden="true"
-    >
-      <path d="M10 5H3M21 5h-7M10 19H3M21 19h-7M17 12H3M21 12h-7" />
-      <circle cx="14" cy="5" r="2" />
-      <circle cx="8" cy="12" r="2" />
-      <circle cx="16" cy="19" r="2" />
-    </svg>
-  );
-}
-
-function ListPlusIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      strokeWidth={1.75}
-      stroke="currentColor"
-      aria-hidden="true"
-    >
-      <path d="M11 12H3M16 6H3M16 18H3M19 10v6M22 13h-6" />
-    </svg>
-  );
-}

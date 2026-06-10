@@ -85,11 +85,72 @@ const ENGLISH_RELATIVE: Record<string, number> = {
   "day after tomorrow": 2,
 };
 
+const PERSIAN_DIGITS = "۰۱۲۳۴۵۶۷۸۹";
+const EASTERN_ARABIC_DIGITS = "٠١٢٣٤٥٦٧٨٩";
+
+const TRANSLITERATED_PERSIAN_MONTHS: Record<string, number> = {
+  ژانویه: 1,
+  january: 1,
+  jan: 1,
+  فوریه: 2,
+  february: 2,
+  feb: 2,
+  مارس: 3,
+  march: 3,
+  mar: 3,
+  آوریل: 4,
+  april: 4,
+  apr: 4,
+  می: 5,
+  may: 5,
+  جون: 6,
+  ژوئن: 6,
+  june: 6,
+  jun: 6,
+  جولای: 7,
+  july: 7,
+  jul: 7,
+  آگوست: 8,
+  august: 8,
+  aug: 8,
+  سپتامبر: 9,
+  september: 9,
+  sep: 9,
+  sept: 9,
+  اکتبر: 10,
+  october: 10,
+  oct: 10,
+  نوامبر: 11,
+  november: 11,
+  nov: 11,
+  دسامبر: 12,
+  december: 12,
+  dec: 12,
+};
+
+function normalizeDigits(text: string): string {
+  return text
+    .split("")
+    .map((char) => {
+      const persianIndex = PERSIAN_DIGITS.indexOf(char);
+      if (persianIndex !== -1) {
+        return String(persianIndex);
+      }
+
+      const arabicIndex = EASTERN_ARABIC_DIGITS.indexOf(char);
+      if (arabicIndex !== -1) {
+        return String(arabicIndex);
+      }
+
+      return char;
+    })
+    .join("");
+}
+
 function normalizeText(rawText: string): string {
-  return rawText
-    .trim()
-    .replace(/\u200c/g, "")
-    .replace(/\s+/g, " ");
+  return normalizeDigits(
+    rawText.trim().replace(/\u200c/g, "").replace(/\s+/g, " "),
+  );
 }
 
 function lowerConfidence(
@@ -285,11 +346,46 @@ function tryRelativeDate(
   return null;
 }
 
+function tryTransliteratedMonthDayDate(
+  text: string,
+  now: Date,
+  timezone: string,
+): ResolvedDateHint | null {
+  const monthDay = text.match(
+    /^([\u0600-\u06FFA-Za-z]+)\s+(\d{1,2})$/iu,
+  );
+  if (monthDay) {
+    const month = TRANSLITERATED_PERSIAN_MONTHS[monthDay[1].toLowerCase()];
+    const day = Number(monthDay[2]);
+    if (month) {
+      return resolveYearlessMonthDay(month, day, now, timezone);
+    }
+  }
+
+  const dayMonth = text.match(
+    /^(\d{1,2})\s+([\u0600-\u06FFA-Za-z]+)$/iu,
+  );
+  if (dayMonth) {
+    const day = Number(dayMonth[1]);
+    const month = TRANSLITERATED_PERSIAN_MONTHS[dayMonth[2].toLowerCase()];
+    if (month) {
+      return resolveYearlessMonthDay(month, day, now, timezone);
+    }
+  }
+
+  return null;
+}
+
 function tryMonthDayDate(
   text: string,
   now: Date,
   timezone: string,
 ): ResolvedDateHint | null {
+  const transliterated = tryTransliteratedMonthDayDate(text, now, timezone);
+  if (transliterated?.dateString) {
+    return transliterated;
+  }
+
   const dayMonthYear = text.match(
     /\b(\d{1,2})\s+([A-Za-z]+)(?:,?\s+(\d{4}))?\b/i,
   );

@@ -21,6 +21,14 @@ const timeHintSchema = z.enum([
   "SPECIFIC",
 ]);
 const prioritySchema = z.enum(["LOW", "MEDIUM", "HIGH"]);
+const planItemStatusSchema = z.enum([
+  "OPEN",
+  "DONE",
+  "PARTIAL",
+  "MOVED",
+  "SKIPPED",
+  "RELEASED",
+]);
 const subtaskTypeSchema = z.enum(["TASK", "NOTE"]);
 
 export const parsedSubtaskSchema = z.object({
@@ -31,6 +39,7 @@ export const parsedSubtaskSchema = z.object({
 export const parsedPlanItemSchema = z.object({
   title: z.string().min(1),
   description: z.string().optional(),
+  status: planItemStatusSchema.optional(),
   type: planItemTypeSchema,
   timeHint: timeHintSchema.optional(),
   importance: prioritySchema.optional(),

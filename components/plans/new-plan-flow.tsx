@@ -20,6 +20,7 @@ import {
   cleanImportedPlanText,
   dateHintFromRemovedHeaders,
 } from "@/lib/ai/clean-imported-plan-text";
+import { detectMultipleDateSections } from "@/lib/ai/image-extraction-format";
 import type { DateHintConfidence } from "@/lib/ai/date-hints";
 import { formatDetectedDateLabel } from "@/lib/ai/date-hints";
 import type { ParsedPlan } from "@/lib/ai/plan-parser-schema";
@@ -55,6 +56,8 @@ export function NewPlanFlow() {
   const [detectedPlanTitle, setDetectedPlanTitle] = useState<string | null>(
     null,
   );
+  const [multipleDateSectionsWarning, setMultipleDateSectionsWarning] =
+    useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isParsing, startParse] = useTransition();
   const [isSaving, startSave] = useTransition();
@@ -188,6 +191,12 @@ export function NewPlanFlow() {
 
   function handleImageExtracted(result: ImageExtractionResult) {
     const cleaned = cleanImportedPlanText(result.text);
+    const mergedRemovedHeaders = [
+      ...result.removedHeaderLines,
+      ...cleaned.removedHeaderLines.filter(
+        (line) => !result.removedHeaderLines.includes(line),
+      ),
+    ];
 
     setRawInput((current) => {
       const trimmed = current.trim();
@@ -198,7 +207,9 @@ export function NewPlanFlow() {
       return `${trimmed}\n\n${IMAGE_EXTRACT_DIVIDER}\n\n${cleaned.cleanedText}`;
     });
 
-    setDetectedPlanTitle(cleaned.possibleTitle ?? null);
+    setDetectedPlanTitle(
+      result.possibleTitle ?? cleaned.possibleTitle ?? null,
+    );
 
     const imageHint =
       result.dateHint.detected && result.dateHint.dateString
@@ -211,8 +222,17 @@ export function NewPlanFlow() {
         : null;
 
     const mergedHint = dateHintFromRemovedHeaders(
-      cleaned.removedHeaderLines,
+      mergedRemovedHeaders,
       imageHint,
+    );
+
+    setMultipleDateSectionsWarning(
+      detectMultipleDateSections({
+        removedHeaderLines: mergedRemovedHeaders,
+        itemHints: result.itemHints,
+        primaryDateString: mergedHint?.dateString ?? imageHint?.dateString,
+        multipleDateSectionsDetected: result.multipleDateSectionsDetected,
+      }),
     );
 
     if (mergedHint) {
@@ -357,6 +377,12 @@ export function NewPlanFlow() {
               <span dir="auto" className="text-foreground">
                 {detectedPlanTitle}
               </span>
+            </p>
+          ) : null}
+
+          {multipleDateSectionsWarning ? (
+            <p className="rounded-2xl border border-border-soft bg-accent-cream/35 px-4 py-3 text-sm text-foreground">
+              This image may contain multiple dates. Please review before saving.
             </p>
           ) : null}
 

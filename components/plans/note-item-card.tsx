@@ -4,6 +4,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 
 import { updatePlanItemAction } from "@/app/(app)/plans/actions";
+import { EditItemIcon } from "@/components/plans/item-action-icons";
+import { getItemActionLabels } from "@/components/plans/item-action-labels";
+import { ItemActionsMenu } from "@/components/plans/item-actions-menu";
 import { ItemDetailsSheet } from "@/components/plans/item-details-sheet";
 import type { SerializedPlanItem } from "@/lib/plan-serialize";
 
@@ -18,6 +21,7 @@ export function NoteItemCard({ planId, item }: NoteItemCardProps) {
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(item.title);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const actionLabels = getItemActionLabels(item.type);
 
   useEffect(() => {
     if (!editing) {
@@ -86,19 +90,25 @@ export function NoteItemCard({ planId, item }: NoteItemCardProps) {
             )}
           </div>
 
-          <div className="ui-item-card-actions flex shrink-0 items-center">
+          <div className="ui-item-card-actions flex shrink-0 items-center gap-0.5">
             <button
               type="button"
               onClick={() => setDetailsOpen(true)}
               className="ui-icon-action-quiet"
-              aria-label="Open note details"
-              title="Details"
+              aria-label={actionLabels.edit}
+              title={actionLabels.edit}
             >
-              <SlidersHorizontalIcon className="h-4 w-4" />
+              <EditItemIcon className="h-4 w-4" />
               <span className="ui-tooltip-bubble" role="tooltip">
-                Details
+                {actionLabels.edit}
               </span>
             </button>
+            <ItemActionsMenu
+              planId={planId}
+              itemId={item.id}
+              itemType={item.type}
+              onEdit={() => setDetailsOpen(true)}
+            />
           </div>
         </div>
       </article>
@@ -113,20 +123,3 @@ export function NoteItemCard({ planId, item }: NoteItemCardProps) {
   );
 }
 
-function SlidersHorizontalIcon({ className }: { className?: string }) {
-  return (
-    <svg
-      className={className}
-      fill="none"
-      viewBox="0 0 24 24"
-      strokeWidth={1.75}
-      stroke="currentColor"
-      aria-hidden="true"
-    >
-      <path d="M10 5H3M21 5h-7M10 19H3M21 19h-7M17 12H3M21 12h-7" />
-      <circle cx="14" cy="5" r="2" />
-      <circle cx="8" cy="12" r="2" />
-      <circle cx="16" cy="19" r="2" />
-    </svg>
-  );
-}
