@@ -16,6 +16,12 @@ Rules:
   - "protect my energy", "gratitude", "do not escape loneliness into harmful things"
   - "اهداف", "نیت", "شکرگزاری", and bullet lines under اهداف / نیت headings
 - Section headings like "ملاحظات:" or "Notes:" signal NOTE items below; "اهداف:" or "Intentions:" signal INTENTION items below.
+- Do not create tasks from plan title/header lines.
+- Examples of headers/titles, not tasks:
+  - "برنامه دوشنبه" means Monday's plan; use as title/date context, not a task.
+  - "Today's plan", "Weekly plan", and "Plan for Monday" are titles, not tasks.
+  - "برنامه هفته" and "This week's plan" are weekly titles, not tasks.
+- If a line is a heading for a section, do not import it as an item.
 - Do not force reflective writing into TASK. When unsure between NOTE and TASK, prefer NOTE for non-actionable reflection.
 - Treat outings like "کافه با نینا" as SOCIAL unless a specific venue/time makes EVENT more appropriate.
 - Treat "عصر" as EVENING timeHint.

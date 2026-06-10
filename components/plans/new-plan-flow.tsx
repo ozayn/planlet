@@ -16,6 +16,10 @@ import { ImageTextImporter } from "@/components/image/image-text-importer";
 import type { ImageExtractionResult } from "@/components/image/image-text-importer";
 import { ParsedPlanReview } from "@/components/plans/parsed-plan-review";
 import { PlanTargetSelector } from "@/components/plans/plan-target-selector";
+import {
+  cleanImportedPlanText,
+  dateHintFromRemovedHeaders,
+} from "@/lib/ai/clean-imported-plan-text";
 import type { DateHintConfidence } from "@/lib/ai/date-hints";
 import { formatDetectedDateLabel } from "@/lib/ai/date-hints";
 import type { ParsedPlan } from "@/lib/ai/plan-parser-schema";
@@ -48,6 +52,9 @@ export function NewPlanFlow() {
   const [existingYearPlan, setExistingYearPlan] = useState(false);
   const [imageDateSuggestion, setImageDateSuggestion] =
     useState<ImageDateSuggestion | null>(null);
+  const [detectedPlanTitle, setDetectedPlanTitle] = useState<string | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [isParsing, startParse] = useTransition();
   const [isSaving, startSave] = useTransition();
@@ -180,29 +187,42 @@ export function NewPlanFlow() {
   }
 
   function handleImageExtracted(result: ImageExtractionResult) {
+    const cleaned = cleanImportedPlanText(result.text);
+
     setRawInput((current) => {
       const trimmed = current.trim();
       if (!trimmed) {
-        return result.text;
+        return cleaned.cleanedText;
       }
 
-      return `${trimmed}\n\n${IMAGE_EXTRACT_DIVIDER}\n\n${result.text}`;
+      return `${trimmed}\n\n${IMAGE_EXTRACT_DIVIDER}\n\n${cleaned.cleanedText}`;
     });
 
-    if (result.dateHint.detected && result.dateHint.dateString) {
-      const suggestion: ImageDateSuggestion = {
-        dateString: result.dateHint.dateString,
-        rawText: result.dateHint.rawText ?? result.dateHint.dateString,
-        confidence: result.dateHint.confidence,
-        explanation: result.dateHint.explanation,
-      };
-      setImageDateSuggestion(suggestion);
+    setDetectedPlanTitle(cleaned.possibleTitle ?? null);
+
+    const imageHint =
+      result.dateHint.detected && result.dateHint.dateString
+        ? {
+            dateString: result.dateHint.dateString,
+            rawText: result.dateHint.rawText ?? result.dateHint.dateString,
+            confidence: result.dateHint.confidence,
+            explanation: result.dateHint.explanation,
+          }
+        : null;
+
+    const mergedHint = dateHintFromRemovedHeaders(
+      cleaned.removedHeaderLines,
+      imageHint,
+    );
+
+    if (mergedHint) {
+      setImageDateSuggestion(mergedHint);
 
       if (
-        result.dateHint.confidence === "HIGH" &&
+        mergedHint.confidence === "HIGH" &&
         selectedDate === defaultTodayDate
       ) {
-        setSelectedDate(result.dateHint.dateString);
+        setSelectedDate(mergedHint.dateString);
       }
     } else {
       setImageDateSuggestion(null);
@@ -331,6 +351,15 @@ export function NewPlanFlow() {
 
       {inputMode === "text" ? (
         <>
+          {detectedPlanTitle ? (
+            <p className="text-xs text-muted">
+              Detected title:{" "}
+              <span dir="auto" className="text-foreground">
+                {detectedPlanTitle}
+              </span>
+            </p>
+          ) : null}
+
           {imageDateSuggestion ? (
             <div className="space-y-2 rounded-2xl border border-border-soft bg-accent-cream/35 px-4 py-3">
               <p className="text-sm font-medium text-foreground">
