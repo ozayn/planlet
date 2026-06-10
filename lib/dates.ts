@@ -11,7 +11,7 @@ import {
   startOfWeek,
   startOfYear,
 } from "date-fns";
-import { fromZonedTime, toZonedTime } from "date-fns-tz";
+import { formatInTimeZone, fromZonedTime, toZonedTime } from "date-fns-tz";
 
 import type { PlanType } from "@/app/generated/prisma/client";
 import { APP_TIMEZONE } from "@/config/time";
@@ -78,12 +78,13 @@ export function parseDateString(dateString: string): Date {
 }
 
 export function formatDateString(date: Date): string {
-  return format(zonedDate(date), "yyyy-MM-dd");
+  return formatInTimeZone(date, APP_TIMEZONE, "yyyy-MM-dd");
 }
 
 export function shiftDateString(dateString: string, days: number): string {
-  const zoned = startOfDay(zonedDate(parseDateString(dateString)));
-  return format(addDays(zoned, days), "yyyy-MM-dd");
+  const [year, month, day] = dateString.split("-").map(Number);
+  const shifted = addDays(new Date(year, month - 1, day), days);
+  return format(shifted, "yyyy-MM-dd");
 }
 
 export function getMonthRange(date: Date): DateRange {
@@ -118,8 +119,10 @@ export function formatWeekStartString(date: Date): string {
 }
 
 export function shiftWeekString(dateString: string, weeks: number): string {
-  const zoned = startOfDay(zonedDate(parseDateString(dateString)));
-  const weekStart = startOfWeek(zoned, { weekStartsOn: WEEK_STARTS_ON });
+  const [year, month, day] = dateString.split("-").map(Number);
+  const weekStart = startOfWeek(new Date(year, month - 1, day), {
+    weekStartsOn: WEEK_STARTS_ON,
+  });
   return format(addWeeks(weekStart, weeks), "yyyy-MM-dd");
 }
 

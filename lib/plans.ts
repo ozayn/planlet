@@ -82,13 +82,13 @@ async function requirePlanItemForUser(itemId: string, userId: string) {
 }
 
 export async function getDayPlan(userId: string, date: Date) {
-  const { start, end } = getDayRange(date);
+  const { start } = getDayRange(date);
 
   return prisma.plan.findFirst({
     where: {
       userId,
       type: PlanTypeEnum.DAY,
-      dateStart: { gte: start, lte: end },
+      dateStart: start,
     },
     include: {
       items: rootItemsInclude,

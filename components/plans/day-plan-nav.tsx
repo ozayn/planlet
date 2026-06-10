@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   formatDateString,
@@ -21,6 +21,10 @@ export function DayPlanNav({
   const router = useRouter();
   const today = formatDateString(new Date());
   const [pickerValue, setPickerValue] = useState(currentDate);
+
+  useEffect(() => {
+    setPickerValue(currentDate);
+  }, [currentDate]);
 
   function openDate(dateString: string) {
     if (dateString === today && showTodayLink) {

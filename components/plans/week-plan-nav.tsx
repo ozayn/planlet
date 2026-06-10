@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   formatWeekStartString,
@@ -18,6 +18,10 @@ export function WeekPlanNav({ currentWeekStart }: WeekPlanNavProps) {
   const router = useRouter();
   const thisWeekStart = formatWeekStartString(new Date());
   const [pickerValue, setPickerValue] = useState(currentWeekStart);
+
+  useEffect(() => {
+    setPickerValue(currentWeekStart);
+  }, [currentWeekStart]);
 
   function openWeek(dateString: string) {
     router.push(`/plans/week/${formatWeekStartString(parseDateString(dateString))}`);
