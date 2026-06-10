@@ -269,6 +269,61 @@ body {
     color: var(--foreground);
   }
 
+  .ui-plans-page {
+    padding-bottom: 0.5rem;
+  }
+
+  .ui-plans-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .ui-plans-section-title {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted-light);
+  }
+
+  .ui-plans-type-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted-light);
+  }
+
+  .ui-plans-quick-open {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  .ui-plans-quick-open-rows {
+    margin-top: 0.125rem;
+  }
+
+  .ui-plans-quick-open-row {
+    border-radius: 0.5rem;
+    border: 1px solid var(--border-soft);
+    background: var(--surface);
+    padding: 0.5rem 0.625rem;
+  }
+
+  .ui-plan-list-row {
+    display: block;
+    padding: 0.5rem 0.75rem;
+    transition: background-color 0.15s;
+  }
+
+  a.ui-plan-list-row:hover,
+  a.ui-plan-list-row:focus-visible {
+    background: color-mix(in srgb, var(--accent-cream) 40%, transparent);
+    outline: none;
+  }
+
   .ui-insights-page {
     padding-bottom: 0.5rem;
   }

@@ -63,3 +63,35 @@ export function formatPlanActivityLabel(
 ): string {
   return `Updated ${formatRelativeActivityTime(date, now, timezone)}`;
 }
+
+/** Short label for compact plan list rows (e.g. 19m ago, 10h ago). */
+export function formatCompactActivityTime(
+  date: Date,
+  now = new Date(),
+  timezone = APP_TIMEZONE,
+): string {
+  const zonedNow = toZonedTime(now, timezone);
+  const zonedDate = toZonedTime(date, timezone);
+
+  const minutes = differenceInMinutes(zonedNow, zonedDate);
+  if (minutes < 1) {
+    return "Just now";
+  }
+
+  if (minutes < 60) {
+    return `${minutes}m ago`;
+  }
+
+  const calendarDays = differenceInCalendarDays(zonedNow, zonedDate);
+  const hours = differenceInHours(zonedNow, zonedDate);
+
+  if (calendarDays === 0 && hours >= 1) {
+    return `${hours}h ago`;
+  }
+
+  if (calendarDays === 1) {
+    return "Yesterday";
+  }
+
+  return formatRelativeActivityTime(date, now, timezone);
+}

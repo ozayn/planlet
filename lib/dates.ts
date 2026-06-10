@@ -153,6 +153,34 @@ export function formatPlanCardDayDate(date: Date): string {
   }).format(date);
 }
 
+/** Compact date for plan list meta lines (e.g. Wed, Jun 10). */
+export function formatPlanListRowDate(plan: {
+  type: PlanType;
+  dateStart: Date;
+  dateEnd: Date;
+}): string {
+  switch (plan.type) {
+    case "DAY":
+      return shareDateFormatter({
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      }).format(plan.dateStart);
+    case "MONTH":
+      return formatShareMonthPeriod(plan.dateStart);
+    case "YEAR":
+      return formatShareYearPeriod(plan.dateStart);
+    case "WEEK":
+      return formatShareWeekPeriod(plan.dateStart, plan.dateEnd);
+    default:
+      return shareDateFormatter({
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+      }).format(plan.dateStart);
+  }
+}
+
 export function formatPlanCardDate(plan: {
   type: PlanType;
   dateStart: Date;

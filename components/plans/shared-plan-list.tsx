@@ -1,8 +1,6 @@
 import Link from "next/link";
 
-import { formatPlanCardDate } from "@/lib/dates";
-import { formatPlanActivityLabel } from "@/lib/plan-activity";
-import { getPlanTypeLabel } from "@/lib/plan-labels";
+import { formatSharedPlanSubline } from "@/lib/plan-list-meta";
 import type { SharedPlanEntry } from "@/lib/plan-sharing";
 
 type SharedPlanListProps = {
@@ -15,37 +13,30 @@ export function SharedPlanList({ plans }: SharedPlanListProps) {
   }
 
   return (
-    <ul className="space-y-1.5">
+    <ul className="ui-plan-list space-y-0.5">
       {plans.map((plan) => (
         <li key={plan.shareId}>
-          <Link
-            href={`/plans/${plan.planId}`}
-            className="ui-card block border-s-2 border-s-accent-blue/35 px-3 py-2.5 transition-colors hover:bg-accent-cream/40"
-          >
+          <Link href={`/plans/${plan.planId}`} className="ui-plan-list-row block">
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p
-                    className="truncate text-sm font-medium text-foreground"
-                    dir="auto"
-                  >
-                    {plan.title}
-                  </p>
-                  <span className="shrink-0 rounded-full bg-accent-cream px-2 py-0.5 text-[0.625rem] font-medium uppercase tracking-wide text-muted">
-                    Shared
-                  </span>
-                </div>
-                <p className="mt-0.5 text-xs text-muted">
-                  {getPlanTypeLabel(plan.type)} ·{" "}
-                  {formatPlanCardDate(plan)}
+              <div className="min-w-0 flex-1">
+                <p
+                  className="truncate text-sm font-medium text-foreground"
+                  dir="auto"
+                >
+                  {plan.title}
                 </p>
-                <p className="mt-0.5 text-xs text-muted-light" dir="auto">
-                  From {plan.ownerName ?? plan.ownerEmail ?? "another user"} ·{" "}
-                  {formatPlanActivityLabel(plan.updatedAt)}
+                <p className="truncate text-xs text-muted-light" dir="auto">
+                  {formatSharedPlanSubline({
+                    ownerName: plan.ownerName,
+                    ownerEmail: plan.ownerEmail,
+                    type: plan.type,
+                    dateStart: plan.dateStart,
+                    dateEnd: plan.dateEnd,
+                  })}
                 </p>
               </div>
-              <span className="shrink-0 text-xs text-muted-light">
-                {plan.itemCount} item{plan.itemCount === 1 ? "" : "s"}
+              <span className="shrink-0 pt-0.5 text-sm tabular-nums text-muted-light">
+                {plan.itemCount}
               </span>
             </div>
           </Link>

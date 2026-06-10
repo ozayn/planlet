@@ -59,13 +59,13 @@ export function PlanList({ plans }: PlanListProps) {
   })).filter((group) => group.plans.length > 0);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {grouped.map((group) => (
         <section key={group.type}>
-          <h3 className="mb-2 text-xs font-medium uppercase tracking-[0.08em] text-muted-light">
+          <h3 className="ui-plans-type-label mb-1">
             {getPlanTypeLabel(group.type)}
           </h3>
-          <ul className="space-y-1.5">
+          <ul className="ui-plan-list divide-y divide-border-soft/70 rounded-lg border border-border-soft/80 bg-surface/60">
             {group.plans.map((plan) => (
               <PlanListItem
                 key={plan.id}
