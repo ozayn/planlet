@@ -63,6 +63,8 @@ export function EditablePlanTitle({
     return (
       <div className="space-y-2">
         <input
+          id={`plan-title-${planId}`}
+          name={`planTitle-${planId}`}
           type="text"
           value={draft}
           onChange={(event) => setDraft(event.target.value)}

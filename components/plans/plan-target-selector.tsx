@@ -41,6 +41,7 @@ export function PlanTargetSelector({
                 }`}
               >
                 <input
+                  id={`plan-target-type-${type}`}
                   type="radio"
                   name="plan-target-type"
                   value={type}
@@ -56,9 +57,11 @@ export function PlanTargetSelector({
 
         <div className="min-w-0 flex-1">
           {planType === "MONTH" ? (
-            <label className="block space-y-1">
+            <label htmlFor="plan-target-month" className="block space-y-1">
               <span className="sr-only">Month</span>
               <input
+                id="plan-target-month"
+                name="planTargetMonth"
                 type="month"
                 value={dateStringToMonthValue(selectedDate)}
                 onChange={(event) =>
@@ -68,9 +71,11 @@ export function PlanTargetSelector({
               />
             </label>
           ) : planType === "YEAR" ? (
-            <label className="block space-y-1">
+            <label htmlFor="plan-target-year" className="block space-y-1">
               <span className="sr-only">Year</span>
               <input
+                id="plan-target-year"
+                name="planTargetYear"
                 type="number"
                 min={2000}
                 max={2100}
@@ -83,9 +88,11 @@ export function PlanTargetSelector({
               />
             </label>
           ) : (
-            <label className="block space-y-1">
+            <label htmlFor="plan-date" className="block space-y-1">
               <span className="sr-only">Date</span>
               <input
+                id="plan-date"
+                name="planDate"
                 type="date"
                 value={selectedDate}
                 onChange={(event) => onSelectedDateChange(event.target.value)}

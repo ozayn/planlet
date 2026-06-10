@@ -134,8 +134,10 @@ export function ParsedPlanReview({
       ) : null}
 
       <div className="space-y-4 rounded-2xl border border-border bg-surface p-5">
-        <Field label="Plan title">
+        <Field label="Plan title" fieldId="review-plan-title">
           <input
+            id="review-plan-title"
+            name="reviewPlanTitle"
             type="text"
             dir="auto"
             value={draft.title}
@@ -158,8 +160,10 @@ export function ParsedPlanReview({
         </Field>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Plan type">
+          <Field label="Plan type" fieldId="review-plan-type">
             <select
+              id="review-plan-type"
+              name="reviewPlanType"
               value={draft.planType}
               onChange={(event) =>
                 onChange({
@@ -177,8 +181,10 @@ export function ParsedPlanReview({
             </select>
           </Field>
 
-          <Field label="Language">
+          <Field label="Language" fieldId="review-plan-language">
             <select
+              id="review-plan-language"
+              name="reviewPlanLanguage"
               value={draft.language}
               onChange={(event) =>
                 onChange({
@@ -197,8 +203,10 @@ export function ParsedPlanReview({
           </Field>
         </div>
 
-        <Field label="Summary">
+        <Field label="Summary" fieldId="review-plan-summary">
           <textarea
+            id="review-plan-summary"
+            name="reviewPlanSummary"
             dir="auto"
             rows={2}
             value={draft.summary ?? ""}
@@ -211,8 +219,10 @@ export function ParsedPlanReview({
 
         {draft.planType === "DAY" && planDate && onPlanDateChange ? (
           <div className="space-y-2 border-t border-border-soft pt-4">
-            <Field label="Plan date">
+            <Field label="Plan date" fieldId="review-plan-date">
               <input
+                id="review-plan-date"
+                name="reviewPlanDate"
                 type="date"
                 value={planDate}
                 onChange={(event) => onPlanDateChange(event.target.value)}
@@ -240,8 +250,10 @@ export function ParsedPlanReview({
 
         {draft.planType === "WEEK" && planDate && onPlanDateChange ? (
           <div className="space-y-2 border-t border-border-soft pt-4">
-            <Field label="Week containing">
+            <Field label="Week containing" fieldId="review-plan-week">
               <input
+                id="review-plan-week"
+                name="reviewPlanWeek"
                 type="date"
                 value={planDate}
                 onChange={(event) => onPlanDateChange(event.target.value)}
@@ -259,8 +271,10 @@ export function ParsedPlanReview({
 
         {draft.planType === "MONTH" && planDate && onPlanDateChange ? (
           <div className="space-y-2 border-t border-border-soft pt-4">
-            <Field label="Month">
+            <Field label="Month" fieldId="review-plan-month">
               <input
+                id="review-plan-month"
+                name="reviewPlanMonth"
                 type="month"
                 value={dateStringToMonthValue(planDate)}
                 onChange={(event) =>
@@ -282,8 +296,10 @@ export function ParsedPlanReview({
 
         {draft.planType === "YEAR" && planDate && onPlanDateChange ? (
           <div className="space-y-2 border-t border-border-soft pt-4">
-            <Field label="Year">
+            <Field label="Year" fieldId="review-plan-year">
               <input
+                id="review-plan-year"
+                name="reviewPlanYear"
                 type="number"
                 min={2000}
                 max={2100}
@@ -322,6 +338,7 @@ export function ParsedPlanReview({
         {draft.items.map((item, index) => (
           <ReviewItemCard
             key={index}
+            itemIndex={index}
             item={item}
             onChange={(updated) => updateItem(index, updated)}
             onDelete={() => removeItem(index)}
@@ -333,14 +350,17 @@ export function ParsedPlanReview({
 }
 
 function ReviewItemCard({
+  itemIndex,
   item,
   onChange,
   onDelete,
 }: {
+  itemIndex: number;
   item: ParsedPlanItem;
   onChange: (item: ParsedPlanItem) => void;
   onDelete: () => void;
 }) {
+  const itemPrefix = `review-item-${itemIndex}`;
   function updateSubtask(subIndex: number, subtask: ParsedSubtask) {
     const subtasks = [...(item.subtasks ?? [])];
     subtasks[subIndex] = subtask;
@@ -365,8 +385,10 @@ function ReviewItemCard({
 
   return (
     <article className="space-y-3 rounded-2xl border border-border bg-surface p-4">
-      <Field label="Title">
+      <Field label="Title" fieldId={`${itemPrefix}-title`}>
         <input
+          id={`${itemPrefix}-title`}
+          name={`${itemPrefix}-title`}
           type="text"
           dir="auto"
           value={item.title}
@@ -376,8 +398,10 @@ function ReviewItemCard({
       </Field>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Type">
+        <Field label="Type" fieldId={`${itemPrefix}-type`}>
           <select
+            id={`${itemPrefix}-type`}
+            name={`${itemPrefix}-type`}
             value={item.type}
             onChange={(event) =>
               onChange({
@@ -395,8 +419,10 @@ function ReviewItemCard({
           </select>
         </Field>
 
-        <Field label="Time hint">
+        <Field label="Time hint" fieldId={`${itemPrefix}-time-hint`}>
           <select
+            id={`${itemPrefix}-time-hint`}
+            name={`${itemPrefix}-time-hint`}
             value={item.timeHint ?? ""}
             onChange={(event) =>
               onChange({
@@ -417,8 +443,10 @@ function ReviewItemCard({
           </select>
         </Field>
 
-        <Field label="Importance">
+        <Field label="Importance" fieldId={`${itemPrefix}-importance`}>
           <select
+            id={`${itemPrefix}-importance`}
+            name={`${itemPrefix}-importance`}
             value={item.importance ?? ""}
             onChange={(event) =>
               onChange({
@@ -439,8 +467,10 @@ function ReviewItemCard({
           </select>
         </Field>
 
-        <Field label="Urgency">
+        <Field label="Urgency" fieldId={`${itemPrefix}-urgency`}>
           <select
+            id={`${itemPrefix}-urgency`}
+            name={`${itemPrefix}-urgency`}
             value={item.urgency ?? ""}
             onChange={(event) =>
               onChange({
@@ -462,8 +492,13 @@ function ReviewItemCard({
         </Field>
       </div>
 
-      <label className="flex min-h-10 items-center gap-3 text-sm text-foreground">
+      <label
+        htmlFor={`${itemPrefix}-shareable`}
+        className="flex min-h-10 items-center gap-3 text-sm text-foreground"
+      >
         <input
+          id={`${itemPrefix}-shareable`}
+          name={`${itemPrefix}-shareable`}
           type="checkbox"
           checked={item.shareable ?? true}
           onChange={(event) =>
@@ -490,6 +525,8 @@ function ReviewItemCard({
         {(item.subtasks ?? []).map((subtask, subIndex) => (
           <div key={subIndex} className="flex gap-2">
             <input
+              id={`${itemPrefix}-subtask-${subIndex}`}
+              name={`${itemPrefix}-subtask-${subIndex}`}
               type="text"
               dir="auto"
               value={subtask.title}
@@ -498,8 +535,11 @@ function ReviewItemCard({
               }
               className={`${inputClass} flex-1`}
               placeholder="Subtask"
+              aria-label={`Subtask ${subIndex + 1}`}
             />
             <select
+              id={`${itemPrefix}-subtask-type-${subIndex}`}
+              name={`${itemPrefix}-subtask-type-${subIndex}`}
               value={subtask.type ?? "TASK"}
               onChange={(event) =>
                 updateSubtask(subIndex, {
@@ -508,6 +548,7 @@ function ReviewItemCard({
                 })
               }
               className={selectClass}
+              aria-label={`Subtask ${subIndex + 1} type`}
             >
               <option value="TASK">Task</option>
               <option value="NOTE">Note</option>
@@ -536,17 +577,22 @@ function ReviewItemCard({
 
 function Field({
   label,
+  fieldId,
   children,
 }: {
   label: string;
+  fieldId: string;
   children: React.ReactNode;
 }) {
   return (
-    <label className="block space-y-1.5">
-      <span className="text-xs font-medium uppercase tracking-wide text-muted">
+    <div className="block space-y-1.5">
+      <label
+        htmlFor={fieldId}
+        className="text-xs font-medium uppercase tracking-wide text-muted"
+      >
         {label}
-      </span>
+      </label>
       {children}
-    </label>
+    </div>
   );
 }

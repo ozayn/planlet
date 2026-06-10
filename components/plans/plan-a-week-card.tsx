@@ -29,6 +29,8 @@ export function PlanAWeekCard() {
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <input
+          id="plan-a-week"
+          name="planAWeek"
           type="date"
           value={date}
           onChange={(event) => setDate(event.target.value)}

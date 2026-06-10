@@ -174,12 +174,22 @@ export function ItemDetailsSheet({
     });
   }
 
+  const titleFieldId = `item-title-${item.id}`;
+  const typeFieldId = `item-type-${item.id}`;
+  const statusFieldId = `item-status-${item.id}`;
+  const progressFieldId = `item-progress-${item.id}`;
+  const durationFieldId = `item-duration-${item.id}`;
+  const shareableFieldId = `item-shareable-${item.id}`;
+  const commentFieldId = `task-note-${item.id}`;
+
   return (
     <SimpleSheet open={open} onClose={handleCancel} title={labels.sheetTitle}>
       <div className="space-y-6">
-        <Field label="Title">
+        <Field label="Title" fieldId={titleFieldId}>
           {isNote ? (
             <textarea
+              id={titleFieldId}
+              name={`itemTitle-${item.id}`}
               value={form.title}
               dir="auto"
               rows={4}
@@ -193,6 +203,8 @@ export function ItemDetailsSheet({
             />
           ) : (
             <input
+              id={titleFieldId}
+              name={`itemTitle-${item.id}`}
               type="text"
               value={form.title}
               dir="auto"
@@ -207,8 +219,10 @@ export function ItemDetailsSheet({
           )}
         </Field>
 
-        <Field label="Type">
+        <Field label="Type" fieldId={typeFieldId}>
           <select
+            id={typeFieldId}
+            name={`itemType-${item.id}`}
             value={form.type}
             onChange={(event) =>
               setForm((current) => ({
@@ -234,8 +248,10 @@ export function ItemDetailsSheet({
 
         {!isNote ? (
           <>
-            <Field label="Status">
+            <Field label="Status" fieldId={statusFieldId}>
               <select
+                id={statusFieldId}
+                name={`itemStatus-${item.id}`}
                 value={form.status}
                 onChange={(event) =>
                   setForm((current) => ({
@@ -255,6 +271,8 @@ export function ItemDetailsSheet({
 
             <DetailGroup title="Progress">
               <select
+                id={progressFieldId}
+                name={`itemProgress-${item.id}`}
                 value={form.progressLevel}
                 aria-label="Progress"
                 onChange={(event) =>
@@ -277,6 +295,7 @@ export function ItemDetailsSheet({
               <div className="grid gap-4 sm:grid-cols-2">
                 <EnumField
                   label="Satisfaction"
+                  fieldId={`item-satisfaction-${item.id}`}
                   value={form.satisfactionLevel}
                   options={SATISFACTION_LEVELS}
                   onChange={(value) =>
@@ -288,6 +307,7 @@ export function ItemDetailsSheet({
                 />
                 <EnumField
                   label="Confidence"
+                  fieldId={`item-confidence-${item.id}`}
                   value={form.confidenceLevel}
                   options={CONFIDENCE_LEVELS}
                   onChange={(value) =>
@@ -299,6 +319,7 @@ export function ItemDetailsSheet({
                 />
                 <EnumField
                   label="Excitement"
+                  fieldId={`item-excitement-${item.id}`}
                   value={form.excitementLevel}
                   options={EXCITEMENT_LEVELS}
                   onChange={(value) =>
@@ -315,6 +336,7 @@ export function ItemDetailsSheet({
               <div className="grid gap-4 sm:grid-cols-2">
                 <EnumField
                   label="Importance"
+                  fieldId={`item-importance-${item.id}`}
                   value={form.importance}
                   options={PRIORITY_LEVELS}
                   labelMap={PRIORITY_LEVEL_LABELS}
@@ -324,6 +346,7 @@ export function ItemDetailsSheet({
                 />
                 <EnumField
                   label="Urgency"
+                  fieldId={`item-urgency-${item.id}`}
                   value={form.urgency}
                   options={PRIORITY_LEVELS}
                   labelMap={PRIORITY_LEVEL_LABELS}
@@ -338,6 +361,7 @@ export function ItemDetailsSheet({
               <div className="grid gap-4 sm:grid-cols-2">
                 <EnumField
                   label="Time hint"
+                  fieldId={`item-time-hint-${item.id}`}
                   value={form.timeHint}
                   options={TIME_HINTS}
                   labelMap={TIME_HINT_LABELS}
@@ -345,8 +369,10 @@ export function ItemDetailsSheet({
                     setForm((current) => ({ ...current, timeHint: value }))
                   }
                 />
-                <Field label="Duration (minutes)">
+                <Field label="Duration (minutes)" fieldId={durationFieldId}>
                   <input
+                    id={durationFieldId}
+                    name={`itemDuration-${item.id}`}
                     type="number"
                     min={0}
                     value={form.durationMinutes}
@@ -365,8 +391,13 @@ export function ItemDetailsSheet({
         ) : null}
 
         <DetailGroup title="Sharing">
-          <label className="flex min-h-12 items-center gap-3 text-sm text-foreground">
+          <label
+            htmlFor={shareableFieldId}
+            className="flex min-h-12 items-center gap-3 text-sm text-foreground"
+          >
             <input
+              id={shareableFieldId}
+              name={`itemShareable-${item.id}`}
               type="checkbox"
               checked={form.shareable}
               onChange={(event) =>
@@ -382,8 +413,10 @@ export function ItemDetailsSheet({
         </DetailGroup>
 
         <DetailGroup title="Notes">
-          <Field label="Comment">
+          <Field label="Comment" fieldId={commentFieldId}>
             <textarea
+              id={commentFieldId}
+              name={`taskNote-${item.id}`}
               value={form.comment}
               dir="auto"
               rows={3}
@@ -438,35 +471,43 @@ function DetailGroup({
 
 function Field({
   label,
+  fieldId,
   children,
 }: {
   label: string;
+  fieldId: string;
   children: React.ReactNode;
 }) {
   return (
-    <label className="block space-y-1.5">
-      <span className="text-xs font-medium text-muted">{label}</span>
+    <div className="block space-y-1.5">
+      <label htmlFor={fieldId} className="text-xs font-medium text-muted">
+        {label}
+      </label>
       {children}
-    </label>
+    </div>
   );
 }
 
 function EnumField({
   label,
+  fieldId,
   value,
   options,
   labelMap,
   onChange,
 }: {
   label: string;
+  fieldId: string;
   value: string;
   options: readonly string[];
   labelMap?: Record<string, string>;
   onChange: (value: string) => void;
 }) {
   return (
-    <Field label={label}>
+    <Field label={label} fieldId={fieldId}>
       <select
+        id={fieldId}
+        name={fieldId}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className="ui-input min-h-12 py-3"

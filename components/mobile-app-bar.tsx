@@ -5,7 +5,6 @@ import Link from "next/link";
 import { NotificationBell } from "@/components/notification-bell";
 import { PlanletLogo } from "@/components/planlet-logo";
 import { ProfileMenu } from "@/components/profile-menu";
-import { ThemeToggle } from "@/components/theme-toggle";
 import type { SerializedNotification } from "@/lib/notification-serialize";
 
 type MobileAppBarProps = {
@@ -38,12 +37,11 @@ export function MobileAppBar({
           <PlanletLogo size={28} />
         </Link>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-1.5">
           <NotificationBell
             unreadCount={unreadNotificationCount}
             notifications={notifications}
           />
-          <ThemeToggle variant="compact" />
           <ProfileMenu
             name={userName}
             email={userEmail}
@@ -51,6 +49,7 @@ export function MobileAppBar({
             isAdmin={isAdmin}
             signOutButton={signOutButton}
             compact
+            showThemeInMenu
           />
         </div>
       </div>

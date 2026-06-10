@@ -63,6 +63,8 @@ export function IntentionItemCard({ planId, item }: IntentionItemCardProps) {
           <div className="min-w-0 flex-1">
             {editingTitle ? (
               <input
+                id={`intention-title-${item.id}`}
+                name={`intentionTitle-${item.id}`}
                 type="text"
                 value={title}
                 dir="auto"

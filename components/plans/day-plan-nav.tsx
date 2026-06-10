@@ -65,9 +65,11 @@ export function DayPlanNav({
         </Link>
       </div>
 
-      <label className="ui-plan-date-nav-date">
+      <label htmlFor="day-plan-nav-date" className="ui-plan-date-nav-date">
         <span className="ui-plan-date-nav-date-label">Date</span>
         <input
+          id="day-plan-nav-date"
+          name="dayPlanNavDate"
           type="date"
           value={pickerValue}
           onChange={(event) => {

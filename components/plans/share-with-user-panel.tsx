@@ -104,10 +104,13 @@ export function ShareWithUserPanel({
 
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <input
+            id="share-email"
+            name="shareEmail"
             type="email"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             placeholder="user@example.com"
+            autoComplete="email"
             className="ui-input ui-input-compact min-h-10 flex-1"
             aria-label="Planlet user email"
           />

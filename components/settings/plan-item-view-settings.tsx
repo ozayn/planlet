@@ -64,6 +64,7 @@ export function PlanItemViewSettings({ value }: PlanItemViewSettingsProps) {
               }`}
             >
               <input
+                id={`plan-item-view-${option.value}`}
                 type="radio"
                 name="plan-item-view"
                 value={option.value}

@@ -55,9 +55,11 @@ export function WeekPlanNav({ currentWeekStart }: WeekPlanNavProps) {
         </Link>
       </div>
 
-      <label className="ui-plan-date-nav-date">
+      <label htmlFor="week-plan-nav-date" className="ui-plan-date-nav-date">
         <span className="ui-plan-date-nav-date-label">Week</span>
         <input
+          id="week-plan-nav-date"
+          name="weekPlanNavDate"
           type="date"
           value={pickerValue}
           onChange={(event) => {

@@ -175,9 +175,11 @@ export function ItemCommentsPanel({
         )}
 
         <div className="space-y-2 border-t border-border-soft pt-4">
-          <label className="block space-y-1.5">
+          <label htmlFor={`comment-${itemId}`} className="block space-y-1.5">
             <span className="text-xs font-medium text-muted">Add a comment</span>
             <textarea
+              id={`comment-${itemId}`}
+              name={`comment-${itemId}`}
               value={body}
               dir="auto"
               rows={3}

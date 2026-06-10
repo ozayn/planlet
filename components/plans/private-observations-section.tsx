@@ -138,6 +138,8 @@ export function PrivateObservationsSection({
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
         <select
+          id="observation-category"
+          name="observationCategory"
           value={category}
           onChange={(event) =>
             setCategory(event.target.value as ObservationCategory)
@@ -152,11 +154,14 @@ export function PrivateObservationsSection({
           ))}
         </select>
         <textarea
+          id="observation-body"
+          name="observationBody"
           value={body}
           onChange={(event) => setBody(event.target.value)}
           placeholder="What did you notice?"
           rows={2}
           dir="auto"
+          aria-label="What did you notice?"
           className="ui-input min-h-9 flex-1 resize-y py-2"
         />
         <button
@@ -183,6 +188,8 @@ export function PrivateObservationsSection({
               >
                 <div className="flex flex-col gap-2 sm:flex-row">
                   <select
+                    id={`observation-edit-category-${observation.id}`}
+                    name={`observationEditCategory-${observation.id}`}
                     value={editCategory}
                     onChange={(event) =>
                       setEditCategory(
@@ -199,10 +206,13 @@ export function PrivateObservationsSection({
                     ))}
                   </select>
                   <textarea
+                    id={`observation-edit-body-${observation.id}`}
+                    name={`observationEditBody-${observation.id}`}
                     value={editBody}
                     onChange={(event) => setEditBody(event.target.value)}
                     rows={2}
                     dir="auto"
+                    aria-label="Edit observation"
                     className="ui-input min-h-9 flex-1 resize-y py-2"
                   />
                 </div>

@@ -7,7 +7,6 @@ const navItems = [
   { href: "/today", label: "Today", accent: "bg-accent-red" },
   { href: "/plans", label: "Plans", accent: "bg-accent-blue" },
   { href: "/insights", label: "Insights", accent: "bg-accent-yellow" },
-  { href: "/settings", label: "Settings", accent: "bg-muted-light" },
 ] as const;
 
 export function BottomNav() {
@@ -87,19 +86,6 @@ function NavIcon({ href, active }: { href: string; active: boolean }) {
           aria-hidden="true"
         >
           <path d="M4 19V5M4 19h16M8 15l3-4 3 2 4-6" />
-        </svg>
-      );
-    case "/settings":
-      return (
-        <svg
-          className={className}
-          fill="none"
-          viewBox="0 0 24 24"
-          strokeWidth={1.75}
-          aria-hidden="true"
-        >
-          <circle cx="12" cy="12" r="3" />
-          <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
         </svg>
       );
     default:

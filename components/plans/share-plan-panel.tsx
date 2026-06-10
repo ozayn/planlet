@@ -112,6 +112,7 @@ export function SharePlanPanel({ plan }: SharePlanPanelProps) {
                     }`}
                   >
                     <input
+                      id={`share-format-${option}`}
                       type="radio"
                       name="share-format"
                       value={option}
@@ -134,10 +135,12 @@ export function SharePlanPanel({ plan }: SharePlanPanelProps) {
             </p>
           </fieldset>
 
-          <label className="block space-y-2">
+          <label htmlFor="share-preview" className="block space-y-2">
             <span className="ui-label">Preview</span>
             <textarea
               ref={textareaRef}
+              id="share-preview"
+              name="sharePreview"
               readOnly
               dir="auto"
               value={previewText}

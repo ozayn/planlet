@@ -318,17 +318,23 @@ export function ImageTextImporter({ onExtracted }: ImageTextImporterProps) {
 
       <input
         ref={uploadInputRef}
+        id="plan-image-upload"
+        name="planImageUpload"
         type="file"
         accept={PICKER_IMAGE_ACCEPT}
         className="sr-only"
+        aria-label="Choose notebook image"
         onChange={(event) => handleFileSelected(event.target.files?.[0])}
       />
       <input
         ref={cameraInputRef}
+        id="plan-image-camera"
+        name="planImageCamera"
         type="file"
         accept="image/*"
         capture="environment"
         className="sr-only"
+        aria-label="Take notebook photo"
         onChange={(event) => handleFileSelected(event.target.files?.[0])}
       />
 

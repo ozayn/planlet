@@ -491,11 +491,13 @@ export function NewPlanFlow() {
             </div>
           ) : null}
 
-          <label className="block space-y-2">
+          <label htmlFor="messy-notes" className="block space-y-2">
             <span className="text-sm font-medium text-foreground">
               Messy notes
             </span>
             <textarea
+              id="messy-notes"
+              name="messyNotes"
               value={rawInput}
               onChange={(event) => setRawInput(event.target.value)}
               dir="auto"

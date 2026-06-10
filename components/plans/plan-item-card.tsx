@@ -130,6 +130,8 @@ export function PlanItemCard({
           <div className="min-w-0 flex-1">
             {editingTitle ? (
               <input
+                id={`item-title-${item.id}`}
+                name={`itemTitle-${item.id}`}
                 type="text"
                 value={title}
                 dir="auto"

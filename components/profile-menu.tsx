@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 
+import { ThemeToggle } from "@/components/theme-toggle";
 import { UserAvatar } from "@/components/user-avatar";
 
 type ProfileMenuProps = {
@@ -12,6 +13,7 @@ type ProfileMenuProps = {
   isAdmin?: boolean;
   signOutButton: React.ReactNode;
   compact?: boolean;
+  showThemeInMenu?: boolean;
 };
 
 export function ProfileMenu({
@@ -21,6 +23,7 @@ export function ProfileMenu({
   isAdmin = false,
   signOutButton,
   compact = false,
+  showThemeInMenu = false,
 }: ProfileMenuProps) {
   const [open, setOpen] = useState(false);
   const menuId = useId();
@@ -66,7 +69,7 @@ export function ProfileMenu({
         className={`flex items-center rounded-full border border-border bg-surface text-sm transition-colors hover:bg-accent-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${
           compact ? "p-0.5" : "gap-2 py-1 ps-1 pe-3"
         }`}
-        aria-label={compact ? displayName : undefined}
+        aria-label={compact ? "Open profile menu" : undefined}
       >
         <UserAvatar name={name} email={email} image={image} size="sm" />
         {compact ? null : (
@@ -99,6 +102,23 @@ export function ProfileMenu({
           </div>
 
           <div className="space-y-1 p-1">
+            {showThemeInMenu ? (
+              <div
+                role="menuitem"
+                className="flex min-h-10 items-center justify-between gap-3 rounded-xl px-3"
+              >
+                <span className="text-sm text-foreground">Appearance</span>
+                <ThemeToggle variant="compact" />
+              </div>
+            ) : null}
+            <Link
+              href="/settings"
+              role="menuitem"
+              onClick={() => setOpen(false)}
+              className="flex min-h-10 items-center rounded-xl px-3 text-sm text-foreground transition-colors hover:bg-accent-cream"
+            >
+              Settings
+            </Link>
             {isAdmin ? (
               <Link
                 href="/admin"

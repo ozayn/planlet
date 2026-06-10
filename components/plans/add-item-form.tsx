@@ -52,6 +52,8 @@ export function AddItemForm({
   const canSubmit = title.trim().length > 0;
   const showKindSelector = !parentItemId;
   const copy = KIND_COPY[kind];
+  const inputId = parentItemId ? `new-plan-item-${parentItemId}` : "new-plan-item";
+  const inputName = parentItemId ? `newPlanItem-${parentItemId}` : "newPlanItem";
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -110,6 +112,8 @@ export function AddItemForm({
         }
       >
         <input
+          id={inputId}
+          name={inputName}
           type="text"
           value={title}
           onChange={(event) => setTitle(event.target.value)}

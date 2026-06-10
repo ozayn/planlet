@@ -63,6 +63,8 @@ export function NoteItemCard({ planId, item }: NoteItemCardProps) {
           <div className="min-w-0 flex-1">
             {editing ? (
               <textarea
+                id={`note-body-${item.id}`}
+                name={`noteBody-${item.id}`}
                 value={title}
                 dir="auto"
                 autoFocus

@@ -25,6 +25,8 @@ export function PlanADateCard() {
 
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
         <input
+          id="plan-a-date"
+          name="planADate"
           type="date"
           value={date}
           onChange={(event) => setDate(event.target.value)}
