@@ -223,6 +223,15 @@ function shareDateFormatter(options: Intl.DateTimeFormatOptions) {
   return new Intl.DateTimeFormat("en", { ...options, timeZone: APP_TIMEZONE });
 }
 
+/** Header context line for day plans (Wednesday, Jun 10). */
+export function formatDayPlanContextLabel(date: Date): string {
+  return shareDateFormatter({
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+  }).format(date);
+}
+
 /** Compact label for day plan nav center (Today, Yesterday, Wed, Jun 10, …). */
 export function formatDayNavLabel(dateString: string): string {
   const today = formatDateString(new Date());

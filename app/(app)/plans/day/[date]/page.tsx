@@ -4,9 +4,13 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { CreateDayPlanButton } from "@/components/plans/create-day-plan-button";
 import { DayPlanNav } from "@/components/plans/day-plan-nav";
-import { PlanEditor } from "@/components/plans/plan-editor";
+import { DayPlanContent } from "@/components/plans/day-plan-content";
 import { PageHeader } from "@/components/page-header";
-import { formatPlanDateLabel, isValidDateString, parseDateString } from "@/lib/dates";
+import {
+  formatDayPlanContextLabel,
+  isValidDateString,
+  parseDateString,
+} from "@/lib/dates";
 import {
   getPlanSharesForOwner,
   getRecentShareRecipients,
@@ -36,7 +40,8 @@ export default async function DayPlanPage({ params }: DayPlanPageProps) {
 
   const date = parseDateString(dateString);
   const plan = await getDayPlan(userId, date);
-  const dateLabel = formatPlanDateLabel(date, "DAY");
+  const dateLabel = formatDayPlanContextLabel(date);
+  const firstName = session.user?.name?.split(" ")[0];
 
   if (!plan) {
     return (
@@ -71,19 +76,15 @@ export default async function DayPlanPage({ params }: DayPlanPageProps) {
 
   return (
     <section className="space-y-6">
-      <PageHeader
-        title={dateLabel}
-        subtitle="Daily plan"
-        action={
+      <DayPlanContent
+        currentDate={dateString}
+        pageVariant="day"
+        userFirstName={firstName}
+        headerAction={
           <Link href="/plans" className="ui-text-link">
             All plans
           </Link>
         }
-      />
-
-      <DayPlanNav currentDate={dateString} />
-
-      <PlanEditor
         plan={serializePlan(plan)}
         showCopyExport
         showPlatformShare

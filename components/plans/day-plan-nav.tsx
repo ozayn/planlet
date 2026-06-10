@@ -123,7 +123,7 @@ export function DayPlanNav({
       <label
         htmlFor="day-plan-nav-date"
         className={`ui-plan-date-nav-date ${
-          isDatePickerOpen ? "flex" : "hidden sm:flex"
+          isDatePickerOpen ? "flex" : "hidden"
         }`}
       >
         <CalendarIcon className="ui-plan-date-nav-date-icon" aria-hidden="true" />

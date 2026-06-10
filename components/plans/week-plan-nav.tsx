@@ -109,7 +109,7 @@ export function WeekPlanNav({ currentWeekStart }: WeekPlanNavProps) {
       <label
         htmlFor="week-plan-nav-date"
         className={`ui-plan-date-nav-date ${
-          isWeekPickerOpen ? "flex" : "hidden sm:flex"
+          isWeekPickerOpen ? "flex" : "hidden"
         }`}
       >
         <CalendarIcon className="ui-plan-date-nav-date-icon" aria-hidden="true" />

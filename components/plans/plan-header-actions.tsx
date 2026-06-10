@@ -18,6 +18,8 @@ type PlanHeaderActionsProps = {
   deleteRedirectTo?: string;
   periodSummaryHref?: string;
   periodSummaryLabel?: string;
+  showEditTitle?: boolean;
+  onEditTitle?: () => void;
 };
 
 export function PlanHeaderActions({
@@ -30,8 +32,11 @@ export function PlanHeaderActions({
   deleteRedirectTo,
   periodSummaryHref,
   periodSummaryLabel,
+  showEditTitle = false,
+  onEditTitle,
 }: PlanHeaderActionsProps) {
-  const showMore = showDeletePlan || Boolean(periodSummaryHref);
+  const showMore =
+    showDeletePlan || Boolean(periodSummaryHref) || showEditTitle;
 
   if (!showCopyExport && !showPlatformShare && !showMore) {
     return null;
@@ -61,6 +66,8 @@ export function PlanHeaderActions({
           planId={plan.id}
           redirectTo={deleteRedirectTo}
           showDelete={showDeletePlan}
+          showEditTitle={showEditTitle}
+          onEditTitle={onEditTitle}
           periodSummaryHref={periodSummaryHref}
           periodSummaryLabel={periodSummaryLabel}
         />

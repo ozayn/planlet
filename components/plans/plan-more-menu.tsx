@@ -9,6 +9,7 @@ import { deletePlanAction } from "@/app/(app)/plans/actions";
 import {
   FileTextIcon,
   MoreHorizontalIcon,
+  PencilIcon,
   Trash2Icon,
 } from "@/components/ui/action-icons";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
@@ -19,6 +20,8 @@ type PlanMoreMenuProps = {
   planId: string;
   redirectTo?: string;
   showDelete?: boolean;
+  showEditTitle?: boolean;
+  onEditTitle?: () => void;
   periodSummaryHref?: string;
   periodSummaryLabel?: string;
 };
@@ -27,6 +30,8 @@ export function PlanMoreMenu({
   planId,
   redirectTo,
   showDelete = true,
+  showEditTitle = false,
+  onEditTitle,
   periodSummaryHref,
   periodSummaryLabel,
 }: PlanMoreMenuProps) {
@@ -127,6 +132,22 @@ export function PlanMoreMenu({
               width: menuPosition.width,
             }}
           >
+            {showEditTitle && onEditTitle ? (
+              <button
+                type="button"
+                role="menuitem"
+                aria-label={ACTION_LABELS.editTitle.ariaLabel}
+                {...passwordManagerSafeControlProps}
+                onClick={() => {
+                  setMenuOpen(false);
+                  onEditTitle();
+                }}
+                className="flex min-h-10 w-full items-center gap-2.5 px-3 text-left text-sm text-foreground transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none"
+              >
+                <PencilIcon className="h-4 w-4 shrink-0 text-muted" />
+                <span>{ACTION_LABELS.editTitle.title}</span>
+              </button>
+            ) : null}
             {periodSummaryHref ? (
               <Link
                 href={periodSummaryHref}

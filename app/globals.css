@@ -1012,6 +1012,19 @@ body {
     padding-bottom: 0.25rem;
   }
 
+  .ui-day-plan-toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .ui-day-plan-toolbar-actions {
+    display: flex;
+    min-height: 2.75rem;
+    align-items: center;
+    justify-content: flex-end;
+  }
+
   .ui-plan-date-nav {
     display: flex;
     flex-direction: column;
@@ -1131,10 +1144,6 @@ body {
 
   @media (min-width: 640px) {
     .ui-plan-date-nav-btn-icon .ui-plan-date-nav-btn-glyph {
-      display: none;
-    }
-
-    .ui-plan-date-nav-btn-calendar {
       display: none;
     }
 

@@ -204,7 +204,7 @@ export function GratitudeSection({
   }
 
   return (
-    <section className="ui-observations-disclosure border-t border-border-soft pt-3">
+    <section className="ui-observations-disclosure border-t border-border-soft pt-2 md:pt-3">
       <button
         type="button"
         aria-expanded={expanded}

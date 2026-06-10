@@ -13,6 +13,7 @@ type EditablePlanTitleProps = {
   className?: string;
   canEdit?: boolean;
   editRequestSignal?: number;
+  onEditingChange?: (editing: boolean) => void;
 };
 
 export function EditablePlanTitle({
@@ -21,6 +22,7 @@ export function EditablePlanTitle({
   className = "text-xl font-semibold tracking-tight text-foreground",
   canEdit = true,
   editRequestSignal = 0,
+  onEditingChange,
 }: EditablePlanTitleProps) {
   const router = useRouter();
   const inputRef = useRef<HTMLInputElement>(null);
@@ -37,18 +39,23 @@ export function EditablePlanTitle({
     }
   }, [initialTitle, editing]);
 
+  function setEditingState(next: boolean) {
+    setEditing(next);
+    onEditingChange?.(next);
+  }
+
   function startEdit() {
     if (!canEdit) return;
     setDraft(title);
     setError(null);
-    setEditing(true);
+    setEditingState(true);
   }
 
   useEffect(() => {
     if (editRequestSignal > 0 && canEdit) {
       setDraft(title);
       setError(null);
-      setEditing(true);
+      setEditingState(true);
     }
   }, [editRequestSignal, canEdit, title]);
 
@@ -62,7 +69,7 @@ export function EditablePlanTitle({
   function cancelEdit() {
     setDraft(title);
     setError(null);
-    setEditing(false);
+    setEditingState(false);
   }
 
   function saveTitle() {
@@ -85,7 +92,7 @@ export function EditablePlanTitle({
 
       setTitle(result.title);
       setDraft(result.title);
-      setEditing(false);
+      setEditingState(false);
       router.refresh();
     });
   }
