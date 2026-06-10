@@ -10,7 +10,10 @@ import {
 } from "@/app/(app)/plans/actions";
 import { AudioRecorder } from "@/components/audio/audio-recorder";
 import { ImageTextImporter } from "@/components/image/image-text-importer";
+import type { ImageExtractionResult } from "@/components/image/image-text-importer";
 import { ParsedPlanReview } from "@/components/plans/parsed-plan-review";
+import type { DateHintConfidence } from "@/lib/ai/date-hints";
+import { formatDetectedDateLabel } from "@/lib/ai/date-hints";
 import type { ParsedPlan } from "@/lib/ai/plan-parser-schema";
 import { formatDateString } from "@/lib/dates";
 
@@ -18,6 +21,12 @@ type Step = "input" | "review";
 type InputMode = "text" | "record" | "image";
 
 const IMAGE_EXTRACT_DIVIDER = "--- Extracted from image ---";
+
+type ImageDateHintContext = {
+  rawText: string;
+  confidence: DateHintConfidence;
+  explanation?: string;
+};
 
 export function NewPlanFlow() {
   const [step, setStep] = useState<Step>("input");
@@ -27,6 +36,9 @@ export function NewPlanFlow() {
   const [planDate, setPlanDate] = useState(formatDateString(new Date()));
   const [existingDayPlan, setExistingDayPlan] = useState(false);
   const [existingWeekPlan, setExistingWeekPlan] = useState(false);
+  const [imageDateHint, setImageDateHint] = useState<ImageDateHintContext | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [isParsing, startParse] = useTransition();
   const [isSaving, startSave] = useTransition();
@@ -75,7 +87,12 @@ export function NewPlanFlow() {
         return;
       }
 
-      setDraft(result.draft);
+      const nextDraft =
+        imageDateHint && planDate
+          ? { ...result.draft, planType: "DAY" as const }
+          : result.draft;
+
+      setDraft(nextDraft);
       setStep("review");
     });
   }
@@ -148,6 +165,7 @@ export function NewPlanFlow() {
           }
           existingDayPlan={existingDayPlan}
           existingWeekPlan={existingWeekPlan}
+          imageDateHint={imageDateHint}
         />
 
         {error ? (
@@ -222,15 +240,34 @@ export function NewPlanFlow() {
 
       {inputMode === "image" ? (
         <ImageTextImporter
-          onExtracted={(text) => {
+          onExtracted={(result: ImageExtractionResult) => {
             setRawInput((current) => {
               const trimmed = current.trim();
               if (!trimmed) {
-                return text;
+                return result.text;
               }
 
-              return `${trimmed}\n\n${IMAGE_EXTRACT_DIVIDER}\n\n${text}`;
+              return `${trimmed}\n\n${IMAGE_EXTRACT_DIVIDER}\n\n${result.text}`;
             });
+
+            if (result.dateHint.detected) {
+              if (result.dateHint.dateString) {
+                setPlanDate(result.dateHint.dateString);
+              }
+
+              if (result.dateHint.rawText) {
+                setImageDateHint({
+                  rawText: result.dateHint.rawText,
+                  confidence: result.dateHint.confidence,
+                  explanation: result.dateHint.explanation,
+                });
+              } else {
+                setImageDateHint(null);
+              }
+            } else {
+              setImageDateHint(null);
+            }
+
             setInputMode("text");
             setError(null);
           }}
@@ -239,6 +276,40 @@ export function NewPlanFlow() {
 
       {inputMode === "text" ? (
         <>
+          {imageDateHint ? (
+            <div className="space-y-2 rounded-2xl border border-border-soft bg-accent-cream/35 px-4 py-3">
+              <p className="text-sm font-medium text-foreground">
+                {imageDateHint.confidence === "LOW"
+                  ? "Possible date detected"
+                  : `Detected date: ${formatDetectedDateLabel(planDate)}`}
+              </p>
+              <label className="block space-y-1.5">
+                <span className="text-xs font-medium text-muted-light">
+                  Confirm plan date
+                </span>
+                <input
+                  type="date"
+                  value={planDate}
+                  onChange={(event) => setPlanDate(event.target.value)}
+                  className="ui-input min-h-11 py-2"
+                />
+              </label>
+              <p className="text-xs text-muted">
+                From image: {imageDateHint.rawText}
+              </p>
+              {imageDateHint.explanation ? (
+                <p className="text-xs text-muted-light">
+                  {imageDateHint.explanation}
+                </p>
+              ) : null}
+              {imageDateHint.confidence === "LOW" ? (
+                <p className="text-xs text-muted">
+                  Please confirm or change this date before structuring.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+
           <label className="block space-y-2">
             <span className="text-sm font-medium text-foreground">
               Messy notes

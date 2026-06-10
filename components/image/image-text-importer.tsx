@@ -2,14 +2,21 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import type { ImageDateHint } from "@/lib/ai/extract-image-text";
 import {
   formatFileSize,
   MAX_IMAGE_UPLOAD_BYTES,
   PICKER_IMAGE_ACCEPT,
 } from "@/lib/image/constants";
 
+export type ImageExtractionResult = {
+  text: string;
+  language?: string;
+  dateHint: ImageDateHint;
+};
+
 type ImageTextImporterProps = {
-  onExtracted: (text: string) => void;
+  onExtracted: (result: ImageExtractionResult) => void;
 };
 
 type ImporterStatus = "idle" | "ready" | "extracting";
@@ -110,8 +117,7 @@ export function ImageTextImporter({ onExtracted }: ImageTextImporterProps) {
         body: formData,
       });
 
-      const data = (await response.json()) as {
-        text?: string;
+      const data = (await response.json()) as ImageExtractionResult & {
         error?: string;
       };
 
@@ -123,8 +129,17 @@ export function ImageTextImporter({ onExtracted }: ImageTextImporterProps) {
         throw new Error("No text could be extracted from the image.");
       }
 
-      onExtracted(data.text.trim());
-      setSuccess("Text extracted. You can edit it before structuring.");
+      onExtracted({
+        text: data.text.trim(),
+        language: data.language,
+        dateHint: data.dateHint ?? { detected: false, confidence: "LOW" },
+      });
+
+      const dateMessage = data.dateHint?.detected
+        ? " Review the detected date before structuring."
+        : "";
+
+      setSuccess(`Text extracted.${dateMessage} You can edit it before structuring.`);
       setStatus("ready");
     } catch (extractError) {
       setError(

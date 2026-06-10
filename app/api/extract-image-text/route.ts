@@ -72,6 +72,7 @@ export async function POST(request: Request) {
     return NextResponse.json({
       text: result.text,
       language: result.language,
+      dateHint: result.dateHint,
     });
   } catch (error) {
     const message =

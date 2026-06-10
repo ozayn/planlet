@@ -45,6 +45,12 @@ const inputClass = "ui-input min-h-11 py-2";
 const selectClass =
   "min-h-11 rounded-xl border border-border bg-surface px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-foreground/10";
 
+type ImageDateHintContext = {
+  rawText: string;
+  confidence: "LOW" | "MEDIUM" | "HIGH";
+  explanation?: string;
+};
+
 type ParsedPlanReviewProps = {
   draft: ParsedPlan;
   onChange: (draft: ParsedPlan) => void;
@@ -52,6 +58,7 @@ type ParsedPlanReviewProps = {
   onPlanDateChange?: (planDate: string) => void;
   existingDayPlan?: boolean;
   existingWeekPlan?: boolean;
+  imageDateHint?: ImageDateHintContext | null;
 };
 
 export function ParsedPlanReview({
@@ -61,6 +68,7 @@ export function ParsedPlanReview({
   onPlanDateChange,
   existingDayPlan = false,
   existingWeekPlan = false,
+  imageDateHint = null,
 }: ParsedPlanReviewProps) {
   function updateItem(index: number, item: ParsedPlanItem) {
     const items = [...draft.items];
@@ -176,6 +184,14 @@ export function ParsedPlanReview({
             <p className="text-sm text-muted">
               Plan date: {formatPlanDateLabel(parseDateString(planDate), "DAY")}
             </p>
+            {imageDateHint ? (
+              <p className="text-sm text-muted">
+                From image: {imageDateHint.rawText}
+                {imageDateHint.confidence === "LOW"
+                  ? " (please confirm)"
+                  : ""}
+              </p>
+            ) : null}
             {existingDayPlan ? (
               <p className="text-sm text-muted">
                 This will be added to the existing plan for this date.
