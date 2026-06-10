@@ -1,4 +1,5 @@
 import { isEmailAllowed } from "@/lib/auth-allowlist";
+import { createPlanSharedNotification } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
 
 export class PlanSharingError extends Error {
@@ -94,7 +95,17 @@ export async function sharePlanWithUser(
     );
   }
 
-  return prisma.planShare.upsert({
+  const existingShare = await prisma.planShare.findUnique({
+    where: {
+      planId_sharedWithUserId: {
+        planId,
+        sharedWithUserId: targetUser.id,
+      },
+    },
+    select: { id: true },
+  });
+
+  const share = await prisma.planShare.upsert({
     where: {
       planId_sharedWithUserId: {
         planId,
@@ -116,6 +127,31 @@ export async function sharePlanWithUser(
       },
     },
   });
+
+  if (!existingShare) {
+    const [owner, plan] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: ownerId },
+        select: { name: true, email: true },
+      }),
+      prisma.plan.findUnique({
+        where: { id: planId },
+        select: { title: true },
+      }),
+    ]);
+
+    if (plan) {
+      await createPlanSharedNotification({
+        recipientUserId: targetUser.id,
+        planId,
+        planTitle: plan.title,
+        ownerName: owner?.name ?? null,
+        ownerEmail: owner?.email ?? null,
+      });
+    }
+  }
+
+  return share;
 }
 
 export async function removePlanShare(planShareId: string, ownerId: string) {

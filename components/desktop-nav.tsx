@@ -3,9 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { NotificationBell } from "@/components/notification-bell";
 import { PlanletLogo } from "@/components/planlet-logo";
 import { ProfileMenu } from "@/components/profile-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
+import type { SerializedNotification } from "@/lib/notification-serialize";
 import { PRODUCT } from "@/config/product";
 
 const navItems = [
@@ -21,6 +23,8 @@ type DesktopNavProps = {
   userImage?: string | null;
   isAdmin?: boolean;
   signOutButton: React.ReactNode;
+  unreadNotificationCount?: number;
+  notifications?: SerializedNotification[];
 };
 
 export function DesktopNav({
@@ -29,6 +33,8 @@ export function DesktopNav({
   userImage,
   isAdmin = false,
   signOutButton,
+  unreadNotificationCount = 0,
+  notifications = [],
 }: DesktopNavProps) {
   const pathname = usePathname();
 
@@ -71,6 +77,10 @@ export function DesktopNav({
           })}
         </nav>
         <div className="flex shrink-0 items-center gap-2">
+          <NotificationBell
+            unreadCount={unreadNotificationCount}
+            notifications={notifications}
+          />
           <ThemeToggle variant="compact" />
           <ProfileMenu
             name={userName}

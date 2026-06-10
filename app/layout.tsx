@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, Vazirmatn } from "next/font/google";
 
+import { DevPerformancePatch } from "@/components/dev-performance-patch";
 import { ThemeColorMeta } from "@/components/theme-color-meta";
 import { ThemeProvider } from "@/components/theme-provider";
 import { PRODUCT, PWA } from "@/config/product";
@@ -73,6 +74,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       </head>
       <body className="min-h-full flex flex-col bg-background font-sans text-foreground">
+        <DevPerformancePatch />
         <ThemeProvider>
           <ThemeColorMeta />
           {children}

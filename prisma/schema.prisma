@@ -92,6 +92,10 @@ enum PlanSharePermission {
   VIEW
 }
 
+enum NotificationType {
+  PLAN_SHARED
+}
+
 model User {
   id            String      @id @default(cuid())
   name          String?
@@ -107,9 +111,25 @@ model User {
   themes        Theme[]
   planSharesOwned    PlanShare[] @relation("PlanShareOwner")
   planSharesReceived PlanShare[] @relation("PlanShareRecipient")
+  notifications      Notification[]
   loginEvents   LoginEvent[]
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  body      String?
+  href      String?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, readAt, createdAt])
+  @@index([userId, createdAt])
 }
 
 model LoginEvent {

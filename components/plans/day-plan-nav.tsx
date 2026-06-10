@@ -32,39 +32,37 @@ export function DayPlanNav({
   }
 
   return (
-    <nav
-      className="flex flex-wrap items-center gap-2"
-      aria-label="Day plan navigation"
-    >
-      <Link
-        href={`/plans/day/${shiftDateString(currentDate, -1)}`}
-        className="ui-btn-secondary ui-btn-compact min-h-9 px-3"
-      >
-        Previous day
-      </Link>
-
-      {showTodayLink ? (
+    <nav className="ui-plan-date-nav" aria-label="Day plan navigation">
+      <div className="ui-plan-date-nav-controls">
         <Link
-          href="/today"
-          className={`ui-btn-compact min-h-9 rounded-lg px-3 text-sm font-medium transition-colors ${
-            currentDate === today
-              ? "ui-segment-active"
-              : "ui-segment"
-          }`}
+          href={`/plans/day/${shiftDateString(currentDate, -1)}`}
+          className="ui-plan-date-nav-btn"
         >
-          Today
+          Previous day
         </Link>
-      ) : null}
 
-      <Link
-        href={`/plans/day/${shiftDateString(currentDate, 1)}`}
-        className="ui-btn-secondary ui-btn-compact min-h-9 px-3"
-      >
-        Next day
-      </Link>
+        {showTodayLink ? (
+          <Link
+            href="/today"
+            className={`ui-plan-date-nav-btn${
+              currentDate === today ? " ui-plan-date-nav-btn-active" : ""
+            }`}
+            aria-current={currentDate === today ? "page" : undefined}
+          >
+            Today
+          </Link>
+        ) : null}
 
-      <label className="flex min-h-9 items-center gap-2 rounded-lg border border-border-soft bg-surface px-2.5 text-sm">
-        <span className="text-muted-light">Date</span>
+        <Link
+          href={`/plans/day/${shiftDateString(currentDate, 1)}`}
+          className="ui-plan-date-nav-btn"
+        >
+          Next day
+        </Link>
+      </div>
+
+      <label className="ui-plan-date-nav-date">
+        <span className="ui-plan-date-nav-date-label">Date</span>
         <input
           type="date"
           value={pickerValue}
@@ -75,7 +73,7 @@ export function DayPlanNav({
               openDate(value);
             }
           }}
-          className="bg-transparent text-foreground outline-none"
+          className="ui-plan-date-nav-date-input"
           aria-label="Choose plan date"
         />
       </label>

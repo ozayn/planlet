@@ -24,37 +24,35 @@ export function WeekPlanNav({ currentWeekStart }: WeekPlanNavProps) {
   }
 
   return (
-    <nav
-      className="flex flex-wrap items-center gap-2"
-      aria-label="Week plan navigation"
-    >
-      <Link
-        href={`/plans/week/${shiftWeekString(currentWeekStart, -1)}`}
-        className="ui-btn-secondary ui-btn-compact min-h-9 px-3"
-      >
-        Previous week
-      </Link>
+    <nav className="ui-plan-date-nav" aria-label="Week plan navigation">
+      <div className="ui-plan-date-nav-controls">
+        <Link
+          href={`/plans/week/${shiftWeekString(currentWeekStart, -1)}`}
+          className="ui-plan-date-nav-btn"
+        >
+          Previous week
+        </Link>
 
-      <Link
-        href={`/plans/week/${thisWeekStart}`}
-        className={`ui-btn-compact min-h-9 rounded-lg px-3 text-sm font-medium transition-colors ${
-          currentWeekStart === thisWeekStart
-            ? "ui-segment-active"
-            : "ui-segment"
-        }`}
-      >
-        This week
-      </Link>
+        <Link
+          href={`/plans/week/${thisWeekStart}`}
+          className={`ui-plan-date-nav-btn${
+            currentWeekStart === thisWeekStart ? " ui-plan-date-nav-btn-active" : ""
+          }`}
+          aria-current={currentWeekStart === thisWeekStart ? "page" : undefined}
+        >
+          This week
+        </Link>
 
-      <Link
-        href={`/plans/week/${shiftWeekString(currentWeekStart, 1)}`}
-        className="ui-btn-secondary ui-btn-compact min-h-9 px-3"
-      >
-        Next week
-      </Link>
+        <Link
+          href={`/plans/week/${shiftWeekString(currentWeekStart, 1)}`}
+          className="ui-plan-date-nav-btn"
+        >
+          Next week
+        </Link>
+      </div>
 
-      <label className="flex min-h-9 items-center gap-2 rounded-lg border border-border-soft bg-surface px-2.5 text-sm">
-        <span className="text-muted-light">Week</span>
+      <label className="ui-plan-date-nav-date">
+        <span className="ui-plan-date-nav-date-label">Week</span>
         <input
           type="date"
           value={pickerValue}
@@ -65,7 +63,7 @@ export function WeekPlanNav({ currentWeekStart }: WeekPlanNavProps) {
               openWeek(value);
             }
           }}
-          className="bg-transparent text-foreground outline-none"
+          className="ui-plan-date-nav-date-input"
           aria-label="Choose week"
         />
       </label>

@@ -2,9 +2,11 @@
 
 import Link from "next/link";
 
+import { NotificationBell } from "@/components/notification-bell";
 import { PlanletLogo } from "@/components/planlet-logo";
 import { ProfileMenu } from "@/components/profile-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
+import type { SerializedNotification } from "@/lib/notification-serialize";
 
 type MobileAppBarProps = {
   userName?: string | null;
@@ -12,6 +14,8 @@ type MobileAppBarProps = {
   userImage?: string | null;
   isAdmin?: boolean;
   signOutButton: React.ReactNode;
+  unreadNotificationCount?: number;
+  notifications?: SerializedNotification[];
 };
 
 export function MobileAppBar({
@@ -20,6 +24,8 @@ export function MobileAppBar({
   userImage,
   isAdmin = false,
   signOutButton,
+  unreadNotificationCount = 0,
+  notifications = [],
 }: MobileAppBarProps) {
   return (
     <header className="sticky top-0 z-40 border-b border-border-soft bg-surface/95 backdrop-blur md:hidden">
@@ -33,6 +39,10 @@ export function MobileAppBar({
         </Link>
 
         <div className="flex items-center gap-2">
+          <NotificationBell
+            unreadCount={unreadNotificationCount}
+            notifications={notifications}
+          />
           <ThemeToggle variant="compact" />
           <ProfileMenu
             name={userName}
