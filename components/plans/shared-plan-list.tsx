@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { formatDateRange } from "@/lib/dates";
+import { formatPlanCardDate } from "@/lib/dates";
 import { getPlanTypeLabel } from "@/lib/plan-labels";
 import type { SharedPlanEntry } from "@/lib/plan-sharing";
 
@@ -36,7 +36,7 @@ export function SharedPlanList({ plans }: SharedPlanListProps) {
                 </div>
                 <p className="mt-0.5 text-xs text-muted">
                   {getPlanTypeLabel(plan.type)} ·{" "}
-                  {formatDateRange(plan.dateStart, plan.dateEnd)}
+                  {formatPlanCardDate(plan)}
                 </p>
                 <p className="mt-0.5 text-xs text-muted-light" dir="auto">
                   From {plan.ownerName ?? plan.ownerEmail ?? "another user"}

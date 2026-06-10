@@ -15,7 +15,7 @@ import {
 import { PrivateObservationsSection } from "@/components/plans/private-observations-section";
 import { SharePlanPanel } from "@/components/plans/share-plan-panel";
 import { ShareWithUserPanel } from "@/components/plans/share-with-user-panel";
-import { formatDateRange } from "@/lib/dates";
+import { formatPlanCardDate } from "@/lib/dates";
 import { getPlanTypeLabel } from "@/lib/plan-labels";
 import type { SerializedObservation } from "@/lib/observations";
 import type { SerializedPlan } from "@/lib/plan-serialize";
@@ -95,7 +95,7 @@ export function PlanEditor({
               <EditablePlanTitle planId={plan.id} title={plan.title} />
               <p className="text-sm text-muted">
                 {getPlanTypeLabel(plan.type)} ·{" "}
-                {formatDateRange(dateStart, dateEnd)}
+                {formatPlanCardDate({ type: plan.type, dateStart, dateEnd })}
                 {itemCount > 0
                   ? ` · ${itemCount} item${itemCount === 1 ? "" : "s"}`
                   : ""}
@@ -114,7 +114,7 @@ export function PlanEditor({
           <EditablePlanTitle planId={plan.id} title={plan.title} />
           <div className="flex items-start justify-between gap-3">
           <p className="text-sm text-muted">
-            {formatDateRange(dateStart, dateEnd)}
+            {formatPlanCardDate({ type: plan.type, dateStart, dateEnd })}
             {itemCount > 0
               ? ` · ${itemCount} item${itemCount === 1 ? "" : "s"}`
               : ""}

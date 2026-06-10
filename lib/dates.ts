@@ -144,6 +144,34 @@ export function getDateRangeForPlanType(
   }
 }
 
+export function formatPlanCardDayDate(date: Date): string {
+  return shareDateFormatter({
+    weekday: "long",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}
+
+export function formatPlanCardDate(plan: {
+  type: PlanType;
+  dateStart: Date;
+  dateEnd: Date;
+}): string {
+  switch (plan.type) {
+    case "DAY":
+      return formatPlanCardDayDate(plan.dateStart);
+    case "MONTH":
+      return formatShareMonthPeriod(plan.dateStart);
+    case "YEAR":
+      return formatShareYearPeriod(plan.dateStart);
+    case "WEEK":
+      return formatShareWeekPeriod(plan.dateStart, plan.dateEnd);
+    default:
+      return formatPlanCardDayDate(plan.dateStart);
+  }
+}
+
 export function formatPlanDateLabel(
   dateStart: Date,
   type: PlanType,
@@ -151,7 +179,7 @@ export function formatPlanDateLabel(
 ): string {
   switch (type) {
     case "DAY":
-      return formatShareDayPeriod(dateStart);
+      return formatPlanCardDayDate(dateStart);
     case "MONTH":
       return formatShareMonthPeriod(dateStart);
     case "YEAR":
@@ -159,7 +187,7 @@ export function formatPlanDateLabel(
     case "WEEK":
       return `Week of ${formatShareWeekPeriod(dateStart, dateEnd ?? dateStart)}`;
     default:
-      return formatShareDayPeriod(dateStart);
+      return formatPlanCardDayDate(dateStart);
   }
 }
 

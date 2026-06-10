@@ -4,7 +4,7 @@ import { ItemCommentsButton } from "@/components/plans/item-comments-button";
 import { PlanItemStatusVisual } from "@/components/plans/plan-item-status-visual";
 import { SendKudosPanel } from "@/components/plans/send-kudos-panel";
 import { SharePlanPanel } from "@/components/plans/share-plan-panel";
-import { formatDateRange } from "@/lib/dates";
+import { formatPlanCardDate } from "@/lib/dates";
 import { getPlanItemTypeLabel } from "@/lib/plan-labels";
 import { isExpressiveItemView } from "@/lib/plan-item-view";
 import { partitionPlanItems } from "@/lib/plan-item-sections";
@@ -170,7 +170,7 @@ export function PlanReadOnly({
               {plan.title}
             </h2>
             <p className="text-sm text-muted">
-              {formatDateRange(dateStart, dateEnd)}
+              {formatPlanCardDate({ type: plan.type, dateStart, dateEnd })}
               {ownerLabel ? ` · From ${ownerLabel}` : ""}
             </p>
           </div>

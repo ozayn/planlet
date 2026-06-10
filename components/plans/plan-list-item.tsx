@@ -5,8 +5,8 @@ import Link from "next/link";
 import type { PlanType } from "@/app/generated/prisma/client";
 import { DeletePlanMenu } from "@/components/plans/delete-plan-menu";
 import {
-  formatDateRange,
   formatDateString,
+  formatPlanCardDate,
   formatWeekStartString,
 } from "@/lib/dates";
 import { getPeriodSummaryHref } from "@/lib/period-summary-links";
@@ -56,7 +56,7 @@ export function PlanListItem({
             {title}
           </p>
           <p className="text-xs text-muted">
-            {formatDateRange(dateStart, dateEnd)}
+            {formatPlanCardDate({ type, dateStart, dateEnd })}
           </p>
         </div>
         <span className="shrink-0 text-xs text-muted-light">

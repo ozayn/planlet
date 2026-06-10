@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { formatDateString, formatPlanDateLabel } from "@/lib/dates";
+import { formatDateString, formatPlanCardDayDate } from "@/lib/dates";
 
 type UpcomingDayPlan = {
   id: string;
@@ -39,7 +39,7 @@ export function UpcomingDayPlans({ plans }: UpcomingDayPlansProps) {
                     {plan.title}
                   </p>
                   <p className="mt-0.5 text-xs text-muted">
-                    {formatPlanDateLabel(plan.dateStart, "DAY")}
+                    {formatPlanCardDayDate(plan.dateStart)}
                   </p>
                 </div>
                 <span className="shrink-0 text-xs text-muted-light">
