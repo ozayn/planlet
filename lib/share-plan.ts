@@ -266,7 +266,7 @@ export function buildShareHeader(
       return header;
     }
     case "WEEK":
-      return `Week of ${period} 🌿`;
+      return `Weekly plan — ${period} 🌿`;
     default:
       return `${plan.title} — ${period} 🌿`;
   }

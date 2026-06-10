@@ -1,11 +1,14 @@
 import {
   addDays,
+  addWeeks,
   endOfDay,
   endOfMonth,
+  endOfWeek,
   endOfYear,
   format,
   startOfDay,
   startOfMonth,
+  startOfWeek,
   startOfYear,
 } from "date-fns";
 import { fromZonedTime, toZonedTime } from "date-fns-tz";
@@ -14,6 +17,7 @@ import type { PlanType } from "@/app/generated/prisma/client";
 import { APP_TIMEZONE } from "@/config/time";
 
 const DATE_STRING_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
+const WEEK_STARTS_ON = 1 as const;
 
 /**
  * Planlet stores DateTime values in UTC (PostgreSQL timestamptz / Prisma DateTime).
@@ -98,6 +102,27 @@ export function getYearRange(date: Date): DateRange {
   };
 }
 
+export function getWeekRange(date: Date): DateRange {
+  const zoned = zonedDate(date);
+  const weekStart = startOfDay(startOfWeek(zoned, { weekStartsOn: WEEK_STARTS_ON }));
+  const weekEnd = endOfDay(endOfWeek(zoned, { weekStartsOn: WEEK_STARTS_ON }));
+
+  return {
+    start: toUtcRangeStart(weekStart),
+    end: toUtcRangeEnd(weekEnd),
+  };
+}
+
+export function formatWeekStartString(date: Date): string {
+  return formatDateString(getWeekRange(date).start);
+}
+
+export function shiftWeekString(dateString: string, weeks: number): string {
+  const zoned = startOfDay(zonedDate(parseDateString(dateString)));
+  const weekStart = startOfWeek(zoned, { weekStartsOn: WEEK_STARTS_ON });
+  return format(addWeeks(weekStart, weeks), "yyyy-MM-dd");
+}
+
 export function getDateRangeForPlanType(
   type: "DAY" | "WEEK" | "MONTH" | "YEAR",
   date = new Date(),
@@ -109,15 +134,8 @@ export function getDateRangeForPlanType(
       return getMonthRange(date);
     case "YEAR":
       return getYearRange(date);
-    case "WEEK": {
-      const zoned = zonedDate(date);
-      const weekStart = startOfDay(zoned);
-      const weekEnd = endOfDay(addDays(weekStart, 6));
-      return {
-        start: toUtcRangeStart(weekStart),
-        end: toUtcRangeEnd(weekEnd),
-      };
-    }
+    case "WEEK":
+      return getWeekRange(date);
     default:
       return getDayRange(date);
   }
@@ -144,6 +162,20 @@ export function formatPlanDateLabel(
 
 function shareDateFormatter(options: Intl.DateTimeFormatOptions) {
   return new Intl.DateTimeFormat("en", { ...options, timeZone: APP_TIMEZONE });
+}
+
+export function formatWeekPlanTitle(date: Date, now = new Date()): string {
+  const selectedWeekStart = getWeekRange(date).start.getTime();
+  const currentWeekStart = getWeekRange(now).start.getTime();
+
+  if (selectedWeekStart === currentWeekStart) {
+    return "Weekly plan";
+  }
+
+  const { start } = getWeekRange(date);
+  const month = shareDateFormatter({ month: "long" }).format(start);
+  const day = shareDateFormatter({ day: "numeric" }).format(start);
+  return `Week of ${month} ${day}`;
 }
 
 export function formatDayPlanTitle(date: Date, now = new Date()): string {

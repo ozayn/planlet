@@ -1,7 +1,11 @@
 import Link from "next/link";
 
 import type { PlanType } from "@/app/generated/prisma/client";
-import { formatDateRange } from "@/lib/dates";
+import {
+  formatDateRange,
+  formatDateString,
+  formatWeekStartString,
+} from "@/lib/dates";
 import { getPlanTypeLabel } from "@/lib/plan-labels";
 
 export type PlanListEntry = {
@@ -43,10 +47,18 @@ export function PlanList({
         <section key={group.type}>
           <h2 className="ui-label mb-4">{getPlanTypeLabel(group.type)}</h2>
           <ul className="space-y-2">
-            {group.plans.map((plan) => (
+            {group.plans.map((plan) => {
+              const href =
+                plan.type === "DAY"
+                  ? `/plans/day/${formatDateString(plan.dateStart)}`
+                  : plan.type === "WEEK"
+                    ? `/plans/week/${formatWeekStartString(plan.dateStart)}`
+                    : `/plans/${plan.id}`;
+
+              return (
               <li key={plan.id}>
                 <Link
-                  href={`/plans/${plan.id}`}
+                  href={href}
                   className="ui-card flex min-h-14 items-center justify-between gap-4 px-4 py-3 transition-colors hover:bg-accent-cream/40"
                 >
                   <div className="min-w-0">
@@ -65,7 +77,8 @@ export function PlanList({
                   </span>
                 </Link>
               </li>
-            ))}
+            );
+            })}
           </ul>
         </section>
       ))}

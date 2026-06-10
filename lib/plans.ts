@@ -13,8 +13,10 @@ import { PlanType as PlanTypeEnum } from "@/app/generated/prisma/client";
 
 import {
   formatDayPlanTitle,
+  formatWeekPlanTitle,
   getDayRange,
   getTodayRange,
+  getWeekRange,
 } from "@/lib/dates";
 import { canEditPlan, canViewPlan } from "@/lib/plan-sharing";
 import { normalizeProgressForStatus } from "@/lib/plan-status";
@@ -133,6 +135,65 @@ export async function getUpcomingDayPlans(userId: string) {
     where: {
       userId,
       type: PlanTypeEnum.DAY,
+      dateStart: { gte: start },
+    },
+    orderBy: { dateStart: "asc" },
+    include: {
+      _count: { select: { items: true } },
+    },
+  });
+}
+
+export async function getWeekPlan(userId: string, date: Date) {
+  const { start } = getWeekRange(date);
+
+  return prisma.plan.findFirst({
+    where: {
+      userId,
+      type: PlanTypeEnum.WEEK,
+      dateStart: start,
+    },
+    include: {
+      items: rootItemsInclude,
+    },
+  });
+}
+
+export async function getOrCreateWeekPlan(
+  userId: string,
+  date: Date,
+  title?: string,
+) {
+  const existing = await getWeekPlan(userId, date);
+
+  if (existing) {
+    return existing;
+  }
+
+  const { start, end } = getWeekRange(date);
+
+  return prisma.plan.create({
+    data: {
+      userId,
+      type: PlanTypeEnum.WEEK,
+      title: title ?? formatWeekPlanTitle(date),
+      dateStart: start,
+      dateEnd: end,
+      language: "UNKNOWN",
+    },
+    include: {
+      items: rootItemsInclude,
+    },
+  });
+}
+
+export async function getUpcomingWeekPlans(userId: string) {
+  const { start } = getWeekRange(new Date());
+
+  return prisma.plan.findMany({
+    where: {
+      userId,
+      type: PlanTypeEnum.WEEK,
       dateStart: { gte: start },
     },
     orderBy: { dateStart: "asc" },

@@ -7,6 +7,7 @@ import type {
 } from "@/lib/ai/plan-parser-schema";
 import {
   formatPlanDateLabel,
+  getWeekRange,
   parseDateString,
 } from "@/lib/dates";
 import {
@@ -50,6 +51,7 @@ type ParsedPlanReviewProps = {
   planDate?: string;
   onPlanDateChange?: (planDate: string) => void;
   existingDayPlan?: boolean;
+  existingWeekPlan?: boolean;
 };
 
 export function ParsedPlanReview({
@@ -58,6 +60,7 @@ export function ParsedPlanReview({
   planDate,
   onPlanDateChange,
   existingDayPlan = false,
+  existingWeekPlan = false,
 }: ParsedPlanReviewProps) {
   function updateItem(index: number, item: ParsedPlanItem) {
     const items = [...draft.items];
@@ -85,6 +88,12 @@ export function ParsedPlanReview({
         },
       ],
     });
+  }
+
+  let weekPeriodLabel: string | null = null;
+  if (draft.planType === "WEEK" && planDate) {
+    const { start, end } = getWeekRange(parseDateString(planDate));
+    weekPeriodLabel = formatPlanDateLabel(start, "WEEK", end);
   }
 
   return (
@@ -170,6 +179,25 @@ export function ParsedPlanReview({
             {existingDayPlan ? (
               <p className="text-sm text-muted">
                 This will be added to the existing plan for this date.
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+
+        {draft.planType === "WEEK" && planDate && onPlanDateChange ? (
+          <div className="space-y-2 border-t border-border-soft pt-4">
+            <Field label="Week containing">
+              <input
+                type="date"
+                value={planDate}
+                onChange={(event) => onPlanDateChange(event.target.value)}
+                className={inputClass}
+              />
+            </Field>
+            <p className="text-sm text-muted">Week: {weekPeriodLabel}</p>
+            {existingWeekPlan ? (
+              <p className="text-sm text-muted">
+                This will be added to the existing plan for this week.
               </p>
             ) : null}
           </div>

@@ -5,6 +5,7 @@ Rules:
 - Preserve names exactly as written.
 - Do not translate Farsi to English or English to Farsi unless the user explicitly asks.
 - Detect whether the plan is daily (DAY), weekly (WEEK), monthly (MONTH), or yearly (YEAR).
+- Treat "this week", "weekly plan", "برنامه هفته", and "این هفته" as WEEK.
 - If unclear, default planType to DAY.
 - Treat emotional goals such as "حفاظت روحی" as INTENTION, not TASK.
 - Treat gratitude / شکرگزاری as INTENTION.

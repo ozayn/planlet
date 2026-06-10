@@ -6,6 +6,7 @@ import {
   dayPlanExistsAction,
   parsePlanTextAction,
   saveParsedPlanAction,
+  weekPlanExistsAction,
 } from "@/app/(app)/plans/actions";
 import { AudioRecorder } from "@/components/audio/audio-recorder";
 import { ParsedPlanReview } from "@/components/plans/parsed-plan-review";
@@ -22,23 +23,38 @@ export function NewPlanFlow() {
   const [draft, setDraft] = useState<ParsedPlan | null>(null);
   const [planDate, setPlanDate] = useState(formatDateString(new Date()));
   const [existingDayPlan, setExistingDayPlan] = useState(false);
+  const [existingWeekPlan, setExistingWeekPlan] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isParsing, startParse] = useTransition();
   const [isSaving, startSave] = useTransition();
 
   useEffect(() => {
-    if (step !== "review" || draft?.planType !== "DAY" || !planDate) {
+    if (step !== "review" || !planDate) {
       setExistingDayPlan(false);
+      setExistingWeekPlan(false);
       return;
     }
 
     let cancelled = false;
 
-    dayPlanExistsAction(planDate).then((exists) => {
-      if (!cancelled) {
-        setExistingDayPlan(exists);
-      }
-    });
+    if (draft?.planType === "DAY") {
+      dayPlanExistsAction(planDate).then((exists) => {
+        if (!cancelled) {
+          setExistingDayPlan(exists);
+          setExistingWeekPlan(false);
+        }
+      });
+    } else if (draft?.planType === "WEEK") {
+      weekPlanExistsAction(planDate).then((exists) => {
+        if (!cancelled) {
+          setExistingWeekPlan(exists);
+          setExistingDayPlan(false);
+        }
+      });
+    } else {
+      setExistingDayPlan(false);
+      setExistingWeekPlan(false);
+    }
 
     return () => {
       cancelled = true;
@@ -92,7 +108,10 @@ export function NewPlanFlow() {
           planType: draft.planType,
           language: draft.language,
           summary: draft.summary?.trim() || undefined,
-          planDate: draft.planType === "DAY" ? planDate : undefined,
+          planDate:
+            draft.planType === "DAY" || draft.planType === "WEEK"
+              ? planDate
+              : undefined,
           items: cleanedItems,
         });
       } catch (saveError) {
@@ -114,11 +133,18 @@ export function NewPlanFlow() {
         <ParsedPlanReview
           draft={draft}
           onChange={setDraft}
-          planDate={draft.planType === "DAY" ? planDate : undefined}
+          planDate={
+            draft.planType === "DAY" || draft.planType === "WEEK"
+              ? planDate
+              : undefined
+          }
           onPlanDateChange={
-            draft.planType === "DAY" ? setPlanDate : undefined
+            draft.planType === "DAY" || draft.planType === "WEEK"
+              ? setPlanDate
+              : undefined
           }
           existingDayPlan={existingDayPlan}
+          existingWeekPlan={existingWeekPlan}
         />
 
         {error ? (

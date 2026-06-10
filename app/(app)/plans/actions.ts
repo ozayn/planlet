@@ -18,9 +18,12 @@ import { APP_TIMEZONE } from "@/config/time";
 import {
   formatDateString,
   formatDayPlanTitle,
+  formatWeekPlanTitle,
+  formatWeekStartString,
   getDateRangeForPlanType,
   getMonthRange,
   getTodayRange,
+  getWeekRange,
   getYearRange,
   isValidDateString,
   parseDateString,
@@ -31,7 +34,9 @@ import {
   deletePlanItem,
   getDayPlan,
   getOrCreateDayPlan,
+  getOrCreateWeekPlan,
   getTodayPlan,
+  getWeekPlan,
   reorderPlanItems,
   updatePlanItem,
   updatePlanItemStatus,
@@ -52,13 +57,19 @@ async function requireUserId(): Promise<string> {
   return session.user.id;
 }
 
-function revalidatePlanPaths(planId: string, dateString?: string) {
+function revalidatePlanPaths(
+  planId: string,
+  options?: { dayDate?: string; weekDate?: string },
+) {
   revalidatePath("/today");
   revalidatePath("/plans");
   revalidatePath("/dashboard");
   revalidatePath(`/plans/${planId}`);
-  if (dateString) {
-    revalidatePath(`/plans/day/${dateString}`);
+  if (options?.dayDate) {
+    revalidatePath(`/plans/day/${options.dayDate}`);
+  }
+  if (options?.weekDate) {
+    revalidatePath(`/plans/week/${options.weekDate}`);
   }
 }
 
@@ -82,8 +93,18 @@ export async function createDayPlanForDateAction(dateString: string) {
   const date = parseActionDateString(dateString);
   const plan = await getOrCreateDayPlan(userId, date);
 
-  revalidatePlanPaths(plan.id, dateString);
+  revalidatePlanPaths(plan.id, { dayDate: dateString });
   redirect(`/plans/day/${dateString}`);
+}
+
+export async function createWeekPlanForDateAction(dateString: string) {
+  const userId = await requireUserId();
+  const date = parseActionDateString(dateString);
+  const weekStart = formatWeekStartString(date);
+  const plan = await getOrCreateWeekPlan(userId, date);
+
+  revalidatePlanPaths(plan.id, { weekDate: weekStart });
+  redirect(`/plans/week/${weekStart}`);
 }
 
 export async function dayPlanExistsAction(dateString: string): Promise<boolean> {
@@ -94,6 +115,17 @@ export async function dayPlanExistsAction(dateString: string): Promise<boolean> 
   }
 
   const plan = await getDayPlan(userId, parseDateString(dateString));
+  return Boolean(plan);
+}
+
+export async function weekPlanExistsAction(dateString: string): Promise<boolean> {
+  const userId = await requireUserId();
+
+  if (!isValidDateString(dateString)) {
+    return false;
+  }
+
+  const plan = await getWeekPlan(userId, parseDateString(dateString));
   return Boolean(plan);
 }
 
@@ -132,10 +164,14 @@ export async function createPlanAction(type: PlanType) {
       break;
     }
     case "WEEK": {
-      const range = getDateRangeForPlanType("WEEK", now);
+      const existingWeek = await getWeekPlan(userId, now);
+      if (existingWeek) {
+        redirect(`/plans/week/${formatWeekStartString(now)}`);
+      }
+      const range = getWeekRange(now);
       dateStart = range.start;
       dateEnd = range.end;
-      title = "Weekly plan";
+      title = formatWeekPlanTitle(now);
       break;
     }
     default: {
@@ -156,6 +192,9 @@ export async function createPlanAction(type: PlanType) {
   });
 
   revalidatePath("/plans");
+  if (type === "WEEK") {
+    redirect(`/plans/week/${formatWeekStartString(now)}`);
+  }
   redirect(`/plans/${plan.id}`);
 }
 
@@ -327,10 +366,41 @@ export async function saveParsedPlanAction(input: unknown) {
 
   const data: SaveParsedPlanInput = parsed.data;
   const referenceDate =
-    data.planType === "DAY" && data.planDate
+    (data.planType === "DAY" || data.planType === "WEEK") && data.planDate
       ? parseDateString(data.planDate)
       : new Date();
   const { start, end } = getDateRangeForPlanType(data.planType, referenceDate);
+
+  if (data.planType === "WEEK") {
+    const existing = await getWeekPlan(userId, referenceDate);
+
+    if (existing) {
+      const rootItemCount = await prisma.planItem.count({
+        where: { planId: existing.id, parentItemId: null },
+      });
+
+      await prisma.plan.update({
+        where: { id: existing.id },
+        data: {
+          rawInput: mergeRawInput(existing.rawInput, data.rawInput),
+          ...(!existing.summary?.trim() && data.summary?.trim()
+            ? { summary: data.summary.trim() }
+            : {}),
+        },
+      });
+
+      await appendParsedItemsToPlan(
+        userId,
+        existing.id,
+        data.items,
+        rootItemCount,
+      );
+
+      revalidatePath("/plans");
+      revalidatePath(`/plans/week/${formatWeekStartString(referenceDate)}`);
+      redirect(`/plans/${existing.id}`);
+    }
+  }
 
   if (data.planType === "DAY") {
     const existing = await getDayPlan(userId, referenceDate);
@@ -372,7 +442,9 @@ export async function saveParsedPlanAction(input: unknown) {
     title:
       data.planType === "DAY"
         ? data.title.trim() || formatDayPlanTitle(referenceDate)
-        : data.title.trim(),
+        : data.planType === "WEEK"
+          ? data.title.trim() || formatWeekPlanTitle(referenceDate)
+          : data.title.trim(),
     dateStart: start,
     dateEnd: end,
     rawInput: data.rawInput,
@@ -388,6 +460,9 @@ export async function saveParsedPlanAction(input: unknown) {
     revalidatePath(
       `/plans/day/${data.planDate ?? formatDateString(referenceDate)}`,
     );
+  }
+  if (data.planType === "WEEK") {
+    revalidatePath(`/plans/week/${formatWeekStartString(referenceDate)}`);
   }
   redirect(`/plans/${plan.id}`);
 }
