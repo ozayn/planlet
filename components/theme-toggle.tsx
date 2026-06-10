@@ -12,10 +12,10 @@ const THEME_OPTIONS = [
 type ThemeValue = (typeof THEME_OPTIONS)[number]["value"];
 
 type ThemeToggleProps = {
-  compact?: boolean;
+  variant?: "compact" | "full";
 };
 
-export function ThemeToggle({ compact = false }: ThemeToggleProps) {
+export function ThemeToggle({ variant = "full" }: ThemeToggleProps) {
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -26,7 +26,7 @@ export function ThemeToggle({ compact = false }: ThemeToggleProps) {
   if (!mounted) {
     return (
       <div
-        className={compact ? "h-10 w-28" : "h-11"}
+        className={variant === "compact" ? "h-8 w-[5.25rem]" : "h-11"}
         aria-hidden="true"
       />
     );
@@ -34,12 +34,13 @@ export function ThemeToggle({ compact = false }: ThemeToggleProps) {
 
   const activeTheme = (theme ?? "system") as ThemeValue;
 
-  if (compact) {
+  if (variant === "compact") {
     return (
       <div
-        className="flex gap-1 rounded-xl bg-accent-cream/40 p-1"
+        className="flex gap-0.5 rounded-lg border border-border-soft bg-surface/80 p-0.5"
         role="group"
-        aria-label="Appearance"
+        aria-label="Change theme"
+        title="Change theme"
       >
         {THEME_OPTIONS.map((option) => {
           const isActive = activeTheme === option.value;
@@ -52,13 +53,13 @@ export function ThemeToggle({ compact = false }: ThemeToggleProps) {
               aria-label={option.label}
               aria-pressed={isActive}
               title={option.label}
-              className={`flex min-h-8 min-w-8 items-center justify-center rounded-lg text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${
+              className={`flex min-h-7 min-w-7 items-center justify-center rounded-md transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${
                 isActive
-                  ? "bg-surface text-foreground shadow-sm"
-                  : "text-muted hover:text-foreground"
+                  ? "bg-accent-cream text-foreground"
+                  : "text-muted-light hover:text-muted"
               }`}
             >
-              <ThemeIcon value={option.value} />
+              <ThemeIcon value={option.value} className="h-3.5 w-3.5" />
             </button>
           );
         })}
@@ -98,9 +99,13 @@ export function ThemeToggle({ compact = false }: ThemeToggleProps) {
   );
 }
 
-function ThemeIcon({ value }: { value: ThemeValue }) {
-  const className = "h-4 w-4 shrink-0";
-
+function ThemeIcon({
+  value,
+  className = "h-4 w-4 shrink-0",
+}: {
+  value: ThemeValue;
+  className?: string;
+}) {
   switch (value) {
     case "light":
       return (

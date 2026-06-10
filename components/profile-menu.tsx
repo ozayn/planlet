@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 
-import { ThemeToggle } from "@/components/theme-toggle";
 import { UserAvatar } from "@/components/user-avatar";
 
 type ProfileMenuProps = {
@@ -12,6 +11,7 @@ type ProfileMenuProps = {
   image?: string | null;
   isAdmin?: boolean;
   signOutButton: React.ReactNode;
+  compact?: boolean;
 };
 
 export function ProfileMenu({
@@ -20,6 +20,7 @@ export function ProfileMenu({
   image,
   isAdmin = false,
   signOutButton,
+  compact = false,
 }: ProfileMenuProps) {
   const [open, setOpen] = useState(false);
   const menuId = useId();
@@ -62,12 +63,17 @@ export function ProfileMenu({
         aria-haspopup="menu"
         aria-controls={menuId}
         onClick={() => setOpen((current) => !current)}
-        className="flex items-center gap-2 rounded-full border border-border bg-surface py-1 ps-1 pe-3 text-sm transition-colors hover:bg-accent-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+        className={`flex items-center rounded-full border border-border bg-surface text-sm transition-colors hover:bg-accent-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${
+          compact ? "p-0.5" : "gap-2 py-1 ps-1 pe-3"
+        }`}
+        aria-label={compact ? displayName : undefined}
       >
         <UserAvatar name={name} email={email} image={image} size="sm" />
-        <span className="max-w-28 truncate font-medium text-foreground" dir="auto">
-          {displayName}
-        </span>
+        {compact ? null : (
+          <span className="max-w-28 truncate font-medium text-foreground" dir="auto">
+            {displayName}
+          </span>
+        )}
       </button>
 
       {open ? (
@@ -90,11 +96,6 @@ export function ProfileMenu({
                 ) : null}
               </div>
             </div>
-          </div>
-
-          <div className="border-b border-border-soft px-3 py-3">
-            <p className="mb-2 text-xs text-muted">Appearance</p>
-            <ThemeToggle compact />
           </div>
 
           <div className="space-y-1 p-1">

@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 import { PlanletLogo } from "@/components/planlet-logo";
 import { ProfileMenu } from "@/components/profile-menu";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { PRODUCT } from "@/config/product";
 
 const navItems = [
@@ -69,13 +70,16 @@ export function DesktopNav({
             );
           })}
         </nav>
-        <ProfileMenu
-          name={userName}
-          email={userEmail}
-          image={userImage}
-          isAdmin={isAdmin}
-          signOutButton={signOutButton}
-        />
+        <div className="flex shrink-0 items-center gap-2">
+          <ThemeToggle variant="compact" />
+          <ProfileMenu
+            name={userName}
+            email={userEmail}
+            image={userImage}
+            isAdmin={isAdmin}
+            signOutButton={signOutButton}
+          />
+        </div>
       </div>
     </header>
   );
