@@ -1,0 +1,153 @@
+import type { PlanType } from "@/app/generated/prisma/client";
+
+import { APP_TIMEZONE } from "@/config/time";
+import { isGenericPlanHeaderTitle } from "@/lib/ai/clean-imported-plan-text";
+import {
+  formatShareMonthPeriod,
+  formatShareYearPeriod,
+  getWeekRange,
+} from "@/lib/dates";
+
+export { isGenericPlanHeaderTitle } from "@/lib/ai/clean-imported-plan-text";
+
+export const MAX_PLAN_TITLE_LENGTH = 120;
+
+export type BuildDefaultPlanTitleInput = {
+  type: PlanType;
+  dateStart: Date;
+  dateEnd?: Date;
+  timezone?: string;
+};
+
+function shareDateFormatter(
+  timezone: string,
+  options: Intl.DateTimeFormatOptions,
+) {
+  return new Intl.DateTimeFormat("en", { ...options, timeZone: timezone });
+}
+
+function formatWeekTitlePeriod(
+  start: Date,
+  end: Date,
+  timezone: string,
+): string {
+  const startMonth = shareDateFormatter(timezone, { month: "short" }).format(
+    start,
+  );
+  const endMonth = shareDateFormatter(timezone, { month: "short" }).format(end);
+  const startDay = shareDateFormatter(timezone, { day: "numeric" }).format(
+    start,
+  );
+  const endDay = shareDateFormatter(timezone, { day: "numeric" }).format(end);
+
+  if (startMonth === endMonth) {
+    return `${startMonth} ${startDay}–${endDay}`;
+  }
+
+  return `${startMonth} ${startDay}–${endMonth} ${endDay}`;
+}
+
+/**
+ * English UI default titles from plan type and date range.
+ * Does not use OCR/import header text.
+ */
+export function buildDefaultPlanTitle(
+  input: BuildDefaultPlanTitleInput,
+): string;
+export function buildDefaultPlanTitle(
+  type: PlanType,
+  dateStart: Date,
+  dateEnd?: Date,
+): string;
+export function buildDefaultPlanTitle(
+  typeOrInput: PlanType | BuildDefaultPlanTitleInput,
+  dateStart?: Date,
+  dateEnd?: Date,
+): string {
+  const input: BuildDefaultPlanTitleInput =
+    typeof typeOrInput === "string"
+      ? { type: typeOrInput, dateStart: dateStart!, dateEnd }
+      : typeOrInput;
+
+  const timezone = input.timezone ?? APP_TIMEZONE;
+
+  switch (input.type) {
+    case "DAY": {
+      const weekday = shareDateFormatter(timezone, {
+        weekday: "long",
+      }).format(input.dateStart);
+      return `${weekday}'s plan`;
+    }
+    case "WEEK": {
+      const { start, end } = getWeekRange(input.dateStart);
+      const period = formatWeekTitlePeriod(
+        start,
+        input.dateEnd ?? end,
+        timezone,
+      );
+      return `Weekly plan — ${period}`;
+    }
+    case "MONTH": {
+      return `Monthly plan — ${formatShareMonthPeriod(input.dateStart)}`;
+    }
+    case "YEAR": {
+      return `Yearly plan — ${formatShareYearPeriod(input.dateStart)}`;
+    }
+    default: {
+      return "Plan";
+    }
+  }
+}
+
+export function isDefaultPlanTitle(
+  title: string,
+  type: PlanType,
+  dateStart: Date,
+  dateEnd: Date,
+): boolean {
+  const trimmed = title.trim();
+  if (!trimmed || isGenericPlanHeaderTitle(trimmed)) {
+    return true;
+  }
+
+  return (
+    trimmed ===
+    buildDefaultPlanTitle({ type, dateStart, dateEnd })
+  );
+}
+
+export function resolvePlanTitle(
+  userTitle: string | undefined | null,
+  type: PlanType,
+  dateStart: Date,
+  dateEnd: Date,
+): string {
+  const trimmed = userTitle?.trim() ?? "";
+
+  if (!trimmed || isGenericPlanHeaderTitle(trimmed)) {
+    return buildDefaultPlanTitle({ type, dateStart, dateEnd });
+  }
+
+  return trimmed.slice(0, MAX_PLAN_TITLE_LENGTH);
+}
+
+/** @deprecated Use buildDefaultPlanTitle({ type: "DAY", dateStart, dateEnd }) */
+export function formatDayPlanTitle(date: Date): string {
+  return buildDefaultPlanTitle({ type: "DAY", dateStart: date, dateEnd: date });
+}
+
+/** @deprecated Use buildDefaultPlanTitle({ type: "WEEK", dateStart, dateEnd }) */
+export function formatWeekPlanTitle(date: Date): string {
+  const { end } = getWeekRange(date);
+  return buildDefaultPlanTitle({ type: "WEEK", dateStart: date, dateEnd: end });
+}
+
+/** @deprecated Use buildDefaultPlanTitle({ type: "MONTH", dateStart, dateEnd }) */
+export function formatMonthPlanTitle(date: Date): string {
+  return buildDefaultPlanTitle({ type: "MONTH", dateStart: date, dateEnd: date });
+}
+
+/** @deprecated Use buildDefaultPlanTitle({ type: "YEAR", dateStart, dateEnd }) */
+export function formatYearPlanTitle(date: Date): string {
+  return buildDefaultPlanTitle({ type: "YEAR", dateStart: date, dateEnd: date });
+}

@@ -69,6 +69,7 @@ type ParsedPlanReviewProps = {
   existingYearPlan?: boolean;
   imageDateHint?: ImageDateHintContext | null;
   showPlanForSummary?: boolean;
+  detectedHeader?: string | null;
 };
 
 export function ParsedPlanReview({
@@ -82,6 +83,7 @@ export function ParsedPlanReview({
   existingYearPlan = false,
   imageDateHint = null,
   showPlanForSummary = false,
+  detectedHeader = null,
 }: ParsedPlanReviewProps) {
   function updateItem(index: number, item: ParsedPlanItem) {
     const items = [...draft.items];
@@ -142,6 +144,17 @@ export function ParsedPlanReview({
             }
             className={inputClass}
           />
+          <p className="text-xs text-muted-light">
+            Generated from the selected date. You can rename it.
+          </p>
+          {detectedHeader ? (
+            <p className="text-xs text-muted">
+              Detected header:{" "}
+              <span dir="auto" className="text-foreground">
+                {detectedHeader}
+              </span>
+            </p>
+          ) : null}
         </Field>
 
         <div className="grid gap-4 sm:grid-cols-2">

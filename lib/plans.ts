@@ -12,10 +12,6 @@ import type {
 import { PlanType as PlanTypeEnum } from "@/app/generated/prisma/client";
 
 import {
-  formatDayPlanTitle,
-  formatMonthPlanTitle,
-  formatWeekPlanTitle,
-  formatYearPlanTitle,
   getDayRange,
   getMonthRange,
   getTodayRange,
@@ -24,6 +20,11 @@ import {
 } from "@/lib/dates";
 import { canEditPlan, canViewPlan } from "@/lib/plan-sharing";
 import { normalizeProgressForStatus } from "@/lib/plan-status";
+import {
+  formatDayPlanTitle,
+  formatWeekPlanTitle,
+  resolvePlanTitle,
+} from "@/lib/plan-titles";
 import { prisma } from "@/lib/prisma";
 
 const itemOrderBy = [
@@ -281,6 +282,41 @@ export type CreatePlanInput = {
   summary?: string;
   language?: PlanLanguage;
 };
+
+export class PlanError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PlanError";
+  }
+}
+
+export async function updatePlanTitle(
+  planId: string,
+  userId: string,
+  title: string,
+) {
+  const plan = await prisma.plan.findFirst({
+    where: { id: planId, userId },
+    select: { id: true, type: true, dateStart: true, dateEnd: true },
+  });
+
+  if (!plan) {
+    throw new PlanError("Plan not found.");
+  }
+
+  const resolvedTitle = resolvePlanTitle(
+    title,
+    plan.type,
+    plan.dateStart,
+    plan.dateEnd,
+  );
+
+  return prisma.plan.update({
+    where: { id: planId },
+    data: { title: resolvedTitle },
+    select: { id: true, title: true, type: true, dateStart: true },
+  });
+}
 
 export async function createPlan(input: CreatePlanInput) {
   return prisma.plan.create({

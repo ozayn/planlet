@@ -24,7 +24,13 @@ import { detectMultipleDateSections } from "@/lib/ai/image-extraction-format";
 import type { DateHintConfidence } from "@/lib/ai/date-hints";
 import { formatDetectedDateLabel } from "@/lib/ai/date-hints";
 import type { ParsedPlan } from "@/lib/ai/plan-parser-schema";
-import { formatDateString } from "@/lib/dates";
+import { formatDateString, getDateRangeForPlanType, parseDateString } from "@/lib/dates";
+import {
+  buildDefaultPlanTitle,
+  isDefaultPlanTitle,
+  isGenericPlanHeaderTitle,
+  MAX_PLAN_TITLE_LENGTH,
+} from "@/lib/plan-titles";
 
 type Step = "input" | "review";
 type InputMode = "text" | "record" | "image";
@@ -59,8 +65,54 @@ export function NewPlanFlow() {
   const [multipleDateSectionsWarning, setMultipleDateSectionsWarning] =
     useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [titleCustomized, setTitleCustomized] = useState(false);
   const [isParsing, startParse] = useTransition();
   const [isSaving, startSave] = useTransition();
+
+  function defaultTitleFor(
+    planType: PlanType,
+    dateString: string,
+  ): string {
+    const referenceDate = parseDateString(dateString);
+    const { end } = getDateRangeForPlanType(planType, referenceDate);
+    return buildDefaultPlanTitle({
+      type: planType,
+      dateStart: referenceDate,
+      dateEnd: end,
+    });
+  }
+
+  function handleDraftChange(next: ParsedPlan) {
+    if (draft) {
+      if (next.planType !== draft.planType && !titleCustomized) {
+        setDraft({
+          ...next,
+          title: defaultTitleFor(next.planType, selectedDate),
+        });
+        return;
+      }
+
+      if (next.title !== draft.title) {
+        const expectedDefault = defaultTitleFor(draft.planType, selectedDate);
+        if (next.title.trim() !== expectedDefault) {
+          setTitleCustomized(true);
+        }
+      }
+    }
+
+    setDraft(next);
+  }
+
+  function handleReviewDateChange(dateString: string) {
+    setSelectedDate(dateString);
+
+    if (draft && !titleCustomized) {
+      setDraft({
+        ...draft,
+        title: defaultTitleFor(draft.planType, dateString),
+      });
+    }
+  }
 
   useEffect(() => {
     if (step !== "review" || !selectedDate || !draft) {
@@ -137,9 +189,27 @@ export function NewPlanFlow() {
         return;
       }
 
+      const defaultTitle = defaultTitleFor(targetPlanType, selectedDate);
+      const parserTitle = result.draft.title.trim();
+      const title = isGenericPlanHeaderTitle(parserTitle)
+        ? defaultTitle
+        : parserTitle.slice(0, MAX_PLAN_TITLE_LENGTH);
+
+      setTitleCustomized(
+        !isDefaultPlanTitle(
+          title,
+          targetPlanType,
+          parseDateString(selectedDate),
+          getDateRangeForPlanType(
+            targetPlanType,
+            parseDateString(selectedDate),
+          ).end,
+        ),
+      );
       setDraft({
         ...result.draft,
         planType: targetPlanType,
+        title,
       });
       setStep("review");
     });
@@ -260,9 +330,9 @@ export function NewPlanFlow() {
 
         <ParsedPlanReview
           draft={draft}
-          onChange={setDraft}
+          onChange={handleDraftChange}
           planDate={selectedDate}
-          onPlanDateChange={setSelectedDate}
+          onPlanDateChange={handleReviewDateChange}
           existingDayPlan={existingDayPlan}
           existingWeekPlan={existingWeekPlan}
           existingMonthPlan={existingMonthPlan}
@@ -277,6 +347,7 @@ export function NewPlanFlow() {
               : null
           }
           showPlanForSummary
+          detectedHeader={detectedPlanTitle}
         />
 
         {error ? (
@@ -373,7 +444,7 @@ export function NewPlanFlow() {
         <>
           {detectedPlanTitle ? (
             <p className="text-xs text-muted">
-              Detected title:{" "}
+              Detected header:{" "}
               <span dir="auto" className="text-foreground">
                 {detectedPlanTitle}
               </span>

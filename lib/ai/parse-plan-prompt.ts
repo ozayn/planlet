@@ -18,10 +18,15 @@ Rules:
   - "اهداف", "نیت", "شکرگزاری", and bullet lines under اهداف / نیت headings
 - Section headings like "ملاحظات:" or "Notes:" signal NOTE items below; "اهداف:" or "Intentions:" signal INTENTION items below.
 - Do not create tasks from plan title/header lines.
+- Do not set the JSON "title" field to generic day/week headers. The app generates titles from the selected date.
+- Generic headers to ignore for title (use only as date/period context):
+  - برنامه دوشنبه، برنامه سه‌شنبه، برنامه امروز
+  - Monday plan, Tuesday plan, Today's plan, Weekly plan, Monthly plan
+- If the only title-like line is a generic header, return a neutral placeholder title such as "Monday's plan". The app will replace it with the correct weekday from the selected date.
 - Examples of headers/titles, not tasks:
-  - "برنامه دوشنبه" means Monday's plan; use as title/date context, not a task.
-  - "Today's plan", "Weekly plan", and "Plan for Monday" are titles, not tasks.
-  - "برنامه هفته" and "This week's plan" are weekly titles, not tasks.
+  - "برنامه دوشنبه" means Monday's plan; use as date context, not a task or saved title.
+  - "Today's plan", "Weekly plan", and "Plan for Monday" are headers, not tasks.
+  - "برنامه هفته" and "This week's plan" are weekly headers, not tasks.
   - Date-only section labels such as "جون ۸", "جون ۹", "June 8", and "June 9" are section context, not tasks.
 - If a line is a heading for a section, do not import it as an item.
 - OCR status markers at the start of a line map to item status. Remove the marker from the title:

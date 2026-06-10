@@ -171,6 +171,10 @@ function trimEmptyEdges(lines: string[]): string[] {
   return result;
 }
 
+export function isGenericPlanHeaderTitle(line: string): boolean {
+  return isLikelyHeaderLine(line);
+}
+
 export function cleanImportedPlanText(input: string): CleanImportedPlanTextResult {
   const lines = input.split(/\r?\n/);
   const removedHeaderLines: string[] = [];

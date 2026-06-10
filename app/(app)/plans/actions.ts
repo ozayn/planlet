@@ -22,11 +22,7 @@ import { toZonedTime } from "date-fns-tz";
 import { APP_TIMEZONE } from "@/config/time";
 import {
   formatDateString,
-  formatDayPlanTitle,
-  formatMonthPlanTitle,
-  formatWeekPlanTitle,
   formatWeekStartString,
-  formatYearPlanTitle,
   getDateRangeForPlanType,
   getMonthRange,
   getTodayRange,
@@ -48,8 +44,10 @@ import {
   getWeekPlan,
   getYearPlan,
   reorderPlanItems,
+  PlanError,
   updatePlanItem,
   updatePlanItemStatus,
+  updatePlanTitle,
   type UpdatePlanItemInput,
 } from "@/lib/plans";
 import {
@@ -68,6 +66,10 @@ import {
   type SerializedObservation,
 } from "@/lib/observations";
 import { KudosError, sendPlanKudos } from "@/lib/kudos";
+import {
+  buildDefaultPlanTitle,
+  resolvePlanTitle,
+} from "@/lib/plan-titles";
 import {
   getPlanAccess,
   removePlanShare,
@@ -210,21 +212,33 @@ export async function createPlanAction(type: PlanType) {
       const range = getTodayRange(now);
       dateStart = range.start;
       dateEnd = range.end;
-      title = "Today's plan";
+      title = buildDefaultPlanTitle({
+        type: "DAY",
+        dateStart: range.start,
+        dateEnd: range.end,
+      });
       break;
     }
     case "MONTH": {
       const range = getMonthRange(now);
       dateStart = range.start;
       dateEnd = range.end;
-      title = `Plan for ${now.toLocaleString("en", { month: "long", year: "numeric", timeZone: APP_TIMEZONE })}`;
+      title = buildDefaultPlanTitle({
+        type: "MONTH",
+        dateStart: range.start,
+        dateEnd: range.end,
+      });
       break;
     }
     case "YEAR": {
       const range = getYearRange(now);
       dateStart = range.start;
       dateEnd = range.end;
-      title = `Plan for ${new Intl.DateTimeFormat("en", { year: "numeric", timeZone: APP_TIMEZONE }).format(now)}`;
+      title = buildDefaultPlanTitle({
+        type: "YEAR",
+        dateStart: range.start,
+        dateEnd: range.end,
+      });
       break;
     }
     case "WEEK": {
@@ -235,14 +249,22 @@ export async function createPlanAction(type: PlanType) {
       const range = getWeekRange(now);
       dateStart = range.start;
       dateEnd = range.end;
-      title = formatWeekPlanTitle(now);
+      title = buildDefaultPlanTitle({
+        type: "WEEK",
+        dateStart: range.start,
+        dateEnd: range.end,
+      });
       break;
     }
     default: {
       const range = getTodayRange(now);
       dateStart = range.start;
       dateEnd = range.end;
-      title = "New plan";
+      title = buildDefaultPlanTitle({
+        type: "DAY",
+        dateStart: range.start,
+        dateEnd: range.end,
+      });
     }
   }
 
@@ -595,16 +617,7 @@ export async function saveParsedPlanAction(input: unknown) {
   const plan = await createPlan({
     userId,
     type: data.planType,
-    title:
-      data.planType === "DAY"
-        ? data.title.trim() || formatDayPlanTitle(referenceDate)
-        : data.planType === "WEEK"
-          ? data.title.trim() || formatWeekPlanTitle(referenceDate)
-          : data.planType === "MONTH"
-            ? data.title.trim() || formatMonthPlanTitle(referenceDate)
-            : data.planType === "YEAR"
-              ? data.title.trim() || formatYearPlanTitle(referenceDate)
-              : data.title.trim(),
+    title: resolvePlanTitle(data.title, data.planType, start, end),
     dateStart: start,
     dateEnd: end,
     rawInput: data.rawInput,
@@ -861,6 +874,40 @@ export async function deleteItemCommentAction(
           : error instanceof Error
             ? error.message
             : "Failed to delete comment.",
+    };
+  }
+}
+
+export type UpdatePlanTitleResult =
+  | { success: true; title: string }
+  | { success: false; error: string };
+
+export async function updatePlanTitleAction(
+  planId: string,
+  title: string,
+): Promise<UpdatePlanTitleResult> {
+  const userId = await requireUserId();
+
+  try {
+    const plan = await updatePlanTitle(planId, userId, title);
+    revalidatePlanPaths(plan.id, {
+      dayDate:
+        plan.type === "DAY" ? formatDateString(plan.dateStart) : undefined,
+      weekDate:
+        plan.type === "WEEK"
+          ? formatWeekStartString(plan.dateStart)
+          : undefined,
+    });
+    return { success: true, title: plan.title };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof PlanError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : "Failed to update title.",
     };
   }
 }

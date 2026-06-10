@@ -167,54 +167,6 @@ function shareDateFormatter(options: Intl.DateTimeFormatOptions) {
   return new Intl.DateTimeFormat("en", { ...options, timeZone: APP_TIMEZONE });
 }
 
-export function formatWeekPlanTitle(date: Date, now = new Date()): string {
-  const selectedWeekStart = getWeekRange(date).start.getTime();
-  const currentWeekStart = getWeekRange(now).start.getTime();
-
-  if (selectedWeekStart === currentWeekStart) {
-    return "Weekly plan";
-  }
-
-  const { start } = getWeekRange(date);
-  const month = shareDateFormatter({ month: "long" }).format(start);
-  const day = shareDateFormatter({ day: "numeric" }).format(start);
-  return `Week of ${month} ${day}`;
-}
-
-export function formatMonthPlanTitle(date: Date, now = new Date()): string {
-  const selected = getMonthRange(date).start.getTime();
-  const current = getMonthRange(now).start.getTime();
-
-  if (selected === current) {
-    return "Monthly plan";
-  }
-
-  return `Plan for ${formatShareMonthPeriod(date)}`;
-}
-
-export function formatYearPlanTitle(date: Date, now = new Date()): string {
-  const selected = getYearRange(date).start.getTime();
-  const current = getYearRange(now).start.getTime();
-
-  if (selected === current) {
-    return "Yearly plan";
-  }
-
-  return `Plan for ${formatShareYearPeriod(date)}`;
-}
-
-export function formatDayPlanTitle(date: Date, now = new Date()): string {
-  const selected = getDayRange(date).start.getTime();
-  const today = getTodayRange(now).start.getTime();
-
-  if (selected === today) {
-    return "Today's plan";
-  }
-
-  const weekday = shareDateFormatter({ weekday: "long" }).format(date);
-  return `${weekday} plan`;
-}
-
 export function formatShareDayPeriod(date: Date): string {
   return shareDateFormatter({
     weekday: "long",

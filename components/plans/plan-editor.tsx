@@ -4,6 +4,7 @@ import Link from "next/link";
 import type { PlanItemView } from "@/app/generated/prisma/client";
 
 import { AddItemForm } from "@/components/plans/add-item-form";
+import { EditablePlanTitle } from "@/components/plans/editable-plan-title";
 import { DeletePlanMenu } from "@/components/plans/delete-plan-menu";
 import { OpenFullPlanShareLink } from "@/components/plans/open-full-plan-share-link";
 import { PlanItemSections } from "@/components/plans/plan-item-sections";
@@ -91,12 +92,7 @@ export function PlanEditor({
         <header className="space-y-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 space-y-1.5">
-              <h2
-                className="text-xl font-semibold tracking-tight text-foreground"
-                dir="auto"
-              >
-                {plan.title}
-              </h2>
+              <EditablePlanTitle planId={plan.id} title={plan.title} />
               <p className="text-sm text-muted">
                 {getPlanTypeLabel(plan.type)} ·{" "}
                 {formatDateRange(dateStart, dateEnd)}
@@ -114,7 +110,9 @@ export function PlanEditor({
           ) : null}
         </header>
       ) : (
-        <header className="flex items-start justify-between gap-3">
+        <header className="space-y-3">
+          <EditablePlanTitle planId={plan.id} title={plan.title} />
+          <div className="flex items-start justify-between gap-3">
           <p className="text-sm text-muted">
             {formatDateRange(dateStart, dateEnd)}
             {itemCount > 0
@@ -122,6 +120,7 @@ export function PlanEditor({
               : ""}
           </p>
           {headerActions}
+          </div>
         </header>
       )}
 
