@@ -269,6 +269,125 @@ body {
     color: var(--foreground);
   }
 
+  .ui-insights-page {
+    padding-bottom: 0.5rem;
+  }
+
+  .ui-insights-section-title {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted-light);
+  }
+
+  .ui-insights-section {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  .ui-insights-period-links {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  .ui-insights-period-links-label {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted-light);
+  }
+
+  .ui-insights-period-chip {
+    display: inline-flex;
+    min-height: 2rem;
+    align-items: center;
+    border-radius: 9999px;
+    border: 1px solid var(--border-soft);
+    background: var(--surface);
+    padding-inline: 0.75rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--muted);
+    transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+  }
+
+  .ui-insights-period-chip:hover {
+    border-color: var(--border);
+    background: var(--accent-cream);
+    color: var(--foreground);
+  }
+
+  .ui-insights-period-chip:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--focus-ring);
+  }
+
+  .ui-insights-breakdown-label {
+    font-size: 0.6875rem;
+    font-weight: 500;
+    color: var(--muted-light);
+  }
+
+  .ui-insights-breakdown-group + .ui-insights-breakdown-group {
+    margin-top: 0.625rem;
+    padding-top: 0.625rem;
+    border-top: 1px solid var(--border-soft);
+  }
+
+  .ui-insights-breakdown-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .ui-insights-breakdown-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-size: 0.8125rem;
+    line-height: 1.35;
+  }
+
+  .ui-insights-intention-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border-soft);
+    background: var(--surface);
+    padding: 0.5rem 0.75rem;
+  }
+
+  .ui-insights-intention-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    min-height: 1.75rem;
+  }
+
+  .ui-insights-priority-details summary {
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .ui-insights-priority-details summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .ui-insights-priority-details summary::before {
+    content: "▸ ";
+  }
+
+  .ui-insights-priority-details[open] summary::before {
+    content: "▾ ";
+  }
+
   .ui-text-link {
     font-size: 0.875rem;
     font-weight: 500;

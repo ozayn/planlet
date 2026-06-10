@@ -1,11 +1,11 @@
-import Link from "next/link";
-
 import { auth } from "@/auth";
+import { InsightsBreakdown } from "@/components/insights/insights-breakdown";
 import { InsightsEmptyState } from "@/components/insights/insights-empty-state";
+import { InsightsIntentions } from "@/components/insights/insights-intentions";
+import { InsightsObservations } from "@/components/insights/insights-observations";
+import { InsightsPeriodLinks } from "@/components/insights/insights-period-links";
+import { InsightsStatGrid } from "@/components/insights/insights-stat-grid";
 import { PriorityMatrix } from "@/components/insights/priority-matrix";
-import { SimpleBarList } from "@/components/insights/simple-bar-list";
-import { StatusDistribution } from "@/components/insights/status-distribution";
-import { SummaryCard } from "@/components/insights/summary-card";
 import { PageHeader } from "@/components/page-header";
 import {
   formatDateString,
@@ -13,6 +13,45 @@ import {
 } from "@/lib/dates";
 import { getMonthlyInsights } from "@/lib/insights";
 import { getPlanItemTypeLabel } from "@/lib/plan-labels";
+import { getStatusLabel } from "@/lib/plan-status";
+
+function formatItemsHint(
+  items: number,
+  intentions: number,
+  notes: number,
+): string | undefined {
+  if (intentions === 0 && notes === 0) {
+    return undefined;
+  }
+
+  const parts = [`${items} item${items === 1 ? "" : "s"}`];
+
+  if (intentions > 0) {
+    parts.push(`${intentions} intention${intentions === 1 ? "" : "s"}`);
+  }
+
+  if (notes > 0) {
+    parts.push(`${notes} note${notes === 1 ? "" : "s"}`);
+  }
+
+  return parts.join(" · ");
+}
+
+function formatDoneValue(done: number, partial: number): string {
+  if (partial > 0) {
+    return `${done} · ${partial} partial`;
+  }
+
+  return String(done);
+}
+
+function formatMovedValue(moved: number, skipped: number): string {
+  if (skipped > 0) {
+    return `${moved} · ${skipped} skipped`;
+  }
+
+  return String(moved);
+}
 
 export default async function InsightsPage() {
   const session = await auth();
@@ -27,159 +66,117 @@ export default async function InsightsPage() {
   const now = new Date();
   const summaryDate = formatDateString(now);
   const weekSummaryHref = `/plans/week/${formatWeekStartString(now)}/summary`;
+  const monthSummaryHref = `/plans/month/${summaryDate}/summary`;
+  const yearSummaryHref = `/plans/year/${summaryDate}/summary`;
+
+  const repeatedIntentions = insights.intentions.filter(
+    (intention) => intention.count > 1,
+  );
+  const singleIntentions = insights.intentions.filter(
+    (intention) => intention.count === 1,
+  );
+
+  const typeRows = insights.byType.map((entry) => ({
+    label: getPlanItemTypeLabel(entry.type),
+    count: entry.count,
+  }));
+
+  const statusRows = insights.byStatus.map((entry) => ({
+    label: getStatusLabel(entry.status),
+    count: entry.count,
+  }));
+
+  const itemsHint = formatItemsHint(
+    insights.totals.items,
+    insights.totals.intentions,
+    insights.totals.notes,
+  );
 
   return (
-    <section className="space-y-8">
-      <PageHeader
-        title="Insights"
-        subtitle="What your plans contained this month."
-      />
+    <section className="ui-insights-page space-y-5 sm:space-y-6">
+      <PageHeader title="Insights" subtitle={insights.dateLabel} />
 
-      <p className="-mt-4 text-sm text-muted">{insights.dateLabel}</p>
+      <p className="-mt-3 text-sm text-muted-light">
+        A quiet look at your plans this month.
+      </p>
 
       {isEmpty ? (
         <InsightsEmptyState />
       ) : (
         <>
-          <div>
-            <h2 className="ui-label mb-4">This month</h2>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <SummaryCard
-                label="Plans"
-                value={insights.totals.plans}
-                accent="red"
+          <InsightsPeriodLinks
+            weekHref={weekSummaryHref}
+            monthHref={monthSummaryHref}
+            yearHref={yearSummaryHref}
+          />
+
+          <InsightsStatGrid
+            stats={[
+              { label: "Plans", value: insights.totals.plans },
+              {
+                label: "Items",
+                value: insights.totals.items,
+                hint: itemsHint,
+              },
+              {
+                label: "Done",
+                value: formatDoneValue(
+                  insights.totals.done,
+                  insights.totals.partial,
+                ),
+              },
+              {
+                label: "Moved",
+                value: formatMovedValue(
+                  insights.totals.moved,
+                  insights.totals.skipped,
+                ),
+              },
+            ]}
+          />
+
+          <InsightsObservations
+            count={insights.totals.observations}
+            categories={insights.observationCategories}
+          />
+
+          <div className="ui-insights-main grid gap-5 lg:grid-cols-2 lg:gap-6">
+            <InsightsBreakdown types={typeRows} statuses={statusRows} />
+
+            <div className="space-y-5 sm:space-y-6">
+              <InsightsIntentions
+                repeated={repeatedIntentions}
+                singles={singleIntentions}
               />
-              <SummaryCard
-                label="Actionable items"
-                value={insights.totals.actionableItems}
-                hint={
-                  insights.totals.notes > 0 || insights.totals.intentions > 0
-                    ? `${insights.totals.notes} notes · ${insights.totals.intentions} intentions`
-                    : undefined
-                }
-                accent="blue"
-              />
-              <SummaryCard
-                label="Done / partial"
-                value={`${insights.totals.done} / ${insights.totals.partial}`}
-                hint="Finished or partly done"
-                accent="yellow"
-              />
-              <SummaryCard
-                label="Moved / skipped"
-                value={`${insights.totals.moved} / ${insights.totals.skipped}`}
-                hint="Deferred or skipped"
-                accent="blue"
-              />
+
+              {insights.oftenMovedTypes.length > 0 ? (
+                <section className="ui-insights-section">
+                  <h2 className="ui-insights-section-title">Often moved</h2>
+                  <ul className="ui-insights-breakdown-list rounded-lg border border-border-soft/80 bg-surface/60 px-3 py-2.5">
+                    {insights.oftenMovedTypes.map((entry) => (
+                      <li
+                        key={entry.type}
+                        className="ui-insights-breakdown-row"
+                      >
+                        <span className="text-foreground">
+                          {getPlanItemTypeLabel(entry.type)}
+                        </span>
+                        <span className="tabular-nums text-muted">
+                          {entry.count}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
+
+              <PriorityMatrix quadrants={insights.priorityQuadrants} />
             </div>
           </div>
 
-          {insights.totals.observations > 0 ? (
-            <section className="ui-card-padded space-y-3">
-              <h2 className="ui-section-title">Private observations</h2>
-              <p className="text-sm text-muted">
-                {insights.totals.observations} this month — only visible to you.
-              </p>
-              {insights.observationCategories.length > 0 ? (
-                <ul className="flex flex-wrap gap-2">
-                  {insights.observationCategories.map((entry) => (
-                    <li
-                      key={entry.category}
-                      className="rounded-full bg-accent-cream/50 px-3 py-1 text-xs text-muted"
-                    >
-                      {entry.label} · {entry.count}
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-            </section>
-          ) : null}
-
-          <SimpleBarList
-            title="Item types"
-            items={insights.byType.map((entry) => ({
-              label: getPlanItemTypeLabel(entry.type),
-              count: entry.count,
-            }))}
-            emptyMessage="No items this month yet."
-            accent="blue"
-          />
-
-          <StatusDistribution
-            title="Status distribution"
-            items={insights.byStatus}
-          />
-
-          <PriorityMatrix quadrants={insights.priorityQuadrants} />
-
-          <section className="ui-card-padded">
-            <h2 className="ui-section-title">Repeated intentions</h2>
-            <p className="mt-1 text-sm text-muted">
-              Themes that showed up more than once.
-            </p>
-
-            {insights.intentions.length === 0 ? (
-              <p className="mt-4 text-sm text-muted">None yet this month.</p>
-            ) : (
-              <ul className="mt-4 space-y-2">
-                {insights.intentions.map((intention) => (
-                  <li
-                    key={intention.title}
-                    className="flex min-h-11 items-center justify-between gap-3 rounded-xl bg-accent-cream/40 px-3"
-                  >
-                    <span className="text-sm text-foreground" dir="auto">
-                      {intention.title}
-                    </span>
-                    <span className="text-sm text-muted-light">
-                      {intention.count}
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </section>
-
-          {insights.oftenMovedTypes.length > 0 ? (
-            <SimpleBarList
-              title="Often moved"
-              items={insights.oftenMovedTypes.map((entry) => ({
-                label: getPlanItemTypeLabel(entry.type),
-                count: entry.count,
-              }))}
-              accent="yellow"
-            />
-          ) : null}
-
-          <p className="text-sm text-muted-light">
+          <p className="text-xs text-muted-light">
             These are observations, not grades.
           </p>
-
-          <section className="ui-card-padded space-y-3">
-            <h2 className="ui-section-title">Period summaries</h2>
-            <p className="text-sm text-muted">
-              A gentle look across a week, month, or year.
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <Link
-                href={weekSummaryHref}
-                className="ui-btn-secondary ui-btn-compact"
-              >
-                Week summary
-              </Link>
-              <Link
-                href={`/plans/month/${summaryDate}/summary`}
-                className="ui-btn-secondary ui-btn-compact"
-              >
-                Month summary
-              </Link>
-              <Link
-                href={`/plans/year/${summaryDate}/summary`}
-                className="ui-btn-secondary ui-btn-compact"
-              >
-                Year summary
-              </Link>
-            </div>
-          </section>
         </>
       )}
     </section>
