@@ -19,6 +19,8 @@ type SharePlanPanelProps = {
 };
 
 const FORMAT_OPTIONS: ShareUiFormat[] = ["plan", "plain", "update"];
+const COPY_TOOLTIP = "Copy as text";
+const COPY_ARIA_LABEL = "Copy plan as text";
 
 export function SharePlanPanel({ plan }: SharePlanPanelProps) {
   const [open, setOpen] = useState(false);
@@ -73,17 +75,32 @@ export function SharePlanPanel({ plan }: SharePlanPanelProps) {
     }
   }
 
+  function openPanel() {
+    setOpen(true);
+    setCopied(false);
+    setCopyError(false);
+    setSaveWarning(false);
+  }
+
   return (
     <>
       <button
         type="button"
-        onClick={() => {
-          setOpen(true);
-          setCopied(false);
-          setCopyError(false);
-          setSaveWarning(false);
-        }}
-        className="ui-btn-secondary min-h-10"
+        onClick={openPanel}
+        aria-label={COPY_ARIA_LABEL}
+        title={COPY_TOOLTIP}
+        className="ui-icon-action md:hidden"
+      >
+        <ClipboardCopyIcon className="h-4 w-4" aria-hidden="true" />
+        <span className="ui-tooltip-bubble" role="tooltip">
+          {COPY_TOOLTIP}
+        </span>
+      </button>
+
+      <button
+        type="button"
+        onClick={openPanel}
+        className="ui-btn-secondary hidden min-h-10 md:inline-flex"
       >
         Copy as text
       </button>
@@ -176,5 +193,28 @@ export function SharePlanPanel({ plan }: SharePlanPanelProps) {
         </div>
       </SimpleSheet>
     </>
+  );
+}
+
+function ClipboardCopyIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth={1.75}
+      stroke="currentColor"
+    >
+      <rect width="8" height="4" x="8" y="2" rx="1" ry="1" />
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"
+      />
+      <path strokeLinecap="round" d="M12 11h4" />
+      <path strokeLinecap="round" d="M12 16h4" />
+      <path strokeLinecap="round" d="M8 11h.01" />
+      <path strokeLinecap="round" d="M8 16h.01" />
+    </svg>
   );
 }
