@@ -1127,10 +1127,6 @@ body {
       white-space: nowrap;
       border: 0;
     }
-
-    .ui-plan-date-nav-date--mobile-collapsed {
-      display: none;
-    }
   }
 
   @media (min-width: 640px) {
@@ -1148,7 +1144,6 @@ body {
   }
 
   .ui-plan-date-nav-date {
-    display: flex;
     height: 2.75rem;
     width: 100%;
     align-items: center;

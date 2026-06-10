@@ -89,7 +89,9 @@ export function WeekPlanNav({ currentWeekStart }: WeekPlanNavProps) {
 
         <button
           type="button"
-          className="ui-plan-date-nav-btn ui-plan-date-nav-btn-icon ui-plan-date-nav-btn-calendar"
+          className={`ui-plan-date-nav-btn ui-plan-date-nav-btn-icon ui-plan-date-nav-btn-calendar${
+            isWeekPickerOpen ? " ui-plan-date-nav-btn-active" : ""
+          }`}
           aria-label={ACTION_LABELS.chooseWeek.ariaLabel}
           title={ACTION_LABELS.chooseWeek.title}
           aria-expanded={isWeekPickerOpen}
@@ -106,8 +108,8 @@ export function WeekPlanNav({ currentWeekStart }: WeekPlanNavProps) {
 
       <label
         htmlFor="week-plan-nav-date"
-        className={`ui-plan-date-nav-date${
-          isWeekPickerOpen ? "" : " ui-plan-date-nav-date--mobile-collapsed"
+        className={`ui-plan-date-nav-date ${
+          isWeekPickerOpen ? "flex" : "hidden sm:flex"
         }`}
       >
         <CalendarIcon className="ui-plan-date-nav-date-icon" aria-hidden="true" />

@@ -103,7 +103,9 @@ export function DayPlanNav({
 
         <button
           type="button"
-          className="ui-plan-date-nav-btn ui-plan-date-nav-btn-icon ui-plan-date-nav-btn-calendar"
+          className={`ui-plan-date-nav-btn ui-plan-date-nav-btn-icon ui-plan-date-nav-btn-calendar${
+            isDatePickerOpen ? " ui-plan-date-nav-btn-active" : ""
+          }`}
           aria-label={ACTION_LABELS.chooseDate.ariaLabel}
           title={ACTION_LABELS.chooseDate.title}
           aria-expanded={isDatePickerOpen}
@@ -120,8 +122,8 @@ export function DayPlanNav({
 
       <label
         htmlFor="day-plan-nav-date"
-        className={`ui-plan-date-nav-date${
-          isDatePickerOpen ? "" : " ui-plan-date-nav-date--mobile-collapsed"
+        className={`ui-plan-date-nav-date ${
+          isDatePickerOpen ? "flex" : "hidden sm:flex"
         }`}
       >
         <CalendarIcon className="ui-plan-date-nav-date-icon" aria-hidden="true" />
