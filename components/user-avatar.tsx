@@ -13,6 +13,10 @@ const sizeClasses = {
   md: "h-10 w-10 text-sm",
 } as const;
 
+function getAvatarLabel(name?: string | null, email?: string | null): string {
+  return name?.trim() || email?.trim() || "User";
+}
+
 export function UserAvatar({
   name,
   email,
@@ -20,22 +24,21 @@ export function UserAvatar({
   size = "md",
 }: UserAvatarProps) {
   const initials = getUserInitials(name, email);
+  const label = getAvatarLabel(name, email);
+  const className = `${sizeClasses[size]} shrink-0 rounded-full border border-border-soft object-cover`;
 
   if (image) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
-      <img
-        src={image}
-        alt=""
-        className={`${sizeClasses[size]} shrink-0 rounded-full object-cover`}
-      />
+      <img src={image} alt={label} className={className} />
     );
   }
 
   return (
     <span
-      className={`${sizeClasses[size]} inline-flex shrink-0 items-center justify-center rounded-full bg-accent-cream font-medium text-foreground`}
-      aria-hidden="true"
+      role="img"
+      aria-label={label}
+      className={`${className} inline-flex items-center justify-center bg-accent-cream font-medium text-muted`}
     >
       {initials}
     </span>

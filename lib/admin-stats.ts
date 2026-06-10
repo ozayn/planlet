@@ -13,6 +13,7 @@ export type AdminUserStatRow = {
   id: string;
   name: string | null;
   email: string | null;
+  image: string | null;
   role: UserRole;
   createdAt: Date;
   lastLoginAt: Date | null;
@@ -101,6 +102,7 @@ export async function getAdminUserStats(): Promise<AdminStats> {
         id: true,
         name: true,
         email: true,
+        image: true,
         role: true,
         createdAt: true,
         lastLoginAt: true,
@@ -192,6 +194,7 @@ export async function getAdminUserStats(): Promise<AdminStats> {
       id: user.id,
       name: user.name,
       email: user.email,
+      image: user.image,
       role: user.role,
       createdAt: user.createdAt,
       lastLoginAt: user.lastLoginAt,

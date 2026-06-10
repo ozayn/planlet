@@ -1,4 +1,5 @@
 import type { AdminUserStatRow } from "@/lib/admin-stats";
+import { UserAvatar } from "@/components/user-avatar";
 import { formatAdminDateTime } from "@/lib/dates";
 import { formatPlanActivityLabel } from "@/lib/plan-activity";
 
@@ -25,6 +26,27 @@ function formatLastLogin(user: AdminUserStatRow): string {
 type AdminUserStatsProps = {
   users: AdminUserStatRow[];
 };
+
+function AdminUserIdentity({ user }: { user: AdminUserStatRow }) {
+  return (
+    <div className="flex min-w-0 items-center gap-3">
+      <UserAvatar
+        name={user.name}
+        email={user.email}
+        image={user.image}
+        size="sm"
+      />
+      <div className="min-w-0">
+        <p className="truncate font-medium text-foreground" dir="auto">
+          {user.name ?? "—"}
+        </p>
+        <p className="truncate text-xs text-muted" dir="auto">
+          {user.email ?? "—"}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export function AdminUserStats({ users }: AdminUserStatsProps) {
   if (users.length === 0) {
@@ -57,12 +79,7 @@ export function AdminUserStats({ users }: AdminUserStatsProps) {
                 className="border-b border-border-soft/70 last:border-0"
               >
                 <td className="px-3 py-3 align-top">
-                  <p className="font-medium text-foreground" dir="auto">
-                    {user.name ?? "—"}
-                  </p>
-                  <p className="text-xs text-muted" dir="auto">
-                    {user.email ?? "—"}
-                  </p>
+                  <AdminUserIdentity user={user} />
                 </td>
                 <td className="px-3 py-3 align-top text-foreground">
                   {user.role}
@@ -106,14 +123,7 @@ export function AdminUserStats({ users }: AdminUserStatsProps) {
         {users.map((user) => (
           <li key={user.id} className="ui-card-padded space-y-3">
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <p className="font-medium text-foreground" dir="auto">
-                  {user.name ?? "—"}
-                </p>
-                <p className="text-sm text-muted" dir="auto">
-                  {user.email ?? "—"}
-                </p>
-              </div>
+              <AdminUserIdentity user={user} />
               <span className="shrink-0 rounded-full bg-accent-cream px-2.5 py-1 text-xs font-medium text-foreground">
                 {user.role}
               </span>
