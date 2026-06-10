@@ -328,8 +328,33 @@ body {
   }
 
   .ui-settings-row-block + .ui-settings-row-block {
-    padding-top: 0.625rem;
+    padding-top: 1rem;
     border-top: 1px solid var(--border-soft);
+  }
+
+  .ui-settings-subsection-title {
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 1.35;
+    color: var(--foreground);
+  }
+
+  .ui-settings-subsection-helper {
+    font-size: 0.875rem;
+    line-height: 1.45;
+    color: var(--muted-light);
+  }
+
+  .ui-settings-subsection-status {
+    font-size: 0.875rem;
+    line-height: 1.45;
+    color: var(--muted-light);
+  }
+
+  .ui-settings-platform-rows {
+    display: flex;
+    flex-direction: column;
+    margin-top: 0.375rem;
   }
 
   .ui-settings-fieldset {
@@ -352,16 +377,17 @@ body {
 
   .ui-settings-instruction-summary {
     display: flex;
-    min-height: 2.25rem;
+    min-height: 2rem;
     cursor: pointer;
     list-style: none;
     align-items: center;
     justify-content: space-between;
     gap: 0.5rem;
-    padding: 0.25rem 0;
+    padding: 0.125rem 0;
     font-size: 0.875rem;
-    font-weight: 500;
-    color: var(--foreground);
+    font-weight: 400;
+    line-height: 1.4;
+    color: var(--muted);
   }
 
   .ui-settings-instruction-summary::-webkit-details-marker {
@@ -378,10 +404,10 @@ body {
     box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--focus-ring);
   }
 
-  .ui-settings-instruction-details:not([open])
+  .ui-settings-instruction-details[open]
     .ui-settings-instruction-summary
     span:last-child {
-    transform: rotate(-90deg);
+    transform: rotate(90deg);
   }
 
   .ui-settings-details {

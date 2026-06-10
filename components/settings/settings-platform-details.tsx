@@ -13,8 +13,8 @@ export function SettingsPlatformDetails({
     <details className="ui-settings-instruction-details group">
       <summary className="ui-settings-instruction-summary">
         <span>{label}</span>
-        <span className="text-muted-light" aria-hidden="true">
-          ▾
+        <span className="text-xs text-muted-light" aria-hidden="true">
+          ›
         </span>
       </summary>
       <div className="pb-2 pt-1">{children}</div>

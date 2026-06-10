@@ -17,13 +17,12 @@ import {
   deletePlanGratitudeAction,
   updatePlanGratitudeAction,
 } from "@/app/(app)/plans/actions";
-import { GratitudeItemActions } from "@/components/plans/gratitude-item-actions";
+import { PrivateEntryActionsMenu } from "@/components/plans/private-entry-actions-menu";
 import { ChevronDownIcon, LockIcon, SparklesIcon } from "@/components/ui/action-icons";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { APP_TIMEZONE } from "@/config/time";
 import { ACTION_LABELS } from "@/lib/action-labels";
 import type { SerializedGratitude } from "@/lib/gratitude";
-import { PRIVATE_SECTION_HELPER } from "@/lib/private-section-copy";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 
 type GratitudeSectionProps = {
@@ -234,8 +233,7 @@ export function GratitudeSection({
       </button>
 
       {expanded ? (
-        <div id={panelId} className="mt-3 space-y-3">
-          <p className="text-xs text-muted-light">{PRIVATE_SECTION_HELPER}</p>
+        <div id={panelId} className="mt-2 space-y-2">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
             <div className="min-w-0 flex-1 space-y-1">
               <textarea
@@ -322,9 +320,12 @@ export function GratitudeSection({
                         {formatGratitudeTime(gratitude.createdAt)}
                       </p>
                     </div>
-                    <GratitudeItemActions
+                    <PrivateEntryActionsMenu
                       onEdit={() => startEdit(gratitude)}
                       onDelete={() => setConfirmDeleteId(gratitude.id)}
+                      more={ACTION_LABELS.moreGratitude}
+                      edit={ACTION_LABELS.editGratitude}
+                      delete={ACTION_LABELS.deleteGratitude}
                       deleting={deletingId === gratitude.id}
                     />
                   </li>

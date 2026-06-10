@@ -190,31 +190,31 @@ export function PushNotificationSettings({
       {embedded ? null : <h2 className="ui-label">Notifications</h2>}
 
       <div className={rowClass}>
-        <p className="text-sm font-medium text-foreground">Phone notifications</p>
+        <p className="ui-settings-subsection-title">Phone notifications</p>
 
         {state === "loading" ? (
-          <p className="text-xs text-muted-light">Checking…</p>
+          <p className="ui-settings-subsection-status">Checking…</p>
         ) : null}
 
         {state === "unsupported" ? (
-          <p className="text-xs text-muted-light">
+          <p className="ui-settings-subsection-status">
             Not supported in this browser.
           </p>
         ) : null}
 
         {state === "disabled" ? (
-          <p className="text-xs text-muted-light">Not available right now.</p>
+          <p className="ui-settings-subsection-status">Not available right now.</p>
         ) : null}
 
         {state === "ios-install" && !embedded ? (
-          <p className="text-xs text-muted-light">
+          <p className="ui-settings-subsection-status">
             Install Planlet to your Home Screen first, then open it from the
             icon.
           </p>
         ) : null}
 
         {state === "denied" ? (
-          <p className="text-xs text-muted-light">
+          <p className="ui-settings-subsection-status">
             Blocked in your browser settings.
           </p>
         ) : null}
@@ -232,7 +232,7 @@ export function PushNotificationSettings({
 
         {state === "subscribed" ? (
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs text-muted-light">Enabled</span>
+            <span className="ui-settings-subsection-status">Enabled</span>
             <button
               type="button"
               onClick={handleDisable}
@@ -251,7 +251,7 @@ export function PushNotificationSettings({
         ) : null}
 
         {embedded ? (
-          <div className="mt-2 space-y-0">
+          <div className="ui-settings-platform-rows">
             <SettingsPlatformDetails label="Apple / iPhone">
               <p className="text-xs leading-relaxed text-muted">
                 Install Planlet to your Home Screen first. Then open it from the

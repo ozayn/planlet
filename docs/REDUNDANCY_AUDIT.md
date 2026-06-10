@@ -251,6 +251,7 @@ Audit date: June 2026. Goal: find and reduce duplicate actions, repeated labels,
 - `components/plans/share-with-user-panel.tsx` — removed empty list line
 - `components/plans/share-plan-panel.tsx` — removed duplicate copied text
 - `components/plans/private-observations-section.tsx` — count, helper, empty copy
+- `components/plans/private-entry-actions-menu.tsx` — shared More menu for observations + gratitude row actions
 - `components/plans/plan-item-sections.tsx` — notes helper
 - `app/(app)/settings/page.tsx` — theme helper
 - `lib/share-plan.ts` — format descriptions

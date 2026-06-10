@@ -34,7 +34,7 @@ Remaining issues were mostly **copy drift**, **small redundancies**, and **incon
 | Task cards (desktop) | Edit + Note both opened same sheet with no distinction | Note icon focuses comment field in details sheet | Done |
 | Task cards (desktop) | “Task” in meta under every row | Hide type label when `TASK` (match mobile) | Done |
 | Observations/gratitude | `window.confirm` for delete | `ConfirmDialog` (matches items/plans) | Done |
-| Observations/gratitude | Inconsistent privacy helper copy | `lib/private-section-copy.ts` shared line | Done |
+| Observations/gratitude | Repeated privacy helper under each section | Removed; lock icon in header only | Done |
 | Period summaries | Mixed privacy wording | Unified “Only you can see these. Not shared or exported.” | Done |
 | Insights | Double intro (header + paragraph) | Single `PageHeader` subtitle | Done |
 | New plan | Verbose page subtitle | “Write, record, or import — then review and save.” | Done |
@@ -142,8 +142,8 @@ Remaining issues were mostly **copy drift**, **small redundancies**, and **incon
 | Theme toggle ×3 | Desktop header + mobile profile + Settings | Documented; left as-is |
 | Sign out ×2 | Profile menu + Settings | Left as-is (discoverability) |
 | Share in-app ×2 | Header icon + disclosure | Intentional |
-| Observations/gratitude UI | ~parallel components | Left as-is; could share primitive later |
-| Admin metrics | Overview totals vs user table | Left as-is (different audiences) |
+| Observations/gratitude UI | ~parallel components | Shared `private-entry-actions-menu.tsx` for row Edit/Delete; list primitive still separate |
+| Admin metrics | Large dashboard cards + repeated counts | Compact summary line + simplified users table | Done |
 | New plan date copy | Input + review both show date | Left as-is |
 | Auth loading | `return null` while session resolves | Left as-is (low risk) |
 
@@ -166,9 +166,9 @@ Remaining issues were mostly **copy drift**, **small redundancies**, and **incon
 ## Remaining recommendations
 
 1. **Auth loading shell** — minimal spinner/skeleton instead of blank `null` on app pages.
-2. **Reflection section primitive** — extract shared collapsible list from observations + gratitude.
+2. **Reflection section primitive** — extract shared collapsible list shell from observations + gratitude (row actions now shared).
 3. **New plan review** — sticky Save bar on small screens (see `MOBILE_AUDIT.md`).
-4. **Admin mobile table** — card layout for user stats below `md`.
+4. ~~**Admin mobile table**~~ — compact user rows on mobile; see `docs/ADMIN_UX_AUDIT.md`.
 5. **404 / unauthorized pages** — friendly copy for `/feedback` and gated routes.
 6. **E2E smoke** — Playwright for copy modal, item More menu, role gating.
 
@@ -177,6 +177,7 @@ Remaining issues were mostly **copy drift**, **small redundancies**, and **incon
 ## Related docs
 
 - `docs/MOBILE_AUDIT.md` — safe areas, copy sheet footer, touch targets
+- `docs/ADMIN_UX_AUDIT.md` — minimal admin page layout
 - `docs/REDUNDANCY_AUDIT.md` — inline vs More menu rules (updated: Settings not in desktop nav)
 - `docs/ICON_AUDIT.md` — centralized action icons
 - `docs/UX_AUDIT.md` — earlier refinement pass

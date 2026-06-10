@@ -11,13 +11,13 @@ import {
   deletePlanObservationAction,
   updatePlanObservationAction,
 } from "@/app/(app)/plans/actions";
+import { PrivateEntryActionsMenu } from "@/components/plans/private-entry-actions-menu";
 import { ChevronDownIcon, LockIcon } from "@/components/ui/action-icons";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { APP_TIMEZONE } from "@/config/time";
 import { ACTION_LABELS } from "@/lib/action-labels";
 import { OBSERVATION_CATEGORIES } from "@/lib/observation-constants";
 import { getObservationCategoryLabel } from "@/lib/observation-labels";
-import { PRIVATE_SECTION_HELPER } from "@/lib/private-section-copy";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 import type { SerializedObservation } from "@/lib/observations";
 
@@ -176,8 +176,7 @@ export function PrivateObservationsSection({
       </button>
 
       {expanded ? (
-        <div id={panelId} className="mt-3 space-y-3">
-          <p className="text-xs text-muted-light">{PRIVATE_SECTION_HELPER}</p>
+        <div id={panelId} className="mt-2 space-y-2">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
             <select
               id="observation-category"
@@ -220,13 +219,10 @@ export function PrivateObservationsSection({
           </div>
 
           {observations.length > 0 ? (
-            <ul className="space-y-2">
+            <ul className="divide-y divide-border-soft/70">
               {observations.map((observation) =>
                 editingId === observation.id ? (
-                  <li
-                    key={observation.id}
-                    className="space-y-2 rounded-xl border border-border-soft bg-surface px-3 py-2.5"
-                  >
+                  <li key={observation.id} className="space-y-2 py-2.5">
                     <div className="flex flex-col gap-2 sm:flex-row">
                       <select
                         id={`observation-edit-category-${observation.id}`}
@@ -255,7 +251,7 @@ export function PrivateObservationsSection({
                         onChange={(event) => setEditBody(event.target.value)}
                         rows={2}
                         dir="auto"
-                        aria-label="Edit observation"
+                        aria-label={ACTION_LABELS.editObservation.ariaLabel}
                         className="ui-input min-h-9 flex-1 resize-y py-2"
                       />
                     </div>
@@ -282,7 +278,7 @@ export function PrivateObservationsSection({
                 ) : (
                   <li
                     key={observation.id}
-                    className="group flex items-start justify-between gap-3 rounded-xl border border-border-soft/80 bg-surface/60 px-3 py-2.5"
+                    className="flex items-start justify-between gap-2 py-2.5"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="text-sm text-foreground" dir="auto">
@@ -298,27 +294,14 @@ export function PrivateObservationsSection({
                         {formatObservationTime(observation.createdAt)}
                       </p>
                     </div>
-                    <div className="flex shrink-0 items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
-                      <button
-                        type="button"
-                        onClick={() => startEdit(observation)}
-                        {...passwordManagerSafeControlProps}
-                        className="ui-btn-ghost min-h-8 px-2 text-xs"
-                        aria-label="Edit observation"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setConfirmDeleteId(observation.id)}
-                        disabled={deletingId === observation.id}
-                        {...passwordManagerSafeControlProps}
-                        className="ui-btn-ghost min-h-8 px-2 text-xs text-muted"
-                        aria-label="Delete observation"
-                      >
-                        Delete
-                      </button>
-                    </div>
+                    <PrivateEntryActionsMenu
+                      onEdit={() => startEdit(observation)}
+                      onDelete={() => setConfirmDeleteId(observation.id)}
+                      more={ACTION_LABELS.moreObservation}
+                      edit={ACTION_LABELS.editObservation}
+                      delete={ACTION_LABELS.deleteObservation}
+                      deleting={deletingId === observation.id}
+                    />
                   </li>
                 ),
               )}
@@ -331,8 +314,8 @@ export function PrivateObservationsSection({
 
       <ConfirmDialog
         open={confirmDeleteId !== null}
-        title="Delete observation?"
-        confirmLabel="Delete"
+        title="Delete this observation?"
+        confirmLabel={ACTION_LABELS.deleteObservation.title}
         onConfirm={() => {
           if (confirmDeleteId) {
             handleDelete(confirmDeleteId);

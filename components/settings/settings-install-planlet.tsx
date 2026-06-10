@@ -27,12 +27,12 @@ function InstallSteps({ steps }: { steps: readonly string[] }) {
 export function SettingsInstallPlanlet() {
   return (
     <div className="ui-settings-row-block">
-      <p className="text-sm font-medium text-foreground">Install Planlet</p>
-      <p className="text-xs text-muted-light">
+      <p className="ui-settings-subsection-title">Install Planlet</p>
+      <p className="ui-settings-subsection-helper">
         Add Planlet to your phone for a more app-like experience.
       </p>
 
-      <div className="mt-2 space-y-0">
+      <div className="ui-settings-platform-rows">
         <SettingsPlatformDetails label="Apple / iPhone">
           <InstallSteps steps={APPLE_STEPS} />
         </SettingsPlatformDetails>

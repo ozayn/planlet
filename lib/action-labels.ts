@@ -68,6 +68,18 @@ export const ACTION_LABELS = {
     title: "Private observations",
     ariaLabel: "Private observations",
   },
+  moreObservation: {
+    title: "More",
+    ariaLabel: "Open observation actions",
+  },
+  editObservation: {
+    title: "Edit",
+    ariaLabel: "Edit observation",
+  },
+  deleteObservation: {
+    title: "Delete",
+    ariaLabel: "Delete observation",
+  },
   gratitude: {
     title: "Gratitude",
     ariaLabel: "Gratitude",
