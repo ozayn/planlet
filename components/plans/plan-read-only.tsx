@@ -1,5 +1,6 @@
 import type { KudosType, PlanItemView } from "@/app/generated/prisma/client";
 
+import { ItemCommentsButton } from "@/components/plans/item-comments-button";
 import { PlanItemStatusVisual } from "@/components/plans/plan-item-status-visual";
 import { SendKudosPanel } from "@/components/plans/send-kudos-panel";
 import { SharePlanPanel } from "@/components/plans/share-plan-panel";
@@ -43,7 +44,7 @@ function ReadOnlyTaskItem({
   return (
     <article className={depth > 0 ? "ms-4 border-s border-border-soft ps-3" : ""}>
       <div
-        className={`ui-plan-item group relative overflow-hidden px-3 py-2 ${STATUS_STYLES[item.status].card}`}
+        className={`ui-plan-item group relative overflow-visible px-3 py-2 ${STATUS_STYLES[item.status].card}`}
       >
         <span
           className={`absolute inset-y-2 start-0 w-0.5 rounded-full opacity-50 ${STATUS_STYLES[item.status].accentBar}`}
@@ -71,6 +72,13 @@ function ReadOnlyTaskItem({
               {getPlanItemTypeLabel(item.type)}
             </p>
           </div>
+          <div className="ui-item-card-actions flex shrink-0 items-center">
+            <ItemCommentsButton
+              itemId={item.id}
+              itemTitle={item.title}
+              commentCount={item.commentCount}
+            />
+          </div>
         </div>
       </div>
       {item.subtasks.length > 0 ? (
@@ -91,29 +99,47 @@ function ReadOnlyTaskItem({
 
 function ReadOnlyIntentionItem({ item }: { item: SerializedPlanItem }) {
   return (
-    <article className="rounded-lg border border-dashed border-border-soft bg-accent-cream/25 px-3 py-2">
-      <p className="text-sm font-medium text-foreground" dir="auto">
-        <span className="me-1.5 text-muted" aria-hidden="true">
-          ✨
-        </span>
-        {item.title}
-      </p>
+    <article className="group rounded-lg border border-dashed border-border-soft bg-accent-cream/25 px-3 py-2">
+      <div className="flex items-start gap-2">
+        <p className="min-w-0 flex-1 text-sm font-medium text-foreground" dir="auto">
+          <span className="me-1.5 text-muted" aria-hidden="true">
+            ✨
+          </span>
+          {item.title}
+        </p>
+        <div className="ui-item-card-actions flex shrink-0 items-center">
+          <ItemCommentsButton
+            itemId={item.id}
+            itemTitle={item.title}
+            commentCount={item.commentCount}
+          />
+        </div>
+      </div>
     </article>
   );
 }
 
 function ReadOnlyNoteItem({ item }: { item: SerializedPlanItem }) {
   return (
-    <article className="rounded-lg border border-border-soft/80 bg-surface-muted/40 px-3 py-2">
-      <p
-        className="whitespace-pre-wrap text-sm leading-relaxed text-foreground"
-        dir="auto"
-      >
-        <span className="me-1.5 text-muted-light" aria-hidden="true">
-          •
-        </span>
-        {item.title}
-      </p>
+    <article className="group rounded-lg border border-border-soft/80 bg-surface-muted/40 px-3 py-2">
+      <div className="flex items-start gap-2">
+        <p
+          className="min-w-0 flex-1 whitespace-pre-wrap text-sm leading-relaxed text-foreground"
+          dir="auto"
+        >
+          <span className="me-1.5 text-muted-light" aria-hidden="true">
+            •
+          </span>
+          {item.title}
+        </p>
+        <div className="ui-item-card-actions flex shrink-0 items-center">
+          <ItemCommentsButton
+            itemId={item.id}
+            itemTitle={item.title}
+            commentCount={item.commentCount}
+          />
+        </div>
+      </div>
     </article>
   );
 }

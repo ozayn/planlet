@@ -21,6 +21,13 @@ export async function canEditPlan(
   return Boolean(plan);
 }
 
+export async function canCommentOnPlan(
+  planId: string,
+  userId: string,
+): Promise<boolean> {
+  return canViewPlan(planId, userId);
+}
+
 export async function canViewPlan(
   planId: string,
   userId: string,

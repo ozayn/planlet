@@ -121,3 +121,30 @@ export async function createPlanSharedNotification(input: {
 
   return notification;
 }
+
+export async function createPlanItemCommentNotification(input: {
+  recipientUserId: string;
+  planId: string;
+  itemTitle: string;
+  authorName: string | null;
+  authorEmail: string | null;
+}) {
+  const authorLabel =
+    input.authorName?.trim() || input.authorEmail?.trim() || "Someone";
+
+  const title = "New comment on a task";
+  const body = `${authorLabel} commented on ${input.itemTitle}`;
+  const href = `/plans/${input.planId}`;
+
+  const notification = await createNotification({
+    userId: input.recipientUserId,
+    type: "PLAN_ITEM_COMMENT",
+    title,
+    body,
+    href,
+  });
+
+  void sendPushToUser(input.recipientUserId, { title, body, url: href });
+
+  return notification;
+}

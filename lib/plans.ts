@@ -36,9 +36,11 @@ const planItemInclude = {
     orderBy: itemOrderBy,
     include: {
       themes: { include: { theme: true } },
+      _count: { select: { comments: true } },
     },
   },
   themes: { include: { theme: true } },
+  _count: { select: { comments: true } },
 };
 
 const rootItemsInclude = {

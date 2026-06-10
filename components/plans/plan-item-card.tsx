@@ -15,6 +15,7 @@ import {
   EditItemIcon,
 } from "@/components/plans/item-action-icons";
 import { getItemActionLabels } from "@/components/plans/item-action-labels";
+import { ItemCommentsButton } from "@/components/plans/item-comments-button";
 import { ItemActionsMenu } from "@/components/plans/item-actions-menu";
 import { ItemDetailsSheet } from "@/components/plans/item-details-sheet";
 import { StatusButton } from "@/components/plans/status-button";
@@ -31,6 +32,7 @@ type PlanItemCardProps = {
   dragHandleAttributes?: DraggableAttributes;
   dragHandleListeners?: DraggableSyntheticListeners;
   itemView?: PlanItemView;
+  canEdit?: boolean;
 };
 
 export function PlanItemCard({
@@ -42,6 +44,7 @@ export function PlanItemCard({
   dragHandleAttributes,
   dragHandleListeners,
   itemView = "MINIMAL",
+  canEdit = true,
 }: PlanItemCardProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -163,43 +166,54 @@ export function PlanItemCard({
           </div>
 
           <div className="ui-item-card-actions flex shrink-0 items-center gap-0.5">
-            <button
-              type="button"
-              onClick={() => setDetailsOpen(true)}
-              className="ui-icon-action-quiet"
-              aria-label={actionLabels.edit}
-              title={actionLabels.edit}
-            >
-              <EditItemIcon className="h-4 w-4" />
-              <span className="ui-tooltip-bubble" role="tooltip">
-                {actionLabels.edit}
-              </span>
-            </button>
-            {!isNested ? (
-              <button
-                type="button"
-                onClick={() => setShowSubtaskForm((current) => !current)}
-                className={`ui-icon-action-quiet${
-                  showSubtaskForm ? " ui-icon-action-quiet-active" : ""
-                }`}
-                aria-label={
-                  showSubtaskForm ? "Cancel subtask" : "Add subtask"
-                }
-                title={showSubtaskForm ? "Cancel subtask" : "Add subtask"}
-              >
-                <AddSubtaskIcon className="h-4 w-4" />
-                <span className="ui-tooltip-bubble" role="tooltip">
-                  {showSubtaskForm ? "Cancel subtask" : "Add subtask"}
-                </span>
-              </button>
+            {canEdit ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setDetailsOpen(true)}
+                  className="ui-icon-action-quiet"
+                  aria-label={actionLabels.edit}
+                  title={actionLabels.edit}
+                >
+                  <EditItemIcon className="h-4 w-4" />
+                  <span className="ui-tooltip-bubble" role="tooltip">
+                    {actionLabels.edit}
+                  </span>
+                </button>
+                {!isNested ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowSubtaskForm((current) => !current)}
+                    className={`ui-icon-action-quiet${
+                      showSubtaskForm ? " ui-icon-action-quiet-active" : ""
+                    }`}
+                    aria-label={
+                      showSubtaskForm ? "Cancel subtask" : "Add subtask"
+                    }
+                    title={showSubtaskForm ? "Cancel subtask" : "Add subtask"}
+                  >
+                    <AddSubtaskIcon className="h-4 w-4" />
+                    <span className="ui-tooltip-bubble" role="tooltip">
+                      {showSubtaskForm ? "Cancel subtask" : "Add subtask"}
+                    </span>
+                  </button>
+                ) : null}
+              </>
             ) : null}
-            <ItemActionsMenu
-              planId={planId}
+            <ItemCommentsButton
               itemId={item.id}
-              itemType={item.type}
-              isSubtask={isNested}
-              onEdit={() => setDetailsOpen(true)}
+              itemTitle={item.title}
+              commentCount={item.commentCount}
             />
+            {canEdit ? (
+              <ItemActionsMenu
+                planId={planId}
+                itemId={item.id}
+                itemType={item.type}
+                isSubtask={isNested}
+                onEdit={() => setDetailsOpen(true)}
+              />
+            ) : null}
           </div>
         </div>
       </div>
@@ -230,13 +244,15 @@ export function PlanItemCard({
         </div>
       ) : null}
 
-      <ItemDetailsSheet
-        planId={planId}
-        item={item}
-        open={detailsOpen}
-        onClose={() => setDetailsOpen(false)}
-        isSubtask={isNested}
-      />
+      {canEdit ? (
+        <ItemDetailsSheet
+          planId={planId}
+          item={item}
+          open={detailsOpen}
+          onClose={() => setDetailsOpen(false)}
+          isSubtask={isNested}
+        />
+      ) : null}
     </article>
   );
 }

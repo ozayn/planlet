@@ -31,6 +31,7 @@ export type SerializedPlanItem = {
   comment: string | null;
   shareable: boolean;
   sortOrder: number;
+  commentCount: number;
   subtasks: SerializedPlanItem[];
 };
 
@@ -66,6 +67,7 @@ type PlanItemWithSubtasks = {
   comment: string | null;
   shareable: boolean;
   sortOrder: number;
+  _count?: { comments: number };
   subtasks?: PlanItemWithSubtasks[];
 };
 
@@ -91,6 +93,7 @@ export function serializePlanItem(item: PlanItemWithSubtasks): SerializedPlanIte
     comment: item.comment,
     shareable: item.shareable,
     sortOrder: item.sortOrder,
+    commentCount: item._count?.comments ?? 0,
     subtasks: (item.subtasks ?? []).map(serializePlanItem),
   };
 }

@@ -95,6 +95,7 @@ enum PlanSharePermission {
 enum NotificationType {
   PLAN_SHARED
   PLAN_KUDOS
+  PLAN_ITEM_COMMENT
 }
 
 enum KudosType {
@@ -129,6 +130,7 @@ model User {
   receivedKudos      PlanKudos[] @relation("ReceivedKudos")
   notifications      Notification[]
   pushSubscriptions  PushSubscription[]
+  planItemComments   PlanItemComment[]
   loginEvents   LoginEvent[]
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -293,11 +295,26 @@ model PlanItem {
   shareable         Boolean            @default(true)
   sortOrder         Int                @default(0)
   themes            PlanItemTheme[]
+  comments          PlanItemComment[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 
   @@index([planId, sortOrder])
   @@index([parentItemId])
+}
+
+model PlanItemComment {
+  id        String   @id @default(cuid())
+  itemId    String
+  item      PlanItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([itemId, createdAt])
+  @@index([authorId, createdAt])
 }
 
 model Theme {

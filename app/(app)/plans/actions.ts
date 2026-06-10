@@ -52,6 +52,13 @@ import {
   updatePlanItemStatus,
   type UpdatePlanItemInput,
 } from "@/lib/plans";
+import {
+  addItemComment,
+  deleteItemComment,
+  getCommentsForItem,
+  ItemCommentError,
+  viewerCanDeleteComment,
+} from "@/lib/item-comments";
 import { KudosError, sendPlanKudos } from "@/lib/kudos";
 import {
   getPlanAccess,
@@ -716,4 +723,136 @@ export async function createShareExportAction(
   });
 
   revalidatePlanPaths(planId);
+}
+
+export type SerializedItemComment = {
+  id: string;
+  body: string;
+  createdAt: string;
+  author: {
+    id: string;
+    name: string | null;
+    email: string | null;
+    image: string | null;
+  };
+  canDelete: boolean;
+};
+
+export type ItemCommentsResult =
+  | { success: true; comments: SerializedItemComment[] }
+  | { success: false; error: string };
+
+export async function getItemCommentsAction(
+  itemId: string,
+): Promise<ItemCommentsResult> {
+  const userId = await requireUserId();
+
+  try {
+    const comments = await getCommentsForItem(itemId, userId);
+    const item = await prisma.planItem.findFirst({
+      where: { id: itemId },
+      select: { plan: { select: { userId: true } } },
+    });
+
+    if (!item) {
+      return { success: false, error: "Item not found." };
+    }
+
+    return {
+      success: true,
+      comments: comments.map((comment) => ({
+        id: comment.id,
+        body: comment.body,
+        createdAt: comment.createdAt.toISOString(),
+        author: comment.author,
+        canDelete: viewerCanDeleteComment(
+          comment.author.id,
+          userId,
+          item.plan.userId,
+        ),
+      })),
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof ItemCommentError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : "Failed to load comments.",
+    };
+  }
+}
+
+export type ItemCommentActionResult =
+  | { success: true; comment: SerializedItemComment }
+  | { success: false; error: string };
+
+export async function addItemCommentAction(
+  itemId: string,
+  body: string,
+): Promise<ItemCommentActionResult> {
+  const userId = await requireUserId();
+
+  try {
+    const result = await addItemComment(itemId, userId, body);
+    const plan = await prisma.plan.findFirst({
+      where: { id: result.planId },
+      select: { userId: true },
+    });
+
+    revalidatePlanPaths(result.planId);
+
+    return {
+      success: true,
+      comment: {
+        id: result.comment.id,
+        body: result.comment.body,
+        createdAt: result.comment.createdAt.toISOString(),
+        author: result.comment.author,
+        canDelete: viewerCanDeleteComment(
+          result.comment.author.id,
+          userId,
+          plan?.userId ?? userId,
+        ),
+      },
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof ItemCommentError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : "Failed to add comment.",
+    };
+  }
+}
+
+export type DeleteItemCommentResult =
+  | { success: true }
+  | { success: false; error: string };
+
+export async function deleteItemCommentAction(
+  commentId: string,
+): Promise<DeleteItemCommentResult> {
+  const userId = await requireUserId();
+
+  try {
+    const result = await deleteItemComment(commentId, userId);
+    revalidatePlanPaths(result.planId);
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof ItemCommentError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : "Failed to delete comment.",
+    };
+  }
 }

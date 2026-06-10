@@ -6,6 +6,7 @@ import { useEffect, useState, useTransition } from "react";
 import { updatePlanItemAction } from "@/app/(app)/plans/actions";
 import { EditItemIcon } from "@/components/plans/item-action-icons";
 import { getItemActionLabels } from "@/components/plans/item-action-labels";
+import { ItemCommentsButton } from "@/components/plans/item-comments-button";
 import { ItemActionsMenu } from "@/components/plans/item-actions-menu";
 import { ItemDetailsSheet } from "@/components/plans/item-details-sheet";
 import type { SerializedPlanItem } from "@/lib/plan-serialize";
@@ -104,6 +105,11 @@ export function IntentionItemCard({ planId, item }: IntentionItemCardProps) {
                 {actionLabels.edit}
               </span>
             </button>
+            <ItemCommentsButton
+              itemId={item.id}
+              itemTitle={item.title}
+              commentCount={item.commentCount}
+            />
             <ItemActionsMenu
               planId={planId}
               itemId={item.id}
