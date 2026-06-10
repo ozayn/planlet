@@ -43,6 +43,7 @@ import {
   getTodayPlan,
   getWeekPlan,
   getYearPlan,
+  movePlanItem,
   reorderPlanItems,
   PlanError,
   updatePlanItem,
@@ -58,6 +59,13 @@ import {
   viewerCanDeleteComment,
 } from "@/lib/item-comments";
 import type { ObservationCategory } from "@/app/generated/prisma/client";
+import {
+  addPlanGratitude,
+  deletePlanGratitude,
+  GratitudeError,
+  updatePlanGratitude,
+  type SerializedGratitude,
+} from "@/lib/gratitude";
 import {
   addPlanObservation,
   deletePlanObservation,
@@ -409,6 +417,27 @@ export async function reorderPlanItemsAction(
       success: false,
       error:
         error instanceof Error ? error.message : "Failed to reorder items.",
+    };
+  }
+}
+
+export async function movePlanItemAction(
+  planId: string,
+  itemId: string,
+  direction: "up" | "down",
+): Promise<ShareActionResult> {
+  const userId = await requireUserId();
+
+  try {
+    await movePlanItem(planId, userId, itemId, direction);
+    await recordUserActivity(userId);
+    revalidatePlanPaths(planId);
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to move item.",
     };
   }
 }
@@ -1013,6 +1042,85 @@ export async function deletePlanObservationAction(
           : error instanceof Error
             ? error.message
             : "Failed to delete observation.",
+    };
+  }
+}
+
+export type GratitudeActionResult =
+  | { success: true; gratitude: SerializedGratitude }
+  | { success: false; error: string };
+
+export type DeleteGratitudeResult =
+  | { success: true }
+  | { success: false; error: string };
+
+export async function addPlanGratitudeAction(
+  planId: string,
+  body: string,
+): Promise<GratitudeActionResult> {
+  const userId = await requireUserId();
+
+  try {
+    const result = await addPlanGratitude(planId, userId, body);
+    await recordUserActivity(userId);
+    revalidatePlanPaths(result.planId);
+    return { success: true, gratitude: result.gratitude };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof GratitudeError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : "Failed to add gratitude.",
+    };
+  }
+}
+
+export async function updatePlanGratitudeAction(
+  gratitudeId: string,
+  body: string,
+): Promise<GratitudeActionResult> {
+  const userId = await requireUserId();
+
+  try {
+    const result = await updatePlanGratitude(gratitudeId, userId, body);
+    await recordUserActivity(userId);
+    revalidatePlanPaths(result.planId);
+    return { success: true, gratitude: result.gratitude };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof GratitudeError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : "Failed to update gratitude.",
+    };
+  }
+}
+
+export async function deletePlanGratitudeAction(
+  gratitudeId: string,
+): Promise<DeleteGratitudeResult> {
+  const userId = await requireUserId();
+
+  try {
+    const result = await deletePlanGratitude(gratitudeId, userId);
+    await recordUserActivity(userId);
+    revalidatePlanPaths(result.planId);
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof GratitudeError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : "Failed to delete gratitude.",
     };
   }
 }

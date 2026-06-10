@@ -12,6 +12,7 @@ type ProfileMenuProps = {
   email?: string | null;
   image?: string | null;
   isAdmin?: boolean;
+  canGiveFeedback?: boolean;
   signOutButton: React.ReactNode;
   compact?: boolean;
   showThemeInMenu?: boolean;
@@ -22,6 +23,7 @@ export function ProfileMenu({
   email,
   image,
   isAdmin = false,
+  canGiveFeedback = false,
   signOutButton,
   compact = false,
   showThemeInMenu = false,
@@ -31,7 +33,12 @@ export function ProfileMenu({
   const menuId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
   const onSettings = pathname === "/settings" || pathname.startsWith("/settings/");
+  const onFeedback = pathname === "/feedback" || pathname.startsWith("/feedback/");
   const onAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
+  const feedbackHref =
+    pathname && pathname !== "/feedback"
+      ? `/feedback?from=${encodeURIComponent(pathname)}`
+      : "/feedback";
 
   useEffect(() => {
     if (!open) return;
@@ -128,6 +135,21 @@ export function ProfileMenu({
             >
               Settings
             </Link>
+            {canGiveFeedback ? (
+              <Link
+                href={feedbackHref}
+                role="menuitem"
+                aria-current={onFeedback ? "page" : undefined}
+                onClick={() => setOpen(false)}
+                className={`flex min-h-10 items-center rounded-xl px-3 text-sm transition-colors hover:bg-accent-cream ${
+                  onFeedback
+                    ? "bg-accent-cream/60 font-medium text-foreground"
+                    : "text-foreground"
+                }`}
+              >
+                Feedback
+              </Link>
+            ) : null}
             {isAdmin ? (
               <Link
                 href="/admin"

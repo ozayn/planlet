@@ -16,6 +16,8 @@ export type AdminUserStatRow = {
   email: string | null;
   image: string | null;
   role: UserRole;
+  canGiveFeedback: boolean;
+  canUseReflectionFeatures: boolean;
   createdAt: Date;
   lastSeenAt: Date | null;
   lastLoginAt: Date | null;
@@ -37,6 +39,7 @@ export type AdminUserStatRow = {
 export type AdminGlobalTotals = {
   userCount: number;
   adminCount: number;
+  reflectorCount: number;
   planCount: number;
   itemCount: number;
   shareExportCount: number;
@@ -105,6 +108,8 @@ export async function getAdminUserStats(): Promise<AdminStats> {
         email: true,
         image: true,
         role: true,
+        canGiveFeedback: true,
+        canUseReflectionFeatures: true,
         createdAt: true,
         lastSeenAt: true,
         lastLoginAt: true,
@@ -144,6 +149,7 @@ export async function getAdminUserStats(): Promise<AdminStats> {
     Promise.all([
       prisma.user.count(),
       prisma.user.count({ where: { role: "ADMIN" } }),
+      prisma.user.count({ where: { role: "REFLECTOR" } }),
       prisma.plan.count(),
       prisma.planItem.count(),
       prisma.shareExport.count(),
@@ -198,6 +204,8 @@ export async function getAdminUserStats(): Promise<AdminStats> {
       email: user.email,
       image: user.image,
       role: user.role,
+      canGiveFeedback: user.canGiveFeedback,
+      canUseReflectionFeatures: user.canUseReflectionFeatures,
       createdAt: user.createdAt,
       lastSeenAt: user.lastSeenAt,
       lastLoginAt: user.lastLoginAt,
@@ -220,6 +228,7 @@ export async function getAdminUserStats(): Promise<AdminStats> {
   const [
     userCount,
     adminCount,
+    reflectorCount,
     planCount,
     itemCount,
     shareExportCount,
@@ -231,6 +240,7 @@ export async function getAdminUserStats(): Promise<AdminStats> {
     totals: {
       userCount,
       adminCount,
+      reflectorCount,
       planCount,
       itemCount,
       shareExportCount,

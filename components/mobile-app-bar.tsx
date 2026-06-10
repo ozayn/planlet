@@ -12,6 +12,7 @@ type MobileAppBarProps = {
   userEmail?: string | null;
   userImage?: string | null;
   isAdmin?: boolean;
+  canGiveFeedback?: boolean;
   signOutButton: React.ReactNode;
   unreadNotificationCount?: number;
   notifications?: SerializedNotification[];
@@ -22,6 +23,7 @@ export function MobileAppBar({
   userEmail,
   userImage,
   isAdmin = false,
+  canGiveFeedback = false,
   signOutButton,
   unreadNotificationCount = 0,
   notifications = [],
@@ -47,6 +49,7 @@ export function MobileAppBar({
             email={userEmail}
             image={userImage}
             isAdmin={isAdmin}
+            canGiveFeedback={canGiveFeedback}
             signOutButton={signOutButton}
             compact
             showThemeInMenu

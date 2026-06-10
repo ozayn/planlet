@@ -2,6 +2,10 @@
 
 Audit date: June 2026. Goal: find and reduce duplicate actions, repeated labels, and overlapping UI patterns without removing functionality.
 
+**See also:** `docs/SYSTEM_UX_AUDIT.md` (full system pass, June 2026).
+
+**Correction:** Settings is **not** in the desktop main nav — only in the avatar/profile menu (same as mobile).
+
 ## Rule of thumb
 
 **If an action is visible on the row (or header) at a breakpoint, do not repeat it in the overflow menu at that same breakpoint.**

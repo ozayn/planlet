@@ -4,6 +4,7 @@ import { DesktopNav } from "@/components/desktop-nav";
 import { MobileAppBar } from "@/components/mobile-app-bar";
 import { SignOutButton } from "@/components/sign-out-button";
 import { isAdminRole } from "@/lib/auth-roles";
+import { canGiveFeedback } from "@/lib/roles";
 import { serializeNotification } from "@/lib/notification-serialize";
 import {
   getNotificationsForUser,
@@ -34,6 +35,7 @@ export default async function AppLayout({
         userEmail={session?.user?.email}
         userImage={session?.user?.image}
         isAdmin={isAdminRole(session?.user?.role)}
+        canGiveFeedback={canGiveFeedback(session?.user ?? {})}
         signOutButton={<SignOutButton />}
         unreadNotificationCount={unreadNotificationCount}
         notifications={serializedNotifications}
@@ -43,6 +45,7 @@ export default async function AppLayout({
         userEmail={session?.user?.email}
         userImage={session?.user?.image}
         isAdmin={isAdminRole(session?.user?.role)}
+        canGiveFeedback={canGiveFeedback(session?.user ?? {})}
         signOutButton={<SignOutButton />}
         unreadNotificationCount={unreadNotificationCount}
         notifications={serializedNotifications}

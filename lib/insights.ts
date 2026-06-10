@@ -10,6 +10,8 @@ import { getMonthRange } from "@/lib/dates";
 import { isActionableItemType } from "@/lib/plan-item-sections";
 import { OBSERVATION_CATEGORIES } from "@/lib/observation-constants";
 import { getObservationCategoryLabel } from "@/lib/observation-labels";
+import type { UserAccess } from "@/lib/roles";
+import { canUseReflectionFeatures } from "@/lib/roles";
 import { prisma } from "@/lib/prisma";
 
 export type MonthlyInsightsTotals = {
@@ -134,8 +136,10 @@ function sortedEntries<K extends string>(
 export async function getMonthlyInsights(
   userId: string,
   date = new Date(),
+  access?: UserAccess,
 ): Promise<MonthlyInsights> {
   const { start, end } = getMonthRange(date);
+  const canReflect = canUseReflectionFeatures(access ?? {});
 
   const [plans, observations] = await Promise.all([
     prisma.plan.findMany({
@@ -148,13 +152,15 @@ export async function getMonthlyInsights(
         items: true,
       },
     }),
-    prisma.planObservation.findMany({
-      where: {
-        userId,
-        createdAt: { gte: start, lte: end },
-      },
-      select: { category: true },
-    }),
+    canReflect
+      ? prisma.planObservation.findMany({
+          where: {
+            userId,
+            createdAt: { gte: start, lte: end },
+          },
+          select: { category: true },
+        })
+      : Promise.resolve([]),
   ]);
 
   const items = plans.flatMap((plan) => plan.items);

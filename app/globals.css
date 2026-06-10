@@ -342,6 +342,48 @@ body {
     min-width: 0;
   }
 
+  .ui-settings-instruction-details {
+    border-bottom: 1px solid color-mix(in srgb, var(--border-soft) 70%, transparent);
+  }
+
+  .ui-settings-instruction-details:last-child {
+    border-bottom: 0;
+  }
+
+  .ui-settings-instruction-summary {
+    display: flex;
+    min-height: 2.25rem;
+    cursor: pointer;
+    list-style: none;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.25rem 0;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--foreground);
+  }
+
+  .ui-settings-instruction-summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .ui-settings-instruction-summary::marker {
+    content: "";
+  }
+
+  .ui-settings-instruction-summary:focus-visible {
+    outline: none;
+    border-radius: 0.25rem;
+    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--focus-ring);
+  }
+
+  .ui-settings-instruction-details:not([open])
+    .ui-settings-instruction-summary
+    span:last-child {
+    transform: rotate(-90deg);
+  }
+
   .ui-settings-details {
     border-radius: 0.75rem;
     border: 1px solid var(--border-soft);

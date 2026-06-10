@@ -12,6 +12,7 @@ import {
   formatWeekStartString,
 } from "@/lib/dates";
 import { getMonthlyInsights } from "@/lib/insights";
+import { canUseReflectionFeatures } from "@/lib/roles";
 import { getPlanItemTypeLabel } from "@/lib/plan-labels";
 import { getStatusLabel } from "@/lib/plan-status";
 
@@ -61,7 +62,8 @@ export default async function InsightsPage() {
     return null;
   }
 
-  const insights = await getMonthlyInsights(userId);
+  const insights = await getMonthlyInsights(userId, new Date(), session.user);
+  const showReflection = canUseReflectionFeatures(session.user);
   const isEmpty = insights.totals.plans === 0 && insights.totals.items === 0;
   const now = new Date();
   const summaryDate = formatDateString(now);
@@ -94,11 +96,10 @@ export default async function InsightsPage() {
 
   return (
     <section className="ui-insights-page space-y-5 sm:space-y-6">
-      <PageHeader title="Insights" subtitle={insights.dateLabel} />
-
-      <p className="-mt-3 text-sm text-muted-light">
-        A quiet look at your plans this month.
-      </p>
+      <PageHeader
+        title="Insights"
+        subtitle={`${insights.dateLabel} · A quiet look at your plans this month.`}
+      />
 
       {isEmpty ? (
         <InsightsEmptyState />
@@ -135,10 +136,12 @@ export default async function InsightsPage() {
             ]}
           />
 
-          <InsightsObservations
-            count={insights.totals.observations}
-            categories={insights.observationCategories}
-          />
+          {showReflection ? (
+            <InsightsObservations
+              count={insights.totals.observations}
+              categories={insights.observationCategories}
+            />
+          ) : null}
 
           <div className="ui-insights-main grid gap-5 lg:grid-cols-2 lg:gap-6">
             <InsightsBreakdown types={typeRows} statuses={statusRows} />

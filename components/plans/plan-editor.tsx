@@ -12,9 +12,11 @@ import {
   PlanKudosSummary,
   type PlanKudosEntry,
 } from "@/components/plans/plan-kudos-summary";
+import { GratitudeSection } from "@/components/plans/gratitude-section";
 import { PrivateObservationsSection } from "@/components/plans/private-observations-section";
 import { ShareWithUserPanel } from "@/components/plans/share-with-user-panel";
 import { formatPlanActivityLabel } from "@/lib/plan-activity";
+import type { SerializedGratitude } from "@/lib/gratitude";
 import type { SerializedObservation } from "@/lib/observations";
 import type { SerializedPlan } from "@/lib/plan-serialize";
 import type { RecentShareRecipient } from "@/lib/plan-sharing";
@@ -42,6 +44,7 @@ type PlanEditorProps = {
   periodSummaryHref?: string;
   periodSummaryLabel?: string;
   observations?: SerializedObservation[];
+  gratitudes?: SerializedGratitude[];
   canEdit?: boolean;
 };
 
@@ -60,6 +63,7 @@ export function PlanEditor({
   periodSummaryHref,
   periodSummaryLabel,
   observations,
+  gratitudes,
 }: PlanEditorProps) {
   const dateStart = new Date(plan.dateStart);
   const dateEnd = new Date(plan.dateEnd);
@@ -175,6 +179,10 @@ export function PlanEditor({
           planId={plan.id}
           observations={observations}
         />
+      ) : null}
+
+      {gratitudes !== undefined ? (
+        <GratitudeSection planId={plan.id} gratitudes={gratitudes} />
       ) : null}
     </div>
   );

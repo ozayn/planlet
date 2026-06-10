@@ -21,6 +21,10 @@ import {
 import { canEditPlan, canViewPlan } from "@/lib/plan-sharing";
 import { normalizeProgressForStatus } from "@/lib/plan-status";
 import {
+  getPlanItemSectionGroup,
+  TASK_ITEM_TYPES,
+} from "@/lib/plan-item-sections";
+import {
   formatDayPlanTitle,
   formatWeekPlanTitle,
   resolvePlanTitle,
@@ -578,6 +582,77 @@ export async function reorderPlanItems(
       }),
     ),
   );
+
+  await touchPlan(planId);
+  await touchUserSeen(userId);
+}
+
+export async function movePlanItem(
+  planId: string,
+  userId: string,
+  itemId: string,
+  direction: "up" | "down",
+) {
+  await requirePlanForUser(planId, userId);
+
+  const item = await prisma.planItem.findFirst({
+    where: { id: itemId, planId },
+    select: {
+      id: true,
+      parentItemId: true,
+      type: true,
+      sortOrder: true,
+    },
+  });
+
+  if (!item) {
+    throw new PlanAccessError("Plan item not found");
+  }
+
+  const peers = await prisma.planItem.findMany({
+    where: item.parentItemId
+      ? { planId, parentItemId: item.parentItemId }
+      : (() => {
+          const section = getPlanItemSectionGroup(item.type);
+          if (section === "intentions") {
+            return { planId, parentItemId: null, type: "INTENTION" as const };
+          }
+          if (section === "notes") {
+            return { planId, parentItemId: null, type: "NOTE" as const };
+          }
+          return {
+            planId,
+            parentItemId: null,
+            type: { in: [...TASK_ITEM_TYPES] },
+          };
+        })(),
+    select: { id: true, sortOrder: true, createdAt: true },
+    orderBy: itemOrderBy,
+  });
+
+  const index = peers.findIndex((peer) => peer.id === itemId);
+  if (index < 0) {
+    throw new PlanAccessError("Plan item not found");
+  }
+
+  const targetIndex = direction === "up" ? index - 1 : index + 1;
+  if (targetIndex < 0 || targetIndex >= peers.length) {
+    throw new PlanAccessError("Cannot move item in that direction");
+  }
+
+  const current = peers[index];
+  const target = peers[targetIndex];
+
+  await prisma.$transaction([
+    prisma.planItem.update({
+      where: { id: current.id },
+      data: { sortOrder: target.sortOrder },
+    }),
+    prisma.planItem.update({
+      where: { id: target.id },
+      data: { sortOrder: current.sortOrder },
+    }),
+  ]);
 
   await touchPlan(planId);
   await touchUserSeen(userId);

@@ -17,7 +17,7 @@ import {
   getPlanSharesForOwner,
   getRecentShareRecipients,
 } from "@/lib/plan-sharing";
-import { getObservationsForPlan } from "@/lib/observations";
+import { getPlanReflectionData } from "@/lib/reflection-data";
 import { getWeekPlan } from "@/lib/plans";
 import { serializePlan } from "@/lib/plan-serialize";
 import { getPlanItemViewForUser } from "@/lib/user-preferences";
@@ -81,11 +81,11 @@ export default async function WeekPlanPage({ params }: WeekPlanPageProps) {
     );
   }
 
-  const [platformShares, planItemView, observations, recentShareRecipients] =
+  const [platformShares, planItemView, reflectionData, recentShareRecipients] =
     await Promise.all([
       getPlanSharesForOwner(plan.id, userId),
       getPlanItemViewForUser(userId),
-      getObservationsForPlan(plan.id, userId),
+      getPlanReflectionData(plan.id, userId, session.user),
       getRecentShareRecipients(userId, plan.id),
     ]);
 
@@ -118,7 +118,8 @@ export default async function WeekPlanPage({ params }: WeekPlanPageProps) {
         platformShares={platformShares}
         recentShareRecipients={recentShareRecipients}
         itemView={planItemView}
-        observations={observations}
+        observations={reflectionData.observations}
+        gratitudes={reflectionData.gratitudes}
       />
     </section>
   );

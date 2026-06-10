@@ -1,7 +1,9 @@
 import type {
+  FeedbackArea,
   KudosType,
   NotificationType,
 } from "@/app/generated/prisma/client";
+import { getFeedbackAreaLabel } from "@/lib/feedback-labels";
 import { getKudosNotificationPhrase } from "@/lib/kudos-labels";
 import { sendPushToUser } from "@/lib/push";
 import { prisma } from "@/lib/prisma";
@@ -152,4 +154,36 @@ export async function createPlanItemCommentNotification(input: {
   void sendPushToUser(input.recipientUserId, { title, body, url: href });
 
   return notification;
+}
+
+export async function createAppFeedbackNotification(input: {
+  authorName: string | null;
+  authorEmail: string | null;
+  area: FeedbackArea;
+}) {
+  const authorLabel =
+    input.authorName?.trim() || input.authorEmail?.trim() || "Someone";
+  const areaLabel = getFeedbackAreaLabel(input.area);
+  const title = "New feedback";
+  const body = `${authorLabel} left feedback about ${areaLabel}`;
+  const href = "/admin/feedback";
+
+  const admins = await prisma.user.findMany({
+    where: { role: "ADMIN" },
+    select: { id: true },
+  });
+
+  await Promise.all(
+    admins.map((admin) =>
+      createNotification({
+        userId: admin.id,
+        type: "APP_FEEDBACK",
+        title,
+        body,
+        href,
+      }).catch((error) => {
+        console.warn("[planlet] admin feedback notification failed:", error);
+      }),
+    ),
+  );
 }

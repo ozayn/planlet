@@ -8,19 +8,17 @@ import { PlanletLogo } from "@/components/planlet-logo";
 import { ProfileMenu } from "@/components/profile-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
 import type { SerializedNotification } from "@/lib/notification-serialize";
+import { MAIN_NAV_ITEMS } from "@/config/nav-items";
 import { PRODUCT } from "@/config/product";
 
-const navItems = [
-  { href: "/today", label: "Today" },
-  { href: "/plans", label: "Plans" },
-  { href: "/insights", label: "Insights" },
-] as const;
+const navItems = MAIN_NAV_ITEMS;
 
 type DesktopNavProps = {
   userName?: string | null;
   userEmail?: string | null;
   userImage?: string | null;
   isAdmin?: boolean;
+  canGiveFeedback?: boolean;
   signOutButton: React.ReactNode;
   unreadNotificationCount?: number;
   notifications?: SerializedNotification[];
@@ -31,6 +29,7 @@ export function DesktopNav({
   userEmail,
   userImage,
   isAdmin = false,
+  canGiveFeedback = false,
   signOutButton,
   unreadNotificationCount = 0,
   notifications = [],
@@ -86,6 +85,7 @@ export function DesktopNav({
             email={userEmail}
             image={userImage}
             isAdmin={isAdmin}
+            canGiveFeedback={canGiveFeedback}
             signOutButton={signOutButton}
           />
         </div>

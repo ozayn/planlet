@@ -55,3 +55,15 @@ export type AddItemKind = "TASK" | "INTENTION" | "NOTE";
 export function addItemKindToType(kind: AddItemKind): PlanItemType {
   return kind;
 }
+
+export type PlanItemSectionGroup = "tasks" | "intentions" | "notes";
+
+export function getPlanItemSectionGroup(type: PlanItemType): PlanItemSectionGroup {
+  if (isNoteItemType(type)) {
+    return "notes";
+  }
+  if (isIntentionItemType(type)) {
+    return "intentions";
+  }
+  return "tasks";
+}

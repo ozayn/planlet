@@ -19,12 +19,16 @@ type IntentionItemCardProps = {
   planId: string;
   item: SerializedPlanItem;
   canEdit?: boolean;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
 };
 
 export function IntentionItemCard({
   planId,
   item,
   canEdit = true,
+  canMoveUp = false,
+  canMoveDown = false,
 }: IntentionItemCardProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -147,6 +151,8 @@ export function IntentionItemCard({
                     itemType={item.type}
                     canEdit={canEdit}
                     visibleActionsAreShown={visibleActionsAreShown}
+                    canMoveUp={canMoveUp}
+                    canMoveDown={canMoveDown}
                     commentCount={item.commentCount}
                     onEdit={() => setDetailsOpen(true)}
                     onTaskNote={() => setDetailsOpen(true)}

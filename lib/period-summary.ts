@@ -19,9 +19,14 @@ import { isActionableItemType, isIntentionItemType, isNoteItemType } from "@/lib
 import { OBSERVATION_CATEGORIES } from "@/lib/observation-constants";
 import { getObservationCategoryLabel } from "@/lib/observation-labels";
 import {
+  getGratitudesForPlans,
+  type SerializedGratitude,
+} from "@/lib/gratitude";
+import {
   getObservationsForPlans,
   type SerializedObservation,
 } from "@/lib/observations";
+import { canUseReflectionFeatures } from "@/lib/roles";
 import { getMonthPlan, getWeekPlan, getYearPlan } from "@/lib/plans";
 import { serializePlan, type SerializedPlan } from "@/lib/plan-serialize";
 import { prisma } from "@/lib/prisma";
@@ -34,6 +39,7 @@ import type {
   PeriodSummaryItemGroup,
   PeriodSummaryItemSource,
   PeriodSummaryItemTier,
+  PeriodSummaryGratitude,
   PeriodSummaryObservation,
   PeriodSummaryObservationGroup,
   PeriodSummaryType,
@@ -336,6 +342,7 @@ export function generatePeriodSummaryText(
         );
       }
     }
+    lines.push("");
   }
 
   return lines.join("\n").trim();
@@ -368,13 +375,13 @@ function groupObservationsByCategory(
   });
 }
 
-function attachPlanLabels(
-  observations: SerializedObservation[],
+function attachPlanLabels<T extends { planId: string }>(
+  entries: T[],
   planLabels: Map<string, string>,
-): PeriodSummaryObservation[] {
-  return observations.map((observation) => ({
-    ...observation,
-    planGroupLabel: planLabels.get(observation.planId) ?? "Plan",
+): Array<T & { planGroupLabel: string }> {
+  return entries.map((entry) => ({
+    ...entry,
+    planGroupLabel: planLabels.get(entry.planId) ?? "Plan",
   }));
 }
 
@@ -384,6 +391,7 @@ type PeriodSummaryBuildInput = PeriodSummaryData & {
     plan: SerializedPlan;
   }>;
   observations: PeriodSummaryObservation[];
+  gratitudes: PeriodSummaryGratitude[];
 };
 
 export function buildPeriodSummary(input: PeriodSummaryBuildInput): PeriodSummary {
@@ -429,7 +437,9 @@ export function buildPeriodSummary(input: PeriodSummaryBuildInput): PeriodSummar
     (input.periodPlan ? 1 : 0) + input.includedPlans.length;
   const hasAnyPlans = planCount > 0;
   const hasAnyContent =
-    items.length > 0 || input.observations.length > 0;
+    items.length > 0 ||
+    input.observations.length > 0 ||
+    input.gratitudes.length > 0;
   const observationsByCategory = groupObservationsByCategory(
     input.observations,
   );
@@ -453,6 +463,7 @@ export function buildPeriodSummary(input: PeriodSummaryBuildInput): PeriodSummar
       intentions: intentions.length,
       notes: notes.length,
       observations: input.observations.length,
+      gratitudes: input.gratitudes.length,
     },
     completed: groupCompletedByTier(completedItems, input.periodType),
     stillOpen,
@@ -464,6 +475,7 @@ export function buildPeriodSummary(input: PeriodSummaryBuildInput): PeriodSummar
     repeatedThemes: findRepeatedThemes(intentions),
     observations: input.observations,
     observationsByCategory,
+    gratitudes: input.gratitudes,
     hasAnyPlans,
     hasAnyContent,
   };
@@ -556,8 +568,32 @@ export async function getPeriodSummaryData(
   }
 
   const planIds = [...planLabels.keys()];
-  const rawObservations = await getObservationsForPlans(planIds, userId);
-  const observations = attachPlanLabels(rawObservations, planLabels);
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      role: true,
+      canGiveFeedback: true,
+      canUseReflectionFeatures: true,
+    },
+  });
+  const canReflect = user ? canUseReflectionFeatures(user) : false;
+
+  const [rawObservations, rawGratitudes] = canReflect
+    ? await Promise.all([
+        getObservationsForPlans(planIds, userId),
+        getGratitudesForPlans(planIds, userId),
+      ])
+    : [[], []];
+
+  const observations = attachPlanLabels(
+    rawObservations,
+    planLabels,
+  ) as PeriodSummaryObservation[];
+  const gratitudes = attachPlanLabels(
+    rawGratitudes,
+    planLabels,
+  ) as PeriodSummaryGratitude[];
 
   return {
     periodType: type,
@@ -571,6 +607,7 @@ export async function getPeriodSummaryData(
     includedPlans: childPlans.map(({ meta }) => meta),
     childPlans,
     observations,
+    gratitudes,
   };
 }
 

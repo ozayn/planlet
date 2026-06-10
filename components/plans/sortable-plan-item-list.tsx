@@ -46,13 +46,15 @@ function StaticPlanItemList({
 }) {
   return (
     <>
-      {items.map((item) => (
+      {items.map((item, index) => (
         <PlanItemCard
           key={item.id}
           planId={planId}
           item={item}
           itemView={itemView}
           canEdit={canEdit}
+          canMoveUp={canEdit && index > 0}
+          canMoveDown={canEdit && index < items.length - 1}
         />
       ))}
     </>
@@ -64,11 +66,15 @@ function SortablePlanItemRow({
   item,
   itemView,
   canEdit,
+  canMoveUp,
+  canMoveDown,
 }: {
   planId: string;
   item: SerializedPlanItem;
   itemView: PlanItemView;
   canEdit: boolean;
+  canMoveUp: boolean;
+  canMoveDown: boolean;
 }) {
   const {
     attributes,
@@ -96,6 +102,8 @@ function SortablePlanItemRow({
         dragHandleListeners={listeners}
         itemView={itemView}
         canEdit={canEdit}
+        canMoveUp={canMoveUp}
+        canMoveDown={canMoveDown}
       />
     </div>
   );
@@ -136,13 +144,15 @@ function SortablePlanItemRows({
         items={items.map((item) => item.id)}
         strategy={verticalListSortingStrategy}
       >
-        {items.map((item) => (
+        {items.map((item, index) => (
           <SortablePlanItemRow
             key={item.id}
             planId={planId}
             item={item}
             itemView={itemView}
             canEdit={canEdit}
+            canMoveUp={canEdit && index > 0}
+            canMoveDown={canEdit && index < items.length - 1}
           />
         ))}
       </SortableContext>

@@ -18,12 +18,16 @@ type NoteItemCardProps = {
   planId: string;
   item: SerializedPlanItem;
   canEdit?: boolean;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
 };
 
 export function NoteItemCard({
   planId,
   item,
   canEdit = true,
+  canMoveUp = false,
+  canMoveDown = false,
 }: NoteItemCardProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -133,6 +137,8 @@ export function NoteItemCard({
                     itemType={item.type}
                     canEdit={canEdit}
                     visibleActionsAreShown={visibleActionsAreShown}
+                    canMoveUp={canMoveUp}
+                    canMoveDown={canMoveDown}
                     commentCount={item.commentCount}
                     onEdit={() => setDetailsOpen(true)}
                     onComments={() => setCommentsOpen(true)}

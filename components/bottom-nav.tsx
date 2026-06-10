@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { MAIN_NAV_ITEMS } from "@/config/nav-items";
+
 const navItems = [
-  { href: "/today", label: "Today", accent: "bg-accent-red" },
-  { href: "/plans", label: "Plans", accent: "bg-accent-blue" },
-  { href: "/insights", label: "Insights", accent: "bg-accent-yellow" },
+  { ...MAIN_NAV_ITEMS[0], accent: "bg-accent-red" },
+  { ...MAIN_NAV_ITEMS[1], accent: "bg-accent-blue" },
+  { ...MAIN_NAV_ITEMS[2], accent: "bg-accent-yellow" },
 ] as const;
 
 export function BottomNav() {

@@ -208,8 +208,8 @@ export function PushNotificationSettings({
         {state === "ios-install" ? (
           <p className="text-xs text-muted-light">
             {embedded
-              ? "On iPhone, install Planlet first."
-              : "On iPhone, add Planlet to your Home Screen first, then open it from the icon to enable notifications."}
+              ? "Install Planlet first."
+              : "Install Planlet to your Home Screen first, then open it from the icon."}
           </p>
         ) : null}
 

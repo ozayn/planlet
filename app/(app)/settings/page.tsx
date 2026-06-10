@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/page-header";
 import { SettingsAppNotifications } from "@/components/settings/settings-app-notifications";
 import { PlanItemViewSettings } from "@/components/settings/plan-item-view-settings";
 import { SettingsProfile } from "@/components/settings/settings-profile";
+import { SettingsReflectionFeatures } from "@/components/settings/settings-reflection-features";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { SettingsTechnicalInfo } from "@/components/settings/settings-technical-info";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -13,6 +14,10 @@ import {
   isOpenAIConfigured,
   isTextParserConfigured,
 } from "@/lib/env";
+import {
+  canGiveFeedback,
+  canUseReflectionFeatures,
+} from "@/lib/roles";
 import { getPlanItemViewForUser } from "@/lib/user-preferences";
 
 export default async function SettingsPage() {
@@ -36,9 +41,23 @@ export default async function SettingsPage() {
 
       <SettingsSection title="Appearance">
         <ThemeToggle variant="full" />
+        <p className="text-xs text-muted-light">
+          On desktop, theme is also in the header. On mobile, use the profile
+          menu.
+        </p>
       </SettingsSection>
 
       <PlanItemViewSettings value={planItemView} />
+
+      {(canGiveFeedback(session?.user ?? {}) ||
+        canUseReflectionFeatures(session?.user ?? {})) &&
+      session?.user?.role ? (
+        <SettingsReflectionFeatures
+          role={session.user.role}
+          canGiveFeedback={session.user.canGiveFeedback}
+          canUseReflectionFeatures={session.user.canUseReflectionFeatures}
+        />
+      ) : null}
 
       <SettingsAppNotifications />
 

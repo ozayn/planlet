@@ -52,12 +52,14 @@ export function PlanItemSections({
         <section className="ui-plan-section ui-plan-section-follows-tasks space-y-2">
           <SectionLabel>Intentions</SectionLabel>
           <ul className="space-y-1.5">
-            {intentions.map((item) => (
+            {intentions.map((item, index) => (
               <li key={item.id}>
                 <IntentionItemCard
                   planId={planId}
                   item={item}
                   canEdit={canEdit}
+                  canMoveUp={canEdit && index > 0}
+                  canMoveDown={canEdit && index < intentions.length - 1}
                 />
               </li>
             ))}
@@ -69,12 +71,18 @@ export function PlanItemSections({
         <section className="ui-plan-section space-y-2">
           <SectionLabel>Notes & reflections</SectionLabel>
           <p className="text-xs text-muted-light">
-            Plan-level thoughts included when you share or copy this plan.
+            Included when you share or copy this plan.
           </p>
           <ul className="space-y-1.5">
-            {notes.map((item) => (
+            {notes.map((item, index) => (
               <li key={item.id}>
-                <NoteItemCard planId={planId} item={item} canEdit={canEdit} />
+                <NoteItemCard
+                  planId={planId}
+                  item={item}
+                  canEdit={canEdit}
+                  canMoveUp={canEdit && index > 0}
+                  canMoveDown={canEdit && index < notes.length - 1}
+                />
               </li>
             ))}
           </ul>

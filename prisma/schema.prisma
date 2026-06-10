@@ -85,6 +85,7 @@ enum ShareExportFormat {
 
 enum UserRole {
   USER
+  REFLECTOR
   ADMIN
 }
 
@@ -96,6 +97,35 @@ enum NotificationType {
   PLAN_SHARED
   PLAN_KUDOS
   PLAN_ITEM_COMMENT
+  APP_FEEDBACK
+}
+
+enum FeedbackArea {
+  MOBILE
+  UI
+  TASKS
+  PLANS
+  INSIGHTS
+  SHARING
+  NOTIFICATIONS
+  SETTINGS
+  ADMIN
+  AI_IMPORT
+  OTHER
+}
+
+enum FeedbackStatus {
+  OPEN
+  REVIEWED
+  PLANNED
+  DONE
+  WONT_DO
+}
+
+enum FeedbackPriority {
+  LOW
+  NORMAL
+  HIGH
 }
 
 enum KudosType {
@@ -128,8 +158,10 @@ model User {
   email         String?     @unique
   emailVerified DateTime?
   image         String?
-  role          UserRole    @default(USER)
-  planItemView  PlanItemView @default(CHECKLIST)
+  role                      UserRole    @default(USER)
+  canGiveFeedback           Boolean     @default(false)
+  canUseReflectionFeatures  Boolean     @default(false)
+  planItemView              PlanItemView @default(CHECKLIST)
   lastSeenAt    DateTime?
   lastLoginAt   DateTime?
   loginCount    Int         @default(0)
@@ -145,6 +177,9 @@ model User {
   pushSubscriptions  PushSubscription[]
   planItemComments   PlanItemComment[]
   observations       PlanObservation[]
+  gratitudes         PlanGratitude[]
+  feedbackItems      AppFeedback[] @relation("AuthoredFeedback")
+  resolvedFeedback   AppFeedback[] @relation("ResolvedFeedback")
   loginEvents   LoginEvent[]
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -242,10 +277,46 @@ model Plan {
   shares       PlanShare[]
   kudos        PlanKudos[]
   observations PlanObservation[]
+  gratitudes   PlanGratitude[]
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 
   @@index([userId, type, dateStart])
+}
+
+model AppFeedback {
+  id           String           @id @default(cuid())
+  authorId     String
+  author       User             @relation("AuthoredFeedback", fields: [authorId], references: [id], onDelete: Cascade)
+  area         FeedbackArea
+  pagePath     String?
+  title        String?
+  body         String           @db.Text
+  status       FeedbackStatus   @default(OPEN)
+  priority     FeedbackPriority @default(NORMAL)
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  resolvedAt   DateTime?
+  resolvedById String?
+  resolvedBy   User?            @relation("ResolvedFeedback", fields: [resolvedById], references: [id])
+
+  @@index([authorId, createdAt])
+  @@index([status, createdAt])
+  @@index([area, createdAt])
+}
+
+model PlanGratitude {
+  id        String   @id @default(cuid())
+  planId    String
+  plan      Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  body      String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([planId, createdAt])
+  @@index([userId, createdAt])
 }
 
 model PlanObservation {

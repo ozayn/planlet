@@ -7,7 +7,7 @@ import { PlanEditor } from "@/components/plans/plan-editor";
 import { PageHeader } from "@/components/page-header";
 import { getKudosForPlan } from "@/lib/kudos";
 import { formatDateString } from "@/lib/dates";
-import { getObservationsForPlan } from "@/lib/observations";
+import { getPlanReflectionData } from "@/lib/reflection-data";
 import {
   getPlanSharesForOwner,
   getRecentShareRecipients,
@@ -28,14 +28,14 @@ export default async function TodayPage() {
     getTodayPlan(userId),
     getPlanItemViewForUser(userId),
   ]);
-  const [kudos, observations, platformShares, recentShareRecipients] = plan
+  const [kudos, reflectionData, platformShares, recentShareRecipients] = plan
     ? await Promise.all([
         getKudosForPlan(plan.id, userId),
-        getObservationsForPlan(plan.id, userId),
+        getPlanReflectionData(plan.id, userId, session.user),
         getPlanSharesForOwner(plan.id, userId),
         getRecentShareRecipients(userId, plan.id),
       ])
-    : [[], undefined, [], []];
+    : [[], { observations: undefined, gratitudes: undefined }, [], []];
   const firstName = session.user?.name?.split(" ")[0];
   const todayDate = formatDateString(new Date());
 
@@ -72,7 +72,8 @@ export default async function TodayPage() {
               sender: entry.sender,
             }))}
             itemView={planItemView}
-            observations={observations}
+            observations={reflectionData.observations}
+            gratitudes={reflectionData.gratitudes}
           />
         </div>
       ) : (

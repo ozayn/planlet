@@ -2,7 +2,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import NextAuth from "next-auth";
 
 import { authConfig } from "@/auth.config";
-import { syncUserRoleOnSignIn } from "@/lib/auth-roles";
+import { syncUserAccessOnSignIn } from "@/lib/auth-roles";
 import { trackUserSignInSafely } from "@/lib/login-activity";
 import { prisma } from "@/lib/prisma";
 
@@ -39,20 +39,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (email && user.id) {
           token.id = user.id;
 
-          const dbUser = await prisma.user.findUnique({
-            where: { id: user.id },
-            select: { role: true },
-          });
-
-          token.role =
-            dbUser?.role ?? (await syncUserRoleOnSignIn(user.id, email));
+          await syncUserAccessOnSignIn(user.id, email);
         } else if (user.id) {
           token.id = user.id;
-          const dbUser = await prisma.user.findUnique({
-            where: { id: user.id },
-            select: { role: true },
-          });
-          token.role = dbUser?.role ?? "USER";
         }
       }
 
@@ -61,8 +50,20 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async session({ session, token }) {
       if (session.user && token.sub) {
         session.user.id = token.sub;
-        session.user.role =
-          (token.role as "USER" | "ADMIN" | undefined) ?? "USER";
+
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.sub },
+          select: {
+            role: true,
+            canGiveFeedback: true,
+            canUseReflectionFeatures: true,
+          },
+        });
+
+        session.user.role = dbUser?.role ?? "USER";
+        session.user.canGiveFeedback = dbUser?.canGiveFeedback ?? false;
+        session.user.canUseReflectionFeatures =
+          dbUser?.canUseReflectionFeatures ?? false;
       }
       return session;
     },

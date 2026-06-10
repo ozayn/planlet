@@ -23,12 +23,36 @@ export function getAdminEmails(): string[] {
   return parseEmailList(process.env.PLANLET_ADMIN_EMAILS);
 }
 
+export function getReflectorEmails(): string[] {
+  return parseEmailList(process.env.PLANLET_REFLECTOR_EMAILS);
+}
+
+export function getFeedbackEmails(): string[] {
+  return parseEmailList(process.env.PLANLET_FEEDBACK_EMAILS);
+}
+
 export function isAdminEmail(email?: string | null): boolean {
   if (!email?.trim()) {
     return false;
   }
 
   return getAdminEmails().includes(email.trim().toLowerCase());
+}
+
+export function isReflectorEmail(email?: string | null): boolean {
+  if (!email?.trim()) {
+    return false;
+  }
+
+  return getReflectorEmails().includes(email.trim().toLowerCase());
+}
+
+export function isFeedbackEmail(email?: string | null): boolean {
+  if (!email?.trim()) {
+    return false;
+  }
+
+  return getFeedbackEmails().includes(email.trim().toLowerCase());
 }
 
 export function isEmailAllowed(email?: string | null): boolean {

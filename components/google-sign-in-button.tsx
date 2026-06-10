@@ -19,7 +19,7 @@ export function GoogleSignInButton({
         className="ui-btn-primary flex h-12 w-full gap-3"
       >
         <GoogleIcon />
-        Continue with Google
+        Get started with Google
       </button>
     </form>
   );

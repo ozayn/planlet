@@ -1,6 +1,6 @@
 import type { UserRole } from "@/app/generated/prisma/client";
 
-import { isAdminEmail } from "@/lib/auth-allowlist";
+import { resolveUserAccessFromEmail } from "@/lib/auth-roles";
 import { prisma } from "@/lib/prisma";
 
 const RECENT_LOGIN_WINDOW_MS = 30_000;
@@ -38,21 +38,6 @@ async function resolveUserId(
   return byEmail?.id ?? null;
 }
 
-function resolveSignInRole(
-  email: string,
-  currentRole: UserRole | undefined,
-): UserRole {
-  if (isAdminEmail(email)) {
-    return "ADMIN";
-  }
-
-  if (currentRole === "ADMIN") {
-    return "ADMIN";
-  }
-
-  return "USER";
-}
-
 export async function trackUserSignIn({
   userId,
   email,
@@ -82,9 +67,14 @@ export async function trackUserSignIn({
 
   const existing = await prisma.user.findUnique({
     where: { id: resolvedUserId },
-    select: { role: true, lastLoginAt: true },
+    select: {
+      role: true,
+      canGiveFeedback: true,
+      canUseReflectionFeatures: true,
+      lastLoginAt: true,
+    },
   });
-  const role = resolveSignInRole(trimmedEmail, existing?.role);
+  const access = resolveUserAccessFromEmail(trimmedEmail, existing ?? undefined);
   const now = new Date();
   const recentlyTracked =
     existing?.lastLoginAt != null &&
@@ -92,11 +82,15 @@ export async function trackUserSignIn({
 
   const data: {
     role: UserRole;
+    canGiveFeedback: boolean;
+    canUseReflectionFeatures: boolean;
     lastSeenAt: Date;
     lastLoginAt?: Date;
     loginCount?: { increment: number };
   } = {
-    role,
+    role: access.role,
+    canGiveFeedback: access.canGiveFeedback,
+    canUseReflectionFeatures: access.canUseReflectionFeatures,
     lastSeenAt: now,
   };
 
@@ -124,7 +118,7 @@ export async function trackUserSignIn({
     }
   }
 
-  return role;
+  return access.role;
 }
 
 /** Never throws — tracking failures must not block sign-in. */

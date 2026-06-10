@@ -42,6 +42,8 @@ type PlanItemCardProps = {
   dragHandleListeners?: DraggableSyntheticListeners;
   itemView?: PlanItemView;
   canEdit?: boolean;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
 };
 
 export function PlanItemCard({
@@ -54,6 +56,8 @@ export function PlanItemCard({
   dragHandleListeners,
   itemView = "MINIMAL",
   canEdit = true,
+  canMoveUp = false,
+  canMoveDown = false,
 }: PlanItemCardProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -61,6 +65,9 @@ export function PlanItemCard({
   const [title, setTitle] = useState(item.title);
   const [showSubtaskForm, setShowSubtaskForm] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [detailsFocusField, setDetailsFocusField] = useState<
+    "comment" | null
+  >(null);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const visibleActionsAreShown = useMediaQuery("(min-width: 768px)");
 
@@ -97,7 +104,7 @@ export function PlanItemCard({
   const hasNote = Boolean(item.comment?.trim());
 
   const desktopMetaParts = [
-    typeLabel,
+    item.type !== "TASK" ? typeLabel : null,
     timeHintLabel,
     subtaskCount > 0
       ? `${subtaskCount} subtask${subtaskCount === 1 ? "" : "s"}`
@@ -211,7 +218,10 @@ export function PlanItemCard({
                 <>
                   <button
                     type="button"
-                    onClick={() => setDetailsOpen(true)}
+                    onClick={() => {
+                      setDetailsFocusField(null);
+                      setDetailsOpen(true);
+                    }}
                     {...passwordManagerSafeControlProps}
                     className="ui-plan-item-desktop-action hidden md:inline-flex ui-icon-action-quiet"
                     aria-label={actionLabels.edit}
@@ -243,7 +253,10 @@ export function PlanItemCard({
                   ) : null}
                   <button
                     type="button"
-                    onClick={() => setDetailsOpen(true)}
+                    onClick={() => {
+                      setDetailsFocusField("comment");
+                      setDetailsOpen(true);
+                    }}
                     {...passwordManagerSafeControlProps}
                     className="ui-plan-item-desktop-action hidden md:inline-flex ui-icon-action-quiet"
                     aria-label={ACTION_LABELS.taskNote.ariaLabel}
@@ -271,6 +284,8 @@ export function PlanItemCard({
                 isSubtask={isNested}
                 canEdit={canEdit}
                 visibleActionsAreShown={visibleActionsAreShown}
+                canMoveUp={canMoveUp}
+                canMoveDown={canMoveDown}
                 commentCount={item.commentCount}
                 onEdit={() => setDetailsOpen(true)}
                 onAddSubtask={
@@ -306,7 +321,7 @@ export function PlanItemCard({
 
       {item.subtasks.length > 0 ? (
         <div className="mt-1.5 space-y-1.5">
-          {item.subtasks.map((subtask) => (
+          {item.subtasks.map((subtask, subtaskIndex) => (
             <PlanItemCard
               key={subtask.id}
               planId={planId}
@@ -314,6 +329,10 @@ export function PlanItemCard({
               depth={depth + 1}
               itemView={itemView}
               canEdit={canEdit}
+              canMoveUp={canEdit && subtaskIndex > 0}
+              canMoveDown={
+                canEdit && subtaskIndex < item.subtasks.length - 1
+              }
             />
           ))}
         </div>
@@ -324,7 +343,11 @@ export function PlanItemCard({
           planId={planId}
           item={item}
           open={detailsOpen}
-          onClose={() => setDetailsOpen(false)}
+          onClose={() => {
+            setDetailsOpen(false);
+            setDetailsFocusField(null);
+          }}
+          focusField={detailsFocusField}
           isSubtask={isNested}
         />
       ) : null}

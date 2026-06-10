@@ -94,7 +94,15 @@ export function AdminUserStats({ users }: AdminUserStatsProps) {
                   <AdminUserIdentity user={user} />
                 </td>
                 <td className="px-3 py-3 align-top text-foreground">
-                  {user.role}
+                  <p>{user.role}</p>
+                  <p className="mt-0.5 text-xs text-muted">
+                    {[
+                      user.canGiveFeedback ? "Feedback" : null,
+                      user.canUseReflectionFeatures ? "Reflection" : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ") || "—"}
+                  </p>
                 </td>
                 <td className="px-3 py-3 align-top text-muted">
                   <RecentlySeenValue user={user} />
@@ -139,9 +147,19 @@ export function AdminUserStats({ users }: AdminUserStatsProps) {
           <li key={user.id} className="ui-card-padded space-y-3">
             <div className="flex items-start justify-between gap-3">
               <AdminUserIdentity user={user} />
-              <span className="shrink-0 rounded-full bg-accent-cream px-2.5 py-1 text-xs font-medium text-foreground">
-                {user.role}
-              </span>
+              <div className="shrink-0 text-end">
+                <span className="rounded-full bg-accent-cream px-2.5 py-1 text-xs font-medium text-foreground">
+                  {user.role}
+                </span>
+                <p className="mt-1 text-[0.6875rem] text-muted">
+                  {[
+                    user.canGiveFeedback ? "Feedback" : null,
+                    user.canUseReflectionFeatures ? "Reflection" : null,
+                  ]
+                    .filter(Boolean)
+                    .join(" · ") || "—"}
+                </p>
+              </div>
             </div>
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
               <div>

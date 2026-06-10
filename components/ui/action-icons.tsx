@@ -208,6 +208,22 @@ export function ChevronRightIcon({ className }: IconProps) {
   );
 }
 
+/** Lucide-equivalent: ChevronUp */
+export function ChevronUpIcon({ className }: IconProps) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth={1.75}
+      stroke="currentColor"
+      aria-hidden="true"
+    >
+      <path d="m18 15-6-6-6 6" />
+    </svg>
+  );
+}
+
 /** Lucide-equivalent: ChevronDown */
 export function ChevronDownIcon({ className }: IconProps) {
   return (

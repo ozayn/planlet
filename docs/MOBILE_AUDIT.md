@@ -1,5 +1,7 @@
 # Mobile UX Audit — Planlet
 
+**See also:** `docs/SYSTEM_UX_AUDIT.md` (full system pass, June 2026).
+
 **Date:** June 2026  
 **Viewport targets:** 375px (iPhone SE), 390–430px (modern iPhone), 412px (Pixel), ~667px height, PWA standalone
 

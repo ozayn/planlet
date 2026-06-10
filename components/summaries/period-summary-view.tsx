@@ -293,7 +293,9 @@ export function PeriodSummaryView({ summary }: PeriodSummaryViewProps) {
 
       {summary.observations.length > 0 ? (
         <Section title="Private observations">
-          <p className="text-xs text-muted-light">Only you can see these.</p>
+          <p className="text-xs text-muted-light">
+            Only you can see these. Not shared or exported.
+          </p>
           <div className="space-y-4">
             {summary.observationsByCategory.map((group) => (
               <div key={group.category} className="space-y-2">
@@ -324,6 +326,29 @@ export function PeriodSummaryView({ summary }: PeriodSummaryViewProps) {
               </div>
             ))}
           </div>
+        </Section>
+      ) : null}
+
+      {summary.gratitudes.length > 0 ? (
+        <Section title="Gratitude">
+          <p className="text-xs text-muted-light">
+            Only you can see these. Not shared or exported.
+          </p>
+          <ul className="space-y-2">
+            {summary.gratitudes.map((gratitude) => (
+              <li
+                key={gratitude.id}
+                className="rounded-xl border border-border-soft/80 bg-surface/60 px-3 py-2.5"
+              >
+                <p className="whitespace-pre-wrap text-sm text-foreground" dir="auto">
+                  {gratitude.body}
+                </p>
+                <p className="mt-0.5 text-xs text-muted-light">
+                  {gratitude.planGroupLabel}
+                </p>
+              </li>
+            ))}
+          </ul>
         </Section>
       ) : null}
 

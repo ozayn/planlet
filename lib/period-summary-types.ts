@@ -5,6 +5,7 @@ import type {
   PlanType,
 } from "@/app/generated/prisma/client";
 
+import type { SerializedGratitude } from "@/lib/gratitude";
 import type { SerializedObservation } from "@/lib/observations";
 import type { SerializedPlan } from "@/lib/plan-serialize";
 
@@ -63,6 +64,10 @@ export type PeriodSummaryObservationGroup = {
   items: PeriodSummaryObservation[];
 };
 
+export type PeriodSummaryGratitude = SerializedGratitude & {
+  planGroupLabel: string;
+};
+
 export type PeriodSummaryAtAGlance = {
   plansIncluded: number;
   itemsCompleted: number;
@@ -71,6 +76,7 @@ export type PeriodSummaryAtAGlance = {
   intentions: number;
   notes: number;
   observations: number;
+  gratitudes: number;
 };
 
 export type PeriodSummaryItemGroup = {
@@ -97,6 +103,7 @@ export type PeriodSummary = PeriodSummaryData & {
   repeatedThemes: string[];
   observations: PeriodSummaryObservation[];
   observationsByCategory: PeriodSummaryObservationGroup[];
+  gratitudes: PeriodSummaryGratitude[];
   hasAnyPlans: boolean;
   hasAnyContent: boolean;
   copyText: string;

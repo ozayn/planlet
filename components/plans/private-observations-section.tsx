@@ -12,10 +12,12 @@ import {
   updatePlanObservationAction,
 } from "@/app/(app)/plans/actions";
 import { ChevronDownIcon, LockIcon } from "@/components/ui/action-icons";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { APP_TIMEZONE } from "@/config/time";
 import { ACTION_LABELS } from "@/lib/action-labels";
 import { OBSERVATION_CATEGORIES } from "@/lib/observation-constants";
 import { getObservationCategoryLabel } from "@/lib/observation-labels";
+import { PRIVATE_SECTION_HELPER } from "@/lib/private-section-copy";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 import type { SerializedObservation } from "@/lib/observations";
 
@@ -47,6 +49,7 @@ export function PrivateObservationsSection({
   const [editBody, setEditBody] = useState("");
   const [isSubmitting, startSubmit] = useTransition();
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     setObservations(initialObservations);
@@ -122,15 +125,12 @@ export function PrivateObservationsSection({
   }
 
   function handleDelete(observationId: string) {
-    if (!window.confirm("Delete this observation?")) {
-      return;
-    }
-
     setError(null);
     setDeletingId(observationId);
 
     void deletePlanObservationAction(observationId).then((result) => {
       setDeletingId(null);
+      setConfirmDeleteId(null);
 
       if (!result.success) {
         setError(result.error);
@@ -177,9 +177,7 @@ export function PrivateObservationsSection({
 
       {expanded ? (
         <div id={panelId} className="mt-3 space-y-3">
-          <p className="text-xs text-muted-light">
-            Owner-only body, mood, and energy log. Not shared or exported.
-          </p>
+          <p className="text-xs text-muted-light">{PRIVATE_SECTION_HELPER}</p>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
             <select
               id="observation-category"
@@ -312,7 +310,7 @@ export function PrivateObservationsSection({
                       </button>
                       <button
                         type="button"
-                        onClick={() => handleDelete(observation.id)}
+                        onClick={() => setConfirmDeleteId(observation.id)}
                         disabled={deletingId === observation.id}
                         {...passwordManagerSafeControlProps}
                         className="ui-btn-ghost min-h-8 px-2 text-xs text-muted"
@@ -330,6 +328,26 @@ export function PrivateObservationsSection({
           {error ? <p className="text-sm text-accent-red">{error}</p> : null}
         </div>
       ) : null}
+
+      <ConfirmDialog
+        open={confirmDeleteId !== null}
+        title="Delete observation?"
+        confirmLabel="Delete"
+        onConfirm={() => {
+          if (confirmDeleteId) {
+            handleDelete(confirmDeleteId);
+          }
+        }}
+        onCancel={() => {
+          if (!deletingId) {
+            setConfirmDeleteId(null);
+          }
+        }}
+        isConfirming={deletingId !== null}
+        confirmDanger
+      >
+        <p>This cannot be undone.</p>
+      </ConfirmDialog>
     </section>
   );
 }

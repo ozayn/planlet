@@ -9,7 +9,7 @@ import {
   getPlanSharesForOwner,
   getRecentShareRecipients,
 } from "@/lib/plan-sharing";
-import { getObservationsForPlan } from "@/lib/observations";
+import { getPlanReflectionData } from "@/lib/reflection-data";
 import { getPeriodSummaryHref } from "@/lib/period-summary-links";
 import { getPlanWithItems } from "@/lib/plans";
 import { prisma } from "@/lib/prisma";
@@ -74,11 +74,11 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
     );
   }
 
-  const [platformShares, kudos, observations, recentShareRecipients] =
+  const [platformShares, kudos, reflectionData, recentShareRecipients] =
     await Promise.all([
       getPlanSharesForOwner(id, userId),
       getKudosForPlan(id, userId),
-      getObservationsForPlan(id, userId),
+      getPlanReflectionData(id, userId, session.user),
       getRecentShareRecipients(userId, id),
     ]);
 
@@ -111,7 +111,8 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
         itemView={planItemView}
         periodSummaryHref={periodSummaryHref}
         periodSummaryLabel={periodSummaryLabel}
-        observations={observations}
+        observations={reflectionData.observations}
+        gratitudes={reflectionData.gratitudes}
       />
     </section>
   );

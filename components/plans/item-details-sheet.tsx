@@ -29,6 +29,7 @@ type ItemDetailsSheetProps = {
   item: SerializedPlanItem;
   open: boolean;
   onClose: () => void;
+  focusField?: "comment" | null;
   isSubtask?: boolean;
 };
 
@@ -117,6 +118,7 @@ export function ItemDetailsSheet({
   item,
   open,
   onClose,
+  focusField = null,
   isSubtask = false,
 }: ItemDetailsSheetProps) {
   const router = useRouter();
@@ -182,6 +184,15 @@ export function ItemDetailsSheet({
   const durationFieldId = `item-duration-${item.id}`;
   const shareableFieldId = `item-shareable-${item.id}`;
   const commentFieldId = `task-note-${item.id}`;
+
+  useEffect(() => {
+    if (!open || focusField !== "comment") {
+      return;
+    }
+
+    const field = document.getElementById(commentFieldId);
+    field?.focus();
+  }, [open, focusField, commentFieldId]);
 
   return (
     <SimpleSheet

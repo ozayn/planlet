@@ -4,6 +4,7 @@ import {
   MAX_OBSERVATION_LENGTH,
   OBSERVATION_CATEGORIES,
 } from "@/lib/observation-constants";
+import { canUseReflectionFeatures } from "@/lib/roles";
 import { touchPlan } from "@/lib/touch-plan";
 import { touchUserSeen } from "@/lib/user-activity";
 import { prisma } from "@/lib/prisma";
@@ -81,6 +82,21 @@ function validateBody(body: string): string {
   return trimmed;
 }
 
+async function requireReflectionUser(userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      role: true,
+      canGiveFeedback: true,
+      canUseReflectionFeatures: true,
+    },
+  });
+
+  if (!user || !canUseReflectionFeatures(user)) {
+    throw new ObservationError("Not authorized.");
+  }
+}
+
 async function requirePlanOwner(planId: string, userId: string) {
   const plan = await prisma.plan.findFirst({
     where: { id: planId, userId },
@@ -111,6 +127,7 @@ export async function getObservationsForPlan(
   planId: string,
   userId: string,
 ): Promise<SerializedObservation[]> {
+  await requireReflectionUser(userId);
   await requirePlanOwner(planId, userId);
 
   const observations = await prisma.planObservation.findMany({
@@ -129,6 +146,8 @@ export async function getObservationsForPlans(
     return [];
   }
 
+  await requireReflectionUser(userId);
+
   const observations = await prisma.planObservation.findMany({
     where: {
       planId: { in: planIds },
@@ -145,6 +164,7 @@ export async function addPlanObservation(
   userId: string,
   data: ObservationInput,
 ) {
+  await requireReflectionUser(userId);
   await requirePlanOwner(planId, userId);
 
   const category = validateCategory(data.category);
@@ -174,6 +194,7 @@ export async function updatePlanObservation(
   userId: string,
   data: ObservationInput,
 ) {
+  await requireReflectionUser(userId);
   const existing = await requireObservationOwner(observationId, userId);
 
   const category = validateCategory(data.category);
@@ -201,6 +222,7 @@ export async function deletePlanObservation(
   observationId: string,
   userId: string,
 ) {
+  await requireReflectionUser(userId);
   const existing = await requireObservationOwner(observationId, userId);
 
   await prisma.planObservation.delete({

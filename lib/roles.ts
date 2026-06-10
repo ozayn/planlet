@@ -1,0 +1,46 @@
+import type { UserRole } from "@/app/generated/prisma/client";
+
+export type UserAccess = {
+  role?: UserRole | string | null;
+  canGiveFeedback?: boolean | null;
+  canUseReflectionFeatures?: boolean | null;
+};
+
+type RoleInput = UserRole | string | null | undefined;
+
+export function isAdmin(user: UserAccess | RoleInput): boolean {
+  const role = typeof user === "object" && user !== null ? user.role : user;
+  return role === "ADMIN";
+}
+
+export function isReflector(user: UserAccess | RoleInput): boolean {
+  const role = typeof user === "object" && user !== null ? user.role : user;
+  return role === "REFLECTOR";
+}
+
+export function canGiveFeedback(user: UserAccess): boolean {
+  if (isAdmin(user)) {
+    return true;
+  }
+
+  return user.canGiveFeedback === true;
+}
+
+export function canUseReflectionFeatures(user: UserAccess): boolean {
+  if (isAdmin(user)) {
+    return true;
+  }
+
+  return user.canUseReflectionFeatures === true;
+}
+
+export function formatUserRoleLabel(role: RoleInput): string {
+  switch (role) {
+    case "ADMIN":
+      return "Admin";
+    case "REFLECTOR":
+      return "Reflector";
+    default:
+      return "User";
+  }
+}

@@ -1,5 +1,7 @@
 # Icon audit
 
+**See also:** `docs/SYSTEM_UX_AUDIT.md` (full system pass, June 2026).
+
 Planlet uses inline SVG icons (Lucide-equivalent shapes) from a single source of truth. Labels live in `lib/action-labels.ts`.
 
 **Source files**

@@ -48,6 +48,14 @@ export const ACTION_LABELS = {
     title: "Comments",
     ariaLabel: "Comments",
   },
+  moveItemUp: {
+    title: "Move up",
+    ariaLabel: "Move item up",
+  },
+  moveItemDown: {
+    title: "Move down",
+    ariaLabel: "Move item down",
+  },
   deleteItem: {
     title: "Delete",
     ariaLabel: "Delete item",
@@ -59,6 +67,10 @@ export const ACTION_LABELS = {
   privateObservations: {
     title: "Private observations",
     ariaLabel: "Private observations",
+  },
+  gratitude: {
+    title: "Gratitude",
+    ariaLabel: "Gratitude",
   },
   notifications: {
     title: "Notifications",

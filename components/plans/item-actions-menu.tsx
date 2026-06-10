@@ -5,11 +5,16 @@ import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 
-import { deletePlanItemAction } from "@/app/(app)/plans/actions";
+import {
+  deletePlanItemAction,
+  movePlanItemAction,
+} from "@/app/(app)/plans/actions";
 import {
   AddSubtaskIcon,
   CommentIcon,
   EditItemIcon,
+  MoveDownIcon,
+  MoveUpIcon,
   StickyNoteIcon,
   TrashIcon,
 } from "@/components/plans/item-action-icons";
@@ -26,6 +31,8 @@ type ItemActionsMenuProps = {
   isSubtask?: boolean;
   canEdit?: boolean;
   visibleActionsAreShown?: boolean;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
   onEdit: () => void;
   onAddSubtask?: () => void;
   onTaskNote?: () => void;
@@ -40,6 +47,8 @@ export function ItemActionsMenu({
   isSubtask = false,
   canEdit = true,
   visibleActionsAreShown = false,
+  canMoveUp = false,
+  canMoveDown = false,
   onEdit,
   onAddSubtask,
   onTaskNote,
@@ -52,6 +61,7 @@ export function ItemActionsMenu({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDeleting, startDelete] = useTransition();
+  const [isMoving, startMove] = useTransition();
   const [mounted, setMounted] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0, width: 0 });
   const menuId = useId();
@@ -124,6 +134,22 @@ export function ItemActionsMenu({
     setConfirmOpen(true);
   }
 
+  function handleMove(direction: "up" | "down") {
+    setMenuOpen(false);
+    setError(null);
+
+    startMove(async () => {
+      const result = await movePlanItemAction(planId, itemId, direction);
+
+      if (!result.success) {
+        setError(result.error ?? "Failed to move item.");
+        return;
+      }
+
+      router.refresh();
+    });
+  }
+
   function handleDelete() {
     startDelete(async () => {
       try {
@@ -141,28 +167,42 @@ export function ItemActionsMenu({
   }
 
   const overflowOnly = visibleActionsAreShown;
+  const mobileFullMenu = canEdit && !overflowOnly;
 
-  const menuShowsEdit = canEdit && !overflowOnly;
+  const menuShowsEdit = mobileFullMenu;
+  const menuShowsMoveUp = mobileFullMenu;
+  const menuShowsMoveDown = mobileFullMenu;
   const menuShowsAddSubtask =
-    canEdit &&
+    mobileFullMenu &&
     !isSubtask &&
     itemType === "TASK" &&
-    Boolean(onAddSubtask) &&
-    !overflowOnly;
+    Boolean(onAddSubtask);
   const menuShowsTaskNote =
-    canEdit &&
-    itemType !== "NOTE" &&
-    Boolean(onTaskNote) &&
-    !overflowOnly;
+    mobileFullMenu && itemType !== "NOTE" && Boolean(onTaskNote);
   const menuShowsComments = Boolean(onComments) && !overflowOnly;
   const menuShowsDelete = canEdit;
 
   const hasMenuItems =
     menuShowsEdit ||
+    menuShowsMoveUp ||
+    menuShowsMoveDown ||
     menuShowsAddSubtask ||
     menuShowsTaskNote ||
     menuShowsComments ||
     menuShowsDelete;
+
+  const hasItemsAboveDelete =
+    menuShowsEdit ||
+    menuShowsMoveUp ||
+    menuShowsMoveDown ||
+    menuShowsAddSubtask ||
+    menuShowsTaskNote ||
+    menuShowsComments;
+
+  const menuItemClassName =
+    "flex min-h-10 w-full items-center gap-2.5 px-3 text-left text-sm text-foreground transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none";
+  const menuItemDisabledClassName =
+    "flex min-h-10 w-full items-center gap-2.5 px-3 text-left text-sm text-muted transition-colors disabled:cursor-not-allowed disabled:opacity-50";
 
   const menu =
     menuOpen && mounted && hasMenuItems
@@ -185,10 +225,42 @@ export function ItemActionsMenu({
                 aria-label={labels.edit}
                 {...passwordManagerSafeControlProps}
                 onClick={() => runAction(onEdit)}
-                className="flex min-h-10 w-full items-center gap-2.5 px-3 text-left text-sm text-foreground transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none"
+                className={menuItemClassName}
               >
                 <EditItemIcon className="h-4 w-4 shrink-0 text-muted" />
                 <span>Edit</span>
+              </button>
+            ) : null}
+            {menuShowsMoveUp ? (
+              <button
+                type="button"
+                role="menuitem"
+                aria-label={ACTION_LABELS.moveItemUp.ariaLabel}
+                title={ACTION_LABELS.moveItemUp.title}
+                disabled={!canMoveUp || isMoving}
+                {...passwordManagerSafeControlProps}
+                onClick={() => handleMove("up")}
+                className={canMoveUp ? menuItemClassName : menuItemDisabledClassName}
+              >
+                <MoveUpIcon className="h-4 w-4 shrink-0 text-muted" />
+                <span>Move up</span>
+              </button>
+            ) : null}
+            {menuShowsMoveDown ? (
+              <button
+                type="button"
+                role="menuitem"
+                aria-label={ACTION_LABELS.moveItemDown.ariaLabel}
+                title={ACTION_LABELS.moveItemDown.title}
+                disabled={!canMoveDown || isMoving}
+                {...passwordManagerSafeControlProps}
+                onClick={() => handleMove("down")}
+                className={
+                  canMoveDown ? menuItemClassName : menuItemDisabledClassName
+                }
+              >
+                <MoveDownIcon className="h-4 w-4 shrink-0 text-muted" />
+                <span>Move down</span>
               </button>
             ) : null}
             {menuShowsAddSubtask ? (
@@ -198,7 +270,7 @@ export function ItemActionsMenu({
                 aria-label={ACTION_LABELS.addSubtask.ariaLabel}
                 {...passwordManagerSafeControlProps}
                 onClick={() => runAction(onAddSubtask!)}
-                className="flex min-h-10 w-full items-center gap-2.5 px-3 text-left text-sm text-foreground transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none"
+                className={menuItemClassName}
               >
                 <AddSubtaskIcon className="h-4 w-4 shrink-0 text-muted" />
                 <span>Subtask</span>
@@ -211,7 +283,7 @@ export function ItemActionsMenu({
                 aria-label={ACTION_LABELS.taskNote.ariaLabel}
                 {...passwordManagerSafeControlProps}
                 onClick={() => runAction(onTaskNote!)}
-                className="flex min-h-10 w-full items-center gap-2.5 px-3 text-left text-sm text-foreground transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none"
+                className={menuItemClassName}
               >
                 <StickyNoteIcon className="h-4 w-4 shrink-0 text-muted" />
                 <span>Note</span>
@@ -236,17 +308,33 @@ export function ItemActionsMenu({
               </button>
             ) : null}
             {menuShowsDelete ? (
-              <button
-                type="button"
-                role="menuitem"
-                aria-label={labels.delete}
-                {...passwordManagerSafeControlProps}
-                onClick={openConfirm}
-                className="flex min-h-10 w-full items-center gap-2.5 px-3 text-left text-sm text-accent-red transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none"
-              >
-                <TrashIcon className="h-4 w-4 shrink-0" />
-                <span>Delete</span>
-              </button>
+              hasItemsAboveDelete ? (
+                <div className="mt-1 border-t border-border-soft pt-1">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    aria-label={labels.delete}
+                    {...passwordManagerSafeControlProps}
+                    onClick={openConfirm}
+                    className="flex min-h-10 w-full items-center gap-2.5 px-3 text-left text-sm text-accent-red transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none"
+                  >
+                    <TrashIcon className="h-4 w-4 shrink-0" />
+                    <span>Delete</span>
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  role="menuitem"
+                  aria-label={labels.delete}
+                  {...passwordManagerSafeControlProps}
+                  onClick={openConfirm}
+                  className="flex min-h-10 w-full items-center gap-2.5 px-3 text-left text-sm text-accent-red transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none"
+                >
+                  <TrashIcon className="h-4 w-4 shrink-0" />
+                  <span>Delete</span>
+                </button>
+              )
             ) : null}
           </div>,
           document.body,
@@ -281,6 +369,12 @@ export function ItemActionsMenu({
       </div>
 
       {menu}
+
+      {error && !confirmOpen ? (
+        <p className="sr-only" role="alert">
+          {error}
+        </p>
+      ) : null}
 
       {menuShowsDelete ? (
         <ConfirmDialog
