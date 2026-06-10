@@ -8,6 +8,7 @@ import type { SerializedPlan } from "@/lib/plan-serialize";
 import {
   generateShareText,
   serializedPlanToSharePlan,
+  SHARE_UI_FORMAT_META,
   shareUiFormatToExportFormat,
   shareUiFormatToOptions,
   type ShareUiFormat,
@@ -17,11 +18,7 @@ type SharePlanPanelProps = {
   plan: SerializedPlan;
 };
 
-const FORMAT_OPTIONS: { value: ShareUiFormat; label: string }[] = [
-  { value: "plan", label: "Plan" },
-  { value: "plain", label: "Plain text" },
-  { value: "update", label: "Update" },
-];
+const FORMAT_OPTIONS: ShareUiFormat[] = ["plan", "plain", "update"];
 
 export function SharePlanPanel({ plan }: SharePlanPanelProps) {
   const [open, setOpen] = useState(false);
@@ -104,32 +101,37 @@ export function SharePlanPanel({ plan }: SharePlanPanelProps) {
           <fieldset className="space-y-3">
             <legend className="ui-label">Format</legend>
             <div className="flex flex-wrap gap-2">
-              {FORMAT_OPTIONS.map((option) => (
-                <label
-                  key={option.value}
-                  className={`flex min-h-11 cursor-pointer items-center rounded-xl px-4 text-sm transition-colors ${
-                    format === option.value
-                      ? "ui-segment-active"
-                      : "ui-segment"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="share-format"
-                    value={option.value}
-                    checked={format === option.value}
-                    onChange={() => {
-                      setFormat(option.value);
-                      setCopied(false);
-                      setCopyError(false);
-                      setSaveWarning(false);
-                    }}
-                    className="sr-only"
-                  />
-                  {option.label}
-                </label>
-              ))}
+              {FORMAT_OPTIONS.map((option) => {
+                const meta = SHARE_UI_FORMAT_META[option];
+
+                return (
+                  <label
+                    key={option}
+                    className={`flex min-h-11 cursor-pointer items-center rounded-xl px-4 text-sm transition-colors ${
+                      format === option ? "ui-segment-active" : "ui-segment"
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="share-format"
+                      value={option}
+                      checked={format === option}
+                      onChange={() => {
+                        setFormat(option);
+                        setCopied(false);
+                        setCopyError(false);
+                        setSaveWarning(false);
+                      }}
+                      className="sr-only"
+                    />
+                    {meta.label}
+                  </label>
+                );
+              })}
             </div>
+            <p className="text-sm text-muted">
+              {SHARE_UI_FORMAT_META[format].description}
+            </p>
           </fieldset>
 
           <label className="block space-y-2">

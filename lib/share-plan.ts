@@ -36,9 +36,12 @@ export type SharePlan = {
 
 export type ShareHeaderOptions = {
   mode: ShareMode;
+  style: ShareRenderStyle;
 };
 
 export type ShareMode = "PLAN" | "UPDATE";
+
+export type ShareRenderStyle = "pretty" | "simple";
 
 export type SharePlanOptions = {
   format: ShareExportFormat;
@@ -89,6 +92,54 @@ const SECTION_LABELS: Record<ShareLanguage, Record<ShareSectionKey, string>> = {
     evening: "Evening",
     intentions: "Intentions",
     notes: "Notes & reflections",
+  },
+};
+
+const SIMPLE_SECTION_LABELS: Record<ShareLanguage, Record<ShareSectionKey, string>> = {
+  fa: {
+    tasks: "کارها",
+    social: "بیرون / اجتماعی",
+    morning: "صبح",
+    afternoon: "بعدازظهر",
+    evening: "عصر / شب",
+    intentions: "اهداف / نیت‌ها",
+    notes: "یادداشت‌ها",
+  },
+  en: {
+    tasks: "Tasks",
+    social: "Outside / social",
+    morning: "Morning",
+    afternoon: "Afternoon",
+    evening: "Evening",
+    intentions: "Intentions",
+    notes: "Notes",
+  },
+};
+
+const UPDATE_STATUS_ORDER: PlanItemStatus[] = [
+  "DONE",
+  "PARTIAL",
+  "MOVED",
+  "SKIPPED",
+  "RELEASED",
+];
+
+const UPDATE_STATUS_LABELS: Record<ShareLanguage, Record<PlanItemStatus, string>> = {
+  fa: {
+    OPEN: "باقی‌مانده",
+    DONE: "انجام‌شده",
+    PARTIAL: "در جریان",
+    MOVED: "منتقل‌شده",
+    SKIPPED: "ردشده",
+    RELEASED: "رها شده",
+  },
+  en: {
+    OPEN: "Remaining",
+    DONE: "Done",
+    PARTIAL: "In progress",
+    MOVED: "Moved",
+    SKIPPED: "Skipped",
+    RELEASED: "Released",
   },
 };
 
@@ -148,9 +199,11 @@ function assignSection(item: SharePlanItem): ShareSectionKey {
 export function groupPlanItemsForShare(
   plan: SharePlan,
   lang?: ShareLanguage,
+  style: ShareRenderStyle = "pretty",
 ): ShareSection[] {
   const language = lang ?? inferShareLanguage(plan);
-  const labels = SECTION_LABELS[language];
+  const labels =
+    style === "simple" ? SIMPLE_SECTION_LABELS[language] : SECTION_LABELS[language];
   const buckets = new Map<ShareSectionKey, SharePlanItem[]>();
 
   for (const key of SECTION_ORDER) {
@@ -169,54 +222,72 @@ export function groupPlanItemsForShare(
   })).filter((section) => section.items.length > 0);
 }
 
-function getItemIcon(item: SharePlanItem, mode: ShareMode): string {
-  if (item.type === "NOTE") {
-    return "•";
+function getRenderStyle(
+  format: ShareExportFormat,
+  mode: ShareMode,
+): ShareRenderStyle {
+  if (mode === "UPDATE") {
+    return "simple";
   }
-  if (item.type === "INTENTION" && mode === "PLAN") {
-    return "✨";
-  }
-  return getStatusIcon(item.status);
+  return format === "PLAIN_TEXT" ? "simple" : "pretty";
 }
 
-function formatItemTitle(item: SharePlanItem, mode: ShareMode): string {
-  const icon = getItemIcon(item, mode);
-  let line = `${icon} ${item.title}`;
+function titleSeparator(style: ShareRenderStyle): string {
+  return style === "pretty" ? " — " : " - ";
+}
 
-  if (mode === "UPDATE" && item.comment?.trim()) {
-    line += ` — ${item.comment.trim()}`;
+function formatSectionHeader(label: string, style: ShareRenderStyle): string {
+  return style === "pretty" ? label : `${label}:`;
+}
+
+function formatPrettyItemTitle(item: SharePlanItem): string {
+  if (item.type === "NOTE") {
+    return `• ${item.title}`;
+  }
+  if (item.type === "INTENTION") {
+    return `✨ ${item.title}`;
+  }
+  return `${getStatusIcon(item.status)} ${item.title}`;
+}
+
+function formatSimpleItemTitle(item: SharePlanItem, indent = ""): string {
+  return `${indent}- ${item.title}`;
+}
+
+function formatItemLine(
+  item: SharePlanItem,
+  style: ShareRenderStyle,
+  mode: ShareMode,
+  indent = "",
+): string {
+  if (style === "simple") {
+    let line = formatSimpleItemTitle(item, indent);
+    if (mode === "UPDATE" && item.comment?.trim()) {
+      line += ` — ${item.comment.trim()}`;
+    }
+    return line;
   }
 
-  return line;
+  const line = formatPrettyItemTitle(item);
+  if (mode === "UPDATE" && item.comment?.trim()) {
+    return `${line} — ${item.comment.trim()}`;
+  }
+  return indent ? `${indent}${line}` : line;
 }
 
 function formatSubtaskLines(
   subtasks: SharePlanItem[] | undefined,
+  style: ShareRenderStyle,
   mode: ShareMode,
-  subtaskPrefix: string,
 ): string[] {
   const lines: string[] = [];
+  const indent = style === "simple" ? "  " : "  ";
 
   for (const subtask of shareableItems(subtasks ?? [])) {
-    lines.push(`${subtaskPrefix}${formatItemTitle(subtask, mode)}`);
+    lines.push(formatItemLine(subtask, style, mode, indent));
   }
 
   return lines;
-}
-
-function shouldIncludeInUpdate(item: SharePlanItem): boolean {
-  if (item.type === "INTENTION") return true;
-  return item.status !== "OPEN";
-}
-
-function filterItemsForMode(
-  items: SharePlanItem[],
-  mode: ShareMode,
-): SharePlanItem[] {
-  if (mode === "PLAN") {
-    return items;
-  }
-  return items.filter(shouldIncludeInUpdate);
 }
 
 function titleAlreadyIncludesPeriod(title: string, period: string): boolean {
@@ -230,41 +301,43 @@ export function buildShareHeader(
   options: ShareHeaderOptions,
 ): string {
   const period = formatPlanPeriodForShare(plan);
-  const mode = options.mode;
+  const { mode, style } = options;
+  const separator = titleSeparator(style);
+  const leaf = style === "pretty" ? " 🌿" : "";
 
   if (mode === "UPDATE") {
     const lang = inferShareLanguage(plan);
     if (lang === "fa") {
-      return `آپدیت — ${period} 🌿`;
+      return `آپدیت${separator}${period}${leaf}`;
     }
-    return `Update — ${period} 🌿`;
+    return `Update${separator}${period}${leaf}`;
   }
 
   switch (plan.type) {
     case "DAY": {
       if (titleAlreadyIncludesPeriod(plan.title, period)) {
-        return `${plan.title} 🌿`;
+        return `${plan.title}${leaf}`;
       }
-      return `${plan.title} — ${period} 🌿`;
+      return `${plan.title}${separator}${period}${leaf}`;
     }
     case "MONTH": {
-      const header = `${period} plan 🌿`;
+      const header = `${period} plan${leaf}`;
       if (titleAlreadyIncludesPeriod(plan.title, period)) {
-        return plan.title.endsWith("🌿") ? plan.title : `${plan.title} 🌿`;
+        return plan.title.endsWith("🌿") ? plan.title : `${plan.title}${leaf}`;
       }
       return header;
     }
     case "YEAR": {
-      const header = `${period} plan 🌿`;
+      const header = `${period} plan${leaf}`;
       if (titleAlreadyIncludesPeriod(plan.title, period)) {
-        return plan.title.endsWith("🌿") ? plan.title : `${plan.title} 🌿`;
+        return plan.title.endsWith("🌿") ? plan.title : `${plan.title}${leaf}`;
       }
       return header;
     }
     case "WEEK":
-      return `Weekly plan — ${period} 🌿`;
+      return `Weekly plan${separator}${period}${leaf}`;
     default:
-      return `${plan.title} — ${period} 🌿`;
+      return `${plan.title}${separator}${period}${leaf}`;
   }
 }
 
@@ -272,23 +345,22 @@ function renderGroupedBody(
   plan: SharePlan,
   options: SharePlanOptions,
   lang: ShareLanguage,
+  style: ShareRenderStyle,
 ): string[] {
   const mode = options.mode ?? "PLAN";
   const includeSubtasks = options.includeSubtasks ?? true;
-  const subtaskPrefix = options.format === "PLAIN_TEXT" ? "  - " : "  ";
-  const sections = groupPlanItemsForShare(plan, lang);
+  const sections = groupPlanItemsForShare(plan, lang, style);
   const lines: string[] = [];
 
   for (const section of sections) {
-    const items = filterItemsForMode(section.items, mode);
-    if (items.length === 0) continue;
+    if (section.items.length === 0) continue;
 
-    lines.push(`${section.label}:`);
+    lines.push(formatSectionHeader(section.label, style));
 
-    for (const item of items) {
-      lines.push(formatItemTitle(item, mode));
+    for (const item of section.items) {
+      lines.push(formatItemLine(item, style, mode));
       if (includeSubtasks && item.subtasks?.length) {
-        lines.push(...formatSubtaskLines(item.subtasks, mode, subtaskPrefix));
+        lines.push(...formatSubtaskLines(item.subtasks, style, mode));
       }
     }
 
@@ -298,15 +370,64 @@ function renderGroupedBody(
   return lines;
 }
 
-function formatGroupedShare(
+function isUpdateCandidate(item: SharePlanItem): boolean {
+  if (item.type === "NOTE" || item.type === "INTENTION") {
+    return false;
+  }
+  return item.status !== "OPEN";
+}
+
+function collectUpdateItems(items: SharePlanItem[]): SharePlanItem[] {
+  const result: SharePlanItem[] = [];
+
+  for (const item of shareableItems(items)) {
+    if (isUpdateCandidate(item)) {
+      result.push(item);
+    }
+
+    if (item.subtasks?.length) {
+      result.push(...collectUpdateItems(item.subtasks));
+    }
+  }
+
+  return result;
+}
+
+function renderUpdateBody(plan: SharePlan, lang: ShareLanguage): string[] {
+  const items = collectUpdateItems(plan.items);
+  const lines: string[] = [];
+
+  for (const status of UPDATE_STATUS_ORDER) {
+    const grouped = items.filter((item) => item.status === status);
+    if (grouped.length === 0) continue;
+
+    lines.push(`${UPDATE_STATUS_LABELS[lang][status]}:`);
+
+    for (const item of grouped) {
+      lines.push(formatSimpleItemTitle(item));
+    }
+
+    lines.push("");
+  }
+
+  return lines;
+}
+
+function formatPlanShare(
   plan: SharePlan,
   options: SharePlanOptions,
 ): string {
-  const lang = inferShareLanguage(plan);
   const mode = options.mode ?? "PLAN";
-  const header = buildShareHeader(plan, { mode });
+  const style = getRenderStyle(options.format, mode);
+  const lang = inferShareLanguage(plan);
+  const header = buildShareHeader(plan, { mode, style });
 
-  const lines = [header, "", ...renderGroupedBody(plan, options, lang)];
+  const body =
+    mode === "UPDATE"
+      ? renderUpdateBody(plan, lang)
+      : renderGroupedBody(plan, options, lang, style);
+
+  const lines = [header, "", ...body];
 
   if (plan.summary && mode === "PLAN") {
     lines.splice(2, 0, plan.summary, "");
@@ -315,31 +436,35 @@ function formatGroupedShare(
   return lines.join("\n").trim();
 }
 
-function formatPlainUpdate(plan: SharePlan, options: SharePlanOptions): string {
-  return formatGroupedShare(plan, { ...options, format: "PLAIN_TEXT" });
-}
-
 export function generateShareText(
   plan: SharePlan,
   options: SharePlanOptions,
 ): string {
-  const mode = options.mode ?? (options.format === "SUMMARY" ? "UPDATE" : "PLAN");
+  const mode =
+    options.mode ?? (options.format === "SUMMARY" ? "UPDATE" : "PLAN");
 
-  switch (options.format) {
-    case "SUMMARY":
-      return formatGroupedShare(plan, { ...options, mode: "UPDATE" });
-    case "TELEGRAM":
-      return formatGroupedShare(plan, { ...options, mode });
-    case "PLAIN_TEXT":
-    default:
-      if (mode === "UPDATE") {
-        return formatPlainUpdate(plan, options);
-      }
-      return formatGroupedShare(plan, { ...options, mode: "PLAN" });
-  }
+  return formatPlanShare(plan, { ...options, mode });
 }
 
 export type ShareUiFormat = "plan" | "plain" | "update";
+
+export const SHARE_UI_FORMAT_META: Record<
+  ShareUiFormat,
+  { label: string; description: string }
+> = {
+  plan: {
+    label: "Pretty plan",
+    description: "Formatted for sending to a friend.",
+  },
+  plain: {
+    label: "Simple text",
+    description: "Minimal text for any app.",
+  },
+  update: {
+    label: "Progress update",
+    description: "Only progress and changes.",
+  },
+};
 
 export function shareUiFormatToOptions(format: ShareUiFormat): SharePlanOptions {
   switch (format) {
