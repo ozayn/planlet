@@ -130,6 +130,7 @@ model User {
   image         String?
   role          UserRole    @default(USER)
   planItemView  PlanItemView @default(CHECKLIST)
+  lastSeenAt    DateTime?
   lastLoginAt   DateTime?
   loginCount    Int         @default(0)
   accounts      Account[]

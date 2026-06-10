@@ -8,6 +8,7 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { isAdminRole } from "@/lib/auth-roles";
 import { prisma } from "@/lib/prisma";
+import { sortUsersByRecentlySeen } from "@/lib/user-seen";
 
 export type AdminUserStatRow = {
   id: string;
@@ -16,6 +17,7 @@ export type AdminUserStatRow = {
   image: string | null;
   role: UserRole;
   createdAt: Date;
+  lastSeenAt: Date | null;
   lastLoginAt: Date | null;
   loginCount: number;
   planCount: number;
@@ -97,7 +99,6 @@ export async function getAdminUserStats(): Promise<AdminStats> {
     totals,
   ] = await Promise.all([
     prisma.user.findMany({
-      orderBy: { createdAt: "asc" },
       select: {
         id: true,
         name: true,
@@ -105,6 +106,7 @@ export async function getAdminUserStats(): Promise<AdminStats> {
         image: true,
         role: true,
         createdAt: true,
+        lastSeenAt: true,
         lastLoginAt: true,
         loginCount: true,
       },
@@ -197,6 +199,7 @@ export async function getAdminUserStats(): Promise<AdminStats> {
       image: user.image,
       role: user.role,
       createdAt: user.createdAt,
+      lastSeenAt: user.lastSeenAt,
       lastLoginAt: user.lastLoginAt,
       loginCount: user.loginCount,
       planCount: planCountByUser.get(user.id) ?? 0,
@@ -224,7 +227,7 @@ export async function getAdminUserStats(): Promise<AdminStats> {
   ] = totals;
 
   return {
-    users: userRows,
+    users: sortUsersByRecentlySeen(userRows),
     totals: {
       userCount,
       adminCount,

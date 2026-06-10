@@ -90,23 +90,24 @@ export async function trackUserSignIn({
     existing?.lastLoginAt != null &&
     now.getTime() - existing.lastLoginAt.getTime() < RECENT_LOGIN_WINDOW_MS;
 
-  if (recentlyTracked) {
-    if (existing?.role !== role) {
-      await prisma.user.update({
-        where: { id: resolvedUserId },
-        data: { role },
-      });
-    }
-    return role;
+  const data: {
+    role: UserRole;
+    lastSeenAt: Date;
+    lastLoginAt?: Date;
+    loginCount?: { increment: number };
+  } = {
+    role,
+    lastSeenAt: now,
+  };
+
+  if (!recentlyTracked) {
+    data.lastLoginAt = now;
+    data.loginCount = { increment: 1 };
   }
 
   await prisma.user.update({
     where: { id: resolvedUserId },
-    data: {
-      role,
-      lastLoginAt: now,
-      loginCount: { increment: 1 },
-    },
+    data,
   });
 
   try {

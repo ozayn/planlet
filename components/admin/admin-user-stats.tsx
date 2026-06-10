@@ -1,7 +1,7 @@
 import type { AdminUserStatRow } from "@/lib/admin-stats";
 import { UserAvatar } from "@/components/user-avatar";
-import { formatAdminDateTime } from "@/lib/dates";
 import { formatPlanActivityLabel } from "@/lib/plan-activity";
+import { formatRecentlySeenLabel } from "@/lib/user-seen";
 
 function formatLastPlanActivity(user: AdminUserStatRow): string {
   if (!user.lastPlanActivityAt) {
@@ -11,21 +11,14 @@ function formatLastPlanActivity(user: AdminUserStatRow): string {
   return formatPlanActivityLabel(user.lastPlanActivityAt);
 }
 
-function formatLastLogin(user: AdminUserStatRow): string {
-  if (user.lastLoginAt) {
-    return formatAdminDateTime(user.lastLoginAt);
-  }
-
-  if (user.loginCount > 0) {
-    return "Unknown (before tracking)";
-  }
-
-  return "Never";
-}
-
 type AdminUserStatsProps = {
   users: AdminUserStatRow[];
 };
+
+function RecentlySeenValue({ user }: { user: AdminUserStatRow }) {
+  const seen = formatRecentlySeenLabel(user);
+  return <span title={seen.title}>{seen.label}</span>;
+}
 
 function AdminUserIdentity({ user }: { user: AdminUserStatRow }) {
   return (
@@ -61,7 +54,7 @@ export function AdminUserStats({ users }: AdminUserStatsProps) {
             <tr className="border-b border-border-soft text-xs text-muted">
               <th className="px-3 py-2 font-medium">User</th>
               <th className="px-3 py-2 font-medium">Role</th>
-              <th className="px-3 py-2 font-medium">Last login</th>
+              <th className="px-3 py-2 font-medium">Recently seen</th>
               <th className="px-3 py-2 font-medium">Recent plan activity</th>
               <th className="px-3 py-2 font-medium">Logins</th>
               <th className="px-3 py-2 font-medium">Plans</th>
@@ -85,7 +78,7 @@ export function AdminUserStats({ users }: AdminUserStatsProps) {
                   {user.role}
                 </td>
                 <td className="px-3 py-3 align-top text-muted">
-                  {formatLastLogin(user)}
+                  <RecentlySeenValue user={user} />
                 </td>
                 <td className="px-3 py-3 align-top text-muted">
                   {formatLastPlanActivity(user)}
@@ -130,9 +123,9 @@ export function AdminUserStats({ users }: AdminUserStatsProps) {
             </div>
             <dl className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
               <div>
-                <dt className="text-xs text-muted">Last login</dt>
+                <dt className="text-xs text-muted">Recently seen</dt>
                 <dd className="text-foreground">
-                  {formatLastLogin(user)}
+                  <RecentlySeenValue user={user} />
                 </dd>
               </div>
               <div>
