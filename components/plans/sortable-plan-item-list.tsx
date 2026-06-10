@@ -20,6 +20,8 @@ import { CSS } from "@dnd-kit/utilities";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useState, useTransition } from "react";
 
+import type { PlanItemView } from "@/app/generated/prisma/client";
+
 import { reorderPlanItemsAction } from "@/app/(app)/plans/actions";
 import { PlanItemCard } from "@/components/plans/plan-item-card";
 import type { SerializedPlanItem } from "@/lib/plan-serialize";
@@ -27,19 +29,27 @@ import type { SerializedPlanItem } from "@/lib/plan-serialize";
 type SortablePlanItemListProps = {
   planId: string;
   items: SerializedPlanItem[];
+  itemView?: PlanItemView;
 };
 
 function StaticPlanItemList({
   planId,
   items,
+  itemView,
 }: {
   planId: string;
   items: SerializedPlanItem[];
+  itemView: PlanItemView;
 }) {
   return (
     <>
       {items.map((item) => (
-        <PlanItemCard key={item.id} planId={planId} item={item} />
+        <PlanItemCard
+          key={item.id}
+          planId={planId}
+          item={item}
+          itemView={itemView}
+        />
       ))}
     </>
   );
@@ -48,9 +58,11 @@ function StaticPlanItemList({
 function SortablePlanItemRow({
   planId,
   item,
+  itemView,
 }: {
   planId: string;
   item: SerializedPlanItem;
+  itemView: PlanItemView;
 }) {
   const {
     attributes,
@@ -76,6 +88,7 @@ function SortablePlanItemRow({
         dragHandleRef={setActivatorNodeRef}
         dragHandleAttributes={attributes}
         dragHandleListeners={listeners}
+        itemView={itemView}
       />
     </div>
   );
@@ -84,10 +97,12 @@ function SortablePlanItemRow({
 function SortablePlanItemRows({
   planId,
   items,
+  itemView,
   onDragEnd,
 }: {
   planId: string;
   items: SerializedPlanItem[];
+  itemView: PlanItemView;
   onDragEnd: (event: DragEndEvent) => void;
 }) {
   const dndId = useId();
@@ -113,7 +128,12 @@ function SortablePlanItemRows({
         strategy={verticalListSortingStrategy}
       >
         {items.map((item) => (
-          <SortablePlanItemRow key={item.id} planId={planId} item={item} />
+          <SortablePlanItemRow
+            key={item.id}
+            planId={planId}
+            item={item}
+            itemView={itemView}
+          />
         ))}
       </SortableContext>
     </DndContext>
@@ -123,6 +143,7 @@ function SortablePlanItemRows({
 export function SortablePlanItemList({
   planId,
   items: initialItems,
+  itemView = "MINIMAL",
 }: SortablePlanItemListProps) {
   const router = useRouter();
   const [items, setItems] = useState(initialItems);
@@ -178,10 +199,15 @@ export function SortablePlanItemList({
         <SortablePlanItemRows
           planId={planId}
           items={items}
+          itemView={itemView}
           onDragEnd={handleDragEnd}
         />
       ) : (
-        <StaticPlanItemList planId={planId} items={items} />
+        <StaticPlanItemList
+          planId={planId}
+          items={items}
+          itemView={itemView}
+        />
       )}
 
       {error ? (

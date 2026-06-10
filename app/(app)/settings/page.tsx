@@ -1,5 +1,6 @@
 import { auth } from "@/auth";
 import { PageHeader } from "@/components/page-header";
+import { PlanItemViewSettings } from "@/components/settings/plan-item-view-settings";
 import { SignOutButton } from "@/components/sign-out-button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { UserAvatar } from "@/components/user-avatar";
@@ -10,12 +11,17 @@ import {
   isOpenAIConfigured,
   isTextParserConfigured,
 } from "@/lib/env";
+import { getPlanItemViewForUser } from "@/lib/user-preferences";
 
 export default async function SettingsPage() {
   const session = await auth();
   const textParserConfigured = isTextParserConfigured();
   const openaiConfigured = isOpenAIConfigured();
   const imageExtractionConfigured = isImageExtractionConfigured();
+  const planItemView = session?.user?.id
+    ? await getPlanItemViewForUser(session.user.id)
+    : "MINIMAL";
+
   return (
     <section className="space-y-4">
       <PageHeader title="Settings" subtitle="Profile and app information." />
@@ -52,6 +58,10 @@ export default async function SettingsPage() {
         <p className="mt-3 text-xs text-muted-light">
           You can also change this from the navigation bar.
         </p>
+      </article>
+
+      <article className="ui-card-padded">
+        <PlanItemViewSettings value={planItemView} />
       </article>
 
       <article className="ui-card-padded">

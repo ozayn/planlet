@@ -4,6 +4,7 @@ import type {
   DraggableAttributes,
   DraggableSyntheticListeners,
 } from "@dnd-kit/core";
+import type { PlanItemView } from "@/app/generated/prisma/client";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 
@@ -23,6 +24,7 @@ type PlanItemCardProps = {
   dragHandleRef?: (element: HTMLElement | null) => void;
   dragHandleAttributes?: DraggableAttributes;
   dragHandleListeners?: DraggableSyntheticListeners;
+  itemView?: PlanItemView;
 };
 
 export function PlanItemCard({
@@ -33,6 +35,7 @@ export function PlanItemCard({
   dragHandleRef,
   dragHandleAttributes,
   dragHandleListeners,
+  itemView = "MINIMAL",
 }: PlanItemCardProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -111,6 +114,7 @@ export function PlanItemCard({
             itemId={item.id}
             status={item.status}
             compact
+            itemView={itemView}
           />
 
           <div className="min-w-0 flex-1">
@@ -206,6 +210,7 @@ export function PlanItemCard({
               planId={planId}
               item={subtask}
               depth={depth + 1}
+              itemView={itemView}
             />
           ))}
         </div>

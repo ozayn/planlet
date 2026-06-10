@@ -1,4 +1,6 @@
-import type { KudosType } from "@/app/generated/prisma/client";
+import type { KudosType, PlanItemView } from "@/app/generated/prisma/client";
+
+import { PlanItemStatusIcon } from "@/components/plans/plan-item-status-icon";
 
 import { SendKudosPanel } from "@/components/plans/send-kudos-panel";
 import { SharePlanPanel } from "@/components/plans/share-plan-panel";
@@ -17,6 +19,7 @@ type PlanReadOnlyProps = {
   ownerLabel?: string | null;
   planId: string;
   viewerKudos?: ViewerKudos;
+  itemView?: PlanItemView;
 };
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -30,10 +33,13 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 function ReadOnlyTaskItem({
   item,
   depth = 0,
+  itemView = "MINIMAL",
 }: {
   item: SerializedPlanItem;
   depth?: number;
+  itemView?: PlanItemView;
 }) {
+  const isChecklist = itemView === "CHECKLIST";
   return (
     <article className={depth > 0 ? "ms-4 border-s border-border-soft ps-3" : ""}>
       <div
@@ -44,13 +50,23 @@ function ReadOnlyTaskItem({
           aria-hidden="true"
         />
         <div className="flex items-center gap-2 ps-1.5">
-          <span
-            className={`text-sm ${STATUS_STYLES[item.status].icon}`}
-            title={getStatusLabel(item.status)}
-            aria-label={getStatusLabel(item.status)}
-          >
-            {getStatusIcon(item.status)}
-          </span>
+          {isChecklist ? (
+            <span
+              className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 border-border bg-surface/80 ${STATUS_STYLES[item.status].icon}`}
+              title={getStatusLabel(item.status)}
+              aria-label={getStatusLabel(item.status)}
+            >
+              <PlanItemStatusIcon status={item.status} className="h-5 w-5" />
+            </span>
+          ) : (
+            <span
+              className={`text-sm ${STATUS_STYLES[item.status].icon}`}
+              title={getStatusLabel(item.status)}
+              aria-label={getStatusLabel(item.status)}
+            >
+              {getStatusIcon(item.status)}
+            </span>
+          )}
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium text-foreground" dir="auto">
               {item.title}
@@ -64,7 +80,12 @@ function ReadOnlyTaskItem({
       {item.subtasks.length > 0 ? (
         <div className="mt-1.5 space-y-1.5">
           {item.subtasks.map((subtask) => (
-            <ReadOnlyTaskItem key={subtask.id} item={subtask} depth={depth + 1} />
+            <ReadOnlyTaskItem
+              key={subtask.id}
+              item={subtask}
+              depth={depth + 1}
+              itemView={itemView}
+            />
           ))}
         </div>
       ) : null}
@@ -106,6 +127,7 @@ export function PlanReadOnly({
   ownerLabel,
   planId,
   viewerKudos = null,
+  itemView = "MINIMAL",
 }: PlanReadOnlyProps) {
   const dateStart = new Date(plan.dateStart);
   const dateEnd = new Date(plan.dateEnd);
@@ -153,7 +175,11 @@ export function PlanReadOnly({
                 <SectionLabel>Tasks</SectionLabel>
                 <div className="space-y-1.5">
                   {tasks.map((item) => (
-                    <ReadOnlyTaskItem key={item.id} item={item} />
+                    <ReadOnlyTaskItem
+                      key={item.id}
+                      item={item}
+                      itemView={itemView}
+                    />
                   ))}
                 </div>
               </div>

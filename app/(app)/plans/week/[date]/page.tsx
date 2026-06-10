@@ -16,6 +16,7 @@ import {
 import { getPlanSharesForOwner } from "@/lib/plan-sharing";
 import { getWeekPlan } from "@/lib/plans";
 import { serializePlan } from "@/lib/plan-serialize";
+import { getPlanItemViewForUser } from "@/lib/user-preferences";
 
 type WeekPlanPageProps = {
   params: Promise<{ date: string }>;
@@ -68,7 +69,10 @@ export default async function WeekPlanPage({ params }: WeekPlanPageProps) {
     );
   }
 
-  const platformShares = await getPlanSharesForOwner(plan.id, userId);
+  const [platformShares, planItemView] = await Promise.all([
+    getPlanSharesForOwner(plan.id, userId),
+    getPlanItemViewForUser(userId),
+  ]);
 
   return (
     <section className="space-y-6">
@@ -89,6 +93,7 @@ export default async function WeekPlanPage({ params }: WeekPlanPageProps) {
         showCopyExport
         showPlatformShare
         platformShares={platformShares}
+        itemView={planItemView}
       />
     </section>
   );

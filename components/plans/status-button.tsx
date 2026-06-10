@@ -1,11 +1,12 @@
 "use client";
 
-import type { PlanItemStatus } from "@/app/generated/prisma/client";
+import type { PlanItemStatus, PlanItemView } from "@/app/generated/prisma/client";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 
 import { updatePlanItemStatusAction } from "@/app/(app)/plans/actions";
+import { PlanItemStatusIcon } from "@/components/plans/plan-item-status-icon";
 import { getStatusLabel, STATUS_STYLES } from "@/lib/plan-status";
 
 const STATUSES: PlanItemStatus[] = [
@@ -31,6 +32,7 @@ type StatusButtonProps = {
   itemId: string;
   status: PlanItemStatus;
   compact?: boolean;
+  itemView?: PlanItemView;
 };
 
 export function StatusButton({
@@ -38,6 +40,7 @@ export function StatusButton({
   itemId,
   status,
   compact = false,
+  itemView = "MINIMAL",
 }: StatusButtonProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -115,9 +118,13 @@ export function StatusButton({
     });
   }
 
-  const triggerClass = compact
-    ? "h-8 min-w-[5.5rem] max-w-[6.5rem] gap-1 px-2 text-[0.6875rem] sm:min-w-[6rem] sm:text-xs"
-    : "min-h-10 min-w-[7.5rem] gap-1.5 px-2.5 text-sm";
+  const isChecklist = itemView === "CHECKLIST";
+  const triggerClass = isChecklist
+    ? "h-9 w-9 justify-center rounded-full border-2 p-0"
+    : compact
+      ? "h-8 min-w-[5.5rem] max-w-[6.5rem] gap-1 px-2 text-[0.6875rem] sm:min-w-[6rem] sm:text-xs"
+      : "min-h-10 min-w-[7.5rem] gap-1.5 px-2.5 text-sm";
+  const iconClass = isChecklist ? "h-5 w-5" : "h-3.5 w-3.5";
 
   const menu =
     open && mounted
@@ -153,7 +160,7 @@ export function StatusButton({
                     className={`flex h-4 w-4 shrink-0 items-center justify-center ${STATUS_STYLES[value].icon}`}
                     aria-hidden="true"
                   >
-                    <StatusIcon status={value} className="h-3.5 w-3.5" />
+                    <PlanItemStatusIcon status={value} className="h-3.5 w-3.5" />
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block text-sm font-medium text-foreground">
@@ -188,77 +195,35 @@ export function StatusButton({
         aria-label={`Item status, ${currentLabel}`}
         title={currentLabel}
         onClick={() => setOpen((current) => !current)}
-        className={`inline-flex items-center rounded-full border border-border-soft bg-surface/80 font-medium text-foreground transition-colors hover:border-border hover:bg-accent-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-subtle)] disabled:opacity-50 ${STATUS_STYLES[status].icon} ${triggerClass}`}
+        className={`inline-flex items-center rounded-full border bg-surface/80 font-medium text-foreground transition-colors hover:border-border hover:bg-accent-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-subtle)] disabled:opacity-50 ${STATUS_STYLES[status].icon} ${
+          isChecklist
+            ? "border-border"
+            : "border-border-soft"
+        } ${triggerClass}`}
       >
-        <span className="flex h-4 w-4 shrink-0 items-center justify-center">
-          <StatusIcon status={status} className="h-3.5 w-3.5" />
-        </span>
-        <span className="min-w-0 flex-1 truncate text-start">
-          {currentLabel}
-        </span>
-        <ChevronIcon
-          className={`h-3 w-3 shrink-0 text-muted-light transition-transform ${
-            open ? "rotate-180" : ""
+        <span
+          className={`flex shrink-0 items-center justify-center ${
+            isChecklist ? "" : "h-4 w-4"
           }`}
-        />
+        >
+          <PlanItemStatusIcon status={status} className={iconClass} />
+        </span>
+        {!isChecklist ? (
+          <>
+            <span className="min-w-0 flex-1 truncate text-start">
+              {currentLabel}
+            </span>
+            <ChevronIcon
+              className={`h-3 w-3 shrink-0 text-muted-light transition-transform ${
+                open ? "rotate-180" : ""
+              }`}
+            />
+          </>
+        ) : null}
       </button>
       {menu}
     </div>
   );
-}
-
-function StatusIcon({
-  status,
-  className,
-}: {
-  status: PlanItemStatus;
-  className?: string;
-}) {
-  switch (status) {
-    case "OPEN":
-      return (
-        <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor" aria-hidden="true">
-          <circle cx="12" cy="12" r="8" />
-        </svg>
-      );
-    case "DONE":
-      return (
-        <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor" aria-hidden="true">
-          <circle cx="12" cy="12" r="8" />
-          <path d="m8.5 12.5 2.5 2.5 5-5.5" />
-        </svg>
-      );
-    case "PARTIAL":
-      return (
-        <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor" aria-hidden="true">
-          <circle cx="12" cy="12" r="8" strokeDasharray="3 3" />
-          <path d="M12 4v8l4 2" />
-        </svg>
-      );
-    case "MOVED":
-      return (
-        <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor" aria-hidden="true">
-          <path d="m4 4 8 8v8" />
-          <path d="M12 12h8" />
-        </svg>
-      );
-    case "SKIPPED":
-      return (
-        <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor" aria-hidden="true">
-          <path d="M5 5l10 7-10 7V5z" />
-          <path d="M19 5v14" />
-        </svg>
-      );
-    case "RELEASED":
-      return (
-        <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.75} stroke="currentColor" aria-hidden="true">
-          <path d="M20 7c-2-2-5-3-8-2-3 1-5 4-5 7 0 2 1 4 3 5 2 1 5 .5 7-1" />
-          <path d="M4 20c2-1 4-3 5-5" />
-        </svg>
-      );
-    default:
-      return null;
-  }
 }
 
 function ChevronIcon({ className }: { className?: string }) {

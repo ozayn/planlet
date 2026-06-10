@@ -104,6 +104,11 @@ enum KudosType {
   WARMTH
 }
 
+enum PlanItemView {
+  MINIMAL
+  CHECKLIST
+}
+
 model User {
   id            String      @id @default(cuid())
   name          String?
@@ -111,6 +116,7 @@ model User {
   emailVerified DateTime?
   image         String?
   role          UserRole    @default(USER)
+  planItemView  PlanItemView @default(MINIMAL)
   lastLoginAt   DateTime?
   loginCount    Int         @default(0)
   accounts      Account[]

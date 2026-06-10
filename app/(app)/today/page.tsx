@@ -8,6 +8,7 @@ import { PageHeader } from "@/components/page-header";
 import { formatDateString } from "@/lib/dates";
 import { getTodayPlan } from "@/lib/plans";
 import { serializePlan } from "@/lib/plan-serialize";
+import { getPlanItemViewForUser } from "@/lib/user-preferences";
 
 export default async function TodayPage() {
   const session = await auth();
@@ -17,7 +18,10 @@ export default async function TodayPage() {
     return null;
   }
 
-  const plan = await getTodayPlan(userId);
+  const [plan, planItemView] = await Promise.all([
+    getTodayPlan(userId),
+    getPlanItemViewForUser(userId),
+  ]);
   const firstName = session.user?.name?.split(" ")[0];
   const todayDate = formatDateString(new Date());
 
@@ -42,6 +46,7 @@ export default async function TodayPage() {
             showMeta={false}
             showCopyExport
             fullPlanHref={`/plans/${plan.id}`}
+            itemView={planItemView}
           />
         </div>
       ) : (

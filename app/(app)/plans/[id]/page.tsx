@@ -8,6 +8,7 @@ import { getPlanAccess, getPlanSharesForOwner } from "@/lib/plan-sharing";
 import { getPlanWithItems } from "@/lib/plans";
 import { prisma } from "@/lib/prisma";
 import { serializePlan } from "@/lib/plan-serialize";
+import { getPlanItemViewForUser } from "@/lib/user-preferences";
 
 type PlanDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -35,6 +36,7 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
   }
 
   const serialized = serializePlan(plan);
+  const planItemView = await getPlanItemViewForUser(userId);
 
   if (access === "view") {
     const share = await prisma.planShare.findFirst({
@@ -60,6 +62,7 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
               ? { type: viewerKudos.type }
               : null
           }
+          itemView={planItemView}
         />
       </section>
     );
@@ -82,6 +85,7 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
           type: entry.type,
           sender: entry.sender,
         }))}
+        itemView={planItemView}
       />
     </section>
   );

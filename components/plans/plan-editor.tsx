@@ -1,5 +1,7 @@
 "use client";
 
+import type { PlanItemView } from "@/app/generated/prisma/client";
+
 import { AddItemForm } from "@/components/plans/add-item-form";
 import { OpenFullPlanShareLink } from "@/components/plans/open-full-plan-share-link";
 import { PlanItemSections } from "@/components/plans/plan-item-sections";
@@ -30,6 +32,7 @@ type PlanEditorProps = {
   showPlatformShare?: boolean;
   platformShares?: PlanShareEntry[];
   kudos?: PlanKudosEntry[];
+  itemView?: PlanItemView;
 };
 
 export function PlanEditor({
@@ -40,6 +43,7 @@ export function PlanEditor({
   showPlatformShare = false,
   platformShares = [],
   kudos = [],
+  itemView = "MINIMAL",
 }: PlanEditorProps) {
   const dateStart = new Date(plan.dateStart);
   const dateEnd = new Date(plan.dateEnd);
@@ -101,7 +105,11 @@ export function PlanEditor({
 
       {plan.items.length > 0 ? (
         <section>
-          <PlanItemSections planId={plan.id} items={plan.items} />
+          <PlanItemSections
+            planId={plan.id}
+            items={plan.items}
+            itemView={itemView}
+          />
         </section>
       ) : null}
 

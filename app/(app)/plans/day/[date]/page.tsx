@@ -10,6 +10,7 @@ import { formatPlanDateLabel, isValidDateString, parseDateString } from "@/lib/d
 import { getPlanSharesForOwner } from "@/lib/plan-sharing";
 import { getDayPlan } from "@/lib/plans";
 import { serializePlan } from "@/lib/plan-serialize";
+import { getPlanItemViewForUser } from "@/lib/user-preferences";
 
 type DayPlanPageProps = {
   params: Promise<{ date: string }>;
@@ -56,7 +57,10 @@ export default async function DayPlanPage({ params }: DayPlanPageProps) {
     );
   }
 
-  const platformShares = await getPlanSharesForOwner(plan.id, userId);
+  const [platformShares, planItemView] = await Promise.all([
+    getPlanSharesForOwner(plan.id, userId),
+    getPlanItemViewForUser(userId),
+  ]);
 
   return (
     <section className="space-y-6">
@@ -77,6 +81,7 @@ export default async function DayPlanPage({ params }: DayPlanPageProps) {
         showCopyExport
         showPlatformShare
         platformShares={platformShares}
+        itemView={planItemView}
       />
     </section>
   );
