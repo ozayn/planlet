@@ -1,4 +1,5 @@
 import { getAnthropicClient } from "@/lib/ai/anthropic-client";
+import { parseModelJsonResponse } from "@/lib/ai/parse-model-json";
 import { PLAN_PARSE_SYSTEM_PROMPT } from "@/lib/ai/parse-plan-prompt";
 import {
   validateParsedPlan,
@@ -9,32 +10,6 @@ import { getAnthropicModel } from "@/lib/env";
 export type ParsePlanFromTextInput = {
   text: string;
 };
-
-function extractJsonFromText(content: string): unknown {
-  let trimmed = content.trim();
-
-  const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
-  if (fenced) {
-    trimmed = fenced[1].trim();
-  }
-
-  try {
-    return JSON.parse(trimmed);
-  } catch {
-    const start = trimmed.indexOf("{");
-    const end = trimmed.lastIndexOf("}");
-
-    if (start !== -1 && end > start) {
-      try {
-        return JSON.parse(trimmed.slice(start, end + 1));
-      } catch {
-        throw new Error("Parser returned invalid JSON");
-      }
-    }
-
-    throw new Error("Parser returned invalid JSON");
-  }
-}
 
 export async function parsePlanFromTextAnthropic(
   input: ParsePlanFromTextInput,
@@ -66,6 +41,9 @@ export async function parsePlanFromTextAnthropic(
     throw new Error("No response from the parser");
   }
 
-  const json = extractJsonFromText(textBlock.text);
+  const json = parseModelJsonResponse(
+    textBlock.text,
+    "Parser returned invalid JSON",
+  );
   return validateParsedPlan(json);
 }

@@ -10,11 +10,13 @@ import {
   DEFAULT_VISION_MODEL,
   getOpenAIClient,
 } from "@/lib/ai/openai-client";
+import { parseModelJsonResponse } from "@/lib/ai/parse-model-json";
 import { APP_TIMEZONE } from "@/config/time";
 
 const EXTRACT_IMAGE_TEXT_PROMPT = `Extract written plan text and any visible date information from this image.
 
-Return JSON only with this shape:
+Return valid JSON only. Do not wrap the JSON in markdown code fences.
+Use this shape:
 {
   "text": "extracted plan text",
   "language": "FA" | "EN" | "MIXED" | "UNKNOWN",
@@ -150,13 +152,10 @@ export async function extractImageText(
     throw new Error("No text could be extracted from the image.");
   }
 
-  let json: unknown;
-
-  try {
-    json = JSON.parse(content);
-  } catch {
-    throw new Error("Image extraction returned invalid JSON.");
-  }
+  const json = parseModelJsonResponse(
+    content,
+    "Image extraction returned invalid JSON.",
+  );
 
   const parsed = visionResponseSchema.safeParse(json);
 
