@@ -4,24 +4,54 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { createPlanItemAction } from "@/app/(app)/plans/actions";
+import type { AddItemKind } from "@/lib/plan-item-sections";
 
 type AddItemFormProps = {
   planId: string;
   parentItemId?: string;
   placeholder?: string;
   buttonLabel?: string;
+  compact?: boolean;
+};
+
+const KIND_OPTIONS: { value: AddItemKind; label: string }[] = [
+  { value: "TASK", label: "Task" },
+  { value: "INTENTION", label: "Intention" },
+  { value: "NOTE", label: "Note" },
+];
+
+const KIND_COPY: Record<
+  AddItemKind,
+  { placeholder: string; buttonLabel: string }
+> = {
+  TASK: {
+    placeholder: "What’s on your mind?",
+    buttonLabel: "Add item",
+  },
+  INTENTION: {
+    placeholder: "Add an intention…",
+    buttonLabel: "Add intention",
+  },
+  NOTE: {
+    placeholder: "Add a note or reflection…",
+    buttonLabel: "Add note",
+  },
 };
 
 export function AddItemForm({
   planId,
   parentItemId,
-  placeholder = "What’s on your mind?",
-  buttonLabel = "Add item",
+  placeholder,
+  buttonLabel,
+  compact = false,
 }: AddItemFormProps) {
   const router = useRouter();
   const [title, setTitle] = useState("");
+  const [kind, setKind] = useState<AddItemKind>("TASK");
   const [isPending, startTransition] = useTransition();
   const canSubmit = title.trim().length > 0;
+  const showKindSelector = !parentItemId;
+  const copy = KIND_COPY[kind];
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -33,6 +63,7 @@ export function AddItemForm({
         planId,
         title: trimmed,
         parentItemId,
+        type: parentItemId ? "TASK" : kind,
       });
       setTitle("");
       router.refresh();
@@ -42,28 +73,71 @@ export function AddItemForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="ui-plan-item flex items-center gap-2 px-2.5 py-2"
+      className={
+        compact
+          ? "space-y-1.5"
+          : "space-y-2"
+      }
     >
-      <input
-        type="text"
-        value={title}
-        onChange={(event) => setTitle(event.target.value)}
-        placeholder={placeholder}
-        dir="auto"
-        aria-label={placeholder}
-        className="ui-input ui-input-compact min-h-9 flex-1 border-transparent bg-transparent px-2 shadow-none focus:border-border focus:bg-surface"
-      />
-      <button
-        type="submit"
-        disabled={isPending || !canSubmit}
-        className={`ui-btn-compact shrink-0 rounded-lg px-3 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${
-          canSubmit
-            ? "border border-border bg-surface text-foreground hover:bg-accent-cream"
-            : "border border-border-soft bg-transparent text-muted-light"
-        } disabled:cursor-not-allowed disabled:opacity-60`}
+      {showKindSelector ? (
+        <div
+          className="flex flex-wrap gap-1.5"
+          role="group"
+          aria-label="Item type"
+        >
+          {KIND_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => setKind(option.value)}
+              className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${
+                kind === option.value
+                  ? "border-border-subtle bg-accent-cream text-foreground"
+                  : "border-border-soft bg-transparent text-muted hover:text-foreground"
+              }`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+
+      <div
+        className={
+          compact
+            ? "flex items-center gap-1.5 rounded-lg border border-dashed border-border-soft bg-surface-muted/50 px-2 py-1"
+            : "ui-plan-item flex items-center gap-2 px-3 py-2"
+        }
       >
-        {isPending ? "…" : buttonLabel}
-      </button>
+        <input
+          type="text"
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+          placeholder={placeholder ?? copy.placeholder}
+          dir="auto"
+          aria-label={placeholder ?? copy.placeholder}
+          className={
+            compact
+              ? "ui-input min-h-8 flex-1 border-transparent bg-transparent px-1.5 py-1 text-xs shadow-none focus:border-border focus:bg-surface"
+              : "ui-input ui-input-compact min-h-10 flex-1 border-transparent bg-transparent px-2 shadow-none focus:border-border focus:bg-surface"
+          }
+        />
+        <button
+          type="submit"
+          disabled={isPending || !canSubmit}
+          className={`shrink-0 rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${
+            compact
+              ? "min-h-8 px-2 text-xs"
+              : "ui-btn-compact min-h-10 px-3"
+          } ${
+            canSubmit
+              ? "border border-border bg-surface text-foreground hover:bg-accent-cream"
+              : "border border-border-soft bg-transparent text-muted-light"
+          } disabled:cursor-not-allowed disabled:opacity-60`}
+        >
+          {isPending ? "…" : buttonLabel ?? copy.buttonLabel}
+        </button>
+      </div>
     </form>
   );
 }

@@ -1,40 +1,49 @@
 import { SharePlanPanel } from "@/components/plans/share-plan-panel";
 import { formatDateRange } from "@/lib/dates";
 import { getPlanItemTypeLabel } from "@/lib/plan-labels";
+import { partitionPlanItems } from "@/lib/plan-item-sections";
 import { getStatusIcon, getStatusLabel, STATUS_STYLES } from "@/lib/plan-status";
-import type { SerializedPlan } from "@/lib/plan-serialize";
+import type { SerializedPlan, SerializedPlanItem } from "@/lib/plan-serialize";
 
 type PlanReadOnlyProps = {
   plan: SerializedPlan;
   ownerLabel?: string | null;
 };
 
-function ReadOnlyItem({
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <h3 className="text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-muted-light">
+      {children}
+    </h3>
+  );
+}
+
+function ReadOnlyTaskItem({
   item,
   depth = 0,
 }: {
-  item: SerializedPlan["items"][number];
+  item: SerializedPlanItem;
   depth?: number;
 }) {
   return (
     <article className={depth > 0 ? "ms-4 border-s border-border-soft ps-3" : ""}>
       <div
-        className={`ui-plan-item group relative overflow-hidden px-3 py-2.5 ${STATUS_STYLES[item.status].card}`}
+        className={`ui-plan-item group relative overflow-hidden px-3 py-2 ${STATUS_STYLES[item.status].card}`}
       >
         <span
-          className={`absolute inset-y-2.5 start-0 w-0.5 rounded-full opacity-50 ${STATUS_STYLES[item.status].accentBar}`}
+          className={`absolute inset-y-2 start-0 w-0.5 rounded-full opacity-50 ${STATUS_STYLES[item.status].accentBar}`}
           aria-hidden="true"
         />
-        <div className="flex items-start gap-2 ps-1.5">
+        <div className="flex items-center gap-2 ps-1.5">
           <span
-            className={`mt-0.5 text-sm ${STATUS_STYLES[item.status].icon}`}
+            className={`text-sm ${STATUS_STYLES[item.status].icon}`}
             title={getStatusLabel(item.status)}
             aria-label={getStatusLabel(item.status)}
           >
             {getStatusIcon(item.status)}
           </span>
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium leading-snug text-foreground" dir="auto">
+            <p className="truncate text-sm font-medium text-foreground" dir="auto">
               {item.title}
             </p>
             <p className="mt-0.5 text-[0.6875rem] text-muted-light">
@@ -44,9 +53,9 @@ function ReadOnlyItem({
         </div>
       </div>
       {item.subtasks.length > 0 ? (
-        <div className="mt-2 space-y-2">
+        <div className="mt-1.5 space-y-1.5">
           {item.subtasks.map((subtask) => (
-            <ReadOnlyItem key={subtask.id} item={subtask} depth={depth + 1} />
+            <ReadOnlyTaskItem key={subtask.id} item={subtask} depth={depth + 1} />
           ))}
         </div>
       ) : null}
@@ -54,9 +63,39 @@ function ReadOnlyItem({
   );
 }
 
+function ReadOnlyIntentionItem({ item }: { item: SerializedPlanItem }) {
+  return (
+    <article className="rounded-lg border border-dashed border-border-soft bg-accent-cream/25 px-3 py-2">
+      <p className="text-sm font-medium text-foreground" dir="auto">
+        <span className="me-1.5 text-muted" aria-hidden="true">
+          ✨
+        </span>
+        {item.title}
+      </p>
+    </article>
+  );
+}
+
+function ReadOnlyNoteItem({ item }: { item: SerializedPlanItem }) {
+  return (
+    <article className="rounded-lg border border-border-soft/80 bg-surface-muted/40 px-3 py-2">
+      <p
+        className="whitespace-pre-wrap text-sm leading-relaxed text-foreground"
+        dir="auto"
+      >
+        <span className="me-1.5 text-muted-light" aria-hidden="true">
+          •
+        </span>
+        {item.title}
+      </p>
+    </article>
+  );
+}
+
 export function PlanReadOnly({ plan, ownerLabel }: PlanReadOnlyProps) {
   const dateStart = new Date(plan.dateStart);
   const dateEnd = new Date(plan.dateEnd);
+  const { tasks, intentions, notes } = partitionPlanItems(plan.items);
 
   return (
     <div className="space-y-8">
@@ -86,13 +125,44 @@ export function PlanReadOnly({ plan, ownerLabel }: PlanReadOnlyProps) {
         ) : null}
       </header>
 
-      <section className="space-y-3">
+      <section className="space-y-5">
         {plan.items.length === 0 ? (
           <div className="ui-empty-state">
             <p className="text-sm text-muted">This plan has no items yet.</p>
           </div>
         ) : (
-          plan.items.map((item) => <ReadOnlyItem key={item.id} item={item} />)
+          <>
+            {tasks.length > 0 ? (
+              <div className="space-y-2">
+                <SectionLabel>Tasks</SectionLabel>
+                <div className="space-y-1.5">
+                  {tasks.map((item) => (
+                    <ReadOnlyTaskItem key={item.id} item={item} />
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            {intentions.length > 0 ? (
+              <div className="space-y-2">
+                <SectionLabel>Intentions</SectionLabel>
+                <div className="space-y-1.5">
+                  {intentions.map((item) => (
+                    <ReadOnlyIntentionItem key={item.id} item={item} />
+                  ))}
+                </div>
+              </div>
+            ) : null}
+            {notes.length > 0 ? (
+              <div className="space-y-2">
+                <SectionLabel>Notes & reflections</SectionLabel>
+                <div className="space-y-1.5">
+                  {notes.map((item) => (
+                    <ReadOnlyNoteItem key={item.id} item={item} />
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </>
         )}
       </section>
     </div>

@@ -76,30 +76,34 @@ export function PlanItemCard({
       ? `${subtaskCount} subtask${subtaskCount === 1 ? "" : "s"}`
       : null,
   ].filter(Boolean);
+  const showDragHandle =
+    !isNested && dragHandleAttributes && dragHandleListeners;
 
   return (
-    <article className={isNested ? "ms-3 border-s border-border-soft ps-2.5" : ""}>
+    <article className={isNested ? "ms-3 border-s border-border-soft ps-2" : ""}>
       <div
-        className={`ui-plan-item group relative overflow-hidden px-3 py-2.5 transition-shadow ${STATUS_STYLES[item.status].card} ${
+        className={`ui-plan-item group relative overflow-hidden px-3 py-2 transition-shadow sm:px-4 sm:py-2.5 ${STATUS_STYLES[item.status].card} ${
           isDragging ? "opacity-80 ui-shadow-elevated" : ""
         }`}
       >
         <span
-          className={`absolute inset-y-2.5 start-0 w-0.5 rounded-full opacity-50 transition-opacity group-hover:opacity-80 group-focus-within:opacity-90 ${STATUS_STYLES[item.status].accentBar}`}
+          className={`absolute inset-y-2 start-0 w-0.5 rounded-full opacity-50 transition-opacity group-hover:opacity-80 group-focus-within:opacity-90 ${STATUS_STYLES[item.status].accentBar}`}
           aria-hidden="true"
         />
-        <div className="flex items-start gap-2 ps-1.5">
-          {!isNested && dragHandleAttributes && dragHandleListeners ? (
+        <div className="flex items-center gap-2 ps-1 sm:gap-2.5 sm:ps-1.5">
+          {showDragHandle ? (
             <button
               type="button"
               ref={dragHandleRef}
-              className="mt-1 shrink-0 cursor-grab touch-none rounded p-0.5 text-muted-light transition-colors hover:text-muted active:cursor-grabbing"
+              className="flex h-8 w-5 shrink-0 cursor-grab touch-none items-center justify-center rounded text-muted-light transition-colors hover:text-muted active:cursor-grabbing"
               aria-label="Drag to reorder item"
               {...dragHandleAttributes}
               {...dragHandleListeners}
             >
               <DragHandleIcon />
             </button>
+          ) : isNested ? (
+            <span className="h-8 w-0 shrink-0" aria-hidden="true" />
           ) : null}
 
           <StatusButton
@@ -126,14 +130,14 @@ export function PlanItemCard({
                     setEditingTitle(false);
                   }
                 }}
-                className="ui-input ui-input-compact w-full"
+                className="ui-input ui-input-compact min-h-8 w-full py-1"
                 aria-label="Item title"
               />
             ) : (
               <button
                 type="button"
                 onClick={() => setEditingTitle(true)}
-                className="block w-full py-0.5 text-start text-sm font-medium leading-snug text-foreground"
+                className="block w-full truncate text-start text-sm font-medium leading-tight text-foreground"
                 dir="auto"
               >
                 {item.title}
@@ -141,46 +145,61 @@ export function PlanItemCard({
             )}
 
             {metaParts.length > 0 ? (
-              <p className="mt-0.5 text-[0.6875rem] leading-tight text-muted-light">
+              <p className="mt-0.5 truncate text-[0.6875rem] leading-tight text-muted-light">
                 {metaParts.join(" · ")}
               </p>
             ) : null}
+          </div>
 
-            <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
+          <div className="ui-item-card-actions flex shrink-0 items-center gap-0.5">
+            <button
+              type="button"
+              onClick={() => setDetailsOpen(true)}
+              className="ui-icon-action-quiet"
+              aria-label="Open item details"
+              title="Details"
+            >
+              <SlidersHorizontalIcon className="h-4 w-4" />
+              <span className="ui-tooltip-bubble" role="tooltip">
+                Details
+              </span>
+            </button>
+            {!isNested ? (
               <button
                 type="button"
-                onClick={() => setDetailsOpen(true)}
-                className="ui-action-link"
+                onClick={() => setShowSubtaskForm((current) => !current)}
+                className={`ui-icon-action-quiet${
+                  showSubtaskForm ? " ui-icon-action-quiet-active" : ""
+                }`}
+                aria-label={
+                  showSubtaskForm ? "Cancel subtask" : "Add subtask"
+                }
+                title={showSubtaskForm ? "Cancel subtask" : "Add subtask"}
               >
-                Details
-              </button>
-              {!isNested ? (
-                <button
-                  type="button"
-                  onClick={() => setShowSubtaskForm((current) => !current)}
-                  className="ui-action-link"
-                >
+                <ListPlusIcon className="h-4 w-4" />
+                <span className="ui-tooltip-bubble" role="tooltip">
                   {showSubtaskForm ? "Cancel subtask" : "Add subtask"}
-                </button>
-              ) : null}
-            </div>
+                </span>
+              </button>
+            ) : null}
           </div>
         </div>
       </div>
 
       {showSubtaskForm ? (
-        <div className="mt-2 ms-3">
+        <div className="mt-1.5 ms-7 border-s border-border-soft/70 ps-2.5 sm:ms-9 sm:ps-3">
           <AddItemForm
             planId={planId}
             parentItemId={item.id}
             placeholder="Subtask"
             buttonLabel="Add subtask"
+            compact
           />
         </div>
       ) : null}
 
       {item.subtasks.length > 0 ? (
-        <div className="mt-2 space-y-2">
+        <div className="mt-1.5 space-y-1.5">
           {item.subtasks.map((subtask) => (
             <PlanItemCard
               key={subtask.id}
@@ -216,6 +235,39 @@ function DragHandleIcon() {
       <circle cx="8" cy="8" r="1.25" />
       <circle cx="4" cy="13" r="1.25" />
       <circle cx="8" cy="13" r="1.25" />
+    </svg>
+  );
+}
+
+function SlidersHorizontalIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth={1.75}
+      stroke="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M10 5H3M21 5h-7M10 19H3M21 19h-7M17 12H3M21 12h-7" />
+      <circle cx="14" cy="5" r="2" />
+      <circle cx="8" cy="12" r="2" />
+      <circle cx="16" cy="19" r="2" />
+    </svg>
+  );
+}
+
+function ListPlusIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth={1.75}
+      stroke="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M11 12H3M16 6H3M16 18H3M19 10v6M22 13h-6" />
     </svg>
   );
 }

@@ -1,6 +1,10 @@
 "use server";
 
-import type { PlanType, ShareExportFormat } from "@/app/generated/prisma/client";
+import type {
+  PlanItemType,
+  PlanType,
+  ShareExportFormat,
+} from "@/app/generated/prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -202,6 +206,7 @@ export async function createPlanItemAction(input: {
   planId: string;
   title: string;
   parentItemId?: string;
+  type?: PlanItemType;
 }) {
   const userId = await requireUserId();
   const title = input.title.trim();
@@ -215,6 +220,7 @@ export async function createPlanItemAction(input: {
     planId: input.planId,
     title,
     parentItemId: input.parentItemId,
+    type: input.type,
   });
 
   revalidatePlanPaths(input.planId);

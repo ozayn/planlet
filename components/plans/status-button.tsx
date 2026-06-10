@@ -45,7 +45,7 @@ export function StatusButton({
       title={currentLabel}
       className={`shrink-0 rounded-full border border-border-soft bg-surface/80 text-foreground transition-colors hover:border-border hover:bg-accent-cream focus:outline-none focus:ring-2 focus:ring-[var(--focus-ring-subtle)] disabled:opacity-50 ${STATUS_STYLES[status].icon} ${
         compact
-          ? "min-h-9 max-w-[5.5rem] px-2 py-1 text-xs sm:max-w-none sm:min-w-[6.75rem] sm:px-2.5 sm:text-[0.8125rem]"
+          ? "h-8 min-w-[4.75rem] max-w-[5.5rem] px-1.5 py-0 text-[0.6875rem] sm:min-w-[5.5rem] sm:max-w-[6rem] sm:px-2 sm:text-xs"
           : "min-h-10 min-w-28 px-2.5 text-sm"
       }`}
       onChange={(event) => {

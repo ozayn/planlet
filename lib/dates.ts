@@ -251,6 +251,17 @@ export function formatPlanPeriodForShare(plan: {
   }
 }
 
+export function formatAdminDateTime(date: Date): string {
+  return new Intl.DateTimeFormat("en", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    timeZone: APP_TIMEZONE,
+  }).format(date);
+}
+
 export function formatDateRange(start: Date, end: Date): string {
   const formatter = new Intl.DateTimeFormat("en", {
     month: "short",

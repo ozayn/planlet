@@ -41,8 +41,13 @@ export default async function InsightsPage() {
                 accent="red"
               />
               <SummaryCard
-                label="Items"
-                value={insights.totals.items}
+                label="Actionable items"
+                value={insights.totals.actionableItems}
+                hint={
+                  insights.totals.notes > 0 || insights.totals.intentions > 0
+                    ? `${insights.totals.notes} notes · ${insights.totals.intentions} intentions`
+                    : undefined
+                }
                 accent="blue"
               />
               <SummaryCard

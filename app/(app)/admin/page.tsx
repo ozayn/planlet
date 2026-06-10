@@ -6,13 +6,7 @@ import {
   getAllowedEmails,
 } from "@/lib/auth-allowlist";
 import { getAdminUserStats } from "@/lib/admin-stats";
-
-function formatLoginTime(value: Date): string {
-  return value.toLocaleString("en", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
+import { formatAdminDateTime } from "@/lib/dates";
 
 export default async function AdminPage() {
   const [{ users, totals, recentLogins }, allowedEmails, adminEmails] =
@@ -109,7 +103,7 @@ export default async function AdminPage() {
                   {event.email}
                 </span>
                 <span className="text-muted">
-                  {formatLoginTime(event.createdAt)}
+                  {formatAdminDateTime(event.createdAt)}
                   {event.provider ? ` · ${event.provider}` : ""}
                 </span>
               </li>

@@ -88,7 +88,7 @@ const SECTION_LABELS: Record<ShareLanguage, Record<ShareSectionKey, string>> = {
     afternoon: "Afternoon",
     evening: "Evening",
     intentions: "Intentions",
-    notes: "Notes",
+    notes: "Notes & reflections",
   },
 };
 
@@ -169,16 +169,12 @@ export function groupPlanItemsForShare(
   })).filter((section) => section.items.length > 0);
 }
 
-function getIntentionIcon(status: PlanItemStatus): string {
-  if (status === "DONE" || status === "PARTIAL") {
-    return "✨";
-  }
-  return "•";
-}
-
 function getItemIcon(item: SharePlanItem, mode: ShareMode): string {
+  if (item.type === "NOTE") {
+    return "•";
+  }
   if (item.type === "INTENTION" && mode === "PLAN") {
-    return getIntentionIcon(item.status);
+    return "✨";
   }
   return getStatusIcon(item.status);
 }

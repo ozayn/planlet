@@ -1,15 +1,9 @@
 import type { AdminUserStatRow } from "@/lib/admin-stats";
-
-function formatDateTime(value: Date): string {
-  return value.toLocaleString("en", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
+import { formatAdminDateTime } from "@/lib/dates";
 
 function formatLastLogin(user: AdminUserStatRow): string {
   if (user.lastLoginAt) {
-    return formatDateTime(user.lastLoginAt);
+    return formatAdminDateTime(user.lastLoginAt);
   }
 
   if (user.loginCount > 0) {

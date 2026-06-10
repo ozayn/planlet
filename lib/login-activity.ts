@@ -1,7 +1,9 @@
 import type { UserRole } from "@/app/generated/prisma/client";
 
-import { syncUserRoleOnSignIn } from "@/lib/auth-roles";
+import { isAdminEmail } from "@/lib/auth-allowlist";
 import { prisma } from "@/lib/prisma";
+
+const RECENT_LOGIN_WINDOW_MS = 30_000;
 
 type TrackUserSignInInput = {
   userId?: string | null;
@@ -36,6 +38,21 @@ async function resolveUserId(
   return byEmail?.id ?? null;
 }
 
+function resolveSignInRole(
+  email: string,
+  currentRole: UserRole | undefined,
+): UserRole {
+  if (isAdminEmail(email)) {
+    return "ADMIN";
+  }
+
+  if (currentRole === "ADMIN") {
+    return "ADMIN";
+  }
+
+  return "USER";
+}
+
 export async function trackUserSignIn({
   userId,
   email,
@@ -48,7 +65,12 @@ export async function trackUserSignIn({
   }
 
   const normalizedEmail = trimmedEmail.toLowerCase();
-  const resolvedUserId = await resolveUserId(userId, normalizedEmail);
+  let resolvedUserId = await resolveUserId(userId, normalizedEmail);
+
+  if (!resolvedUserId) {
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    resolvedUserId = await resolveUserId(userId, normalizedEmail);
+  }
 
   if (!resolvedUserId) {
     console.warn(
@@ -58,25 +80,46 @@ export async function trackUserSignIn({
     return null;
   }
 
-  const role = await syncUserRoleOnSignIn(resolvedUserId, trimmedEmail);
+  const existing = await prisma.user.findUnique({
+    where: { id: resolvedUserId },
+    select: { role: true, lastLoginAt: true },
+  });
+  const role = resolveSignInRole(trimmedEmail, existing?.role);
   const now = new Date();
+  const recentlyTracked =
+    existing?.lastLoginAt != null &&
+    now.getTime() - existing.lastLoginAt.getTime() < RECENT_LOGIN_WINDOW_MS;
 
-  await prisma.$transaction([
-    prisma.user.update({
-      where: { id: resolvedUserId },
-      data: {
-        lastLoginAt: now,
-        loginCount: { increment: 1 },
-      },
-    }),
-    prisma.loginEvent.create({
+  if (recentlyTracked) {
+    if (existing?.role !== role) {
+      await prisma.user.update({
+        where: { id: resolvedUserId },
+        data: { role },
+      });
+    }
+    return role;
+  }
+
+  await prisma.user.update({
+    where: { id: resolvedUserId },
+    data: {
+      role,
+      lastLoginAt: now,
+      loginCount: { increment: 1 },
+    },
+  });
+
+  try {
+    await prisma.loginEvent.create({
       data: {
         userId: resolvedUserId,
         email: normalizedEmail,
         provider: provider ?? "google",
       },
-    }),
-  ]);
+    });
+  } catch (error) {
+    console.warn("[planlet] login event log failed:", error);
+  }
 
   return role;
 }

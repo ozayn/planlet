@@ -6,11 +6,15 @@ import type {
 
 import { APP_TIMEZONE } from "@/config/time";
 import { getMonthRange } from "@/lib/dates";
+import { isActionableItemType } from "@/lib/plan-item-sections";
 import { prisma } from "@/lib/prisma";
 
 export type MonthlyInsightsTotals = {
   plans: number;
   items: number;
+  actionableItems: number;
+  notes: number;
+  intentions: number;
   done: number;
   partial: number;
   moved: number;
@@ -145,6 +149,9 @@ export async function getMonthlyInsights(
   const typeCounts = new Map<PlanItemType, number>();
   const movedTypeCounts = new Map<PlanItemType, number>();
   const intentionTitleCounts = new Map<string, number>();
+  let actionableItems = 0;
+  let noteCount = 0;
+  let intentionCount = 0;
 
   const priorityQuadrants = {
     doSoon: 0,
@@ -155,15 +162,28 @@ export async function getMonthlyInsights(
   };
 
   for (const item of items) {
-    incrementMap(statusCounts, item.status);
     incrementMap(typeCounts, item.type);
 
+    if (item.type === "NOTE") {
+      noteCount += 1;
+      continue;
+    }
+
     if (item.type === "INTENTION") {
+      intentionCount += 1;
       const title = item.title.trim();
       if (title) {
         incrementMap(intentionTitleCounts, title);
       }
+      continue;
     }
+
+    if (!isActionableItemType(item.type)) {
+      continue;
+    }
+
+    actionableItems += 1;
+    incrementMap(statusCounts, item.status);
 
     if (item.status === "MOVED") {
       incrementMap(movedTypeCounts, item.type);
@@ -188,6 +208,9 @@ export async function getMonthlyInsights(
     totals: {
       plans: plans.length,
       items: items.length,
+      actionableItems,
+      notes: noteCount,
+      intentions: intentionCount,
       done: statusCounts.get("DONE") ?? 0,
       partial: statusCounts.get("PARTIAL") ?? 0,
       moved: statusCounts.get("MOVED") ?? 0,

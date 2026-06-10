@@ -108,6 +108,9 @@ export function ItemDetailsSheet({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [form, setForm] = useState(() => buildFormState(item));
+  const isNote = item.type === "NOTE";
+  const isIntention = item.type === "INTENTION";
+  const sheetTitle = isNote ? "Note" : isIntention ? "Intention" : "Details";
 
   useEffect(() => {
     if (open) {
@@ -158,7 +161,7 @@ export function ItemDetailsSheet({
   }
 
   return (
-    <SimpleSheet open={open} onClose={onClose} title="Details">
+    <SimpleSheet open={open} onClose={onClose} title={sheetTitle}>
       <div className="space-y-6">
         <Field label="Type">
           <select
@@ -179,6 +182,14 @@ export function ItemDetailsSheet({
           </select>
         </Field>
 
+        {isNote ? (
+          <p className="text-sm text-muted">
+            Notes are for reflections and context — not checkable tasks.
+          </p>
+        ) : null}
+
+        {!isNote ? (
+          <>
         <DetailGroup title="Progress">
           <select
             value={form.progressLevel}
@@ -278,6 +289,8 @@ export function ItemDetailsSheet({
             </Field>
           </div>
         </DetailGroup>
+          </>
+        ) : null}
 
         <DetailGroup title="Sharing">
           <label className="flex min-h-12 items-center gap-3 text-sm text-foreground">
@@ -328,7 +341,7 @@ export function ItemDetailsSheet({
           onClick={handleDelete}
           className="ui-btn-ghost w-full"
         >
-          Delete item
+          {isNote ? "Delete note" : isIntention ? "Delete intention" : "Delete item"}
         </button>
       </div>
     </SimpleSheet>

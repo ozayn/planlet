@@ -313,10 +313,56 @@ body {
   }
 
   .ui-icon-action:focus-visible .ui-tooltip-bubble,
-  .ui-icon-action:hover .ui-tooltip-bubble {
+  .ui-icon-action:hover .ui-tooltip-bubble,
+  .ui-icon-action-quiet:focus-visible .ui-tooltip-bubble,
+  .ui-icon-action-quiet:hover .ui-tooltip-bubble {
     opacity: 1;
     visibility: visible;
     transform: translateY(0);
+  }
+
+  .ui-icon-action-quiet {
+    position: relative;
+    display: inline-flex;
+    height: 2.25rem;
+    width: 2.25rem;
+    flex-shrink: 0;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.5rem;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--muted-light);
+    transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+  }
+
+  .ui-icon-action-quiet:hover {
+    border-color: var(--border-soft);
+    background: var(--accent-cream);
+    color: var(--muted);
+  }
+
+  .ui-icon-action-quiet:focus-visible {
+    outline: none;
+    border-color: var(--border-soft);
+    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--focus-ring);
+  }
+
+  .ui-icon-action-quiet-active {
+    border-color: var(--border-soft);
+    background: var(--accent-cream);
+    color: var(--foreground);
+  }
+
+  .ui-item-card-actions {
+    opacity: 1;
+    transition: opacity 0.15s;
+  }
+
+  @media (min-width: 768px) {
+    .group:not(:hover):not(:focus-within) .ui-item-card-actions {
+      opacity: 0;
+    }
   }
 
   .ui-tooltip-bubble {

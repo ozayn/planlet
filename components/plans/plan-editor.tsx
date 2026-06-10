@@ -2,7 +2,7 @@
 
 import { AddItemForm } from "@/components/plans/add-item-form";
 import { OpenFullPlanShareLink } from "@/components/plans/open-full-plan-share-link";
-import { SortablePlanItemList } from "@/components/plans/sortable-plan-item-list";
+import { PlanItemSections } from "@/components/plans/plan-item-sections";
 import { SharePlanPanel } from "@/components/plans/share-plan-panel";
 import { ShareWithUserPanel } from "@/components/plans/share-with-user-panel";
 import { formatDateRange } from "@/lib/dates";
@@ -91,17 +91,18 @@ export function PlanEditor({
         <ShareWithUserPanel planId={plan.id} shares={platformShares} />
       ) : null}
 
-      <section className="space-y-2">
-        {plan.items.length === 0 ? (
-          <div className="ui-empty-state">
-            <p className="text-sm text-muted">Add an item below.</p>
-          </div>
-        ) : (
-          <SortablePlanItemList planId={plan.id} items={plan.items} />
-        )}
-      </section>
+      {plan.items.length > 0 ? (
+        <section>
+          <PlanItemSections planId={plan.id} items={plan.items} />
+        </section>
+      ) : null}
 
-      <section>
+      <section className={plan.items.length === 0 ? "mt-4" : undefined}>
+        {plan.items.length === 0 ? (
+          <p className="mb-2 text-xs text-muted-light">
+            Start with a task, intention, or note.
+          </p>
+        ) : null}
         <AddItemForm planId={plan.id} />
       </section>
     </div>

@@ -13,28 +13,39 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   session: {
     strategy: "jwt",
   },
+  events: {
+    async signIn({ user, account }) {
+      await trackUserSignInSafely({
+        userId: user.id,
+        email: user.email,
+        provider: account?.provider,
+      });
+    },
+  },
   callbacks: {
     ...authConfig.callbacks,
     async jwt({ token, user, account }) {
+      if (user && account) {
+        await trackUserSignInSafely({
+          userId: user.id,
+          email: user.email,
+          provider: account.provider,
+        });
+      }
+
       if (user) {
         const email = user.email?.trim();
 
-        if (email) {
-          const role = await trackUserSignInSafely({
-            userId: user.id,
-            email,
-            provider: account?.provider,
+        if (email && user.id) {
+          token.id = user.id;
+
+          const dbUser = await prisma.user.findUnique({
+            where: { id: user.id },
+            select: { role: true },
           });
 
-          if (user.id) {
-            token.id = user.id;
-          }
-
-          if (role) {
-            token.role = role;
-          } else if (user.id) {
-            token.role = await syncUserRoleOnSignIn(user.id, email);
-          }
+          token.role =
+            dbUser?.role ?? (await syncUserRoleOnSignIn(user.id, email));
         } else if (user.id) {
           token.id = user.id;
           const dbUser = await prisma.user.findUnique({

@@ -9,6 +9,14 @@ Rules:
 - If unclear, default planType to DAY.
 - Treat emotional goals such as "حفاظت روحی" as INTENTION, not TASK.
 - Treat gratitude / شکرگزاری as INTENTION.
+- Treat reflective or contextual lines as NOTE, not TASK. Examples:
+  - "Consider whether…", "Things to remember…", "Reflection:", "Note:", "I felt…", "Keep in mind…"
+  - "ملاحظات", "یادداشت", "تأمل", "حواسم باشد", and bullet lines under those headings
+- Treat values, goals, and intentions as INTENTION. Examples:
+  - "protect my energy", "gratitude", "do not escape loneliness into harmful things"
+  - "اهداف", "نیت", "شکرگزاری", and bullet lines under اهداف / نیت headings
+- Section headings like "ملاحظات:" or "Notes:" signal NOTE items below; "اهداف:" or "Intentions:" signal INTENTION items below.
+- Do not force reflective writing into TASK. When unsure between NOTE and TASK, prefer NOTE for non-actionable reflection.
 - Treat outings like "کافه با نینا" as SOCIAL unless a specific venue/time makes EVENT more appropriate.
 - Treat "عصر" as EVENING timeHint.
 - Treat "شب" as EVENING timeHint.
