@@ -26,6 +26,7 @@ import {
   resolvePlanTitle,
 } from "@/lib/plan-titles";
 import { touchPlan } from "@/lib/touch-plan";
+import { touchUserSeen } from "@/lib/user-activity";
 import { prisma } from "@/lib/prisma";
 
 const itemOrderBy = [
@@ -121,7 +122,7 @@ export async function getOrCreateDayPlan(
 
   const { start, end } = getDayRange(date);
 
-  return prisma.plan.create({
+  const plan = await prisma.plan.create({
     data: {
       userId,
       type: PlanTypeEnum.DAY,
@@ -134,6 +135,10 @@ export async function getOrCreateDayPlan(
       items: rootItemsInclude,
     },
   });
+
+  await touchUserSeen(userId);
+
+  return plan;
 }
 
 export async function getUpcomingDayPlans(userId: string) {
@@ -180,7 +185,7 @@ export async function getOrCreateWeekPlan(
 
   const { start, end } = getWeekRange(date);
 
-  return prisma.plan.create({
+  const plan = await prisma.plan.create({
     data: {
       userId,
       type: PlanTypeEnum.WEEK,
@@ -193,6 +198,10 @@ export async function getOrCreateWeekPlan(
       items: rootItemsInclude,
     },
   });
+
+  await touchUserSeen(userId);
+
+  return plan;
 }
 
 export async function getMonthPlan(userId: string, date: Date) {
@@ -312,15 +321,19 @@ export async function updatePlanTitle(
     plan.dateEnd,
   );
 
-  return prisma.plan.update({
+  const updated = await prisma.plan.update({
     where: { id: planId },
     data: { title: resolvedTitle },
     select: { id: true, title: true, type: true, dateStart: true },
   });
+
+  await touchUserSeen(userId);
+
+  return updated;
 }
 
 export async function createPlan(input: CreatePlanInput) {
-  return prisma.plan.create({
+  const plan = await prisma.plan.create({
     data: {
       userId: input.userId,
       type: input.type,
@@ -332,6 +345,10 @@ export async function createPlan(input: CreatePlanInput) {
       language: input.language,
     },
   });
+
+  await touchUserSeen(input.userId);
+
+  return plan;
 }
 
 export type CreatePlanItemInput = {
@@ -417,6 +434,7 @@ export async function createPlanItem(input: CreatePlanItemInput) {
   });
 
   await touchPlan(input.planId);
+  await touchUserSeen(input.userId);
 
   return item;
 }
@@ -445,6 +463,7 @@ export async function updatePlanItemStatus(input: UpdatePlanItemStatusInput) {
   });
 
   await touchPlan(item.planId);
+  await touchUserSeen(input.userId);
 
   return updated;
 }
@@ -492,6 +511,7 @@ export async function updatePlanItem(input: UpdatePlanItemInput) {
   });
 
   await touchPlan(item.planId);
+  await touchUserSeen(input.userId);
 
   return updated;
 }
@@ -504,6 +524,7 @@ export async function deletePlanItem(itemId: string, userId: string) {
   });
 
   await touchPlan(item.planId);
+  await touchUserSeen(userId);
 
   return deleted;
 }
@@ -519,6 +540,8 @@ export async function deletePlan(planId: string, userId: string) {
       where: { id: planId },
     }),
   ]);
+
+  await touchUserSeen(userId);
 
   return plan;
 }
@@ -557,4 +580,5 @@ export async function reorderPlanItems(
   );
 
   await touchPlan(planId);
+  await touchUserSeen(userId);
 }

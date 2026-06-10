@@ -5,6 +5,7 @@ import {
   OBSERVATION_CATEGORIES,
 } from "@/lib/observation-constants";
 import { touchPlan } from "@/lib/touch-plan";
+import { touchUserSeen } from "@/lib/user-activity";
 import { prisma } from "@/lib/prisma";
 
 export { MAX_OBSERVATION_LENGTH } from "@/lib/observation-constants";
@@ -160,6 +161,7 @@ export async function addPlanObservation(
   });
 
   await touchPlan(planId);
+  await touchUserSeen(userId);
 
   return {
     planId,
@@ -187,6 +189,7 @@ export async function updatePlanObservation(
   });
 
   await touchPlan(existing.planId);
+  await touchUserSeen(userId);
 
   return {
     planId: existing.planId,
@@ -205,6 +208,7 @@ export async function deletePlanObservation(
   });
 
   await touchPlan(existing.planId);
+  await touchUserSeen(userId);
 
   return { planId: existing.planId };
 }

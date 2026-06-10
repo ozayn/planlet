@@ -728,6 +728,7 @@ export async function removePlanShareAction(
 
   try {
     const planId = await removePlanShare(planShareId, userId);
+    await recordUserActivity(userId);
     revalidatePlanPaths(planId);
     return { success: true };
   } catch (error) {

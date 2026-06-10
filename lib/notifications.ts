@@ -5,6 +5,7 @@ import type {
 import { getKudosNotificationPhrase } from "@/lib/kudos-labels";
 import { sendPushToUser } from "@/lib/push";
 import { prisma } from "@/lib/prisma";
+import { touchUserSeen } from "@/lib/user-activity";
 
 export class NotificationAccessError extends Error {
   constructor(message: string) {
@@ -39,6 +40,8 @@ export async function markNotificationRead(
   if (result.count === 0) {
     throw new NotificationAccessError("Notification not found");
   }
+
+  await touchUserSeen(userId);
 }
 
 export async function markAllNotificationsRead(userId: string): Promise<void> {
@@ -46,6 +49,8 @@ export async function markAllNotificationsRead(userId: string): Promise<void> {
     where: { userId, readAt: null },
     data: { readAt: new Date() },
   });
+
+  await touchUserSeen(userId);
 }
 
 export async function createNotification(input: {

@@ -1,6 +1,7 @@
 import { isEmailAllowed } from "@/lib/auth-allowlist";
 import { createPlanSharedNotification } from "@/lib/notifications";
 import { touchPlan } from "@/lib/touch-plan";
+import { touchUserSeen } from "@/lib/user-activity";
 import { prisma } from "@/lib/prisma";
 
 export class PlanSharingError extends Error {
@@ -160,6 +161,7 @@ export async function sharePlanWithUser(
   }
 
   await touchPlan(planId);
+  await touchUserSeen(ownerId);
 
   return share;
 }
@@ -177,6 +179,8 @@ export async function removePlanShare(planShareId: string, ownerId: string) {
   await prisma.planShare.delete({
     where: { id: planShareId },
   });
+
+  await touchUserSeen(ownerId);
 
   return share.planId;
 }
