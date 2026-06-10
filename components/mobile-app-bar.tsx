@@ -38,7 +38,7 @@ export function MobileAppBar({
           <PlanletLogo size={28} />
         </Link>
 
-        <div className="flex items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <NotificationBell
             unreadCount={unreadNotificationCount}
             notifications={notifications}

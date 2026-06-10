@@ -72,6 +72,10 @@
   --font-farsi: var(--font-vazirmatn);
 }
 
+html {
+  scrollbar-gutter: stable;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
