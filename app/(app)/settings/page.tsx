@@ -45,7 +45,7 @@ export default async function SettingsPage() {
       <article className="ui-card-padded">
         <ThemeToggle variant="full" />
         <p className="mt-3 text-xs text-muted-light">
-          You can also change theme from the navigation bar.
+          You can also change this from the navigation bar.
         </p>
       </article>
 
