@@ -1,6 +1,12 @@
 import type { KudosType } from "@/app/generated/prisma/client";
 
-import { formatUserLabel, getKudosTypeLabel } from "@/lib/kudos-labels";
+import { UserAvatar } from "@/components/user-avatar";
+import {
+  formatUserLabel,
+  getKudosTypeShortLabel,
+} from "@/lib/kudos-labels";
+
+const MAX_VISIBLE_AVATARS = 3;
 
 export type PlanKudosEntry = {
   id: string;
@@ -8,6 +14,7 @@ export type PlanKudosEntry = {
   sender: {
     name: string | null;
     email: string | null;
+    image: string | null;
   };
 };
 
@@ -15,36 +22,73 @@ type PlanKudosSummaryProps = {
   kudos: PlanKudosEntry[];
 };
 
+function kudosCountLabel(count: number): string {
+  return count === 1 ? "Kudos from 1 person" : `Kudos from ${count} people`;
+}
+
+function senderKudosLabel(
+  sender: PlanKudosEntry["sender"],
+  type: KudosType,
+): string {
+  const name = formatUserLabel(sender);
+  return `${name} sent kudos: ${getKudosTypeShortLabel(type)}`;
+}
+
 export function PlanKudosSummary({ kudos }: PlanKudosSummaryProps) {
   if (kudos.length === 0) {
     return null;
   }
 
-  const countLabel =
-    kudos.length === 1
-      ? "Kudos from 1 person"
-      : `Kudos from ${kudos.length} people`;
+  const visible = kudos.slice(0, MAX_VISIBLE_AVATARS);
+  const overflow = kudos.length - visible.length;
+  const groupLabel = kudosCountLabel(kudos.length);
 
   return (
-    <details className="rounded-xl border border-border-soft bg-surface-muted/25">
-      <summary className="cursor-pointer list-none px-3 py-2.5 text-sm text-muted marker:content-none [&::-webkit-details-marker]:hidden">
-        <span className="inline-flex items-center gap-2">
-          <KudosSparkIcon className="h-3.5 w-3.5 text-muted-light" />
-          {countLabel}
-        </span>
-      </summary>
-      <ul className="space-y-1.5 border-t border-border-soft px-3 py-2.5">
-        {kudos.map((entry) => (
-          <li key={entry.id} className="text-sm text-muted">
-            <span className="font-medium text-foreground">
-              {formatUserLabel(entry.sender)}
+    <div className="flex items-center gap-2 py-0.5">
+      <KudosSparkIcon className="h-3.5 w-3.5 shrink-0 text-muted-light" />
+      <div
+        className="flex min-w-0 items-center gap-2"
+        aria-label={groupLabel}
+        role="group"
+      >
+        <div className="flex items-center">
+          {visible.map((entry, index) => (
+            <span
+              key={entry.id}
+              title={senderKudosLabel(entry.sender, entry.type)}
+              aria-label={senderKudosLabel(entry.sender, entry.type)}
+              className={`relative inline-flex rounded-full ring-2 ring-surface ${
+                index > 0 ? "-ms-2" : ""
+              }`}
+            >
+              <UserAvatar
+                name={entry.sender.name}
+                email={entry.sender.email}
+                image={entry.sender.image}
+                size="xs"
+              />
             </span>
-            <span aria-hidden="true"> · </span>
-            <span>{getKudosTypeLabel(entry.type)}</span>
-          </li>
-        ))}
-      </ul>
-    </details>
+          ))}
+          {overflow > 0 ? (
+            <span
+              title={kudos
+                .slice(MAX_VISIBLE_AVATARS)
+                .map((entry) => senderKudosLabel(entry.sender, entry.type))
+                .join(", ")}
+              aria-label={
+                overflow === 1
+                  ? "1 more person sent kudos"
+                  : `${overflow} more people sent kudos`
+              }
+              className="relative -ms-2 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border-soft bg-accent-cream text-[0.625rem] font-medium text-muted"
+            >
+              +{overflow}
+            </span>
+          ) : null}
+        </div>
+        <span className="text-xs text-muted-light">sent kudos</span>
+      </div>
+    </div>
   );
 }
 

@@ -4,10 +4,11 @@ type UserAvatarProps = {
   name?: string | null;
   email?: string | null;
   image?: string | null;
-  size?: "sm" | "md";
+  size?: "xs" | "sm" | "md";
 };
 
 const sizeClasses = {
+  xs: "h-7 w-7 text-[0.625rem]",
   sm: "h-8 w-8 text-xs",
   md: "h-10 w-10 text-sm",
 } as const;

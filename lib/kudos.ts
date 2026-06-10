@@ -64,7 +64,9 @@ export async function getKudosForPlan(planId: string, viewerId: string) {
   return prisma.planKudos.findMany({
     where: { planId },
     include: {
-      sender: { select: { id: true, name: true, email: true } },
+      sender: {
+        select: { id: true, name: true, email: true, image: true },
+      },
     },
     orderBy: { createdAt: "asc" },
   });
