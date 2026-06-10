@@ -29,6 +29,11 @@ export function ShareWithUserPanel({ planId, shares }: ShareWithUserPanelProps) 
   const [isSharing, startShare] = useTransition();
   const [removingId, setRemovingId] = useState<string | null>(null);
 
+  const shareCountLabel =
+    shares.length === 1
+      ? "Shared with 1 person"
+      : `Shared with ${shares.length} people`;
+
   function handleShare() {
     setError(null);
 
@@ -63,78 +68,143 @@ export function ShareWithUserPanel({ planId, shares }: ShareWithUserPanelProps) 
   }
 
   return (
-    <section className="ui-card-padded space-y-4">
-      <div className="space-y-1.5">
-        <h3 className="ui-section-title">Share inside Planlet</h3>
-        <p className="text-sm text-muted">
-          Give another Planlet user read-only access to this plan.
-        </p>
-        <p className="text-xs text-muted-light">
-          You can edit and share. Shared users can view only.
-        </p>
-      </div>
+    <details className="ui-share-disclosure group">
+      <summary className="ui-share-disclosure-summary">
+        <span className="min-w-0 flex-1">
+          <span className="text-sm font-medium text-foreground">
+            Share inside Planlet
+          </span>
+          {shares.length > 0 ? (
+            <span className="mt-0.5 block text-xs text-muted sm:mt-0 sm:inline sm:before:content-['·'] sm:before:mx-1.5">
+              {shareCountLabel}
+            </span>
+          ) : null}
+        </span>
+        <span className="flex shrink-0 items-center gap-1.5 text-muted">
+          <UserPlusIcon className="h-4 w-4" aria-hidden="true" />
+          <ChevronIcon className="h-4 w-4 transition-transform duration-200 group-open:rotate-180" />
+        </span>
+      </summary>
 
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <input
-          type="email"
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          placeholder="friend@example.com"
-          className="ui-input ui-input-compact min-h-10 flex-1"
-          aria-label="Planlet user email"
-        />
-        <button
-          type="button"
-          disabled={isSharing || !email.trim()}
-          onClick={handleShare}
-          className="ui-btn-secondary ui-btn-compact min-h-10 shrink-0"
-        >
-          {isSharing ? "Sharing…" : "Share"}
-        </button>
-      </div>
-
-      {error ? (
-        <p className="text-sm text-accent-red" role="alert">
-          {error}
+      <div className="ui-share-disclosure-body">
+        <p className="text-xs text-muted">
+          Give read-only access to another Planlet user.
         </p>
-      ) : null}
 
-      <div className="border-t border-border-soft pt-4">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+          <input
+            type="email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            placeholder="user@example.com"
+            className="ui-input ui-input-compact min-h-10 flex-1"
+            aria-label="Planlet user email"
+          />
+          <button
+            type="button"
+            disabled={isSharing || !email.trim()}
+            onClick={handleShare}
+            className="ui-btn-secondary ui-btn-compact min-h-10 shrink-0 sm:min-w-20"
+          >
+            {isSharing ? "Sharing…" : "Share"}
+          </button>
+        </div>
+
+        {error ? (
+          <p className="text-xs text-accent-red" role="alert">
+            {error}
+          </p>
+        ) : null}
+
         {shares.length > 0 ? (
-          <ul className="space-y-2">
+          <ul className="divide-y divide-border-soft">
             {shares.map((share) => (
-              <li
+              <SharedUserRow
                 key={share.id}
-                className="flex min-h-10 items-center justify-between gap-3 rounded-xl bg-accent-cream/40 px-3 py-2"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm text-foreground" dir="auto">
-                    {share.sharedWithUser.name ?? share.sharedWithUser.email}
-                  </p>
-                  {share.sharedWithUser.name && share.sharedWithUser.email ? (
-                    <p className="truncate text-xs text-muted" dir="auto">
-                      {share.sharedWithUser.email}
-                    </p>
-                  ) : null}
-                  <p className="text-xs text-muted-light">Read-only</p>
-                </div>
-                <button
-                  type="button"
-                  disabled={removingId === share.id || isSharing}
-                  onClick={() => handleRemove(share.id)}
-                  className="ui-btn-ghost shrink-0"
-                >
-                  {removingId === share.id ? "Removing…" : "Remove"}
-                </button>
-              </li>
+                share={share}
+                disabled={removingId === share.id || isSharing}
+                isRemoving={removingId === share.id}
+                onRemove={() => handleRemove(share.id)}
+              />
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-muted-light">
-            Not shared with anyone yet.
-          </p>
+          <p className="text-xs text-muted-light">Not shared yet.</p>
         )}
       </div>
-    </section>
+    </details>
+  );
+}
+
+function SharedUserRow({
+  share,
+  disabled,
+  isRemoving,
+  onRemove,
+}: {
+  share: PlanShareEntry;
+  disabled: boolean;
+  isRemoving: boolean;
+  onRemove: () => void;
+}) {
+  const { name, email } = share.sharedWithUser;
+
+  return (
+    <li className="flex items-start justify-between gap-3 py-2.5">
+      <div className="min-w-0 flex-1">
+        {name ? (
+          <p className="truncate text-sm text-foreground sm:hidden" dir="auto">
+            {name}
+          </p>
+        ) : null}
+        <p className="truncate text-xs text-muted sm:text-sm" dir="auto">
+          <span className="hidden text-foreground sm:inline">
+            {name ? `${name} · ` : ""}
+          </span>
+          {email ?? name}
+          <span className="text-muted-light"> · Read-only</span>
+        </p>
+      </div>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={onRemove}
+        className="ui-action-link min-h-10 shrink-0 px-1"
+      >
+        {isRemoving ? "Removing…" : "Remove"}
+      </button>
+    </li>
+  );
+}
+
+function UserPlusIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth={1.75}
+      stroke="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M19 8v6M22 11h-6" />
+    </svg>
+  );
+}
+
+function ChevronIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth={1.75}
+      stroke="currentColor"
+      aria-hidden="true"
+    >
+      <path d="m6 9 6 6 6-6" />
+    </svg>
   );
 }

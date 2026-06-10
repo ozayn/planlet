@@ -1,6 +1,7 @@
 "use client";
 
 import { AddItemForm } from "@/components/plans/add-item-form";
+import { OpenFullPlanShareLink } from "@/components/plans/open-full-plan-share-link";
 import { SortablePlanItemList } from "@/components/plans/sortable-plan-item-list";
 import { SharePlanPanel } from "@/components/plans/share-plan-panel";
 import { ShareWithUserPanel } from "@/components/plans/share-with-user-panel";
@@ -21,6 +22,7 @@ type PlanEditorProps = {
   plan: SerializedPlan;
   showMeta?: boolean;
   showCopyExport?: boolean;
+  fullPlanHref?: string;
   showPlatformShare?: boolean;
   platformShares?: PlanShareEntry[];
 };
@@ -29,6 +31,7 @@ export function PlanEditor({
   plan,
   showMeta = true,
   showCopyExport = false,
+  fullPlanHref,
   showPlatformShare = false,
   platformShares = [],
 }: PlanEditorProps) {
@@ -36,8 +39,16 @@ export function PlanEditor({
   const dateEnd = new Date(plan.dateEnd);
   const itemCount = plan.items.length;
 
+  const exportActions =
+    showCopyExport || fullPlanHref ? (
+      <div className="flex shrink-0 items-center gap-2">
+        {showCopyExport ? <SharePlanPanel plan={plan} /> : null}
+        {fullPlanHref ? <OpenFullPlanShareLink href={fullPlanHref} /> : null}
+      </div>
+    ) : null;
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {showMeta ? (
         <header className="space-y-3">
           <div className="flex items-start justify-between gap-3">
@@ -56,7 +67,7 @@ export function PlanEditor({
                   : ""}
               </p>
             </div>
-            {showCopyExport ? <SharePlanPanel plan={plan} /> : null}
+            {exportActions}
           </div>
           {plan.summary ? (
             <p className="text-sm leading-relaxed text-muted" dir="auto">
@@ -72,7 +83,7 @@ export function PlanEditor({
               ? ` · ${itemCount} item${itemCount === 1 ? "" : "s"}`
               : ""}
           </p>
-          {showCopyExport ? <SharePlanPanel plan={plan} /> : null}
+          {exportActions}
         </header>
       )}
 

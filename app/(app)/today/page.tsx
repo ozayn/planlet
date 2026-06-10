@@ -41,12 +41,8 @@ export default async function TodayPage() {
             plan={serializePlan(plan)}
             showMeta={false}
             showCopyExport
+            fullPlanHref={`/plans/${plan.id}`}
           />
-          <p className="text-sm">
-            <Link href={`/plans/${plan.id}`} className="ui-text-link">
-              Open full plan to share inside Planlet
-            </Link>
-          </p>
         </div>
       ) : (
         <div className="space-y-6">
