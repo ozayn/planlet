@@ -89,20 +89,12 @@ export function SharePlanPanel({ plan }: SharePlanPanelProps) {
         onClick={openPanel}
         aria-label={COPY_ARIA_LABEL}
         title={COPY_TOOLTIP}
-        className="ui-icon-action md:hidden"
+        className="ui-icon-action"
       >
         <ClipboardCopyIcon className="h-4 w-4" aria-hidden="true" />
         <span className="ui-tooltip-bubble" role="tooltip">
           {COPY_TOOLTIP}
         </span>
-      </button>
-
-      <button
-        type="button"
-        onClick={openPanel}
-        className="ui-btn-secondary hidden min-h-10 md:inline-flex"
-      >
-        Copy as text
       </button>
 
       <SimpleSheet
