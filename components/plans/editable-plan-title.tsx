@@ -1,23 +1,29 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 
 import { updatePlanTitleAction } from "@/app/(app)/plans/actions";
+import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 import { MAX_PLAN_TITLE_LENGTH } from "@/lib/plan-titles";
 
 type EditablePlanTitleProps = {
   planId: string;
   title: string;
   className?: string;
+  canEdit?: boolean;
+  editRequestSignal?: number;
 };
 
 export function EditablePlanTitle({
   planId,
   title: initialTitle,
   className = "text-xl font-semibold tracking-tight text-foreground",
+  canEdit = true,
+  editRequestSignal = 0,
 }: EditablePlanTitleProps) {
   const router = useRouter();
+  const inputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState(initialTitle);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(initialTitle);
@@ -26,14 +32,32 @@ export function EditablePlanTitle({
 
   useEffect(() => {
     setTitle(initialTitle);
-    setDraft(initialTitle);
-  }, [initialTitle]);
+    if (!editing) {
+      setDraft(initialTitle);
+    }
+  }, [initialTitle, editing]);
 
   function startEdit() {
+    if (!canEdit) return;
     setDraft(title);
     setError(null);
     setEditing(true);
   }
+
+  useEffect(() => {
+    if (editRequestSignal > 0 && canEdit) {
+      setDraft(title);
+      setError(null);
+      setEditing(true);
+    }
+  }, [editRequestSignal, canEdit, title]);
+
+  useEffect(() => {
+    if (editing) {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
+  }, [editing]);
 
   function cancelEdit() {
     setDraft(title);
@@ -42,6 +66,13 @@ export function EditablePlanTitle({
   }
 
   function saveTitle() {
+    if (!canEdit) return;
+
+    if (draft.trim() === title.trim()) {
+      cancelEdit();
+      return;
+    }
+
     setError(null);
 
     startSave(async () => {
@@ -59,15 +90,26 @@ export function EditablePlanTitle({
     });
   }
 
+  if (!canEdit) {
+    return (
+      <h2 className={`min-w-0 ${className}`} dir="auto">
+        {title}
+      </h2>
+    );
+  }
+
   if (editing) {
     return (
-      <div className="space-y-2">
+      <div className="min-w-0 space-y-1">
         <input
-          id={`plan-title-${planId}`}
-          name={`planTitle-${planId}`}
+          ref={inputRef}
+          id="plan-title"
+          name="planTitle"
           type="text"
           value={draft}
+          disabled={isSaving}
           onChange={(event) => setDraft(event.target.value)}
+          onBlur={saveTitle}
           onKeyDown={(event) => {
             if (event.key === "Enter") {
               event.preventDefault();
@@ -80,45 +122,26 @@ export function EditablePlanTitle({
           }}
           maxLength={MAX_PLAN_TITLE_LENGTH}
           dir="auto"
-          autoFocus
-          className="ui-input w-full py-2 text-lg font-semibold"
+          {...passwordManagerSafeControlProps}
+          className={`ui-input ui-click-to-edit-input w-full ${className}`}
           aria-label="Plan title"
         />
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={saveTitle}
-            disabled={isSaving}
-            className="ui-btn-secondary ui-btn-compact min-h-8 px-3 text-xs"
-          >
-            Save
-          </button>
-          <button
-            type="button"
-            onClick={cancelEdit}
-            className="ui-btn-ghost ui-btn-compact min-h-8 px-3 text-xs"
-          >
-            Cancel
-          </button>
-        </div>
         {error ? <p className="text-sm text-accent-red">{error}</p> : null}
       </div>
     );
   }
 
   return (
-    <div className="flex items-start gap-2">
-      <h2 className={`min-w-0 flex-1 ${className}`} dir="auto">
-        {title}
-      </h2>
-      <button
-        type="button"
-        onClick={startEdit}
-        className="ui-btn-ghost mt-0.5 min-h-8 shrink-0 px-2 text-xs text-muted-light"
-        aria-label="Edit plan title"
-      >
-        Edit
-      </button>
-    </div>
+    <button
+      type="button"
+      onClick={startEdit}
+      {...passwordManagerSafeControlProps}
+      className={`ui-click-to-edit block w-full min-w-0 text-start ${className}`}
+      dir="auto"
+      title="Click to edit title"
+      aria-label={`Plan title: ${title}. Click to edit.`}
+    >
+      {title}
+    </button>
   );
 }

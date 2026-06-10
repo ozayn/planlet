@@ -15,6 +15,7 @@ import { SimpleSheet } from "@/components/ui/simple-sheet";
 import { UserAvatar } from "@/components/user-avatar";
 import { APP_TIMEZONE } from "@/config/time";
 import { MAX_ITEM_COMMENT_LENGTH } from "@/lib/item-comment-constants";
+import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 
 type ItemCommentsPanelProps = {
   itemId: string;
@@ -123,6 +124,7 @@ export function ItemCommentsPanel({
             <textarea
               id={`comment-${itemId}`}
               name={`comment-${itemId}`}
+              {...passwordManagerSafeControlProps}
               value={body}
               dir="auto"
               rows={2}
@@ -141,6 +143,7 @@ export function ItemCommentsPanel({
             type="button"
             disabled={isSubmitting || !body.trim()}
             onClick={handleAddComment}
+            {...passwordManagerSafeControlProps}
             className="ui-btn-primary w-full disabled:opacity-50"
           >
             {isSubmitting ? "Adding…" : "Add comment"}
@@ -189,6 +192,7 @@ export function ItemCommentsPanel({
                           type="button"
                           onClick={() => handleDelete(comment.id)}
                           disabled={deletingId === comment.id}
+                          {...passwordManagerSafeControlProps}
                           className="ui-btn-ghost min-h-10 min-w-10 px-2 text-xs"
                           aria-label="Delete comment"
                         >

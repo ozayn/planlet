@@ -8,6 +8,10 @@ import { PageHeader } from "@/components/page-header";
 import { getKudosForPlan } from "@/lib/kudos";
 import { formatDateString } from "@/lib/dates";
 import { getObservationsForPlan } from "@/lib/observations";
+import {
+  getPlanSharesForOwner,
+  getRecentShareRecipients,
+} from "@/lib/plan-sharing";
 import { getTodayPlan } from "@/lib/plans";
 import { serializePlan } from "@/lib/plan-serialize";
 import { getPlanItemViewForUser } from "@/lib/user-preferences";
@@ -24,12 +28,14 @@ export default async function TodayPage() {
     getTodayPlan(userId),
     getPlanItemViewForUser(userId),
   ]);
-  const [kudos, observations] = plan
+  const [kudos, observations, platformShares, recentShareRecipients] = plan
     ? await Promise.all([
         getKudosForPlan(plan.id, userId),
         getObservationsForPlan(plan.id, userId),
+        getPlanSharesForOwner(plan.id, userId),
+        getRecentShareRecipients(userId, plan.id),
       ])
-    : [[], undefined];
+    : [[], undefined, [], []];
   const firstName = session.user?.name?.split(" ")[0];
   const todayDate = formatDateString(new Date());
 
@@ -39,9 +45,11 @@ export default async function TodayPage() {
         title={firstName ? `Today, ${firstName}` : "Today"}
         subtitle="What matters right now."
         action={
-          <Link href="/plans/new" className="ui-text-link">
-            New plan
-          </Link>
+          plan ? (
+            <Link href="/plans/new" className="ui-text-link">
+              New plan
+            </Link>
+          ) : undefined
         }
       />
 
@@ -53,9 +61,11 @@ export default async function TodayPage() {
             plan={serializePlan(plan)}
             showMeta={false}
             showCopyExport
+            showPlatformShare
+            platformShares={platformShares}
+            recentShareRecipients={recentShareRecipients}
             showDeletePlan
             deleteRedirectTo="/today"
-            fullPlanHref={`/plans/${plan.id}`}
             kudos={kudos.map((entry) => ({
               id: entry.id,
               type: entry.type,

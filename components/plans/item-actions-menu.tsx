@@ -6,6 +6,13 @@ import { useEffect, useId, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 
 import { deletePlanItemAction } from "@/app/(app)/plans/actions";
+import {
+  AddSubtaskIcon,
+  CommentIcon,
+  EditItemIcon,
+  StickyNoteIcon,
+  TrashIcon,
+} from "@/components/plans/item-action-icons";
 import { getItemActionLabels } from "@/components/plans/item-action-labels";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
@@ -16,6 +23,7 @@ type ItemActionsMenuProps = {
   itemType: PlanItemType;
   isSubtask?: boolean;
   canEdit?: boolean;
+  visibleActionsAreShown?: boolean;
   onEdit: () => void;
   onAddSubtask?: () => void;
   onTaskNote?: () => void;
@@ -29,6 +37,7 @@ export function ItemActionsMenu({
   itemType,
   isSubtask = false,
   canEdit = true,
+  visibleActionsAreShown = false,
   onEdit,
   onAddSubtask,
   onTaskNote,
@@ -57,7 +66,7 @@ export function ItemActionsMenu({
     function updatePosition() {
       if (!triggerRef.current) return;
       const rect = triggerRef.current.getBoundingClientRect();
-      const menuWidth = 176;
+      const menuWidth = 168;
       setMenuPosition({
         top: rect.bottom + 4,
         left: Math.max(8, rect.right - menuWidth),
@@ -129,19 +138,29 @@ export function ItemActionsMenu({
     });
   }
 
-  const showEdit = canEdit;
-  const showAddSubtask = canEdit && !isSubtask && onAddSubtask;
-  const showTaskNote = canEdit && onTaskNote;
-  const showComments = Boolean(onComments);
-  const showDelete = canEdit;
+  const overflowOnly = visibleActionsAreShown;
+
+  const menuShowsEdit = canEdit && !overflowOnly;
+  const menuShowsAddSubtask =
+    canEdit && !isSubtask && Boolean(onAddSubtask) && !overflowOnly;
+  const menuShowsTaskNote = canEdit && Boolean(onTaskNote) && !overflowOnly;
+  const menuShowsComments = Boolean(onComments) && !overflowOnly;
+  const menuShowsDelete = canEdit;
+
+  const hasMenuItems =
+    menuShowsEdit ||
+    menuShowsAddSubtask ||
+    menuShowsTaskNote ||
+    menuShowsComments ||
+    menuShowsDelete;
 
   const menu =
-    menuOpen && mounted
+    menuOpen && mounted && hasMenuItems
       ? createPortal(
           <div
             id={menuId}
             role="menu"
-            aria-label={labels.more}
+            aria-label="Item actions"
             className="ui-shadow-elevated fixed z-[70] max-h-[min(20rem,calc(100dvh-1rem))] overflow-y-auto rounded-xl border border-border-soft bg-surface py-1"
             style={{
               top: menuPosition.top,
@@ -149,64 +168,84 @@ export function ItemActionsMenu({
               width: menuPosition.width,
             }}
           >
-            {showEdit ? (
+            {menuShowsEdit ? (
               <button
                 type="button"
                 role="menuitem"
+                aria-label={labels.edit}
+                {...passwordManagerSafeControlProps}
                 onClick={() => runAction(onEdit)}
-                className="flex min-h-10 w-full items-center px-3 text-left text-sm text-foreground transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none"
+                className="flex min-h-10 w-full items-center gap-2.5 px-3 text-left text-sm text-foreground transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none"
               >
-                {labels.edit}
+                <EditItemIcon className="h-4 w-4 shrink-0 text-muted" />
+                <span>Edit</span>
               </button>
             ) : null}
-            {showAddSubtask ? (
+            {menuShowsAddSubtask ? (
               <button
                 type="button"
                 role="menuitem"
-                onClick={() => runAction(onAddSubtask)}
-                className="ui-item-menu-mobile-only flex min-h-10 w-full items-center px-3 text-left text-sm text-foreground transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none"
+                aria-label="Add subtask"
+                {...passwordManagerSafeControlProps}
+                onClick={() => runAction(onAddSubtask!)}
+                className="flex min-h-10 w-full items-center gap-2.5 px-3 text-left text-sm text-foreground transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none"
               >
-                Add subtask
+                <AddSubtaskIcon className="h-4 w-4 shrink-0 text-muted" />
+                <span>Subtask</span>
               </button>
             ) : null}
-            {showTaskNote ? (
+            {menuShowsTaskNote ? (
               <button
                 type="button"
                 role="menuitem"
-                onClick={() => runAction(onTaskNote)}
-                className="ui-item-menu-mobile-only flex min-h-10 w-full items-center px-3 text-left text-sm text-foreground transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none"
+                aria-label="Task note"
+                {...passwordManagerSafeControlProps}
+                onClick={() => runAction(onTaskNote!)}
+                className="flex min-h-10 w-full items-center gap-2.5 px-3 text-left text-sm text-foreground transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none"
               >
-                Task note
+                <StickyNoteIcon className="h-4 w-4 shrink-0 text-muted" />
+                <span>Note</span>
               </button>
             ) : null}
-            {showComments ? (
+            {menuShowsComments ? (
               <button
                 type="button"
                 role="menuitem"
+                aria-label="Comments"
+                {...passwordManagerSafeControlProps}
                 onClick={() => onComments && runAction(onComments)}
-                className="ui-item-menu-mobile-only flex min-h-10 w-full items-center justify-between gap-2 px-3 text-left text-sm text-foreground transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none"
+                className="flex min-h-10 w-full items-center justify-between gap-2 px-3 text-left text-sm text-foreground transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none"
               >
-                <span>Comments</span>
+                <span className="flex items-center gap-2.5">
+                  <CommentIcon className="h-4 w-4 shrink-0 text-muted" />
+                  <span>Comments</span>
+                </span>
                 {commentCount > 0 ? (
                   <span className="text-xs text-muted">{commentCount}</span>
                 ) : null}
               </button>
             ) : null}
-            {showDelete ? (
+            {menuShowsDelete ? (
               <button
                 type="button"
                 role="menuitem"
                 aria-label={labels.delete}
+                {...passwordManagerSafeControlProps}
                 onClick={openConfirm}
-                className="flex min-h-10 w-full items-center px-3 text-left text-sm text-accent-red transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none"
+                className="flex min-h-10 w-full items-center gap-2.5 px-3 text-left text-sm text-accent-red transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none"
               >
-                {labels.delete}
+                <TrashIcon className="h-4 w-4 shrink-0" />
+                <span>Delete</span>
               </button>
             ) : null}
           </div>,
           document.body,
         )
       : null;
+
+  if (!hasMenuItems) {
+    return null;
+  }
 
   return (
     <>
@@ -218,7 +257,7 @@ export function ItemActionsMenu({
           aria-expanded={menuOpen}
           aria-haspopup="menu"
           aria-controls={menuOpen ? menuId : undefined}
-          aria-label={labels.more}
+          aria-label="More item actions"
           title="More"
           onClick={toggleMenu}
           onPointerDown={(event) => event.stopPropagation()}
@@ -233,7 +272,7 @@ export function ItemActionsMenu({
 
       {menu}
 
-      {showDelete ? (
+      {menuShowsDelete ? (
         <ConfirmDialog
           open={confirmOpen}
           title={labels.deleteTitle}

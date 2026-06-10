@@ -20,6 +20,7 @@ import {
   PRIORITY_LEVEL_LABELS,
   TIME_HINT_LABELS,
 } from "@/lib/plan-labels";
+import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 import { getStatusLabel } from "@/lib/plan-status";
 import type { SerializedPlanItem } from "@/lib/plan-serialize";
 
@@ -193,6 +194,7 @@ export function ItemDetailsSheet({
             type="button"
             disabled={isPending}
             onClick={handleCancel}
+            {...passwordManagerSafeControlProps}
             className="ui-btn-secondary flex-1"
           >
             Cancel
@@ -201,6 +203,7 @@ export function ItemDetailsSheet({
             type="button"
             disabled={isPending || !form.title.trim()}
             onClick={handleSave}
+            {...passwordManagerSafeControlProps}
             className="ui-btn-primary flex-1 disabled:opacity-50"
           >
             {isPending ? "Saving…" : "Save changes"}
@@ -214,6 +217,7 @@ export function ItemDetailsSheet({
             <textarea
               id={titleFieldId}
               name={`itemTitle-${item.id}`}
+              {...passwordManagerSafeControlProps}
               value={form.title}
               dir="auto"
               rows={4}
@@ -230,6 +234,7 @@ export function ItemDetailsSheet({
               id={titleFieldId}
               name={`itemTitle-${item.id}`}
               type="text"
+              {...passwordManagerSafeControlProps}
               value={form.title}
               dir="auto"
               onChange={(event) =>
@@ -247,6 +252,7 @@ export function ItemDetailsSheet({
           <select
             id={typeFieldId}
             name={`itemType-${item.id}`}
+            {...passwordManagerSafeControlProps}
             value={form.type}
             onChange={(event) =>
               setForm((current) => ({
@@ -276,6 +282,7 @@ export function ItemDetailsSheet({
               <select
                 id={statusFieldId}
                 name={`itemStatus-${item.id}`}
+                {...passwordManagerSafeControlProps}
                 value={form.status}
                 onChange={(event) =>
                   setForm((current) => ({
@@ -297,6 +304,7 @@ export function ItemDetailsSheet({
               <select
                 id={progressFieldId}
                 name={`itemProgress-${item.id}`}
+                {...passwordManagerSafeControlProps}
                 value={form.progressLevel}
                 aria-label="Progress"
                 onChange={(event) =>
@@ -398,6 +406,7 @@ export function ItemDetailsSheet({
                     id={durationFieldId}
                     name={`itemDuration-${item.id}`}
                     type="number"
+                    {...passwordManagerSafeControlProps}
                     min={0}
                     value={form.durationMinutes}
                     onChange={(event) =>
@@ -423,6 +432,7 @@ export function ItemDetailsSheet({
               id={shareableFieldId}
               name={`itemShareable-${item.id}`}
               type="checkbox"
+              {...passwordManagerSafeControlProps}
               checked={form.shareable}
               onChange={(event) =>
                 setForm((current) => ({
@@ -441,6 +451,7 @@ export function ItemDetailsSheet({
             <textarea
               id={commentFieldId}
               name={`taskNote-${item.id}`}
+              {...passwordManagerSafeControlProps}
               value={form.comment}
               dir="auto"
               rows={3}
@@ -514,6 +525,7 @@ function EnumField({
       <select
         id={fieldId}
         name={fieldId}
+        {...passwordManagerSafeControlProps}
         value={value}
         onChange={(event) => onChange(event.target.value)}
         className="ui-input min-h-12 py-3"

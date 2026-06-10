@@ -1,23 +1,20 @@
 "use client";
 
-import Link from "next/link";
+import { useRef, useState } from "react";
 import type { PlanItemView } from "@/app/generated/prisma/client";
 
 import { AddItemForm } from "@/components/plans/add-item-form";
 import { EditablePlanTitle } from "@/components/plans/editable-plan-title";
-import { DeletePlanMenu } from "@/components/plans/delete-plan-menu";
-import { OpenFullPlanShareLink } from "@/components/plans/open-full-plan-share-link";
+import { PlanHeaderActions } from "@/components/plans/plan-header-actions";
+import { PlanMetadata } from "@/components/plans/plan-metadata";
 import { PlanItemSections } from "@/components/plans/plan-item-sections";
 import {
   PlanKudosSummary,
   type PlanKudosEntry,
 } from "@/components/plans/plan-kudos-summary";
 import { PrivateObservationsSection } from "@/components/plans/private-observations-section";
-import { SharePlanPanel } from "@/components/plans/share-plan-panel";
 import { ShareWithUserPanel } from "@/components/plans/share-with-user-panel";
-import { formatPlanCardDate } from "@/lib/dates";
 import { formatPlanActivityLabel } from "@/lib/plan-activity";
-import { getPlanTypeLabel } from "@/lib/plan-labels";
 import type { SerializedObservation } from "@/lib/observations";
 import type { SerializedPlan } from "@/lib/plan-serialize";
 import type { RecentShareRecipient } from "@/lib/plan-sharing";
@@ -35,7 +32,6 @@ type PlanEditorProps = {
   plan: SerializedPlan;
   showMeta?: boolean;
   showCopyExport?: boolean;
-  fullPlanHref?: string;
   showPlatformShare?: boolean;
   platformShares?: PlanShareEntry[];
   recentShareRecipients?: RecentShareRecipient[];
@@ -46,13 +42,14 @@ type PlanEditorProps = {
   periodSummaryHref?: string;
   periodSummaryLabel?: string;
   observations?: SerializedObservation[];
+  canEdit?: boolean;
 };
 
 export function PlanEditor({
   plan,
   showMeta = true,
+  canEdit = true,
   showCopyExport = false,
-  fullPlanHref,
   showPlatformShare = false,
   platformShares = [],
   recentShareRecipients = [],
@@ -68,45 +65,59 @@ export function PlanEditor({
   const dateEnd = new Date(plan.dateEnd);
   const itemCount = plan.items.length;
   const activityAt = new Date(plan.updatedAt);
-  const activityLabel = formatPlanActivityLabel(activityAt);
+  const sharePanelRef = useRef<HTMLDivElement>(null);
+  const [shareOpen, setShareOpen] = useState(false);
 
-  const headerActions =
-    showCopyExport ||
-    fullPlanHref ||
-    showDeletePlan ||
-    periodSummaryHref ? (
-      <div className="flex shrink-0 items-center gap-1">
-        {periodSummaryHref ? (
-          <Link href={periodSummaryHref} className="ui-text-link text-sm">
-            {periodSummaryLabel ?? "Summary"}
-          </Link>
-        ) : null}
-        {showCopyExport ? <SharePlanPanel plan={plan} /> : null}
-        {fullPlanHref ? <OpenFullPlanShareLink href={fullPlanHref} /> : null}
-        {showDeletePlan ? (
-          <DeletePlanMenu
-            planId={plan.id}
-            redirectTo={deleteRedirectTo}
-          />
-        ) : null}
-      </div>
-    ) : null;
+  const headerActions = (
+    <PlanHeaderActions
+      plan={plan}
+      showCopyExport={showCopyExport}
+      showPlatformShare={showPlatformShare}
+      shareOpen={shareOpen}
+      onShareToggle={() => {
+        setShareOpen((current) => {
+          const next = !current;
+          if (next) {
+            requestAnimationFrame(() => {
+              sharePanelRef.current?.scrollIntoView({
+                behavior: "smooth",
+                block: "nearest",
+              });
+            });
+          }
+          return next;
+        });
+      }}
+      showDeletePlan={showDeletePlan}
+      deleteRedirectTo={deleteRedirectTo}
+      periodSummaryHref={periodSummaryHref}
+      periodSummaryLabel={periodSummaryLabel}
+    />
+  );
+
+  const metadata = (
+    <PlanMetadata
+      type={plan.type}
+      dateStart={dateStart}
+      dateEnd={dateEnd}
+      itemCount={itemCount}
+      activityLabel={formatPlanActivityLabel(activityAt)}
+      compact={!showMeta}
+    />
+  );
 
   return (
     <div className="ui-plan-editor space-y-6">
       {showMeta ? (
         <header className="ui-plan-editor-header space-y-3">
           <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 space-y-1.5">
-              <EditablePlanTitle planId={plan.id} title={plan.title} />
-              <p className="text-sm text-muted">
-                {getPlanTypeLabel(plan.type)} ·{" "}
-                {formatPlanCardDate({ type: plan.type, dateStart, dateEnd })}
-                {itemCount > 0
-                  ? ` · ${itemCount} item${itemCount === 1 ? "" : "s"}`
-                  : ""}{" "}
-                · {activityLabel}
-              </p>
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <EditablePlanTitle
+                planId={plan.id}
+                title={plan.title}
+                canEdit={canEdit}
+              />
+              {metadata}
             </div>
             {headerActions}
           </div>
@@ -117,27 +128,29 @@ export function PlanEditor({
           ) : null}
         </header>
       ) : (
-        <header className="ui-plan-editor-header space-y-3">
-          <EditablePlanTitle planId={plan.id} title={plan.title} />
+        <header className="ui-plan-editor-header space-y-2">
           <div className="flex items-start justify-between gap-3">
-          <p className="text-sm text-muted">
-            {formatPlanCardDate({ type: plan.type, dateStart, dateEnd })}
-            {itemCount > 0
-              ? ` · ${itemCount} item${itemCount === 1 ? "" : "s"}`
-              : ""}{" "}
-            · {activityLabel}
-          </p>
-          {headerActions}
+            <EditablePlanTitle
+              planId={plan.id}
+              title={plan.title}
+              canEdit={canEdit}
+            />
+            {headerActions}
           </div>
+          {metadata}
         </header>
       )}
 
       {showPlatformShare ? (
-        <ShareWithUserPanel
-          planId={plan.id}
-          shares={platformShares}
-          recentRecipients={recentShareRecipients}
-        />
+        <div ref={sharePanelRef}>
+          <ShareWithUserPanel
+            planId={plan.id}
+            shares={platformShares}
+            recentRecipients={recentShareRecipients}
+            open={shareOpen}
+            onOpenChange={setShareOpen}
+          />
+        </div>
       ) : null}
 
       <PlanKudosSummary kudos={kudos} />
@@ -148,17 +161,13 @@ export function PlanEditor({
             planId={plan.id}
             items={plan.items}
             itemView={itemView}
+            canEdit={canEdit}
           />
         </section>
       ) : null}
 
       <section className={plan.items.length === 0 ? "mt-4" : undefined}>
-        {plan.items.length === 0 ? (
-          <p className="mb-2 text-xs text-muted-light">
-            Start with a task, intention, or note.
-          </p>
-        ) : null}
-        <AddItemForm planId={plan.id} />
+        {canEdit ? <AddItemForm planId={plan.id} /> : null}
       </section>
 
       {observations !== undefined ? (

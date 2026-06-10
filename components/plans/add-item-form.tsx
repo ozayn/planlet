@@ -5,6 +5,7 @@ import { useState, useTransition } from "react";
 
 import { createPlanItemAction } from "@/app/(app)/plans/actions";
 import type { AddItemKind } from "@/lib/plan-item-sections";
+import { passwordManagerSafeControlProps, passwordManagerSafeFormProps } from "@/lib/password-manager-ignore";
 
 type AddItemFormProps = {
   planId: string;
@@ -75,6 +76,7 @@ export function AddItemForm({
   return (
     <form
       onSubmit={handleSubmit}
+      {...passwordManagerSafeFormProps}
       className={
         compact
           ? "ui-add-item-form ui-add-item-form-compact space-y-1.5"
@@ -92,6 +94,7 @@ export function AddItemForm({
               key={option.value}
               type="button"
               onClick={() => setKind(option.value)}
+              {...passwordManagerSafeControlProps}
               className={`rounded-full border px-2.5 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${
                 kind === option.value
                   ? "border-border-subtle bg-accent-cream text-foreground"
@@ -115,6 +118,7 @@ export function AddItemForm({
           id={inputId}
           name={inputName}
           type="text"
+          {...passwordManagerSafeControlProps}
           value={title}
           onChange={(event) => setTitle(event.target.value)}
           placeholder={placeholder ?? copy.placeholder}
@@ -123,12 +127,13 @@ export function AddItemForm({
           className={
             compact
               ? "ui-input min-h-8 flex-1 border-transparent bg-transparent px-1.5 py-1 text-xs shadow-none focus:border-border focus:bg-surface"
-              : "ui-input ui-input-compact min-h-10 flex-1 border-transparent bg-transparent px-2 shadow-none focus:border-border focus:bg-surface"
+              : "ui-input ui-input-compact ui-add-item-input min-h-10 flex-1 border-transparent bg-transparent px-2 shadow-none focus:border-border focus:bg-surface"
           }
         />
         <button
           type="submit"
           disabled={isPending || !canSubmit}
+          {...passwordManagerSafeControlProps}
           className={`shrink-0 rounded-lg font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${
             compact
               ? "min-h-8 px-2 text-xs"

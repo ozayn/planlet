@@ -6,6 +6,7 @@ import { useEffect, useState, useTransition } from "react";
 import { updatePlanItemAction } from "@/app/(app)/plans/actions";
 import { EditItemIcon } from "@/components/plans/item-action-icons";
 import { getItemActionLabels } from "@/components/plans/item-action-labels";
+import { InlineItemTitle } from "@/components/plans/inline-item-title";
 import { ItemCommentsButton } from "@/components/plans/item-comments-button";
 import { ItemActionsMenu } from "@/components/plans/item-actions-menu";
 import { ItemDetailsSheet } from "@/components/plans/item-details-sheet";
@@ -15,9 +16,14 @@ import type { SerializedPlanItem } from "@/lib/plan-serialize";
 type IntentionItemCardProps = {
   planId: string;
   item: SerializedPlanItem;
+  canEdit?: boolean;
 };
 
-export function IntentionItemCard({ planId, item }: IntentionItemCardProps) {
+export function IntentionItemCard({
+  planId,
+  item,
+  canEdit = true,
+}: IntentionItemCardProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [editingTitle, setEditingTitle] = useState(false);
@@ -62,76 +68,74 @@ export function IntentionItemCard({ planId, item }: IntentionItemCardProps) {
           </span>
 
           <div className="min-w-0 flex-1">
-            {editingTitle ? (
-              <input
-                id={`intention-title-${item.id}`}
-                name={`intentionTitle-${item.id}`}
-                type="text"
-                value={title}
-                dir="auto"
-                autoFocus
-                disabled={isPending}
-                onChange={(event) => setTitle(event.target.value)}
-                onBlur={saveTitle}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") saveTitle();
-                  if (event.key === "Escape") {
-                    setTitle(item.title);
-                    setEditingTitle(false);
-                  }
-                }}
-                className="ui-input ui-input-compact min-h-8 w-full py-1"
-                aria-label="Intention"
-              />
-            ) : (
-              <button
-                type="button"
-                onClick={() => setEditingTitle(true)}
-                {...passwordManagerSafeControlProps}
-                className="block w-full truncate text-start text-sm font-medium leading-tight text-foreground"
-                dir="auto"
-              >
-                {item.title}
-              </button>
-            )}
+            <InlineItemTitle
+              id={`intention-title-${item.id}`}
+              name={`intentionTitle-${item.id}`}
+              value={title}
+              displayValue={item.title}
+              editing={editingTitle}
+              canEdit={canEdit}
+              pending={isPending}
+              ariaLabel="Intention"
+              displayClassName="block w-full truncate text-start text-sm font-medium leading-tight text-foreground"
+              onStartEdit={() => setEditingTitle(true)}
+              onChange={setTitle}
+              onSave={saveTitle}
+              onCancel={() => {
+                setTitle(item.title);
+                setEditingTitle(false);
+              }}
+            />
           </div>
 
-          <div className="ui-item-card-actions flex shrink-0 items-center gap-0.5">
-            <button
-              type="button"
-              onClick={() => setDetailsOpen(true)}
-              {...passwordManagerSafeControlProps}
-              className="ui-icon-action-quiet"
-              aria-label={actionLabels.edit}
-              title={actionLabels.edit}
-            >
-              <EditItemIcon className="h-4 w-4" />
-              <span className="ui-tooltip-bubble" role="tooltip">
-                {actionLabels.edit}
-              </span>
-            </button>
-            <ItemCommentsButton
-              itemId={item.id}
-              itemTitle={item.title}
-              commentCount={item.commentCount}
-            />
-            <ItemActionsMenu
-              planId={planId}
-              itemId={item.id}
-              itemType={item.type}
-              onEdit={() => setDetailsOpen(true)}
-            />
-          </div>
+          {canEdit ? (
+            <div className="ui-item-card-actions flex shrink-0 items-center gap-0.5">
+              <button
+                type="button"
+                onClick={() => setDetailsOpen(true)}
+                {...passwordManagerSafeControlProps}
+                className="ui-icon-action-quiet"
+                aria-label={actionLabels.edit}
+                title={actionLabels.edit}
+              >
+                <EditItemIcon className="h-4 w-4" />
+                <span className="ui-tooltip-bubble" role="tooltip">
+                  {actionLabels.edit}
+                </span>
+              </button>
+              <ItemCommentsButton
+                itemId={item.id}
+                itemTitle={item.title}
+                commentCount={item.commentCount}
+              />
+              <ItemActionsMenu
+                planId={planId}
+                itemId={item.id}
+                itemType={item.type}
+                visibleActionsAreShown
+                onEdit={() => setDetailsOpen(true)}
+              />
+            </div>
+          ) : (
+            <div className="ui-item-card-actions flex shrink-0 items-center gap-0.5">
+              <ItemCommentsButton
+                itemId={item.id}
+                itemTitle={item.title}
+                commentCount={item.commentCount}
+              />
+            </div>
+          )}
         </div>
       </article>
 
-      <ItemDetailsSheet
-        planId={planId}
-        item={item}
-        open={detailsOpen}
-        onClose={() => setDetailsOpen(false)}
-      />
+      {canEdit ? (
+        <ItemDetailsSheet
+          planId={planId}
+          item={item}
+          open={detailsOpen}
+          onClose={() => setDetailsOpen(false)}
+        />
+      ) : null}
     </>
   );
 }
-

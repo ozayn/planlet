@@ -372,8 +372,12 @@ body {
     }
 
     .ui-add-item-form:not(.ui-add-item-form-compact) .ui-add-item-row {
-      min-height: 2.5rem;
+      min-height: 3rem;
       padding-block: 0.25rem;
+    }
+
+    .ui-add-item-form:not(.ui-add-item-form-compact) .ui-add-item-input {
+      min-height: 3rem;
     }
   }
 
@@ -398,6 +402,42 @@ body {
     }
   }
 
+  .ui-click-to-edit {
+    cursor: text;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    border-radius: 0.25rem;
+    transition: color 0.15s, box-shadow 0.15s;
+  }
+
+  .ui-click-to-edit:hover {
+    color: var(--foreground);
+  }
+
+  .ui-click-to-edit:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--focus-ring);
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    .ui-click-to-edit:hover {
+      text-decoration: underline;
+      text-decoration-color: color-mix(in srgb, var(--muted-light) 70%, transparent);
+      text-underline-offset: 0.2em;
+    }
+  }
+
+  .ui-click-to-edit-input {
+    padding-inline: 0.125rem;
+    padding-block: 0.125rem;
+    box-shadow: none;
+  }
+
+  .ui-click-to-edit-input:focus {
+    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--focus-ring);
+  }
+
   .ui-plan-item-title {
     display: -webkit-box;
     overflow: hidden;
@@ -407,40 +447,55 @@ body {
     word-break: break-word;
   }
 
+  button.ui-click-to-edit.ui-plan-item-title {
+    display: -webkit-box;
+  }
+
   @media (max-width: 767px) {
     .ui-plan-item-title {
       -webkit-line-clamp: 2;
       line-clamp: 2;
     }
 
-    .ui-plan-item-status .ui-status-trigger {
+    .ui-status-trigger-icon-only {
       height: 2.5rem;
       width: 2.5rem;
       min-width: 2.5rem;
       max-width: 2.5rem;
+      flex-shrink: 0;
       justify-content: center;
       gap: 0;
       padding: 0;
-      border-radius: 0.5rem;
     }
 
-    .ui-plan-item-status .ui-status-trigger-label,
-    .ui-plan-item-status .ui-status-trigger-chevron {
+    .ui-status-trigger-icon-only .ui-status-trigger-label,
+    .ui-status-trigger-icon-only .ui-status-trigger-chevron {
       display: none;
     }
 
-    .ui-plan-item-status .ui-status-trigger-icon {
+    .ui-status-trigger-icon-only .ui-status-trigger-icon {
       margin: 0;
     }
 
-    .ui-item-menu-mobile-only {
-      display: flex;
+    .ui-plan-item-submeta {
+      margin-top: 0.0625rem;
     }
   }
 
   @media (min-width: 768px) {
-    .ui-item-menu-mobile-only {
-      display: none;
+    .ui-status-trigger-icon-only {
+      height: auto;
+      width: auto;
+      min-width: 0;
+      max-width: none;
+    }
+
+    .ui-status-trigger-icon-only .ui-status-trigger-label {
+      display: block;
+    }
+
+    .ui-status-trigger-icon-only .ui-status-trigger-chevron {
+      display: inline-flex;
     }
   }
 
@@ -577,7 +632,7 @@ body {
     list-style: none;
     align-items: center;
     justify-content: space-between;
-    gap: 0.75rem;
+    gap: 0.5rem;
     border-radius: 0.5rem;
     user-select: none;
   }
@@ -668,6 +723,66 @@ body {
     border-color: var(--border-subtle);
     background: var(--accent-cream);
     box-shadow: inset 0 -2px 0 var(--accent-blue);
+  }
+
+  .ui-plan-date-nav-btn-glyph {
+    height: 1.125rem;
+    width: 1.125rem;
+  }
+
+  .ui-plan-date-nav-date-icon {
+    height: 1rem;
+    width: 1rem;
+    flex-shrink: 0;
+    color: var(--muted-light);
+  }
+
+  @media (max-width: 639px) {
+    .ui-plan-date-nav-btn-icon {
+      position: relative;
+      flex: 0 0 2.75rem;
+      min-width: 2.75rem;
+      padding-inline: 0;
+    }
+
+    .ui-plan-date-nav-btn-icon .ui-plan-date-nav-btn-text {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+
+    .ui-plan-date-nav-btn-today {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .ui-plan-date-nav-date-label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+  }
+
+  @media (min-width: 640px) {
+    .ui-plan-date-nav-btn-icon .ui-plan-date-nav-btn-glyph {
+      display: none;
+    }
+
+    .ui-plan-date-nav-date-icon {
+      display: none;
+    }
   }
 
   .ui-plan-date-nav-date {
@@ -808,19 +923,18 @@ body {
       width: 1rem;
     }
 
-    .ui-plan-item-status .ui-status-trigger {
+    .ui-status-trigger-icon-only {
       height: 2.5rem !important;
       width: 2.5rem !important;
       min-width: 2.5rem !important;
       max-width: 2.5rem !important;
       padding: 0 !important;
       gap: 0 !important;
-      border-radius: 0.5rem !important;
       justify-content: center !important;
     }
 
-    .ui-plan-item-status .ui-status-trigger-label,
-    .ui-plan-item-status .ui-status-trigger-chevron {
+    .ui-status-trigger-icon-only .ui-status-trigger-label,
+    .ui-status-trigger-icon-only .ui-status-trigger-chevron {
       display: none !important;
     }
 

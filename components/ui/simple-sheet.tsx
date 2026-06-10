@@ -2,6 +2,8 @@
 
 import { useEffect, type ReactNode } from "react";
 
+import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
+
 type SimpleSheetProps = {
   open: boolean;
   onClose: () => void;
@@ -62,6 +64,7 @@ export function SimpleSheet({
           <button
             type="button"
             onClick={onClose}
+            {...passwordManagerSafeControlProps}
             className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-muted transition-colors hover:bg-accent-cream hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
             aria-label="Close"
           >

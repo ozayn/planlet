@@ -35,6 +35,8 @@ type StatusButtonProps = {
   status: PlanItemStatus;
   compact?: boolean;
   itemView?: PlanItemView;
+  /** Task cards: icon-only below md, pill at md+ */
+  mobileIconOnly?: boolean;
 };
 
 export function StatusButton({
@@ -43,6 +45,7 @@ export function StatusButton({
   status,
   compact = false,
   itemView = "MINIMAL",
+  mobileIconOnly = false,
 }: StatusButtonProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -121,13 +124,17 @@ export function StatusButton({
     });
   }
 
-  const triggerClass = isExpressive
-    ? compact
-      ? "min-h-8 min-w-[6.5rem] gap-1.5 px-2 text-xs sm:min-w-[7rem] sm:text-sm"
-      : "min-h-10 min-w-[8rem] gap-2 px-2.5 text-sm"
-    : compact
-      ? "h-8 min-w-[5.5rem] max-w-[6.5rem] gap-1 px-2 text-[0.6875rem] sm:min-w-[6rem] sm:text-xs"
-      : "min-h-10 min-w-[7.5rem] gap-1.5 px-2.5 text-sm";
+  const triggerClass = mobileIconOnly
+    ? isExpressive
+      ? "text-xs md:min-h-8 md:min-w-[6.5rem] md:gap-1.5 md:px-2 md:text-xs"
+      : "text-[0.6875rem] md:h-8 md:min-w-[5.5rem] md:max-w-[6.5rem] md:gap-1 md:px-2 md:text-xs"
+    : isExpressive
+      ? compact
+        ? "min-h-8 min-w-[6.5rem] gap-1.5 px-2 text-xs sm:min-w-[7rem] sm:text-sm"
+        : "min-h-10 min-w-[8rem] gap-2 px-2.5 text-sm"
+      : compact
+        ? "h-8 min-w-[5.5rem] max-w-[6.5rem] gap-1 px-2 text-[0.6875rem] sm:min-w-[6rem] sm:text-xs"
+        : "min-h-10 min-w-[7.5rem] gap-1.5 px-2.5 text-sm";
   const iconClass = isExpressive
     ? "text-base leading-none"
     : "h-3.5 w-3.5";
@@ -207,7 +214,11 @@ export function StatusButton({
         aria-label={`Change status: ${currentLabel}`}
         title={currentLabel}
         onClick={() => setOpen((current) => !current)}
-        className={`ui-status-trigger inline-flex items-center rounded-full border border-border-soft bg-surface/80 font-medium text-foreground transition-colors hover:border-border hover:bg-accent-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-subtle)] disabled:opacity-50 ${STATUS_STYLES[status].icon} ${triggerClass}`}
+        className={`ui-status-trigger inline-flex items-center font-medium text-foreground transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-subtle)] disabled:opacity-50 ${STATUS_STYLES[status].icon} ${
+          mobileIconOnly
+            ? "ui-status-trigger-icon-only rounded-lg border-0 bg-transparent hover:bg-accent-cream md:rounded-full md:border md:border-border-soft md:bg-surface/80 md:hover:border-border"
+            : "rounded-full border border-border-soft bg-surface/80 hover:border-border hover:bg-accent-cream"
+        } ${triggerClass}`}
       >
         <span
           className={`ui-status-trigger-icon flex shrink-0 items-center justify-center ${

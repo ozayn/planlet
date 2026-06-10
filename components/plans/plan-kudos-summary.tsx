@@ -75,7 +75,6 @@ export function PlanKudosSummary({ kudos }: PlanKudosSummaryProps) {
             </span>
           ) : null}
         </div>
-        <span className="text-xs text-muted-light">sent kudos</span>
       </div>
     </div>
   );

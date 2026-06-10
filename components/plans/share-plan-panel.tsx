@@ -110,9 +110,6 @@ export function SharePlanPanel({ plan }: SharePlanPanelProps) {
                 Clipboard unavailable — select the text above and copy manually.
               </p>
             ) : null}
-            {copied ? (
-              <p className="text-sm text-muted">Copied{isSaving ? "…" : ""}</p>
-            ) : null}
             {saveWarning ? (
               <p className="text-sm text-muted">
                 Copied, but export history was not saved.
@@ -122,6 +119,7 @@ export function SharePlanPanel({ plan }: SharePlanPanelProps) {
               type="button"
               disabled={!previewText.trim() || isSaving}
               onClick={handleCopy}
+              {...passwordManagerSafeControlProps}
               className="ui-btn-primary w-full"
             >
               {copied ? "Copied" : "Copy to clipboard"}
@@ -151,6 +149,7 @@ export function SharePlanPanel({ plan }: SharePlanPanelProps) {
                       id={`share-format-${option}`}
                       type="radio"
                       name="share-format"
+                      {...passwordManagerSafeControlProps}
                       value={option}
                       checked={format === option}
                       onChange={() => {
@@ -177,6 +176,7 @@ export function SharePlanPanel({ plan }: SharePlanPanelProps) {
               ref={textareaRef}
               id="share-preview"
               name="sharePreview"
+              {...passwordManagerSafeControlProps}
               readOnly
               dir="auto"
               value={previewText}

@@ -14,6 +14,7 @@ import {
 import { APP_TIMEZONE } from "@/config/time";
 import { OBSERVATION_CATEGORIES } from "@/lib/observation-constants";
 import { getObservationCategoryLabel } from "@/lib/observation-labels";
+import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 import type { SerializedObservation } from "@/lib/observations";
 
 type PrivateObservationsSectionProps = {
@@ -24,22 +25,6 @@ type PrivateObservationsSectionProps = {
 function formatObservationTime(value: string): string {
   const date = toZonedTime(new Date(value), APP_TIMEZONE);
   return format(date, "MMM d · h:mm a");
-}
-
-function formatObservationCount(count: number): string {
-  return count === 1 ? "1 observation" : `${count} observations`;
-}
-
-function formatCategorySummary(observations: SerializedObservation[]): string {
-  const labels = [
-    ...new Set(
-      observations.map((observation) =>
-        getObservationCategoryLabel(observation.category),
-      ),
-    ),
-  ];
-
-  return labels.join(", ");
 }
 
 export function PrivateObservationsSection({
@@ -72,12 +57,7 @@ export function PrivateObservationsSection({
     }
   }, [initialObservations.length]);
 
-  const countLabel = formatObservationCount(observations.length);
-  const categorySummary = formatCategorySummary(observations);
-  const collapsedSummary =
-    observations.length > 0 && categorySummary
-      ? `${countLabel} · ${categorySummary}`
-      : countLabel;
+  const collapsedCount = String(observations.length);
 
   function handleAdd() {
     setError(null);
@@ -163,41 +143,45 @@ export function PrivateObservationsSection({
   }
 
   return (
-    <section className="border-t border-border-soft pt-5">
+    <section className="ui-observations-disclosure border-t border-border-soft pt-3">
       <button
         type="button"
         aria-expanded={expanded}
         aria-controls={panelId}
-        aria-label="Toggle private observations"
+        aria-label="Private observations"
         onClick={() => setExpanded((current) => !current)}
-        className="flex w-full items-start justify-between gap-3 rounded-xl border border-border-soft/80 px-3 py-2.5 text-start transition-colors hover:bg-accent-cream/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+        {...passwordManagerSafeControlProps}
+        className="ui-observations-disclosure-summary flex w-full min-h-10 items-center justify-between gap-3 rounded-lg text-start transition-colors hover:bg-accent-cream/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
       >
-        <div className="min-w-0 flex-1 space-y-0.5">
-          <p className="text-sm font-medium text-foreground">
-            Private observations{" "}
-            <span aria-hidden="true" className="text-muted-light">
-              🔒
-            </span>
-          </p>
-          {expanded ? (
-            <p className="text-xs text-muted-light">Only you can see these.</p>
-          ) : (
-            <p className="text-xs text-muted">{collapsedSummary}</p>
-          )}
-        </div>
-        <ChevronIcon
-          className={`mt-0.5 h-4 w-4 shrink-0 text-muted transition-transform duration-200 ${
-            expanded ? "rotate-180" : ""
-          }`}
-        />
+        <span className="flex min-w-0 flex-1 items-center gap-2">
+          <LockIcon className="h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
+          <span className="truncate text-sm text-foreground">
+            Private observations
+          </span>
+        </span>
+        <span className="flex shrink-0 items-center gap-1.5 text-muted">
+          {observations.length > 0 ? (
+            <span className="text-xs tabular-nums">{collapsedCount}</span>
+          ) : null}
+          <ChevronIcon
+            className={`h-4 w-4 transition-transform duration-200 ${
+              expanded ? "rotate-180" : ""
+            }`}
+            aria-hidden="true"
+          />
+        </span>
       </button>
 
       {expanded ? (
         <div id={panelId} className="mt-3 space-y-3">
+          <p className="text-xs text-muted-light">
+            Owner-only body, mood, and energy log. Not shared or exported.
+          </p>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
             <select
               id="observation-category"
               name="observationCategory"
+              {...passwordManagerSafeControlProps}
               value={category}
               onChange={(event) =>
                 setCategory(event.target.value as ObservationCategory)
@@ -214,6 +198,7 @@ export function PrivateObservationsSection({
             <textarea
               id="observation-body"
               name="observationBody"
+              {...passwordManagerSafeControlProps}
               value={body}
               onChange={(event) => setBody(event.target.value)}
               placeholder="What did you notice?"
@@ -226,17 +211,14 @@ export function PrivateObservationsSection({
               type="button"
               onClick={handleAdd}
               disabled={isSubmitting || !body.trim()}
+              {...passwordManagerSafeControlProps}
               className="ui-btn-secondary ui-btn-compact min-h-9 shrink-0 px-4"
             >
               Add
             </button>
           </div>
 
-          {observations.length === 0 ? (
-            <p className="text-xs text-muted-light">
-              Track anything you want to notice later.
-            </p>
-          ) : (
+          {observations.length > 0 ? (
             <ul className="space-y-2">
               {observations.map((observation) =>
                 editingId === observation.id ? (
@@ -248,6 +230,7 @@ export function PrivateObservationsSection({
                       <select
                         id={`observation-edit-category-${observation.id}`}
                         name={`observationEditCategory-${observation.id}`}
+                        {...passwordManagerSafeControlProps}
                         value={editCategory}
                         onChange={(event) =>
                           setEditCategory(
@@ -266,6 +249,7 @@ export function PrivateObservationsSection({
                       <textarea
                         id={`observation-edit-body-${observation.id}`}
                         name={`observationEditBody-${observation.id}`}
+                        {...passwordManagerSafeControlProps}
                         value={editBody}
                         onChange={(event) => setEditBody(event.target.value)}
                         rows={2}
@@ -279,6 +263,7 @@ export function PrivateObservationsSection({
                         type="button"
                         onClick={() => handleSaveEdit(observation.id)}
                         disabled={isSubmitting || !editBody.trim()}
+                        {...passwordManagerSafeControlProps}
                         className="ui-btn-secondary ui-btn-compact min-h-8 px-3 text-xs"
                       >
                         Save
@@ -286,6 +271,7 @@ export function PrivateObservationsSection({
                       <button
                         type="button"
                         onClick={cancelEdit}
+                        {...passwordManagerSafeControlProps}
                         className="ui-btn-ghost ui-btn-compact min-h-8 px-3 text-xs"
                       >
                         Cancel
@@ -315,6 +301,7 @@ export function PrivateObservationsSection({
                       <button
                         type="button"
                         onClick={() => startEdit(observation)}
+                        {...passwordManagerSafeControlProps}
                         className="ui-btn-ghost min-h-8 px-2 text-xs"
                         aria-label="Edit observation"
                       >
@@ -324,6 +311,7 @@ export function PrivateObservationsSection({
                         type="button"
                         onClick={() => handleDelete(observation.id)}
                         disabled={deletingId === observation.id}
+                        {...passwordManagerSafeControlProps}
                         className="ui-btn-ghost min-h-8 px-2 text-xs text-muted"
                         aria-label="Delete observation"
                       >
@@ -334,12 +322,28 @@ export function PrivateObservationsSection({
                 ),
               )}
             </ul>
-          )}
+          ) : null}
 
           {error ? <p className="text-sm text-accent-red">{error}</p> : null}
         </div>
       ) : null}
     </section>
+  );
+}
+
+function LockIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth={1.75}
+      stroke="currentColor"
+      aria-hidden="true"
+    >
+      <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
   );
 }
 

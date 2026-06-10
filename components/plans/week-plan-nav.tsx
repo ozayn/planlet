@@ -33,15 +33,18 @@ export function WeekPlanNav({ currentWeekStart }: WeekPlanNavProps) {
       <div className="ui-plan-date-nav-controls">
         <Link
           href={`/plans/week/${shiftWeekString(currentWeekStart, -1)}`}
-          className="ui-plan-date-nav-btn"
+          className="ui-plan-date-nav-btn ui-plan-date-nav-btn-icon"
+          aria-label="Previous week"
+          title="Previous week"
           {...passwordManagerSafeControlProps}
         >
-          Previous week
+          <ChevronLeftIcon className="ui-plan-date-nav-btn-glyph" aria-hidden="true" />
+          <span className="ui-plan-date-nav-btn-text">Previous week</span>
         </Link>
 
         <Link
           href={`/plans/week/${thisWeekStart}`}
-          className={`ui-plan-date-nav-btn${
+          className={`ui-plan-date-nav-btn ui-plan-date-nav-btn-today${
             currentWeekStart === thisWeekStart ? " ui-plan-date-nav-btn-active" : ""
           }`}
           aria-current={currentWeekStart === thisWeekStart ? "page" : undefined}
@@ -52,14 +55,18 @@ export function WeekPlanNav({ currentWeekStart }: WeekPlanNavProps) {
 
         <Link
           href={`/plans/week/${shiftWeekString(currentWeekStart, 1)}`}
-          className="ui-plan-date-nav-btn"
+          className="ui-plan-date-nav-btn ui-plan-date-nav-btn-icon"
+          aria-label="Next week"
+          title="Next week"
           {...passwordManagerSafeControlProps}
         >
-          Next week
+          <ChevronRightIcon className="ui-plan-date-nav-btn-glyph" aria-hidden="true" />
+          <span className="ui-plan-date-nav-btn-text">Next week</span>
         </Link>
       </div>
 
       <label htmlFor="week-plan-nav-date" className="ui-plan-date-nav-date">
+        <CalendarIcon className="ui-plan-date-nav-date-icon" aria-hidden="true" />
         <span className="ui-plan-date-nav-date-label">Week</span>
         <input
           id="week-plan-nav-date"
@@ -79,5 +86,54 @@ export function WeekPlanNav({ currentWeekStart }: WeekPlanNavProps) {
         />
       </label>
     </nav>
+  );
+}
+
+function ChevronLeftIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth={1.75}
+      stroke="currentColor"
+      aria-hidden="true"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="m15 18-6-6 6-6" />
+    </svg>
+  );
+}
+
+function ChevronRightIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth={1.75}
+      stroke="currentColor"
+      aria-hidden="true"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" d="m9 18 6-6-6-6" />
+    </svg>
+  );
+}
+
+function CalendarIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth={1.75}
+      stroke="currentColor"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M8 2v4M16 2v4M3 10h18M5 4h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"
+      />
+    </svg>
   );
 }

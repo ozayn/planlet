@@ -12,6 +12,7 @@ type PlanItemSectionsProps = {
   planId: string;
   items: SerializedPlanItem[];
   itemView?: PlanItemView;
+  canEdit?: boolean;
 };
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -26,6 +27,7 @@ export function PlanItemSections({
   planId,
   items,
   itemView = "MINIMAL",
+  canEdit = true,
 }: PlanItemSectionsProps) {
   const { tasks, intentions, notes } = partitionPlanItems(items);
   if (tasks.length === 0 && intentions.length === 0 && notes.length === 0) {
@@ -41,6 +43,7 @@ export function PlanItemSections({
             planId={planId}
             items={tasks}
             itemView={itemView}
+            canEdit={canEdit}
           />
         </section>
       ) : null}
@@ -51,7 +54,11 @@ export function PlanItemSections({
           <ul className="space-y-1.5">
             {intentions.map((item) => (
               <li key={item.id}>
-                <IntentionItemCard planId={planId} item={item} />
+                <IntentionItemCard
+                  planId={planId}
+                  item={item}
+                  canEdit={canEdit}
+                />
               </li>
             ))}
           </ul>
@@ -61,10 +68,13 @@ export function PlanItemSections({
       {notes.length > 0 ? (
         <section className="space-y-2">
           <SectionLabel>Notes & reflections</SectionLabel>
+          <p className="text-xs text-muted-light">
+            Plan-level thoughts included when you share or copy this plan.
+          </p>
           <ul className="space-y-1.5">
             {notes.map((item) => (
               <li key={item.id}>
-                <NoteItemCard planId={planId} item={item} />
+                <NoteItemCard planId={planId} item={item} canEdit={canEdit} />
               </li>
             ))}
           </ul>

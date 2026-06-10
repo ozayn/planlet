@@ -30,16 +30,19 @@ type SortablePlanItemListProps = {
   planId: string;
   items: SerializedPlanItem[];
   itemView?: PlanItemView;
+  canEdit?: boolean;
 };
 
 function StaticPlanItemList({
   planId,
   items,
   itemView,
+  canEdit,
 }: {
   planId: string;
   items: SerializedPlanItem[];
   itemView: PlanItemView;
+  canEdit: boolean;
 }) {
   return (
     <>
@@ -49,6 +52,7 @@ function StaticPlanItemList({
           planId={planId}
           item={item}
           itemView={itemView}
+          canEdit={canEdit}
         />
       ))}
     </>
@@ -59,10 +63,12 @@ function SortablePlanItemRow({
   planId,
   item,
   itemView,
+  canEdit,
 }: {
   planId: string;
   item: SerializedPlanItem;
   itemView: PlanItemView;
+  canEdit: boolean;
 }) {
   const {
     attributes,
@@ -89,6 +95,7 @@ function SortablePlanItemRow({
         dragHandleAttributes={attributes}
         dragHandleListeners={listeners}
         itemView={itemView}
+        canEdit={canEdit}
       />
     </div>
   );
@@ -98,11 +105,13 @@ function SortablePlanItemRows({
   planId,
   items,
   itemView,
+  canEdit,
   onDragEnd,
 }: {
   planId: string;
   items: SerializedPlanItem[];
   itemView: PlanItemView;
+  canEdit: boolean;
   onDragEnd: (event: DragEndEvent) => void;
 }) {
   const dndId = useId();
@@ -133,6 +142,7 @@ function SortablePlanItemRows({
             planId={planId}
             item={item}
             itemView={itemView}
+            canEdit={canEdit}
           />
         ))}
       </SortableContext>
@@ -144,6 +154,7 @@ export function SortablePlanItemList({
   planId,
   items: initialItems,
   itemView = "MINIMAL",
+  canEdit = true,
 }: SortablePlanItemListProps) {
   const router = useRouter();
   const [items, setItems] = useState(initialItems);
@@ -195,11 +206,12 @@ export function SortablePlanItemList({
 
   return (
     <div className="space-y-2">
-      {mounted ? (
+      {mounted && canEdit ? (
         <SortablePlanItemRows
           planId={planId}
           items={items}
           itemView={itemView}
+          canEdit={canEdit}
           onDragEnd={handleDragEnd}
         />
       ) : (
@@ -207,6 +219,7 @@ export function SortablePlanItemList({
           planId={planId}
           items={items}
           itemView={itemView}
+          canEdit={canEdit}
         />
       )}
 

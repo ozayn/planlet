@@ -18,13 +18,27 @@ If extension-style errors disappear in Incognito, they are **not Planlet bugs** 
 
 ## Password manager hydration warnings
 
-Dashlane, 1Password, LastPass, and similar extensions may inject attributes such as `data-dashlane-label`, `data-dashlane-rid`, or `data-1p-ignore` onto buttons and inputs **after** React renders. That can cause dev-only hydration mismatch warnings on planning controls (status button, more menu, icon actions) that are not credential fields.
+Dashlane, 1Password, LastPass, and similar extensions may inject attributes onto planning controls **before** React hydrates, for example:
 
-**Verify in Incognito or Safari** before treating these as Planlet bugs. Extensions are disabled or absent in those contexts.
+- `data-dashlane-label`
+- `data-dashlane-rid`
+- `data-dashlane-classification`
 
-Planlet adds password-manager ignore hints (`data-lpignore`, `data-1p-ignore`, `data-form-type="other"`, `data-dashlane-ignore`) to non-auth planning controls via `lib/password-manager-ignore.ts`. These hints are **not** applied to login or share-email fields where `autoComplete="email"` is intentional.
+Common targets: `AddItemForm`, `PrivateObservationsSection` toggle, `StatusButton`, `ItemActionsMenu`, task title buttons, and other non-auth planning UI.
 
-When extensions still inject attributes before hydration (common with Dashlane on `StatusButton` and task title buttons), those controls also use **scoped** `suppressHydrationWarning` via `passwordManagerSafeControlProps`. This does not disable hydration checks app-wide — only on known planning controls that extensions annotate.
+**Verify in Incognito or Safari** before treating these as Planlet bugs. If the diff shows `data-dashlane-*` attributes, the warning is **extension-owned**.
+
+Planlet adds ignore hints via `lib/password-manager-ignore.ts` on non-auth planning controls:
+
+- `data-lpignore="true"`
+- `data-1p-ignore="true"`
+- `data-form-type="other"`
+- `data-dashlane-ignore="true"`
+- `autoComplete="off"`
+
+Scoped `suppressHydrationWarning` is also set on these controls (`passwordManagerSafeControlProps`). This does **not** disable hydration checks app-wide.
+
+These hints are **not** applied to login or share-email fields. Share email keeps `autoComplete="email"`.
 
 **Example mismatch (extension-owned):**
 
@@ -33,7 +47,7 @@ When extensions still inject attributes before hydration (common with Dashlane o
 - data-dashlane-rid="…"
 ```
 
-If this disappears in Incognito, no further Planlet fix is required.
+If this disappears in Incognito, no further Planlet fix is required. Dashlane may still inject attributes despite hints — that is expected extension behavior.
 
 ## Extension-owned (do not fix in Planlet)
 

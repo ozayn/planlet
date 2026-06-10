@@ -23,6 +23,8 @@ type ShareWithUserPanelProps = {
   planId: string;
   shares: PlanShareEntry[];
   recentRecipients?: RecentShareRecipient[];
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 function recipientLabel(recipient: RecentShareRecipient): string {
@@ -33,6 +35,8 @@ export function ShareWithUserPanel({
   planId,
   shares,
   recentRecipients = [],
+  open,
+  onOpenChange,
 }: ShareWithUserPanelProps) {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -78,23 +82,27 @@ export function ShareWithUserPanel({
     });
   }
 
+  const summaryLabel =
+    shares.length > 0 ? shareCountLabel : "Share inside Planlet";
+
   return (
-    <details className="ui-share-disclosure group">
-      <summary className="ui-share-disclosure-summary">
-        <span className="min-w-0 flex-1">
-          <span className="text-sm font-medium text-foreground">
-            Share inside Planlet
-          </span>
-          {shares.length > 0 ? (
-            <span className="mt-0.5 block text-xs text-muted sm:mt-0 sm:inline sm:before:content-['·'] sm:before:mx-1.5">
-              {shareCountLabel}
-            </span>
-          ) : null}
+    <details
+      className="ui-share-disclosure group"
+      open={open}
+      onToggle={(event) => onOpenChange?.(event.currentTarget.open)}
+    >
+      <summary
+        className="ui-share-disclosure-summary"
+        aria-label="Share inside Planlet"
+      >
+        <span className="flex min-w-0 flex-1 items-center gap-2">
+          <UserPlusIcon
+            className="h-4 w-4 shrink-0 text-muted"
+            aria-hidden="true"
+          />
+          <span className="truncate text-sm text-foreground">{summaryLabel}</span>
         </span>
-        <span className="flex shrink-0 items-center gap-1.5 text-muted">
-          <UserPlusIcon className="h-4 w-4" aria-hidden="true" />
-          <ChevronIcon className="h-4 w-4 transition-transform duration-200 group-open:rotate-180" />
-        </span>
+        <ChevronIcon className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-open:rotate-180" />
       </summary>
 
       <div className="ui-share-disclosure-body">
@@ -188,9 +196,7 @@ export function ShareWithUserPanel({
               />
             ))}
           </ul>
-        ) : (
-          <p className="text-xs text-muted-light">Not shared yet.</p>
-        )}
+        ) : null}
       </div>
     </details>
   );

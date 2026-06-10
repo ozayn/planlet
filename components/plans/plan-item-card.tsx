@@ -13,15 +13,21 @@ import { AddItemForm } from "@/components/plans/add-item-form";
 import {
   AddSubtaskIcon,
   EditItemIcon,
+  StickyNoteIcon,
 } from "@/components/plans/item-action-icons";
+import { useMediaQuery } from "@/lib/use-media-query";
 import { getItemActionLabels } from "@/components/plans/item-action-labels";
 import { ItemCommentsButton } from "@/components/plans/item-comments-button";
 import { ItemActionsMenu } from "@/components/plans/item-actions-menu";
 import { ItemDetailsSheet } from "@/components/plans/item-details-sheet";
+import { InlineItemTitle } from "@/components/plans/inline-item-title";
 import { StatusButton } from "@/components/plans/status-button";
-import { getPlanItemTypeLabel, getTimeHintLabel } from "@/lib/plan-labels";
+import {
+  getPlanItemTypeLabel,
+  getTimeHintLabel,
+} from "@/lib/plan-labels";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
-import { getStatusLabel, STATUS_STYLES } from "@/lib/plan-status";
+import { STATUS_STYLES } from "@/lib/plan-status";
 import type { SerializedPlanItem } from "@/lib/plan-serialize";
 
 type PlanItemCardProps = {
@@ -54,6 +60,7 @@ export function PlanItemCard({
   const [showSubtaskForm, setShowSubtaskForm] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
+  const visibleActionsAreShown = useMediaQuery("(min-width: 768px)");
 
   useEffect(() => {
     if (!editingTitle) {
@@ -84,7 +91,6 @@ export function PlanItemCard({
   const isNested = depth > 0;
   const actionLabels = getItemActionLabels(item.type, isNested);
   const timeHintLabel = getTimeHintLabel(item.timeHint);
-  const statusLabel = getStatusLabel(item.status);
   const typeLabel = getPlanItemTypeLabel(item.type);
   const hasNote = Boolean(item.comment?.trim());
 
@@ -96,23 +102,35 @@ export function PlanItemCard({
       : null,
   ].filter(Boolean);
 
-  const mobileSubmetaParts = [typeLabel, statusLabel];
-  const mobileIndicatorParts: string[] = [];
+  const mobileMetaParts: string[] = [];
+
+  if (item.type !== "TASK") {
+    mobileMetaParts.push(typeLabel);
+  }
+
+  if (timeHintLabel) {
+    mobileMetaParts.push(timeHintLabel);
+  }
+
+  if (item.importance === "HIGH" || item.urgency === "HIGH") {
+    mobileMetaParts.push("High priority");
+  }
+
+  if (subtaskCount > 0) {
+    mobileMetaParts.push(
+      `${subtaskCount} subtask${subtaskCount === 1 ? "" : "s"}`,
+    );
+  }
   if (hasNote && canEdit) {
-    mobileIndicatorParts.push("1 note");
+    mobileMetaParts.push("1 note");
   }
   if (item.commentCount > 0) {
-    mobileIndicatorParts.push(
+    mobileMetaParts.push(
       `${item.commentCount} comment${item.commentCount === 1 ? "" : "s"}`,
     );
   }
 
-  const mobileSubmetaLine = [
-    mobileSubmetaParts.join(" · "),
-    mobileIndicatorParts.length > 0 ? mobileIndicatorParts.join(" · ") : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  const mobileSubmetaLine = mobileMetaParts.join(" · ");
 
   const showDragHandle =
     !isNested && dragHandleAttributes && dragHandleListeners;
@@ -128,8 +146,8 @@ export function PlanItemCard({
           className={`absolute inset-y-2 start-0 w-0.5 rounded-full opacity-50 transition-opacity group-hover:opacity-80 group-focus-within:opacity-90 ${STATUS_STYLES[item.status].accentBar}`}
           aria-hidden="true"
         />
-        <div className="ui-plan-item-stack flex flex-col gap-0.5">
-          <div className="ui-plan-item-row flex items-start gap-2 ps-0.5 sm:items-center sm:gap-2.5 sm:ps-1.5">
+        <div className="ui-plan-item-stack flex flex-col gap-0 md:gap-0.5">
+          <div className="ui-plan-item-row flex items-start gap-1.5 ps-0.5 sm:items-center sm:gap-2.5 sm:ps-1.5">
             {showDragHandle ? (
               <button
                 type="button"
@@ -156,42 +174,28 @@ export function PlanItemCard({
                 status={item.status}
                 compact
                 itemView={itemView}
+                mobileIconOnly
               />
             </div>
 
             <div className="ui-plan-item-content min-w-0 flex-1">
-              {editingTitle ? (
-                <input
-                  id={`item-title-${item.id}`}
-                  name={`itemTitle-${item.id}`}
-                  type="text"
-                  value={title}
-                  dir="auto"
-                  autoFocus
-                  disabled={isPending}
-                  onChange={(event) => setTitle(event.target.value)}
-                  onBlur={saveTitle}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") saveTitle();
-                    if (event.key === "Escape") {
-                      setTitle(item.title);
-                      setEditingTitle(false);
-                    }
-                  }}
-                  className="ui-input ui-input-compact min-h-8 w-full py-1"
-                  aria-label="Item title"
-                />
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setEditingTitle(true)}
-                  {...passwordManagerSafeControlProps}
-                  className="ui-plan-item-title block w-full text-start text-sm font-medium leading-snug text-foreground"
-                  dir="auto"
-                >
-                  {item.title}
-                </button>
-              )}
+              <InlineItemTitle
+                id={`item-title-${item.id}`}
+                name={`itemTitle-${item.id}`}
+                value={title}
+                displayValue={item.title}
+                editing={editingTitle}
+                canEdit={canEdit}
+                pending={isPending}
+                ariaLabel="Item title"
+                onStartEdit={() => setEditingTitle(true)}
+                onChange={setTitle}
+                onSave={saveTitle}
+                onCancel={() => {
+                  setTitle(item.title);
+                  setEditingTitle(false);
+                }}
+              />
 
               {desktopMetaParts.length > 0 ? (
                 <p className="ui-plan-item-meta mt-0.5 hidden truncate text-[0.6875rem] leading-tight text-muted-light md:block">
@@ -235,6 +239,19 @@ export function PlanItemCard({
                       </span>
                     </button>
                   ) : null}
+                  <button
+                    type="button"
+                    onClick={() => setDetailsOpen(true)}
+                    {...passwordManagerSafeControlProps}
+                    className="ui-plan-item-desktop-action hidden md:inline-flex ui-icon-action-quiet"
+                    aria-label="Task note"
+                    title="Task note"
+                  >
+                    <StickyNoteIcon className="h-4 w-4" />
+                    <span className="ui-tooltip-bubble" role="tooltip">
+                      Task note
+                    </span>
+                  </button>
                 </>
               ) : null}
               <ItemCommentsButton
@@ -251,6 +268,7 @@ export function PlanItemCard({
                 itemType={item.type}
                 isSubtask={isNested}
                 canEdit={canEdit}
+                visibleActionsAreShown={visibleActionsAreShown}
                 commentCount={item.commentCount}
                 onEdit={() => setDetailsOpen(true)}
                 onAddSubtask={
@@ -265,7 +283,7 @@ export function PlanItemCard({
           </div>
 
           {mobileSubmetaLine ? (
-            <p className="ui-plan-item-submeta ps-11 text-[0.6875rem] leading-tight text-muted-light md:hidden">
+            <p className="ui-plan-item-submeta ps-12 text-[0.6875rem] leading-tight text-muted-light md:hidden">
               {mobileSubmetaLine}
             </p>
           ) : null}

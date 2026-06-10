@@ -454,15 +454,15 @@ export const SHARE_UI_FORMAT_META: Record<
 > = {
   plan: {
     label: "Pretty plan",
-    description: "Formatted for sending to a friend.",
+    description: "Sections, icons, and readable layout for messaging.",
   },
   plain: {
     label: "Simple text",
-    description: "Minimal text for any app.",
+    description: "Flat bullet list with no decoration.",
   },
   update: {
     label: "Progress update",
-    description: "Only progress and changes.",
+    description: "Done, partial, and skipped items only.",
   },
 };
 

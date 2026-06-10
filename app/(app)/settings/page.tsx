@@ -57,7 +57,8 @@ export default async function SettingsPage() {
       <article className="ui-card-padded">
         <ThemeToggle variant="full" />
         <p className="mt-3 text-xs text-muted-light">
-          You can also change this from the navigation bar.
+          On desktop, theme is also in the top navigation. On mobile, use the
+          profile menu.
         </p>
       </article>
 
