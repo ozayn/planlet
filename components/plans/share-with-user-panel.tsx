@@ -8,7 +8,6 @@ import {
   sharePlanWithUserAction,
 } from "@/app/(app)/plans/actions";
 import { UserAvatar } from "@/components/user-avatar";
-import { ChevronDownIcon, UserPlusIcon } from "@/components/ui/action-icons";
 import { ACTION_LABELS } from "@/lib/action-labels";
 import type { RecentShareRecipient } from "@/lib/plan-sharing";
 
@@ -37,14 +36,17 @@ export function ShareWithUserPanel({
   planId,
   shares,
   recentRecipients = [],
-  open,
-  onOpenChange,
+  open = false,
 }: ShareWithUserPanelProps) {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isSharing, startShare] = useTransition();
   const [removingId, setRemovingId] = useState<string | null>(null);
+
+  if (!open) {
+    return null;
+  }
 
   const shareCountLabel =
     shares.length === 1
@@ -84,30 +86,16 @@ export function ShareWithUserPanel({
     });
   }
 
-  const summaryLabel =
-    shares.length > 0 ? shareCountLabel : "Share inside Planlet";
-
   return (
-    <details
-      className="ui-share-disclosure group"
-      open={open}
-      onToggle={(event) => onOpenChange?.(event.currentTarget.open)}
+    <section
+      className="ui-share-panel border-t border-border-soft pt-3"
+      aria-label={ACTION_LABELS.shareInsidePlanlet.ariaLabel}
     >
-      <summary
-        className="ui-share-disclosure-summary"
-        aria-label={ACTION_LABELS.shareInsidePlanlet.ariaLabel}
-      >
-        <span className="flex min-w-0 flex-1 items-center gap-2">
-          <UserPlusIcon
-            className="h-4 w-4 shrink-0 text-muted"
-            aria-hidden="true"
-          />
-          <span className="truncate text-sm text-foreground">{summaryLabel}</span>
-        </span>
-        <ChevronDownIcon className="h-4 w-4 shrink-0 text-muted transition-transform duration-200 group-open:rotate-180" />
-      </summary>
+      {shares.length > 0 ? (
+        <p className="mb-2 text-xs text-muted">{shareCountLabel}</p>
+      ) : null}
 
-      <div className="ui-share-disclosure-body">
+      <div className="ui-share-panel-body">
         <p className="text-xs text-muted">
           Give read-only access to another Planlet user.
         </p>
@@ -200,7 +188,7 @@ export function ShareWithUserPanel({
           </ul>
         ) : null}
       </div>
-    </details>
+    </section>
   );
 }
 

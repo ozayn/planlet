@@ -1005,38 +1005,7 @@ body {
     cursor: not-allowed;
   }
 
-  .ui-share-disclosure {
-    border-top: 1px solid var(--border-soft);
-    padding-top: 0.75rem;
-  }
-
-  .ui-share-disclosure-summary {
-    display: flex;
-    min-height: 2.5rem;
-    cursor: pointer;
-    list-style: none;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-    border-radius: 0.5rem;
-    user-select: none;
-  }
-
-  .ui-share-disclosure-summary::-webkit-details-marker {
-    display: none;
-  }
-
-  .ui-share-disclosure-summary::marker {
-    content: "";
-  }
-
-  .ui-share-disclosure-summary:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--focus-ring);
-  }
-
-  .ui-share-disclosure-body {
-    margin-top: 0.75rem;
+  .ui-share-panel-body {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
