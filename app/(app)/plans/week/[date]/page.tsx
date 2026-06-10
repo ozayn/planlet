@@ -14,6 +14,7 @@ import {
   parseDateString,
 } from "@/lib/dates";
 import { getPlanSharesForOwner } from "@/lib/plan-sharing";
+import { getObservationsForPlan } from "@/lib/observations";
 import { getWeekPlan } from "@/lib/plans";
 import { serializePlan } from "@/lib/plan-serialize";
 import { getPlanItemViewForUser } from "@/lib/user-preferences";
@@ -53,9 +54,17 @@ export default async function WeekPlanPage({ params }: WeekPlanPageProps) {
           title={weekLabel}
           subtitle="Weekly plan"
           action={
-            <Link href="/plans" className="ui-text-link">
-              All plans
-            </Link>
+            <div className="flex items-center gap-3">
+              <Link
+                href={`/plans/week/${weekStart}/summary`}
+                className="ui-text-link"
+              >
+                Week summary
+              </Link>
+              <Link href="/plans" className="ui-text-link">
+                All plans
+              </Link>
+            </div>
           }
         />
 
@@ -69,9 +78,10 @@ export default async function WeekPlanPage({ params }: WeekPlanPageProps) {
     );
   }
 
-  const [platformShares, planItemView] = await Promise.all([
+  const [platformShares, planItemView, observations] = await Promise.all([
     getPlanSharesForOwner(plan.id, userId),
     getPlanItemViewForUser(userId),
+    getObservationsForPlan(plan.id, userId),
   ]);
 
   return (
@@ -80,9 +90,17 @@ export default async function WeekPlanPage({ params }: WeekPlanPageProps) {
         title={weekLabel}
         subtitle="Weekly plan"
         action={
-          <Link href="/plans" className="ui-text-link">
-            All plans
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href={`/plans/week/${weekStart}/summary`}
+              className="ui-text-link"
+            >
+              Week summary
+            </Link>
+            <Link href="/plans" className="ui-text-link">
+              All plans
+            </Link>
+          </div>
         }
       />
 
@@ -94,6 +112,7 @@ export default async function WeekPlanPage({ params }: WeekPlanPageProps) {
         showPlatformShare
         platformShares={platformShares}
         itemView={planItemView}
+        observations={observations}
       />
     </section>
   );

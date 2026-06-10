@@ -59,6 +59,14 @@ import {
   ItemCommentError,
   viewerCanDeleteComment,
 } from "@/lib/item-comments";
+import type { ObservationCategory } from "@/app/generated/prisma/client";
+import {
+  addPlanObservation,
+  deletePlanObservation,
+  ObservationError,
+  updatePlanObservation,
+  type SerializedObservation,
+} from "@/lib/observations";
 import { KudosError, sendPlanKudos } from "@/lib/kudos";
 import {
   getPlanAccess,
@@ -853,6 +861,82 @@ export async function deleteItemCommentAction(
           : error instanceof Error
             ? error.message
             : "Failed to delete comment.",
+    };
+  }
+}
+
+export type ObservationActionResult =
+  | { success: true; observation: SerializedObservation }
+  | { success: false; error: string };
+
+export type DeleteObservationResult =
+  | { success: true }
+  | { success: false; error: string };
+
+export async function addPlanObservationAction(
+  planId: string,
+  data: { category: ObservationCategory; body: string },
+): Promise<ObservationActionResult> {
+  const userId = await requireUserId();
+
+  try {
+    const result = await addPlanObservation(planId, userId, data);
+    revalidatePlanPaths(result.planId);
+    return { success: true, observation: result.observation };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof ObservationError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : "Failed to add observation.",
+    };
+  }
+}
+
+export async function updatePlanObservationAction(
+  observationId: string,
+  data: { category: ObservationCategory; body: string },
+): Promise<ObservationActionResult> {
+  const userId = await requireUserId();
+
+  try {
+    const result = await updatePlanObservation(observationId, userId, data);
+    revalidatePlanPaths(result.planId);
+    return { success: true, observation: result.observation };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof ObservationError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : "Failed to update observation.",
+    };
+  }
+}
+
+export async function deletePlanObservationAction(
+  observationId: string,
+): Promise<DeleteObservationResult> {
+  const userId = await requireUserId();
+
+  try {
+    const result = await deletePlanObservation(observationId, userId);
+    revalidatePlanPaths(result.planId);
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof ObservationError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : "Failed to delete observation.",
     };
   }
 }

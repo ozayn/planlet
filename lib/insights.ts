@@ -1,4 +1,5 @@
 import type {
+  ObservationCategory,
   PlanItemStatus,
   PlanItemType,
   PriorityLevel,
@@ -7,6 +8,8 @@ import type {
 import { APP_TIMEZONE } from "@/config/time";
 import { getMonthRange } from "@/lib/dates";
 import { isActionableItemType } from "@/lib/plan-item-sections";
+import { OBSERVATION_CATEGORIES } from "@/lib/observation-constants";
+import { getObservationCategoryLabel } from "@/lib/observation-labels";
 import { prisma } from "@/lib/prisma";
 
 export type MonthlyInsightsTotals = {
@@ -21,6 +24,7 @@ export type MonthlyInsightsTotals = {
   skipped: number;
   released: number;
   open: number;
+  observations: number;
 };
 
 export type MonthlyInsights = {
@@ -37,6 +41,7 @@ export type MonthlyInsights = {
   };
   intentions: Array<{ title: string; count: number }>;
   oftenMovedTypes: Array<{ type: PlanItemType; count: number }>;
+  observationCategories: Array<{ category: ObservationCategory; label: string; count: number }>;
 };
 
 const STATUS_ORDER: PlanItemStatus[] = [
@@ -132,18 +137,32 @@ export async function getMonthlyInsights(
 ): Promise<MonthlyInsights> {
   const { start, end } = getMonthRange(date);
 
-  const plans = await prisma.plan.findMany({
-    where: {
-      userId,
-      dateStart: { lte: end },
-      dateEnd: { gte: start },
-    },
-    include: {
-      items: true,
-    },
-  });
+  const [plans, observations] = await Promise.all([
+    prisma.plan.findMany({
+      where: {
+        userId,
+        dateStart: { lte: end },
+        dateEnd: { gte: start },
+      },
+      include: {
+        items: true,
+      },
+    }),
+    prisma.planObservation.findMany({
+      where: {
+        userId,
+        createdAt: { gte: start, lte: end },
+      },
+      select: { category: true },
+    }),
+  ]);
 
   const items = plans.flatMap((plan) => plan.items);
+  const observationCategoryCounts = new Map<ObservationCategory, number>();
+
+  for (const observation of observations) {
+    incrementMap(observationCategoryCounts, observation.category);
+  }
 
   const statusCounts = new Map<PlanItemStatus, number>();
   const typeCounts = new Map<PlanItemType, number>();
@@ -203,6 +222,21 @@ export async function getMonthlyInsights(
     .sort((a, b) => b.count - a.count)
     .slice(0, 6);
 
+  const observationCategories = OBSERVATION_CATEGORIES.flatMap((category) => {
+    const count = observationCategoryCounts.get(category) ?? 0;
+    if (count === 0) {
+      return [];
+    }
+
+    return [
+      {
+        category,
+        label: getObservationCategoryLabel(category),
+        count,
+      },
+    ];
+  });
+
   return {
     dateLabel: formatMonthLabel(date),
     totals: {
@@ -217,6 +251,7 @@ export async function getMonthlyInsights(
       skipped: statusCounts.get("SKIPPED") ?? 0,
       released: statusCounts.get("RELEASED") ?? 0,
       open: statusCounts.get("OPEN") ?? 0,
+      observations: observations.length,
     },
     byType: sortedEntries(typeCounts, TYPE_ORDER).map(({ key, count }) => ({
       type: key,
@@ -231,5 +266,6 @@ export async function getMonthlyInsights(
     priorityQuadrants,
     intentions,
     oftenMovedTypes,
+    observationCategories,
   };
 }

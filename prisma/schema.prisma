@@ -110,6 +110,18 @@ enum PlanItemView {
   CHECKLIST
 }
 
+enum ObservationCategory {
+  MIND
+  EMOTION
+  BODY
+  CYCLE
+  PAIN
+  SKIN
+  SLEEP
+  ENERGY
+  OTHER
+}
+
 model User {
   id            String      @id @default(cuid())
   name          String?
@@ -131,6 +143,7 @@ model User {
   notifications      Notification[]
   pushSubscriptions  PushSubscription[]
   planItemComments   PlanItemComment[]
+  observations       PlanObservation[]
   loginEvents   LoginEvent[]
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -227,10 +240,28 @@ model Plan {
   shareExports ShareExport[]
   shares       PlanShare[]
   kudos        PlanKudos[]
+  observations PlanObservation[]
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 
   @@index([userId, type, dateStart])
+}
+
+model PlanObservation {
+  id         String              @id @default(cuid())
+  planId     String
+  plan       Plan                @relation(fields: [planId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category   ObservationCategory
+  body       String              @db.Text
+  observedAt DateTime?
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  @@index([planId, createdAt])
+  @@index([userId, createdAt])
+  @@index([userId, category, createdAt])
 }
 
 model PlanKudos {

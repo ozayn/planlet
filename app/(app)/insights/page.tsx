@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { auth } from "@/auth";
 import { InsightsEmptyState } from "@/components/insights/insights-empty-state";
 import { PriorityMatrix } from "@/components/insights/priority-matrix";
@@ -5,6 +7,10 @@ import { SimpleBarList } from "@/components/insights/simple-bar-list";
 import { StatusDistribution } from "@/components/insights/status-distribution";
 import { SummaryCard } from "@/components/insights/summary-card";
 import { PageHeader } from "@/components/page-header";
+import {
+  formatDateString,
+  formatWeekStartString,
+} from "@/lib/dates";
 import { getMonthlyInsights } from "@/lib/insights";
 import { getPlanItemTypeLabel } from "@/lib/plan-labels";
 
@@ -18,6 +24,9 @@ export default async function InsightsPage() {
 
   const insights = await getMonthlyInsights(userId);
   const isEmpty = insights.totals.plans === 0 && insights.totals.items === 0;
+  const now = new Date();
+  const summaryDate = formatDateString(now);
+  const weekSummaryHref = `/plans/week/${formatWeekStartString(now)}/summary`;
 
   return (
     <section className="space-y-8">
@@ -64,6 +73,27 @@ export default async function InsightsPage() {
               />
             </div>
           </div>
+
+          {insights.totals.observations > 0 ? (
+            <section className="ui-card-padded space-y-3">
+              <h2 className="ui-section-title">Private observations</h2>
+              <p className="text-sm text-muted">
+                {insights.totals.observations} this month — only visible to you.
+              </p>
+              {insights.observationCategories.length > 0 ? (
+                <ul className="flex flex-wrap gap-2">
+                  {insights.observationCategories.map((entry) => (
+                    <li
+                      key={entry.category}
+                      className="rounded-full bg-accent-cream/50 px-3 py-1 text-xs text-muted"
+                    >
+                      {entry.label} · {entry.count}
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </section>
+          ) : null}
 
           <SimpleBarList
             title="Item types"
@@ -123,6 +153,33 @@ export default async function InsightsPage() {
           <p className="text-sm text-muted-light">
             These are observations, not grades.
           </p>
+
+          <section className="ui-card-padded space-y-3">
+            <h2 className="ui-section-title">Period summaries</h2>
+            <p className="text-sm text-muted">
+              A gentle look across a week, month, or year.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Link
+                href={weekSummaryHref}
+                className="ui-btn-secondary ui-btn-compact"
+              >
+                Week summary
+              </Link>
+              <Link
+                href={`/plans/month/${summaryDate}/summary`}
+                className="ui-btn-secondary ui-btn-compact"
+              >
+                Month summary
+              </Link>
+              <Link
+                href={`/plans/year/${summaryDate}/summary`}
+                className="ui-btn-secondary ui-btn-compact"
+              >
+                Year summary
+              </Link>
+            </div>
+          </section>
         </>
       )}
     </section>

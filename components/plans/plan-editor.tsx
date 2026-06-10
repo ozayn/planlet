@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { PlanItemView } from "@/app/generated/prisma/client";
 
 import { AddItemForm } from "@/components/plans/add-item-form";
@@ -10,10 +11,12 @@ import {
   PlanKudosSummary,
   type PlanKudosEntry,
 } from "@/components/plans/plan-kudos-summary";
+import { PrivateObservationsSection } from "@/components/plans/private-observations-section";
 import { SharePlanPanel } from "@/components/plans/share-plan-panel";
 import { ShareWithUserPanel } from "@/components/plans/share-with-user-panel";
 import { formatDateRange } from "@/lib/dates";
 import { getPlanTypeLabel } from "@/lib/plan-labels";
+import type { SerializedObservation } from "@/lib/observations";
 import type { SerializedPlan } from "@/lib/plan-serialize";
 
 type PlanShareEntry = {
@@ -36,6 +39,9 @@ type PlanEditorProps = {
   itemView?: PlanItemView;
   showDeletePlan?: boolean;
   deleteRedirectTo?: string;
+  periodSummaryHref?: string;
+  periodSummaryLabel?: string;
+  observations?: SerializedObservation[];
 };
 
 export function PlanEditor({
@@ -49,14 +55,25 @@ export function PlanEditor({
   itemView = "MINIMAL",
   showDeletePlan = false,
   deleteRedirectTo,
+  periodSummaryHref,
+  periodSummaryLabel,
+  observations,
 }: PlanEditorProps) {
   const dateStart = new Date(plan.dateStart);
   const dateEnd = new Date(plan.dateEnd);
   const itemCount = plan.items.length;
 
   const headerActions =
-    showCopyExport || fullPlanHref || showDeletePlan ? (
+    showCopyExport ||
+    fullPlanHref ||
+    showDeletePlan ||
+    periodSummaryHref ? (
       <div className="flex shrink-0 items-center gap-1">
+        {periodSummaryHref ? (
+          <Link href={periodSummaryHref} className="ui-text-link text-sm">
+            {periodSummaryLabel ?? "Summary"}
+          </Link>
+        ) : null}
         {showCopyExport ? <SharePlanPanel plan={plan} /> : null}
         {fullPlanHref ? <OpenFullPlanShareLink href={fullPlanHref} /> : null}
         {showDeletePlan ? (
@@ -132,6 +149,13 @@ export function PlanEditor({
         ) : null}
         <AddItemForm planId={plan.id} />
       </section>
+
+      {observations !== undefined ? (
+        <PrivateObservationsSection
+          planId={plan.id}
+          observations={observations}
+        />
+      ) : null}
     </div>
   );
 }

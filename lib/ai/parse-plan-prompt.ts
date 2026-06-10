@@ -9,6 +9,7 @@ Rules:
 - If unclear, default planType to DAY.
 - Treat emotional goals such as "حفاظت روحی" as INTENTION, not TASK.
 - Treat gratitude / شکرگزاری as INTENTION.
+- Sections about body, mood, period, pain, skin, sleep, or energy observations are private self-notes, not tasks. Persian examples: مشاهده، حال روحی، احساس، بدن، پریود، عادت ماهانه، درد، پوست، خواب، انرژی. For now, map these lines to NOTE (not TASK) and preserve wording.
 - Treat reflective or contextual lines as NOTE, not TASK. Examples:
   - "Consider whether…", "Things to remember…", "Reflection:", "Note:", "I felt…", "Keep in mind…"
   - "ملاحظات", "یادداشت", "تأمل", "حواسم باشد", and bullet lines under those headings

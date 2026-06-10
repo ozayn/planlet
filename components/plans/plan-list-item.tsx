@@ -9,6 +9,7 @@ import {
   formatDateString,
   formatWeekStartString,
 } from "@/lib/dates";
+import { getPeriodSummaryHref } from "@/lib/period-summary-links";
 
 type PlanListItemProps = {
   id: string;
@@ -34,11 +35,18 @@ export function PlanListItem({
         ? `/plans/week/${formatWeekStartString(dateStart)}`
         : `/plans/${id}`;
 
+  const summaryHref =
+    type === "WEEK" || type === "MONTH" || type === "YEAR"
+      ? getPeriodSummaryHref(type, dateStart)
+      : null;
+
   return (
     <li className="group relative">
       <Link
         href={href}
-        className="ui-card flex min-h-11 items-center justify-between gap-3 px-3 py-2 pe-11 transition-colors hover:bg-accent-cream/40"
+        className={`ui-card flex min-h-11 items-center justify-between gap-3 px-3 py-2 transition-colors hover:bg-accent-cream/40${
+          summaryHref ? " pe-24" : " pe-11"
+        }`}
       >
         <div className="min-w-0">
           <p
@@ -55,7 +63,16 @@ export function PlanListItem({
           {itemCount} item{itemCount === 1 ? "" : "s"}
         </span>
       </Link>
-      <div className="absolute end-2 top-1/2 -translate-y-1/2 opacity-100 focus-within:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+      <div className="absolute end-2 top-1/2 flex -translate-y-1/2 items-center gap-1 opacity-100 focus-within:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+        {summaryHref ? (
+          <Link
+            href={summaryHref}
+            onClick={(event) => event.stopPropagation()}
+            className="ui-btn-ghost min-h-8 px-2 text-xs"
+          >
+            Summary
+          </Link>
+        ) : null}
         <DeletePlanMenu planId={id} />
       </div>
     </li>

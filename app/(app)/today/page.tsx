@@ -7,6 +7,7 @@ import { PlanEditor } from "@/components/plans/plan-editor";
 import { PageHeader } from "@/components/page-header";
 import { getKudosForPlan } from "@/lib/kudos";
 import { formatDateString } from "@/lib/dates";
+import { getObservationsForPlan } from "@/lib/observations";
 import { getTodayPlan } from "@/lib/plans";
 import { serializePlan } from "@/lib/plan-serialize";
 import { getPlanItemViewForUser } from "@/lib/user-preferences";
@@ -23,7 +24,12 @@ export default async function TodayPage() {
     getTodayPlan(userId),
     getPlanItemViewForUser(userId),
   ]);
-  const kudos = plan ? await getKudosForPlan(plan.id, userId) : [];
+  const [kudos, observations] = plan
+    ? await Promise.all([
+        getKudosForPlan(plan.id, userId),
+        getObservationsForPlan(plan.id, userId),
+      ])
+    : [[], undefined];
   const firstName = session.user?.name?.split(" ")[0];
   const todayDate = formatDateString(new Date());
 
@@ -56,6 +62,7 @@ export default async function TodayPage() {
               sender: entry.sender,
             }))}
             itemView={planItemView}
+            observations={observations}
           />
         </div>
       ) : (

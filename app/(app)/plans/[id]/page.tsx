@@ -5,6 +5,8 @@ import { PlanEditor } from "@/components/plans/plan-editor";
 import { PlanReadOnly } from "@/components/plans/plan-read-only";
 import { getKudosForPlan, getViewerKudosForPlan } from "@/lib/kudos";
 import { getPlanAccess, getPlanSharesForOwner } from "@/lib/plan-sharing";
+import { getObservationsForPlan } from "@/lib/observations";
+import { getPeriodSummaryHref } from "@/lib/period-summary-links";
 import { getPlanWithItems } from "@/lib/plans";
 import { prisma } from "@/lib/prisma";
 import { serializePlan } from "@/lib/plan-serialize";
@@ -68,10 +70,22 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
     );
   }
 
-  const [platformShares, kudos] = await Promise.all([
+  const [platformShares, kudos, observations] = await Promise.all([
     getPlanSharesForOwner(id, userId),
     getKudosForPlan(id, userId),
+    getObservationsForPlan(id, userId),
   ]);
+
+  const periodSummaryHref =
+    plan.type === "MONTH" || plan.type === "YEAR"
+      ? getPeriodSummaryHref(plan.type, plan.dateStart)
+      : undefined;
+  const periodSummaryLabel =
+    plan.type === "MONTH"
+      ? "Month summary"
+      : plan.type === "YEAR"
+        ? "Year summary"
+        : undefined;
 
   return (
     <section>
@@ -88,6 +102,9 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
           sender: entry.sender,
         }))}
         itemView={planItemView}
+        periodSummaryHref={periodSummaryHref}
+        periodSummaryLabel={periodSummaryLabel}
+        observations={observations}
       />
     </section>
   );
