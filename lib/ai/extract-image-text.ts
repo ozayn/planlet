@@ -1,214 +1,93 @@
-import type { PlanLanguage } from "@/app/generated/prisma/client";
-import { z } from "zod";
-
-import {
-  type DateHintConfidence,
-  mergeDateHintConfidence,
-  resolveDateHint,
-} from "@/lib/ai/date-hints";
-import {
-  buildTextareaContentFromExtraction,
-  type ImageItemHint,
-} from "@/lib/ai/image-extraction-format";
+import type {
+  ExtractImageTextInput,
+  ExtractImageTextResult,
+  ImageDateHint,
+} from "@/lib/ai/image-text-extraction-types";
 import {
   DEFAULT_VISION_MODEL,
   getOpenAIClient,
 } from "@/lib/ai/openai-client";
-import { parseModelJsonResponse } from "@/lib/ai/parse-model-json";
-import { APP_TIMEZONE } from "@/config/time";
+import { salvageTextFromModelResponse } from "@/lib/ai/salvage-model-text";
+import { structureExtractedPlainText } from "@/lib/ai/structure-extracted-plain-text";
+import { EXTRACTION_TIMEOUT_MS } from "@/lib/image/constants";
 
-const EXTRACT_IMAGE_TEXT_PROMPT = `You are reading a handwritten planning note from a real notebook photo.
-Extract only useful planning content. Do not expect perfect OCR.
+const PLAIN_TEXT_EXTRACTION_PROMPT = `You are reading a handwritten planning note from a notebook photo.
+Extract all readable text exactly as written.
 
-Return valid JSON only. Do not wrap the JSON in markdown code fences.
-Use this shape:
-{
-  "text": "cleaned plan text for a notes textarea",
-  "language": "FA" | "EN" | "MIXED" | "UNKNOWN",
-  "dateHint": {
-    "detected": true | false,
-    "rawText": "strongest visible date phrase or null",
-    "confidence": "LOW" | "MEDIUM" | "HIGH",
-    "explanation": "short source note or null"
-  },
-  "removedHeaderLines": ["header lines removed from tasks"],
-  "possibleTitle": "best title/context phrase or null",
-  "multipleDateSectionsDetected": true | false,
-  "itemHints": [
-    {
-      "text": "item text without checkbox symbols",
-      "status": "OPEN" | "DONE" | "PARTIAL" | "MOVED" | "SKIPPED" | "RELEASED" | "UNKNOWN",
-      "type": "TASK" | "NOTE" | "INTENTION" | "UNKNOWN",
-      "dateRawText": "section date label such as جون ۸ or null",
-      "confidence": "LOW" | "MEDIUM" | "HIGH"
-    }
-  ]
+Return plain text only. No JSON. No markdown fences. No commentary.
+Preserve line breaks.
+Preserve checkbox symbols (✅ ☐ ◐) if visible.
+Preserve Persian and English text as written. Do not translate.
+If something is unclear, use [?] for that word.
+Do not invent text that is not visible.`;
+
+export class ExtractionTimeoutError extends Error {
+  constructor(
+    message = "Extraction took too long. Try cropping the image closer to the note.",
+  ) {
+    super(message);
+    this.name = "ExtractionTimeoutError";
+  }
 }
 
-Pay attention to:
+export type { ExtractImageTextInput, ExtractImageTextResult, ImageDateHint } from "@/lib/ai/image-text-extraction-types";
 
-1. Dates or section headers:
-   - جون ۸, جون ۹, June 8, June 9
-   - today / tomorrow / امروز / فردا
-   - weekday names
-   - chat app date separators when present
-   These are date/title/context, not tasks.
-
-2. Checkboxes and marks:
-   - empty checkbox → status OPEN
-   - checked checkbox or checkmark → status DONE
-   - crossed-out item → DONE if clearly checked off, otherwise UNKNOWN
-   - do not include checkbox symbols inside item text
-
-3. Mixed language:
-   - Preserve words like Claude Code, Expo Print, FIQ exactly if readable
-   - Keep Persian text Persian
-   - Do not translate
-
-4. Layout:
-   - Read right-to-left Persian lists correctly
-   - If multiple dated sections exist, keep them separated in itemHints using dateRawText
-   - Set multipleDateSectionsDetected=true when more than one date section is visible
-   - If layout is ambiguous, preserve line breaks and mark uncertain parts with [?]
-   - Do not invent tasks from arrows or scribbles; uncertain scribbles may be NOTE with UNKNOWN type
-
-5. Do not treat headers as tasks:
-   - جون ۸, جون ۹, برنامه دوشنبه, امروز واقعا
-   Put these in removedHeaderLines, possibleTitle, or dateRawText — not as task itemHints.
-
-6. Quality rules:
-   - Preserve original language. Do not translate.
-   - Do not invent missing words.
-   - Mark uncertain handwriting with [?].
-   - Do not summarize or rewrite planning content.
-   - text should be the cleaned textarea version with headers removed and checkbox symbols stripped.
-   - itemHints should list actual planning lines in reading order when you can identify them.
-
-Rules for dateHint:
-- Use the strongest single date for the overall image (prefer month/day over weekday alone).
-- If multiple dates appear, still pick the strongest primary date for dateHint and set multipleDateSectionsDetected=true.
-- If no date is visible, set detected=false and rawText=null.
-- explanation should be short, e.g. "Detected from notebook header: جون ۸".`;
-
-const visionDateHintSchema = z.object({
-  detected: z.boolean(),
-  rawText: z.string().nullable().optional(),
-  confidence: z.enum(["LOW", "MEDIUM", "HIGH"]).optional(),
-  explanation: z.string().nullable().optional(),
-});
-
-const visionItemHintSchema = z.object({
-  text: z.string().min(1),
-  status: z
-    .enum([
-      "OPEN",
-      "DONE",
-      "PARTIAL",
-      "MOVED",
-      "SKIPPED",
-      "RELEASED",
-      "UNKNOWN",
-    ])
-    .optional(),
-  type: z.enum(["TASK", "NOTE", "INTENTION", "UNKNOWN"]).optional(),
-  dateRawText: z.string().nullable().optional(),
-  confidence: z.enum(["LOW", "MEDIUM", "HIGH"]).optional(),
-});
-
-const visionResponseSchema = z.object({
-  text: z.string().min(1),
-  language: z.enum(["FA", "EN", "MIXED", "UNKNOWN"]).optional(),
-  dateHint: visionDateHintSchema.optional(),
-  removedHeaderLines: z.array(z.string()).optional(),
-  possibleTitle: z.string().nullable().optional(),
-  multipleDateSectionsDetected: z.boolean().optional(),
-  itemHints: z.array(visionItemHintSchema).optional(),
-});
-
-export type ImageDateHint = {
-  detected: boolean;
-  rawText?: string;
-  dateString?: string;
-  confidence: DateHintConfidence;
-  explanation?: string;
+export type ExtractImageTextOptions = {
+  timeoutMs?: number;
 };
 
-export type ExtractImageTextInput = {
-  buffer: Buffer;
-  mimeType: string;
-};
+function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  onTimeout: () => Error,
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(onTimeout());
+    }, timeoutMs);
 
-export type ExtractImageTextResult = {
+    promise
+      .then((value) => {
+        clearTimeout(timer);
+        resolve(value);
+      })
+      .catch((error: unknown) => {
+        clearTimeout(timer);
+        reject(error);
+      });
+  });
+}
+
+function stripResponseFences(content: string): string {
+  let trimmed = content.trim().replace(/^\uFEFF/, "");
+  const fencedMatch = trimmed.match(/```(?:json|text)?\s*([\s\S]*?)\s*```/i);
+
+  if (fencedMatch) {
+    trimmed = fencedMatch[1].trim();
+  }
+
+  return trimmed;
+}
+
+function normalizePlainTextResponse(content: string): {
   text: string;
-  language: PlanLanguage;
-  dateHint: ImageDateHint;
-  removedHeaderLines: string[];
-  possibleTitle?: string;
-  itemHints: ImageItemHint[];
-  multipleDateSectionsDetected: boolean;
-};
+  imperfect: boolean;
+} {
+  const stripped = stripResponseFences(content);
 
-function inferLanguage(text: string): PlanLanguage {
-  const persian = (text.match(/[\u0600-\u06FF]/g) ?? []).length;
-  const latin = (text.match(/[a-zA-Z]/g) ?? []).length;
-
-  if (persian > 0 && latin > 0) {
-    return "MIXED";
+  if (stripped.startsWith("{")) {
+    const salvaged = salvageTextFromModelResponse(stripped);
+    if (salvaged) {
+      return { text: salvaged, imperfect: true };
+    }
   }
 
-  if (persian > latin) {
-    return "FA";
-  }
-
-  if (latin > persian) {
-    return "EN";
-  }
-
-  return persian > 0 ? "FA" : "UNKNOWN";
+  return { text: stripped, imperfect: false };
 }
 
-function finalizeDateHint(
-  hint: z.infer<typeof visionDateHintSchema> | undefined,
-  now = new Date(),
-): ImageDateHint {
-  const rawText = hint?.rawText?.trim();
-
-  if (!hint?.detected || !rawText) {
-    return { detected: false, confidence: "LOW" };
-  }
-
-  const resolved = resolveDateHint(rawText, now, APP_TIMEZONE);
-
-  return {
-    detected: true,
-    rawText,
-    dateString: resolved.dateString,
-    confidence: mergeDateHintConfidence(hint.confidence, resolved.confidence),
-    explanation: hint.explanation?.trim() || resolved.explanation,
-  };
-}
-
-function normalizeItemHints(
-  hints: z.infer<typeof visionItemHintSchema>[] | undefined,
-): ImageItemHint[] {
-  if (!hints?.length) {
-    return [];
-  }
-
-  return hints
-    .map((hint) => ({
-      text: hint.text.trim(),
-      status: hint.status ?? "UNKNOWN",
-      type: hint.type ?? "UNKNOWN",
-      dateRawText: hint.dateRawText?.trim() || undefined,
-      confidence: hint.confidence,
-    }))
-    .filter((hint) => hint.text.length > 0);
-}
-
-export async function extractImageText(
+async function fetchPlainTextFromVision(
   input: ExtractImageTextInput,
-): Promise<ExtractImageTextResult> {
+): Promise<string> {
   const openai = getOpenAIClient();
   const base64 = input.buffer.toString("base64");
   const dataUrl = `data:${input.mimeType};base64,${base64}`;
@@ -216,12 +95,11 @@ export async function extractImageText(
   const response = await openai.chat.completions.create({
     model: DEFAULT_VISION_MODEL,
     temperature: 0.1,
-    response_format: { type: "json_object" },
     messages: [
       {
         role: "user",
         content: [
-          { type: "text", text: EXTRACT_IMAGE_TEXT_PROMPT },
+          { type: "text", text: PLAIN_TEXT_EXTRACTION_PROMPT },
           {
             type: "image_url",
             image_url: { url: dataUrl },
@@ -229,7 +107,7 @@ export async function extractImageText(
         ],
       },
     ],
-    max_tokens: 4096,
+    max_tokens: 2048,
   });
 
   const content = response.choices[0]?.message?.content?.trim();
@@ -238,49 +116,60 @@ export async function extractImageText(
     throw new Error("No text could be extracted from the image.");
   }
 
-  const json = parseModelJsonResponse(
-    content,
-    "Image extraction returned invalid JSON.",
-  );
+  return content;
+}
 
-  const parsed = visionResponseSchema.safeParse(json);
+export async function extractImageText(
+  input: ExtractImageTextInput,
+  options: ExtractImageTextOptions = {},
+): Promise<ExtractImageTextResult> {
+  const timeoutMs = options.timeoutMs ?? EXTRACTION_TIMEOUT_MS;
 
-  if (!parsed.success) {
-    throw new Error("Image extraction returned an unexpected shape.");
+  let rawContent: string;
+
+  try {
+    rawContent = await withTimeout(
+      fetchPlainTextFromVision(input),
+      timeoutMs,
+      () => new ExtractionTimeoutError(),
+    );
+  } catch (error) {
+    if (error instanceof ExtractionTimeoutError) {
+      throw error;
+    }
+
+    throw error;
   }
 
-  const removedHeaderLines = (parsed.data.removedHeaderLines ?? [])
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
-  const itemHints = normalizeItemHints(parsed.data.itemHints);
-  const dateHint = finalizeDateHint(parsed.data.dateHint);
+  const { text: plainText, imperfect: responseImperfect } =
+    normalizePlainTextResponse(rawContent);
 
-  const text = buildTextareaContentFromExtraction({
-    text: parsed.data.text.trim(),
-    removedHeaderLines,
-    possibleTitle: parsed.data.possibleTitle,
-    itemHints,
-    multipleDateSectionsDetected: parsed.data.multipleDateSectionsDetected,
-  });
+  if (!plainText.trim()) {
+    const salvaged = salvageTextFromModelResponse(rawContent);
+    if (!salvaged?.trim()) {
+      throw new Error("No text could be extracted from the image.");
+    }
 
-  if (!text) {
-    throw new Error("No text could be extracted from the image.");
+    return {
+      ...structureExtractedPlainText(salvaged),
+      imperfect: true,
+    };
   }
 
-  const language = parsed.data.language ?? inferLanguage(text);
+  try {
+    return {
+      ...structureExtractedPlainText(plainText),
+      imperfect: responseImperfect || undefined,
+    };
+  } catch (structureError) {
+    const salvaged = salvageTextFromModelResponse(rawContent);
+    if (salvaged?.trim()) {
+      return {
+        ...structureExtractedPlainText(salvaged),
+        imperfect: true,
+      };
+    }
 
-  const multipleDateSectionsDetected =
-    parsed.data.multipleDateSectionsDetected ??
-    (removedHeaderLines.length > 1 ||
-      itemHints.filter((hint) => hint.dateRawText).length > 1);
-
-  return {
-    text,
-    language,
-    dateHint,
-    removedHeaderLines,
-    possibleTitle: parsed.data.possibleTitle?.trim() || undefined,
-    itemHints,
-    multipleDateSectionsDetected,
-  };
+    throw structureError;
+  }
 }

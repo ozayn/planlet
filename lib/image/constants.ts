@@ -1,4 +1,21 @@
-export const MAX_IMAGE_UPLOAD_BYTES = 15 * 1024 * 1024;
+/** Server max after client-side preparation. */
+export const MAX_IMAGE_UPLOAD_BYTES = 4 * 1024 * 1024;
+
+/** Allow large camera photos in the picker; they are resized before upload. */
+export const PICKER_MAX_IMAGE_BYTES = 30 * 1024 * 1024;
+
+export const MAX_IMAGE_DIMENSION = 1600;
+
+export const IMAGE_QUALITY_DEFAULT = 0.82;
+
+export const IMAGE_QUALITY_MIN = 0.65;
+
+/** Target compressed size before upload. */
+export const IMAGE_TARGET_MAX_BYTES = 3 * 1024 * 1024;
+
+export const EXTRACTION_TIMEOUT_MS = 40_000;
+
+export const SLOW_EXTRACTION_HINT_MS = 10_000;
 
 export const ALLOWED_IMAGE_MIME_TYPES = new Set([
   "image/jpeg",

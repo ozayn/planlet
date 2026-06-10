@@ -1,13 +1,48 @@
 import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
-import { extractImageText } from "@/lib/ai/extract-image-text";
 import {
-  extensionForImageMimeType,
+  extractImageText,
+  ExtractionTimeoutError,
+} from "@/lib/ai/extract-image-text";
+import {
   formatFileSize,
   MAX_IMAGE_UPLOAD_BYTES,
   normalizeImageMimeType,
 } from "@/lib/image/constants";
+
+const GENERIC_EXTRACTION_FAILURE =
+  "Couldn't extract this image cleanly. Try cropping closer to the writing or paste the text manually.";
+
+function friendlyExtractionError(error: unknown): string {
+  if (error instanceof ExtractionTimeoutError) {
+    return error.message;
+  }
+
+  if (!(error instanceof Error)) {
+    return GENERIC_EXTRACTION_FAILURE;
+  }
+
+  const message = error.message;
+
+  if (message.includes("OPENAI_API_KEY")) {
+    return "Image text extraction is not configured on the server.";
+  }
+
+  if (
+    message.includes("invalid JSON") ||
+    message.includes("unexpected shape") ||
+    message.includes("No text could be extracted")
+  ) {
+    return GENERIC_EXTRACTION_FAILURE;
+  }
+
+  if (message.includes("too large")) {
+    return message;
+  }
+
+  return GENERIC_EXTRACTION_FAILURE;
+}
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -40,7 +75,7 @@ export async function POST(request: Request) {
   if (image.size > MAX_IMAGE_UPLOAD_BYTES) {
     return NextResponse.json(
       {
-        error: `Image file is too large. Maximum size is ${formatFileSize(MAX_IMAGE_UPLOAD_BYTES)}.`,
+        error: `Image file is too large after preparation. Maximum size is ${formatFileSize(MAX_IMAGE_UPLOAD_BYTES)}. Try cropping closer to the note.`,
       },
       { status: 413 },
     );
@@ -60,9 +95,6 @@ export async function POST(request: Request) {
 
   try {
     const buffer = Buffer.from(await image.arrayBuffer());
-    const filename =
-      image.name?.trim() ||
-      `notebook.${extensionForImageMimeType(mimeType)}`;
 
     const result = await extractImageText({
       buffer,
@@ -77,18 +109,17 @@ export async function POST(request: Request) {
       possibleTitle: result.possibleTitle ?? null,
       itemHints: result.itemHints,
       multipleDateSectionsDetected: result.multipleDateSectionsDetected,
+      imperfect: result.imperfect ?? false,
     });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Text extraction failed.";
+    const message = friendlyExtractionError(error);
+    const status =
+      error instanceof ExtractionTimeoutError
+        ? 504
+        : message.includes("not configured")
+          ? 503
+          : 500;
 
-    if (message.includes("OPENAI_API_KEY")) {
-      return NextResponse.json(
-        { error: "Image text extraction is not configured on the server." },
-        { status: 503 },
-      );
-    }
-
-    return NextResponse.json({ error: message }, { status: 500 });
+    return NextResponse.json({ error: message }, { status });
   }
 }
