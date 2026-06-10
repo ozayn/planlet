@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -25,9 +26,12 @@ export function ProfileMenu({
   compact = false,
   showThemeInMenu = false,
 }: ProfileMenuProps) {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const menuId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
+  const onSettings = pathname === "/settings" || pathname.startsWith("/settings/");
+  const onAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
 
   useEffect(() => {
     if (!open) return;
@@ -114,8 +118,13 @@ export function ProfileMenu({
             <Link
               href="/settings"
               role="menuitem"
+              aria-current={onSettings ? "page" : undefined}
               onClick={() => setOpen(false)}
-              className="flex min-h-10 items-center rounded-xl px-3 text-sm text-foreground transition-colors hover:bg-accent-cream"
+              className={`flex min-h-10 items-center rounded-xl px-3 text-sm transition-colors hover:bg-accent-cream ${
+                onSettings
+                  ? "bg-accent-cream/60 font-medium text-foreground"
+                  : "text-foreground"
+              }`}
             >
               Settings
             </Link>
@@ -123,8 +132,13 @@ export function ProfileMenu({
               <Link
                 href="/admin"
                 role="menuitem"
+                aria-current={onAdmin ? "page" : undefined}
                 onClick={() => setOpen(false)}
-                className="flex min-h-10 items-center rounded-xl px-3 text-sm text-foreground transition-colors hover:bg-accent-cream"
+                className={`flex min-h-10 items-center rounded-xl px-3 text-sm transition-colors hover:bg-accent-cream ${
+                  onAdmin
+                    ? "bg-accent-cream/60 font-medium text-foreground"
+                    : "text-foreground"
+                }`}
               >
                 Admin
               </Link>

@@ -14,7 +14,6 @@ const navItems = [
   { href: "/today", label: "Today" },
   { href: "/plans", label: "Plans" },
   { href: "/insights", label: "Insights" },
-  { href: "/settings", label: "Settings" },
 ] as const;
 
 type DesktopNavProps = {
