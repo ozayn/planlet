@@ -1,10 +1,10 @@
-import { CreateTodayPlanButton } from "@/components/plans/create-today-plan-button";
+import { NewPlanLink } from "@/components/plans/new-plan-link";
 
 export function PlansEmptyState() {
   return (
-    <article className="ui-empty-state space-y-6">
-      <p className="text-sm text-muted">No plans saved yet.</p>
-      <CreateTodayPlanButton />
-    </article>
+    <div className="flex flex-wrap items-center gap-3 text-sm text-muted">
+      <span>No plans yet.</span>
+      <NewPlanLink />
+    </div>
   );
 }

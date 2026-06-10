@@ -19,10 +19,10 @@ export function PlanAWeekCard() {
   }
 
   return (
-    <section className="ui-card-padded space-y-3">
-      <div className="space-y-1">
-        <h2 className="ui-section-title">Plan a week</h2>
-        <p className="text-sm text-muted">
+    <section className="ui-card-padded space-y-2.5">
+      <div className="space-y-0.5">
+        <h3 className="text-sm font-medium text-foreground">Plan a week</h3>
+        <p className="text-xs text-muted">
           Open or create a weekly plan for any week.
         </p>
       </div>
@@ -32,16 +32,16 @@ export function PlanAWeekCard() {
           type="date"
           value={date}
           onChange={(event) => setDate(event.target.value)}
-          className="ui-input ui-input-compact min-h-10 flex-1"
+          className="ui-input ui-input-compact min-h-9 flex-1"
           aria-label="Week containing date"
         />
         <button
           type="button"
           onClick={handleOpen}
           disabled={!date}
-          className="ui-btn-secondary ui-btn-compact min-h-10 shrink-0"
+          className="ui-btn-secondary ui-btn-compact min-h-9 shrink-0 px-4"
         >
-          Open week
+          Open
         </button>
       </div>
     </section>
