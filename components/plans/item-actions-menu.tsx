@@ -3,6 +3,7 @@
 import type { PlanItemType } from "@/app/generated/prisma/client";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 
 import { deletePlanItemAction } from "@/app/(app)/plans/actions";
 import { getItemActionLabels } from "@/components/plans/item-action-labels";
@@ -29,19 +30,39 @@ export function ItemActionsMenu({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isDeleting, startDelete] = useTransition();
+  const [mounted, setMounted] = useState(false);
+  const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0, width: 0 });
   const menuId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!menuOpen) return;
 
+    function updatePosition() {
+      if (!triggerRef.current) return;
+      const rect = triggerRef.current.getBoundingClientRect();
+      const menuWidth = 144;
+      setMenuPosition({
+        top: rect.bottom + 4,
+        left: Math.max(8, rect.right - menuWidth),
+        width: menuWidth,
+      });
+    }
+
     function handlePointerDown(event: MouseEvent) {
+      const target = event.target as Node;
       if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
+        containerRef.current?.contains(target) ||
+        document.getElementById(menuId)?.contains(target)
       ) {
-        setMenuOpen(false);
+        return;
       }
+      setMenuOpen(false);
     }
 
     function handleKeyDown(event: KeyboardEvent) {
@@ -50,14 +71,25 @@ export function ItemActionsMenu({
       }
     }
 
+    updatePosition();
     document.addEventListener("mousedown", handlePointerDown);
     window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("resize", updatePosition);
+    window.addEventListener("scroll", updatePosition, true);
 
     return () => {
       document.removeEventListener("mousedown", handlePointerDown);
       window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
     };
-  }, [menuOpen]);
+  }, [menuOpen, menuId]);
+
+  function toggleMenu(event: React.MouseEvent<HTMLButtonElement>) {
+    event.stopPropagation();
+    event.preventDefault();
+    setMenuOpen((current) => !current);
+  }
 
   function openConfirm() {
     setMenuOpen(false);
@@ -81,30 +113,19 @@ export function ItemActionsMenu({
     });
   }
 
-  return (
-    <>
-      <div ref={containerRef} className="relative">
-        <button
-          type="button"
-          aria-expanded={menuOpen}
-          aria-haspopup="menu"
-          aria-controls={menuId}
-          aria-label={labels.more}
-          title="More"
-          onClick={() => setMenuOpen((current) => !current)}
-          className="ui-icon-action-quiet"
-        >
-          <MoreIcon className="h-4 w-4" />
-          <span className="ui-tooltip-bubble" role="tooltip">
-            More
-          </span>
-        </button>
-
-        {menuOpen ? (
+  const menu =
+    menuOpen && mounted
+      ? createPortal(
           <div
             id={menuId}
             role="menu"
-            className="absolute end-0 z-50 mt-1 min-w-36 rounded-xl border border-border-soft bg-surface py-1 ui-shadow-elevated"
+            aria-label={labels.more}
+            className="ui-shadow-elevated fixed z-[60] rounded-xl border border-border-soft bg-surface py-1"
+            style={{
+              top: menuPosition.top,
+              left: menuPosition.left,
+              width: menuPosition.width,
+            }}
           >
             <button
               type="button"
@@ -113,7 +134,7 @@ export function ItemActionsMenu({
                 setMenuOpen(false);
                 onEdit();
               }}
-              className="flex min-h-10 w-full items-center px-3 text-left text-sm text-foreground transition-colors hover:bg-accent-cream"
+              className="flex min-h-10 w-full items-center px-3 text-left text-sm text-foreground transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none"
             >
               {labels.edit}
             </button>
@@ -122,13 +143,38 @@ export function ItemActionsMenu({
               role="menuitem"
               aria-label={labels.delete}
               onClick={openConfirm}
-              className="flex min-h-10 w-full items-center px-3 text-left text-sm text-accent-red transition-colors hover:bg-accent-cream"
+              className="flex min-h-10 w-full items-center px-3 text-left text-sm text-accent-red transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none"
             >
               {labels.delete}
             </button>
-          </div>
-        ) : null}
+          </div>,
+          document.body,
+        )
+      : null;
+
+  return (
+    <>
+      <div ref={containerRef} className="relative">
+        <button
+          ref={triggerRef}
+          type="button"
+          aria-expanded={menuOpen}
+          aria-haspopup="menu"
+          aria-controls={menuOpen ? menuId : undefined}
+          aria-label={labels.more}
+          title="More"
+          onClick={toggleMenu}
+          onPointerDown={(event) => event.stopPropagation()}
+          className="ui-icon-action-quiet"
+        >
+          <MoreIcon className="h-4 w-4" />
+          <span className="ui-tooltip-bubble" role="tooltip">
+            More
+          </span>
+        </button>
       </div>
+
+      {menu}
 
       <ConfirmDialog
         open={confirmOpen}

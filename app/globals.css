@@ -362,6 +362,12 @@ body {
   @media (min-width: 768px) {
     .group:not(:hover):not(:focus-within) .ui-item-card-actions {
       opacity: 0;
+      pointer-events: none;
+    }
+
+    .group:hover .ui-item-card-actions,
+    .group:focus-within .ui-item-card-actions {
+      pointer-events: auto;
     }
   }
 

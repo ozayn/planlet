@@ -92,7 +92,7 @@ export function PlanItemCard({
   return (
     <article className={isNested ? "ms-3 border-s border-border-soft ps-2" : ""}>
       <div
-        className={`ui-plan-item group relative overflow-hidden px-3 py-2 transition-shadow sm:px-4 sm:py-2.5 ${STATUS_STYLES[item.status].card} ${
+        className={`ui-plan-item group relative overflow-visible px-3 py-2 transition-shadow sm:px-4 sm:py-2.5 ${STATUS_STYLES[item.status].card} ${
           isDragging ? "opacity-80 ui-shadow-elevated" : ""
         }`}
       >
