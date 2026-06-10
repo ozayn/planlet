@@ -76,6 +76,7 @@ import {
   sharePlanWithUser,
 } from "@/lib/plan-sharing";
 import { prisma } from "@/lib/prisma";
+import { touchUserSeenSafely } from "@/lib/user-activity";
 
 async function requireUserId(): Promise<string> {
   const session = await auth();
@@ -83,6 +84,10 @@ async function requireUserId(): Promise<string> {
     throw new Error("Unauthorized");
   }
   return session.user.id;
+}
+
+async function recordUserActivity(userId: string) {
+  await touchUserSeenSafely(userId);
 }
 
 function revalidatePlanPaths(
@@ -128,6 +133,7 @@ function parseActionDateString(dateString: string): Date {
 export async function createTodayPlanAction() {
   const userId = await requireUserId();
   await getOrCreateDayPlan(userId, new Date());
+  await recordUserActivity(userId);
   revalidatePath("/today");
   revalidatePath("/plans");
 }
@@ -137,6 +143,7 @@ export async function createDayPlanForDateAction(dateString: string) {
   const date = parseActionDateString(dateString);
   const plan = await getOrCreateDayPlan(userId, date);
 
+  await recordUserActivity(userId);
   revalidatePlanPaths(plan.id, { dayDate: dateString });
   redirect(`/plans/day/${dateString}`);
 }
@@ -147,6 +154,7 @@ export async function createWeekPlanForDateAction(dateString: string) {
   const weekStart = formatWeekStartString(date);
   const plan = await getOrCreateWeekPlan(userId, date);
 
+  await recordUserActivity(userId);
   revalidatePlanPaths(plan.id, { weekDate: weekStart });
   redirect(`/plans/week/${weekStart}`);
 }
@@ -277,6 +285,7 @@ export async function createPlanAction(type: PlanType) {
     language: "UNKNOWN",
   });
 
+  await recordUserActivity(userId);
   revalidatePath("/plans");
   if (type === "WEEK") {
     redirect(`/plans/week/${formatWeekStartString(now)}`);
@@ -305,6 +314,7 @@ export async function createPlanItemAction(input: {
     type: input.type,
   });
 
+  await recordUserActivity(userId);
   revalidatePlanPaths(input.planId);
 }
 
@@ -319,6 +329,7 @@ export async function updatePlanItemAction(
     ...itemInput,
   });
 
+  await recordUserActivity(userId);
   revalidatePlanPaths(planId);
 }
 
@@ -339,6 +350,7 @@ export async function updatePlanItemStatusAction(input: {
     status: input.status,
   });
 
+  await recordUserActivity(userId);
   revalidatePlanPaths(input.planId);
 }
 
@@ -346,6 +358,7 @@ export async function deletePlanItemAction(planId: string, itemId: string) {
   const userId = await requireUserId();
 
   await deletePlanItem(itemId, userId);
+  await recordUserActivity(userId);
   revalidatePlanPaths(planId);
 }
 
@@ -370,6 +383,7 @@ export async function deletePlanAction(
     };
   }
 
+  await recordUserActivity(userId);
   revalidateAfterPlanDelete(plan);
 
   if (options?.redirectTo) {
@@ -387,6 +401,7 @@ export async function reorderPlanItemsAction(
 
   try {
     await reorderPlanItems(planId, userId, orderedItemIds);
+    await recordUserActivity(userId);
     revalidatePlanPaths(planId);
     return { success: true };
   } catch (error) {
@@ -514,6 +529,7 @@ export async function saveParsedPlanAction(input: unknown) {
         rootItemCount,
       );
 
+      await recordUserActivity(userId);
       revalidatePath("/plans");
       redirect(`/plans/${existing.id}`);
     }
@@ -544,6 +560,7 @@ export async function saveParsedPlanAction(input: unknown) {
         rootItemCount,
       );
 
+      await recordUserActivity(userId);
       revalidatePath("/plans");
       redirect(`/plans/${existing.id}`);
     }
@@ -576,6 +593,7 @@ export async function saveParsedPlanAction(input: unknown) {
 
       revalidatePath("/plans");
       revalidatePath(`/plans/week/${formatWeekStartString(referenceDate)}`);
+      await recordUserActivity(userId);
       redirect(`/plans/${existing.id}`);
     }
   }
@@ -610,6 +628,7 @@ export async function saveParsedPlanAction(input: unknown) {
       revalidatePath(
         `/plans/day/${data.planDate ?? formatDateString(referenceDate)}`,
       );
+      await recordUserActivity(userId);
       redirect(`/plans/${existing.id}`);
     }
   }
@@ -637,6 +656,7 @@ export async function saveParsedPlanAction(input: unknown) {
   if (data.planType === "WEEK") {
     revalidatePath(`/plans/week/${formatWeekStartString(referenceDate)}`);
   }
+  await recordUserActivity(userId);
   redirect(`/plans/${plan.id}`);
 }
 
@@ -652,6 +672,7 @@ export async function sharePlanWithUserAction(
 
   try {
     await sharePlanWithUser(planId, userId, targetEmail);
+    await recordUserActivity(userId);
     revalidatePlanPaths(planId);
     return { success: true };
   } catch (error) {
@@ -683,6 +704,7 @@ export async function sendPlanKudosAction(
 
   try {
     await sendPlanKudos(planId, userId, type);
+    await recordUserActivity(userId);
     revalidatePlanPaths(planId);
     revalidateNotificationSurfaces();
     return { success: true };
@@ -823,6 +845,7 @@ export async function addItemCommentAction(
       select: { userId: true },
     });
 
+    await recordUserActivity(userId);
     revalidatePlanPaths(result.planId);
 
     return {
@@ -863,6 +886,7 @@ export async function deleteItemCommentAction(
 
   try {
     const result = await deleteItemComment(commentId, userId);
+    await recordUserActivity(userId);
     revalidatePlanPaths(result.planId);
     return { success: true };
   } catch (error) {
@@ -890,6 +914,7 @@ export async function updatePlanTitleAction(
 
   try {
     const plan = await updatePlanTitle(planId, userId, title);
+    await recordUserActivity(userId);
     revalidatePlanPaths(plan.id, {
       dayDate:
         plan.type === "DAY" ? formatDateString(plan.dateStart) : undefined,
@@ -928,6 +953,7 @@ export async function addPlanObservationAction(
 
   try {
     const result = await addPlanObservation(planId, userId, data);
+    await recordUserActivity(userId);
     revalidatePlanPaths(result.planId);
     return { success: true, observation: result.observation };
   } catch (error) {
@@ -951,6 +977,7 @@ export async function updatePlanObservationAction(
 
   try {
     const result = await updatePlanObservation(observationId, userId, data);
+    await recordUserActivity(userId);
     revalidatePlanPaths(result.planId);
     return { success: true, observation: result.observation };
   } catch (error) {
@@ -973,6 +1000,7 @@ export async function deletePlanObservationAction(
 
   try {
     const result = await deletePlanObservation(observationId, userId);
+    await recordUserActivity(userId);
     revalidatePlanPaths(result.planId);
     return { success: true };
   } catch (error) {

@@ -8,6 +8,7 @@ import {
   markNotificationRead,
   NotificationAccessError,
 } from "@/lib/notifications";
+import { touchUserSeenSafely } from "@/lib/user-activity";
 
 async function requireUserId(): Promise<string> {
   const session = await auth();
@@ -36,6 +37,7 @@ export async function markNotificationReadAction(
 
   try {
     await markNotificationRead(notificationId, userId);
+    await touchUserSeenSafely(userId);
     revalidateNotificationSurfaces();
     return { success: true };
   } catch (error) {
@@ -54,6 +56,7 @@ export async function markAllNotificationsReadAction(): Promise<NotificationActi
 
   try {
     await markAllNotificationsRead(userId);
+    await touchUserSeenSafely(userId);
     revalidateNotificationSurfaces();
     return { success: true };
   } catch (error) {

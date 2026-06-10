@@ -110,16 +110,18 @@ export async function trackUserSignIn({
     data,
   });
 
-  try {
-    await prisma.loginEvent.create({
-      data: {
-        userId: resolvedUserId,
-        email: normalizedEmail,
-        provider: provider ?? "google",
-      },
-    });
-  } catch (error) {
-    console.warn("[planlet] login event log failed:", error);
+  if (!recentlyTracked) {
+    try {
+      await prisma.loginEvent.create({
+        data: {
+          userId: resolvedUserId,
+          email: normalizedEmail,
+          provider: provider ?? "google",
+        },
+      });
+    } catch (error) {
+      console.warn("[planlet] login event log failed:", error);
+    }
   }
 
   return role;
