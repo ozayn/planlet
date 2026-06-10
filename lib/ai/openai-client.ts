@@ -1,6 +1,6 @@
 import OpenAI from "openai";
 
-import { getOpenAITranscribeModel } from "@/lib/env";
+import { getOpenAITranscribeModel, getOpenAIVisionModel } from "@/lib/env";
 
 let client: OpenAI | undefined;
 
@@ -18,3 +18,5 @@ export function getOpenAIClient(): OpenAI {
 export const DEFAULT_PARSE_MODEL = "gpt-4o-mini";
 
 export const DEFAULT_TRANSCRIBE_MODEL = getOpenAITranscribeModel();
+
+export const DEFAULT_VISION_MODEL = getOpenAIVisionModel();

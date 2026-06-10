@@ -82,12 +82,19 @@ Notes:
 | `ALLOWED_EMAILS` | No | Comma-separated Google emails allowed to sign in (case-insensitive, spaces trimmed). When unset or empty, all Google accounts can sign in (useful for local dev). When set, only listed emails get a session. |
 | `PLANLET_ADMIN_EMAILS` | No | Comma-separated admin emails. Admins are always allowed to sign in (even if missing from `ALLOWED_EMAILS`) and receive the `ADMIN` role. |
 | `PLANLET_AI_PROVIDER` | No | Text plan parser: `openai` (default) or `anthropic` |
-| `OPENAI_API_KEY` | No* | OpenAI API key — required for audio transcription; required for text parsing when `PLANLET_AI_PROVIDER=openai` |
+| `OPENAI_API_KEY` | No* | OpenAI API key — required for audio transcription and image text extraction; required for text parsing when `PLANLET_AI_PROVIDER=openai` |
 | `OPENAI_TRANSCRIBE_MODEL` | No | Transcription model (defaults to `gpt-4o-mini-transcribe`) |
+| `OPENAI_VISION_MODEL` | No | Vision model for notebook image OCR (defaults to `gpt-4o-mini`) |
 | `ANTHROPIC_API_KEY` | No** | Anthropic API key — required for text parsing when `PLANLET_AI_PROVIDER=anthropic` |
 | `ANTHROPIC_MODEL` | No | Claude model for text parsing (defaults to `claude-sonnet-4-5`) |
 
-\*Required for **Transcribe** on `/plans/new`. Also required for **Structure plan** when using OpenAI as the text parser.
+\*Required for **Record** and **Image** on `/plans/new`. Also required for **Structure plan** when using OpenAI as the text parser.
+
+### Notebook image import
+
+On `/plans/new`, choose **Image** to upload or photograph a notebook page. Planlet sends the image to the configured OpenAI vision model (`OPENAI_VISION_MODEL`, default `gpt-4o-mini`) to extract plain text. **Images are not stored** — only the extracted text is placed in the editor for you to review before **Structure plan** runs the usual parser.
+
+Requires `OPENAI_API_KEY`. Supported formats: JPEG, PNG, WebP (max 15MB).
 
 \*\*Required for **Structure plan** when `PLANLET_AI_PROVIDER=anthropic`. Audio transcription always uses OpenAI.
 

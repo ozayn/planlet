@@ -5,12 +5,17 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { UserAvatar } from "@/components/user-avatar";
 import { PRODUCT } from "@/config/product";
 import { APP_TIMEZONE } from "@/config/time";
-import { isOpenAIConfigured, isTextParserConfigured } from "@/lib/env";
+import {
+  isImageExtractionConfigured,
+  isOpenAIConfigured,
+  isTextParserConfigured,
+} from "@/lib/env";
 
 export default async function SettingsPage() {
   const session = await auth();
   const textParserConfigured = isTextParserConfigured();
   const openaiConfigured = isOpenAIConfigured();
+  const imageExtractionConfigured = isImageExtractionConfigured();
   return (
     <section className="space-y-4">
       <PageHeader title="Settings" subtitle="Profile and app information." />
@@ -61,15 +66,21 @@ export default async function SettingsPage() {
             <dd className="text-foreground">{APP_TIMEZONE}</dd>
           </div>
           <div className="flex justify-between gap-4">
-            <dt className="text-muted">Structure plan</dt>
+            <dt className="text-muted">AI parsing</dt>
             <dd className="text-foreground">
               {textParserConfigured ? "Available" : "Not configured"}
             </dd>
           </div>
           <div className="flex justify-between gap-4">
-            <dt className="text-muted">Audio recording</dt>
+            <dt className="text-muted">Audio transcription</dt>
             <dd className="text-foreground">
               {openaiConfigured ? "Available" : "Not configured"}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-4">
+            <dt className="text-muted">Image text extraction</dt>
+            <dd className="text-foreground">
+              {imageExtractionConfigured ? "Available" : "Not configured"}
             </dd>
           </div>
         </dl>

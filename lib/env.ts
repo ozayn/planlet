@@ -16,6 +16,14 @@ export function getOpenAITranscribeModel(): string {
   return process.env.OPENAI_TRANSCRIBE_MODEL ?? "gpt-4o-mini-transcribe";
 }
 
+export function getOpenAIVisionModel(): string {
+  return process.env.OPENAI_VISION_MODEL?.trim() || "gpt-4o-mini";
+}
+
+export function isImageExtractionConfigured(): boolean {
+  return isOpenAIConfigured();
+}
+
 export function getPlanletAiProvider(): PlanletAiProvider {
   const raw = process.env.PLANLET_AI_PROVIDER?.trim().toLowerCase();
 

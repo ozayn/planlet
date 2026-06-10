@@ -9,12 +9,15 @@ import {
   weekPlanExistsAction,
 } from "@/app/(app)/plans/actions";
 import { AudioRecorder } from "@/components/audio/audio-recorder";
+import { ImageTextImporter } from "@/components/image/image-text-importer";
 import { ParsedPlanReview } from "@/components/plans/parsed-plan-review";
 import type { ParsedPlan } from "@/lib/ai/plan-parser-schema";
 import { formatDateString } from "@/lib/dates";
 
 type Step = "input" | "review";
-type InputMode = "text" | "record";
+type InputMode = "text" | "record" | "image";
+
+const IMAGE_EXTRACT_DIVIDER = "--- Extracted from image ---";
 
 export function NewPlanFlow() {
   const [step, setStep] = useState<Step>("input");
@@ -196,6 +199,13 @@ export function NewPlanFlow() {
         >
           Record
         </button>
+        <button
+          type="button"
+          onClick={() => setInputMode("image")}
+          className={inputMode === "image" ? "ui-segment-active" : "ui-segment"}
+        >
+          Image
+        </button>
       </div>
 
       {inputMode === "record" ? (
@@ -210,38 +220,59 @@ export function NewPlanFlow() {
         />
       ) : null}
 
-      <label className="block space-y-2">
-        <span className="text-sm font-medium text-foreground">
-          Messy notes
-        </span>
-        <textarea
-          value={rawInput}
-          onChange={(event) => setRawInput(event.target.value)}
-          dir="auto"
-          rows={12}
-          placeholder="Tasks, intentions, times, names — in any order."
-          className="ui-textarea rounded-2xl"
+      {inputMode === "image" ? (
+        <ImageTextImporter
+          onExtracted={(text) => {
+            setRawInput((current) => {
+              const trimmed = current.trim();
+              if (!trimmed) {
+                return text;
+              }
+
+              return `${trimmed}\n\n${IMAGE_EXTRACT_DIVIDER}\n\n${text}`;
+            });
+            setInputMode("text");
+            setError(null);
+          }}
         />
-      </label>
-
-      <p className="text-xs text-muted-light">
-        Farsi, English, or mixed text is okay.
-      </p>
-
-      {error ? (
-        <p className="rounded-xl border border-accent-red/20 bg-accent-cream px-4 py-3 text-sm text-accent-red">
-          {error}
-        </p>
       ) : null}
 
-      <button
-        type="button"
-        disabled={isParsing || !rawInput.trim()}
-        onClick={handleStructure}
-        className="ui-btn-primary w-full"
-      >
-        {isParsing ? "Structuring…" : "Structure plan"}
-      </button>
+      {inputMode === "text" ? (
+        <>
+          <label className="block space-y-2">
+            <span className="text-sm font-medium text-foreground">
+              Messy notes
+            </span>
+            <textarea
+              value={rawInput}
+              onChange={(event) => setRawInput(event.target.value)}
+              dir="auto"
+              rows={12}
+              placeholder="Tasks, intentions, times, names — in any order."
+              className="ui-textarea rounded-2xl"
+            />
+          </label>
+
+          <p className="text-xs text-muted-light">
+            Farsi, English, or mixed text is okay.
+          </p>
+
+          {error ? (
+            <p className="rounded-xl border border-accent-red/20 bg-accent-cream px-4 py-3 text-sm text-accent-red">
+              {error}
+            </p>
+          ) : null}
+
+          <button
+            type="button"
+            disabled={isParsing || !rawInput.trim()}
+            onClick={handleStructure}
+            className="ui-btn-primary w-full"
+          >
+            {isParsing ? "Structuring…" : "Structure plan"}
+          </button>
+        </>
+      ) : null}
     </div>
   );
 }
