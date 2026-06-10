@@ -1,10 +1,7 @@
 import type { KudosType } from "@/app/generated/prisma/client";
 
 import { UserAvatar } from "@/components/user-avatar";
-import {
-  formatUserLabel,
-  getKudosTypeShortLabel,
-} from "@/lib/kudos-labels";
+import { getSenderKudosTooltip } from "@/lib/kudos-labels";
 
 const MAX_VISIBLE_AVATARS = 3;
 
@@ -24,14 +21,6 @@ type PlanKudosSummaryProps = {
 
 function kudosCountLabel(count: number): string {
   return count === 1 ? "Kudos from 1 person" : `Kudos from ${count} people`;
-}
-
-function senderKudosLabel(
-  sender: PlanKudosEntry["sender"],
-  type: KudosType,
-): string {
-  const name = formatUserLabel(sender);
-  return `${name} sent kudos: ${getKudosTypeShortLabel(type)}`;
 }
 
 export function PlanKudosSummary({ kudos }: PlanKudosSummaryProps) {
@@ -55,8 +44,8 @@ export function PlanKudosSummary({ kudos }: PlanKudosSummaryProps) {
           {visible.map((entry, index) => (
             <span
               key={entry.id}
-              title={senderKudosLabel(entry.sender, entry.type)}
-              aria-label={senderKudosLabel(entry.sender, entry.type)}
+              title={getSenderKudosTooltip(entry.sender, entry.type)}
+              aria-label={getSenderKudosTooltip(entry.sender, entry.type)}
               className={`relative inline-flex rounded-full ring-2 ring-surface ${
                 index > 0 ? "-ms-2" : ""
               }`}
@@ -73,7 +62,7 @@ export function PlanKudosSummary({ kudos }: PlanKudosSummaryProps) {
             <span
               title={kudos
                 .slice(MAX_VISIBLE_AVATARS)
-                .map((entry) => senderKudosLabel(entry.sender, entry.type))
+                .map((entry) => getSenderKudosTooltip(entry.sender, entry.type))
                 .join(", ")}
               aria-label={
                 overflow === 1
