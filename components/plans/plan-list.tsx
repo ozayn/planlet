@@ -10,6 +10,7 @@ export type PlanListEntry = {
   dateStart: Date;
   dateEnd: Date;
   itemCount: number;
+  updatedAt: Date;
 };
 
 type PlanListProps = {
@@ -74,6 +75,7 @@ export function PlanList({ plans }: PlanListProps) {
                 dateStart={plan.dateStart}
                 dateEnd={plan.dateEnd}
                 itemCount={plan.itemCount}
+                updatedAt={plan.updatedAt}
               />
             ))}
           </ul>

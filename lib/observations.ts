@@ -4,6 +4,7 @@ import {
   MAX_OBSERVATION_LENGTH,
   OBSERVATION_CATEGORIES,
 } from "@/lib/observation-constants";
+import { touchPlan } from "@/lib/touch-plan";
 import { prisma } from "@/lib/prisma";
 
 export { MAX_OBSERVATION_LENGTH } from "@/lib/observation-constants";
@@ -158,6 +159,8 @@ export async function addPlanObservation(
     },
   });
 
+  await touchPlan(planId);
+
   return {
     planId,
     observation: serializeObservation(observation),
@@ -183,6 +186,8 @@ export async function updatePlanObservation(
     },
   });
 
+  await touchPlan(existing.planId);
+
   return {
     planId: existing.planId,
     observation: serializeObservation(observation),
@@ -198,6 +203,8 @@ export async function deletePlanObservation(
   await prisma.planObservation.delete({
     where: { id: observationId },
   });
+
+  await touchPlan(existing.planId);
 
   return { planId: existing.planId };
 }

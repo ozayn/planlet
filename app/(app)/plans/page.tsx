@@ -57,6 +57,7 @@ export default async function PlansPage() {
               dateStart: plan.dateStart,
               dateEnd: plan.dateEnd,
               itemCount: plan._count.items,
+              updatedAt: plan.updatedAt,
             }))}
           />
         ) : (

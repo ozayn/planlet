@@ -1,3 +1,4 @@
+import { touchPlan } from "@/lib/touch-plan";
 import { canViewPlan } from "@/lib/plan-sharing";
 import { createPlanItemCommentNotification } from "@/lib/notifications";
 import { prisma } from "@/lib/prisma";
@@ -118,6 +119,8 @@ export async function addItemComment(
     }
   }
 
+  await touchPlan(item.plan.id);
+
   return {
     comment,
     planId: item.plan.id,
@@ -152,6 +155,8 @@ export async function deleteItemComment(commentId: string, userId: string) {
   await prisma.planItemComment.delete({
     where: { id: commentId },
   });
+
+  await touchPlan(comment.item.plan.id);
 
   return {
     planId: comment.item.plan.id,

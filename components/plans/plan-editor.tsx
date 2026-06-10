@@ -16,6 +16,7 @@ import { PrivateObservationsSection } from "@/components/plans/private-observati
 import { SharePlanPanel } from "@/components/plans/share-plan-panel";
 import { ShareWithUserPanel } from "@/components/plans/share-with-user-panel";
 import { formatPlanCardDate } from "@/lib/dates";
+import { formatPlanActivityLabel } from "@/lib/plan-activity";
 import { getPlanTypeLabel } from "@/lib/plan-labels";
 import type { SerializedObservation } from "@/lib/observations";
 import type { SerializedPlan } from "@/lib/plan-serialize";
@@ -66,6 +67,8 @@ export function PlanEditor({
   const dateStart = new Date(plan.dateStart);
   const dateEnd = new Date(plan.dateEnd);
   const itemCount = plan.items.length;
+  const activityAt = new Date(plan.updatedAt);
+  const activityLabel = formatPlanActivityLabel(activityAt);
 
   const headerActions =
     showCopyExport ||
@@ -101,7 +104,8 @@ export function PlanEditor({
                 {formatPlanCardDate({ type: plan.type, dateStart, dateEnd })}
                 {itemCount > 0
                   ? ` · ${itemCount} item${itemCount === 1 ? "" : "s"}`
-                  : ""}
+                  : ""}{" "}
+                · {activityLabel}
               </p>
             </div>
             {headerActions}
@@ -120,7 +124,8 @@ export function PlanEditor({
             {formatPlanCardDate({ type: plan.type, dateStart, dateEnd })}
             {itemCount > 0
               ? ` · ${itemCount} item${itemCount === 1 ? "" : "s"}`
-              : ""}
+              : ""}{" "}
+            · {activityLabel}
           </p>
           {headerActions}
           </div>

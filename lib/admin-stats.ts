@@ -28,6 +28,7 @@ export type AdminUserStatRow = {
   shareExportCount: number;
   sharedOutCount: number;
   sharedWithMeCount: number;
+  lastPlanActivityAt: Date | null;
 };
 
 export type AdminGlobalTotals = {
@@ -107,7 +108,7 @@ export async function getAdminUserStats(): Promise<AdminStats> {
       },
     }),
     prisma.plan.findMany({
-      select: { id: true, userId: true, type: true },
+      select: { id: true, userId: true, type: true, updatedAt: true },
     }),
     prisma.planItem.findMany({
       select: {
@@ -148,12 +149,18 @@ export async function getAdminUserStats(): Promise<AdminStats> {
 
   const planCountByUser = new Map<string, number>();
   const planTypeCountByUser = new Map<string, Map<PlanType, number>>();
+  const lastPlanActivityByUser = new Map<string, Date>();
 
   for (const plan of plans) {
     incrementMap(planCountByUser, plan.userId);
     const typeMap = planTypeCountByUser.get(plan.userId) ?? new Map<PlanType, number>();
     typeMap.set(plan.type, (typeMap.get(plan.type) ?? 0) + 1);
     planTypeCountByUser.set(plan.userId, typeMap);
+
+    const previous = lastPlanActivityByUser.get(plan.userId);
+    if (!previous || plan.updatedAt > previous) {
+      lastPlanActivityByUser.set(plan.userId, plan.updatedAt);
+    }
   }
 
   const itemCountByUser = new Map<string, number>();
@@ -200,6 +207,7 @@ export async function getAdminUserStats(): Promise<AdminStats> {
       shareExportCount: shareExportByUser.get(user.id) ?? 0,
       sharedOutCount: sharedOutByUser.get(user.id) ?? 0,
       sharedWithMeCount: sharedWithMeByUser.get(user.id) ?? 0,
+      lastPlanActivityAt: lastPlanActivityByUser.get(user.id) ?? null,
     };
   });
 

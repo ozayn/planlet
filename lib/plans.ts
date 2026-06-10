@@ -25,6 +25,7 @@ import {
   formatWeekPlanTitle,
   resolvePlanTitle,
 } from "@/lib/plan-titles";
+import { touchPlan } from "@/lib/touch-plan";
 import { prisma } from "@/lib/prisma";
 
 const itemOrderBy = [
@@ -390,7 +391,7 @@ export async function createPlanItem(input: CreatePlanItemInput) {
     sortOrder = lastItem ? lastItem.sortOrder + 100 : 0;
   }
 
-  return prisma.planItem.create({
+  const item = await prisma.planItem.create({
     data: {
       planId: input.planId,
       parentItemId: input.parentItemId,
@@ -414,6 +415,10 @@ export async function createPlanItem(input: CreatePlanItemInput) {
     },
     include: planItemInclude,
   });
+
+  await touchPlan(input.planId);
+
+  return item;
 }
 
 export type UpdatePlanItemStatusInput = {
@@ -430,7 +435,7 @@ export async function updatePlanItemStatus(input: UpdatePlanItemStatusInput) {
     input.progressLevel ??
     normalizeProgressForStatus(input.status, item.progressLevel);
 
-  return prisma.planItem.update({
+  const updated = await prisma.planItem.update({
     where: { id: input.itemId },
     data: {
       status: input.status,
@@ -438,6 +443,10 @@ export async function updatePlanItemStatus(input: UpdatePlanItemStatusInput) {
     },
     include: planItemInclude,
   });
+
+  await touchPlan(item.planId);
+
+  return updated;
 }
 
 export type UpdatePlanItemInput = {
@@ -472,7 +481,7 @@ export async function updatePlanItem(input: UpdatePlanItemInput) {
     progressLevel ??
     (status ? normalizeProgressForStatus(status, item.progressLevel) : undefined);
 
-  return prisma.planItem.update({
+  const updated = await prisma.planItem.update({
     where: { id: itemId },
     data: {
       ...fields,
@@ -481,14 +490,22 @@ export async function updatePlanItem(input: UpdatePlanItemInput) {
     },
     include: planItemInclude,
   });
+
+  await touchPlan(item.planId);
+
+  return updated;
 }
 
 export async function deletePlanItem(itemId: string, userId: string) {
-  await requirePlanItemForUser(itemId, userId);
+  const item = await requirePlanItemForUser(itemId, userId);
 
-  return prisma.planItem.delete({
+  const deleted = await prisma.planItem.delete({
     where: { id: itemId },
   });
+
+  await touchPlan(item.planId);
+
+  return deleted;
 }
 
 export async function deletePlan(planId: string, userId: string) {
@@ -538,4 +555,6 @@ export async function reorderPlanItems(
       }),
     ),
   );
+
+  await touchPlan(planId);
 }

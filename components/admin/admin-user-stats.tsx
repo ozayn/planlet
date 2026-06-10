@@ -1,5 +1,14 @@
 import type { AdminUserStatRow } from "@/lib/admin-stats";
 import { formatAdminDateTime } from "@/lib/dates";
+import { formatPlanActivityLabel } from "@/lib/plan-activity";
+
+function formatLastPlanActivity(user: AdminUserStatRow): string {
+  if (!user.lastPlanActivityAt) {
+    return "—";
+  }
+
+  return formatPlanActivityLabel(user.lastPlanActivityAt);
+}
 
 function formatLastLogin(user: AdminUserStatRow): string {
   if (user.lastLoginAt) {
@@ -31,6 +40,7 @@ export function AdminUserStats({ users }: AdminUserStatsProps) {
               <th className="px-3 py-2 font-medium">User</th>
               <th className="px-3 py-2 font-medium">Role</th>
               <th className="px-3 py-2 font-medium">Last login</th>
+              <th className="px-3 py-2 font-medium">Recent plan activity</th>
               <th className="px-3 py-2 font-medium">Logins</th>
               <th className="px-3 py-2 font-medium">Plans</th>
               <th className="px-3 py-2 font-medium">Items</th>
@@ -59,6 +69,9 @@ export function AdminUserStats({ users }: AdminUserStatsProps) {
                 </td>
                 <td className="px-3 py-3 align-top text-muted">
                   {formatLastLogin(user)}
+                </td>
+                <td className="px-3 py-3 align-top text-muted">
+                  {formatLastPlanActivity(user)}
                 </td>
                 <td className="px-3 py-3 align-top text-foreground">
                   {user.loginCount}
@@ -110,6 +123,12 @@ export function AdminUserStats({ users }: AdminUserStatsProps) {
                 <dt className="text-xs text-muted">Last login</dt>
                 <dd className="text-foreground">
                   {formatLastLogin(user)}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs text-muted">Recent plan activity</dt>
+                <dd className="text-foreground">
+                  {formatLastPlanActivity(user)}
                 </dd>
               </div>
               <div>

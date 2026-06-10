@@ -1,5 +1,6 @@
 import type { KudosType } from "@/app/generated/prisma/client";
 import { createPlanKudosNotification } from "@/lib/notifications";
+import { touchPlan } from "@/lib/touch-plan";
 import { canEditPlan, canViewPlan } from "@/lib/plan-sharing";
 import { prisma } from "@/lib/prisma";
 
@@ -123,6 +124,8 @@ export async function sendPlanKudos(
       // Notification failure should not block kudos creation.
     }
   }
+
+  await touchPlan(planId);
 
   return kudos;
 }

@@ -43,6 +43,7 @@ export type SerializedPlan = {
   dateEnd: string;
   language: PlanLanguage;
   summary: string | null;
+  updatedAt: string;
   items: SerializedPlanItem[];
 };
 
@@ -106,6 +107,7 @@ export function serializePlan(plan: {
   dateEnd: Date;
   language: PlanLanguage;
   summary: string | null;
+  updatedAt: Date;
   items: PlanItemWithSubtasks[];
 }): SerializedPlan {
   return {
@@ -116,6 +118,7 @@ export function serializePlan(plan: {
     dateEnd: plan.dateEnd.toISOString(),
     language: plan.language,
     summary: plan.summary,
+    updatedAt: plan.updatedAt.toISOString(),
     items: plan.items.map(serializePlanItem),
   };
 }

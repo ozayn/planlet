@@ -9,6 +9,7 @@ import {
   formatPlanCardDate,
   formatWeekStartString,
 } from "@/lib/dates";
+import { formatPlanActivityLabel } from "@/lib/plan-activity";
 import { getPeriodSummaryHref } from "@/lib/period-summary-links";
 
 type PlanListItemProps = {
@@ -18,6 +19,7 @@ type PlanListItemProps = {
   dateStart: Date;
   dateEnd: Date;
   itemCount: number;
+  updatedAt: Date;
 };
 
 export function PlanListItem({
@@ -27,6 +29,7 @@ export function PlanListItem({
   dateStart,
   dateEnd,
   itemCount,
+  updatedAt,
 }: PlanListItemProps) {
   const href =
     type === "DAY"
@@ -58,10 +61,11 @@ export function PlanListItem({
           <p className="text-xs text-muted">
             {formatPlanCardDate({ type, dateStart, dateEnd })}
           </p>
+          <p className="text-xs text-muted-light">
+            {itemCount} item{itemCount === 1 ? "" : "s"} ·{" "}
+            {formatPlanActivityLabel(updatedAt)}
+          </p>
         </div>
-        <span className="shrink-0 text-xs text-muted-light">
-          {itemCount} item{itemCount === 1 ? "" : "s"}
-        </span>
       </Link>
       <div className="absolute end-2 top-1/2 flex -translate-y-1/2 items-center gap-1 opacity-100 focus-within:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
         {summaryHref ? (

@@ -5,6 +5,7 @@ import { PlanItemStatusVisual } from "@/components/plans/plan-item-status-visual
 import { SendKudosPanel } from "@/components/plans/send-kudos-panel";
 import { SharePlanPanel } from "@/components/plans/share-plan-panel";
 import { formatPlanCardDate } from "@/lib/dates";
+import { formatPlanActivityLabel } from "@/lib/plan-activity";
 import { getPlanItemTypeLabel } from "@/lib/plan-labels";
 import { isExpressiveItemView } from "@/lib/plan-item-view";
 import { partitionPlanItems } from "@/lib/plan-item-sections";
@@ -153,6 +154,7 @@ export function PlanReadOnly({
 }: PlanReadOnlyProps) {
   const dateStart = new Date(plan.dateStart);
   const dateEnd = new Date(plan.dateEnd);
+  const activityLabel = formatPlanActivityLabel(new Date(plan.updatedAt));
   const { tasks, intentions, notes } = partitionPlanItems(plan.items);
 
   return (
@@ -171,7 +173,7 @@ export function PlanReadOnly({
             </h2>
             <p className="text-sm text-muted">
               {formatPlanCardDate({ type: plan.type, dateStart, dateEnd })}
-              {ownerLabel ? ` · From ${ownerLabel}` : ""}
+              {ownerLabel ? ` · From ${ownerLabel}` : ""} · {activityLabel}
             </p>
           </div>
           <SharePlanPanel plan={plan} />

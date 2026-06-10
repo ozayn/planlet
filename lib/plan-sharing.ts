@@ -1,5 +1,6 @@
 import { isEmailAllowed } from "@/lib/auth-allowlist";
 import { createPlanSharedNotification } from "@/lib/notifications";
+import { touchPlan } from "@/lib/touch-plan";
 import { prisma } from "@/lib/prisma";
 
 export class PlanSharingError extends Error {
@@ -158,6 +159,8 @@ export async function sharePlanWithUser(
     }
   }
 
+  await touchPlan(planId);
+
   return share;
 }
 
@@ -273,6 +276,7 @@ export type SharedPlanEntry = {
   dateStart: Date;
   dateEnd: Date;
   itemCount: number;
+  updatedAt: Date;
   ownerName: string | null;
   ownerEmail: string | null;
 };
@@ -303,6 +307,7 @@ export async function getSharedPlansForUser(
     dateStart: share.plan.dateStart,
     dateEnd: share.plan.dateEnd,
     itemCount: share.plan._count.items,
+    updatedAt: share.plan.updatedAt,
     ownerName: share.owner.name,
     ownerEmail: share.owner.email,
   }));
