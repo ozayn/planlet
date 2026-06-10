@@ -17,7 +17,7 @@ import {
   deletePlanGratitudeAction,
   updatePlanGratitudeAction,
 } from "@/app/(app)/plans/actions";
-import { GratitudeItemMenu } from "@/components/plans/gratitude-item-menu";
+import { GratitudeItemActions } from "@/components/plans/gratitude-item-actions";
 import { ChevronDownIcon, LockIcon, SparklesIcon } from "@/components/ui/action-icons";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { APP_TIMEZONE } from "@/config/time";
@@ -322,7 +322,7 @@ export function GratitudeSection({
                         {formatGratitudeTime(gratitude.createdAt)}
                       </p>
                     </div>
-                    <GratitudeItemMenu
+                    <GratitudeItemActions
                       onEdit={() => startEdit(gratitude)}
                       onDelete={() => setConfirmDeleteId(gratitude.id)}
                       deleting={deletingId === gratitude.id}

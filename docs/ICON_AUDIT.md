@@ -38,6 +38,9 @@ Planlet uses inline SVG icons (Lucide-equivalent shapes) from a single source of
 | Theme day/night | `SunIcon` / `MoonIcon` | (segment labels in toggle) | `theme-toggle.tsx` |
 | Kudos summary | `SparklesIcon` | Kudos from N people | `plan-kudos-summary.tsx` |
 | Private observations | `LockIcon` | Private observations | `private-observations-section.tsx` |
+| Gratitude item edit | `PencilIcon` | Edit / Edit gratitude | `gratitude-item-actions.tsx` (desktop inline) |
+| Gratitude item delete | `Trash2Icon` | Delete / Delete gratitude | `gratitude-item-actions.tsx` (desktop inline, red) |
+| Gratitude item more | `MoreHorizontalIcon` | More / Open gratitude actions | `gratitude-item-actions.tsx` (mobile overflow) |
 | Intention leading | ✨ emoji | — | `intention-item-card.tsx` |
 | Note leading | `StickyNoteIcon` | — | `note-item-card.tsx` |
 | Status values | Expressive emoji / minimal glyphs | Per-status labels | `status-button.tsx`, `plan-item-status-visual.tsx` |
@@ -55,6 +58,7 @@ Planlet uses inline SVG icons (Lucide-equivalent shapes) from a single source of
 8. **Unified task note** — `StickyNoteIcon` + `ACTION_LABELS.taskNote` everywhere.
 9. **Summary link** — Plan list summary uses `FileTextIcon` + standard labels.
 10. **Backward compatibility** — `item-action-icons.tsx` re-exports from central map so existing imports keep working.
+11. **Gratitude item actions** — Desktop uses inline `PencilIcon` + `Trash2Icon`; mobile uses `MoreHorizontalIcon` overflow with icon+text menu rows (`gratitude-item-actions.tsx`).
 
 ## Inconsistencies found
 
@@ -82,7 +86,8 @@ Planlet uses inline SVG icons (Lucide-equivalent shapes) from a single source of
 | **Planlet logo** | Brand mark. |
 | **Pencil for “Edit” that opens details sheet** | Same action as menu “Edit”; SlidersHorizontal reserved for a future dedicated details-only entry if split. |
 | **Profile uses avatar, not icon** | Account menu is avatar-driven by design. |
-| **Observation row Edit/Delete as text buttons** | Inline text actions in expanded list; not icon buttons. |
+| **Observation row Edit/Delete as text buttons** | Inline text actions in expanded private observations list; not icon buttons (intentional for now). |
+| **Gratitude edit Save/Cancel as text** | Temporary form actions during inline edit; not persistent row icons. |
 
 ## Icon button styles
 
