@@ -11,7 +11,7 @@ export function getUserInitials(
       return `${parts[0][0] ?? ""}${parts[1][0] ?? ""}`.toUpperCase();
     }
 
-    return trimmedName.slice(0, 2).toUpperCase();
+    return (parts[0]?.[0] ?? "?").toUpperCase();
   }
 
   if (email?.trim()) {

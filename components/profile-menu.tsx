@@ -78,11 +78,18 @@ export function ProfileMenu({
         aria-controls={menuId}
         onClick={() => setOpen((current) => !current)}
         className={`flex items-center rounded-full border border-border bg-surface text-sm transition-colors hover:bg-accent-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${
-          compact ? "min-h-11 min-w-11 justify-center p-0.5" : "gap-2 py-1 ps-1 pe-3"
+          compact
+            ? "min-h-11 min-w-11 justify-center overflow-hidden p-0"
+            : "gap-2 py-1 ps-1 pe-3"
         }`}
         aria-label={compact ? "Open profile menu" : undefined}
       >
-        <UserAvatar name={name} email={email} image={image} size="sm" />
+        <UserAvatar
+          name={name}
+          email={email}
+          image={image}
+          size={compact ? "md" : "sm"}
+        />
         {compact ? null : (
           <span className="max-w-28 truncate font-medium text-foreground" dir="auto">
             {displayName}

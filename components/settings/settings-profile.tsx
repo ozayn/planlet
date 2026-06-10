@@ -16,7 +16,7 @@ export function SettingsProfile({
   return (
     <SettingsSection title="Profile">
       <div className="ui-settings-profile flex items-center gap-3">
-        <UserAvatar name={name} email={email} image={image} size="md" />
+        <UserAvatar name={name} email={email} image={image} size="lg" />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium text-foreground" dir="auto">
             {name?.trim() || "Signed in"}
