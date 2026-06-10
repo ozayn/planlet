@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { PlanEditor } from "@/components/plans/plan-editor";
 import { PlanReadOnly } from "@/components/plans/plan-read-only";
+import { getKudosForPlan, getViewerKudosForPlan } from "@/lib/kudos";
 import { getPlanAccess, getPlanSharesForOwner } from "@/lib/plan-sharing";
 import { getPlanWithItems } from "@/lib/plans";
 import { prisma } from "@/lib/prisma";
@@ -46,14 +47,28 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
     const ownerLabel =
       share?.owner.name ?? share?.owner.email ?? "another user";
 
+    const viewerKudos = await getViewerKudosForPlan(id, userId);
+
     return (
       <section>
-        <PlanReadOnly plan={serialized} ownerLabel={ownerLabel} />
+        <PlanReadOnly
+          plan={serialized}
+          ownerLabel={ownerLabel}
+          planId={id}
+          viewerKudos={
+            viewerKudos
+              ? { type: viewerKudos.type }
+              : null
+          }
+        />
       </section>
     );
   }
 
-  const platformShares = await getPlanSharesForOwner(id, userId);
+  const [platformShares, kudos] = await Promise.all([
+    getPlanSharesForOwner(id, userId),
+    getKudosForPlan(id, userId),
+  ]);
 
   return (
     <section>
@@ -62,6 +77,11 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
         showCopyExport
         showPlatformShare
         platformShares={platformShares}
+        kudos={kudos.map((entry) => ({
+          id: entry.id,
+          type: entry.type,
+          sender: entry.sender,
+        }))}
       />
     </section>
   );

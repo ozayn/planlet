@@ -3,6 +3,10 @@
 import { AddItemForm } from "@/components/plans/add-item-form";
 import { OpenFullPlanShareLink } from "@/components/plans/open-full-plan-share-link";
 import { PlanItemSections } from "@/components/plans/plan-item-sections";
+import {
+  PlanKudosSummary,
+  type PlanKudosEntry,
+} from "@/components/plans/plan-kudos-summary";
 import { SharePlanPanel } from "@/components/plans/share-plan-panel";
 import { ShareWithUserPanel } from "@/components/plans/share-with-user-panel";
 import { formatDateRange } from "@/lib/dates";
@@ -25,6 +29,7 @@ type PlanEditorProps = {
   fullPlanHref?: string;
   showPlatformShare?: boolean;
   platformShares?: PlanShareEntry[];
+  kudos?: PlanKudosEntry[];
 };
 
 export function PlanEditor({
@@ -34,6 +39,7 @@ export function PlanEditor({
   fullPlanHref,
   showPlatformShare = false,
   platformShares = [],
+  kudos = [],
 }: PlanEditorProps) {
   const dateStart = new Date(plan.dateStart);
   const dateEnd = new Date(plan.dateEnd);
@@ -90,6 +96,8 @@ export function PlanEditor({
       {showPlatformShare ? (
         <ShareWithUserPanel planId={plan.id} shares={platformShares} />
       ) : null}
+
+      <PlanKudosSummary kudos={kudos} />
 
       {plan.items.length > 0 ? (
         <section>

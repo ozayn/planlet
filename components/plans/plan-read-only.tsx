@@ -1,3 +1,6 @@
+import type { KudosType } from "@/app/generated/prisma/client";
+
+import { SendKudosPanel } from "@/components/plans/send-kudos-panel";
 import { SharePlanPanel } from "@/components/plans/share-plan-panel";
 import { formatDateRange } from "@/lib/dates";
 import { getPlanItemTypeLabel } from "@/lib/plan-labels";
@@ -5,9 +8,15 @@ import { partitionPlanItems } from "@/lib/plan-item-sections";
 import { getStatusIcon, getStatusLabel, STATUS_STYLES } from "@/lib/plan-status";
 import type { SerializedPlan, SerializedPlanItem } from "@/lib/plan-serialize";
 
+type ViewerKudos = {
+  type: KudosType;
+} | null;
+
 type PlanReadOnlyProps = {
   plan: SerializedPlan;
   ownerLabel?: string | null;
+  planId: string;
+  viewerKudos?: ViewerKudos;
 };
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -92,7 +101,12 @@ function ReadOnlyNoteItem({ item }: { item: SerializedPlanItem }) {
   );
 }
 
-export function PlanReadOnly({ plan, ownerLabel }: PlanReadOnlyProps) {
+export function PlanReadOnly({
+  plan,
+  ownerLabel,
+  planId,
+  viewerKudos = null,
+}: PlanReadOnlyProps) {
   const dateStart = new Date(plan.dateStart);
   const dateEnd = new Date(plan.dateEnd);
   const { tasks, intentions, notes } = partitionPlanItems(plan.items);
@@ -124,6 +138,8 @@ export function PlanReadOnly({ plan, ownerLabel }: PlanReadOnlyProps) {
           </p>
         ) : null}
       </header>
+
+      <SendKudosPanel planId={planId} viewerKudos={viewerKudos} />
 
       <section className="space-y-5">
         {plan.items.length === 0 ? (

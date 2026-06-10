@@ -94,6 +94,14 @@ enum PlanSharePermission {
 
 enum NotificationType {
   PLAN_SHARED
+  PLAN_KUDOS
+}
+
+enum KudosType {
+  CHEER
+  PROUD
+  ROOTING
+  WARMTH
 }
 
 model User {
@@ -111,6 +119,8 @@ model User {
   themes        Theme[]
   planSharesOwned    PlanShare[] @relation("PlanShareOwner")
   planSharesReceived PlanShare[] @relation("PlanShareRecipient")
+  sentKudos          PlanKudos[] @relation("SentKudos")
+  receivedKudos      PlanKudos[] @relation("ReceivedKudos")
   notifications      Notification[]
   loginEvents   LoginEvent[]
   createdAt     DateTime    @default(now())
@@ -193,10 +203,30 @@ model Plan {
   items        PlanItem[]
   shareExports ShareExport[]
   shares       PlanShare[]
+  kudos        PlanKudos[]
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 
   @@index([userId, type, dateStart])
+}
+
+model PlanKudos {
+  id          String    @id @default(cuid())
+  planId      String
+  plan        Plan      @relation(fields: [planId], references: [id], onDelete: Cascade)
+  senderId    String
+  sender      User      @relation("SentKudos", fields: [senderId], references: [id], onDelete: Cascade)
+  recipientId String
+  recipient   User      @relation("ReceivedKudos", fields: [recipientId], references: [id], onDelete: Cascade)
+  type        KudosType
+  message     String?
+  createdAt   DateTime  @default(now())
+
+  @@unique([planId, senderId])
+  @@index([planId])
+  @@index([senderId])
+  @@index([recipientId])
+  @@index([createdAt])
 }
 
 model PlanShare {

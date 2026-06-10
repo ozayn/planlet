@@ -1,6 +1,7 @@
 "use server";
 
 import type {
+  KudosType,
   PlanItemType,
   PlanType,
   ShareExportFormat,
@@ -46,6 +47,7 @@ import {
   updatePlanItemStatus,
   type UpdatePlanItemInput,
 } from "@/lib/plans";
+import { KudosError, sendPlanKudos } from "@/lib/kudos";
 import {
   getPlanAccess,
   removePlanShare,
@@ -492,6 +494,42 @@ export async function sharePlanWithUserAction(
       success: false,
       error:
         error instanceof Error ? error.message : "Failed to share plan.",
+    };
+  }
+}
+
+function revalidateNotificationSurfaces() {
+  revalidatePath("/today", "layout");
+  revalidatePath("/plans", "layout");
+  revalidatePath("/insights", "layout");
+  revalidatePath("/settings", "layout");
+  revalidatePath("/dashboard", "layout");
+}
+
+export type KudosActionResult =
+  | { success: true }
+  | { success: false; error: string };
+
+export async function sendPlanKudosAction(
+  planId: string,
+  type: KudosType,
+): Promise<KudosActionResult> {
+  const userId = await requireUserId();
+
+  try {
+    await sendPlanKudos(planId, userId, type);
+    revalidatePlanPaths(planId);
+    revalidateNotificationSurfaces();
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof KudosError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : "Failed to send kudos.",
     };
   }
 }

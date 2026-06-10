@@ -1,4 +1,8 @@
-import type { NotificationType } from "@/app/generated/prisma/client";
+import type {
+  KudosType,
+  NotificationType,
+} from "@/app/generated/prisma/client";
+import { getKudosNotificationPhrase } from "@/lib/kudos-labels";
 import { prisma } from "@/lib/prisma";
 
 export class NotificationAccessError extends Error {
@@ -58,6 +62,27 @@ export async function createNotification(input: {
       body: input.body,
       href: input.href,
     },
+  });
+}
+
+export async function createPlanKudosNotification(input: {
+  recipientUserId: string;
+  planId: string;
+  planTitle: string;
+  senderName: string | null;
+  senderEmail: string | null;
+  kudosType: KudosType;
+}) {
+  const senderLabel =
+    input.senderName?.trim() || input.senderEmail?.trim() || "Someone";
+  const phrase = getKudosNotificationPhrase(input.kudosType);
+
+  return createNotification({
+    userId: input.recipientUserId,
+    type: "PLAN_KUDOS",
+    title: "You received kudos",
+    body: `${senderLabel} ${phrase} ${input.planTitle}`,
+    href: `/plans/${input.planId}`,
   });
 }
 
