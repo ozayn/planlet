@@ -363,3 +363,9 @@ export function formatDateRange(start: Date, end: Date): string {
 
   return `${startLabel} – ${endLabel}`;
 }
+
+/** Display label for a day plan date, e.g. "Friday, Jun 14". */
+export function formatDayPlanDisplayDate(dateString: string): string {
+  const date = parseDateString(dateString);
+  return formatInTimeZone(date, APP_TIMEZONE, "EEEE, MMM d");
+}

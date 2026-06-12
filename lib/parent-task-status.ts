@@ -22,6 +22,10 @@ export function deriveParentStatusFromSubtasks(
     return currentParentStatus;
   }
 
+  if (subtaskStatuses.every((status) => status === "MOVED")) {
+    return "MOVED";
+  }
+
   const completedCount = subtaskStatuses.filter((status) => status === "DONE")
     .length;
   const progressCount = subtaskStatuses.filter(countsTowardProgress).length;

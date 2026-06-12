@@ -58,6 +58,7 @@ type SortablePlanItemListProps = {
   itemView?: PlanItemView;
   canEdit?: boolean;
   rootTasksForNesting?: SerializedPlanItem[];
+  sourcePlanDate?: string;
 };
 
 type DragState = {
@@ -146,6 +147,7 @@ function SortablePlanItemRow({
   showNestDropHint,
   showPromoteDropHint,
   showNestedSubtasks,
+  sourcePlanDate,
 }: {
   planId: string;
   item: SerializedPlanItem;
@@ -159,6 +161,7 @@ function SortablePlanItemRow({
   showNestDropHint?: boolean;
   showPromoteDropHint?: boolean;
   showNestedSubtasks?: boolean;
+  sourcePlanDate?: string;
 }) {
   const {
     attributes,
@@ -194,6 +197,7 @@ function SortablePlanItemRow({
         isNestDropTarget={isNestDropTarget}
         showNestDropHint={showNestDropHint}
         showPromoteDropHint={showPromoteDropHint}
+        sourcePlanDate={sourcePlanDate}
         subtasksContent={
           showNestedSubtasks
             ? renderSubtasksList(planId, item, itemView, itemDepth, canEdit)
@@ -222,6 +226,7 @@ function SortablePlanItemRows({
   dragState,
   activeDragItem,
   dragPreviewWidth,
+  sourcePlanDate,
 }: {
   planId: string;
   items: SerializedPlanItem[];
@@ -240,6 +245,7 @@ function SortablePlanItemRows({
   dragState: DragState;
   activeDragItem: SerializedPlanItem | null;
   dragPreviewWidth?: number;
+  sourcePlanDate?: string;
 }) {
   const dndId = useId();
   const dragNestingEnabled = isDragNestingEnabled(
@@ -308,6 +314,7 @@ function SortablePlanItemRows({
               dragState.activeId === item.id
             }
             showNestedSubtasks={parentItemId === null}
+            sourcePlanDate={sourcePlanDate}
           />
         ))}
       </SortableContext>
@@ -333,6 +340,7 @@ export function SortablePlanItemList({
   itemView = "MINIMAL",
   canEdit = true,
   rootTasksForNesting,
+  sourcePlanDate,
 }: SortablePlanItemListProps) {
   const router = useRouter();
   const [items, setItems] = useState(initialItems);
@@ -570,6 +578,7 @@ export function SortablePlanItemList({
           dragState={dragState}
           activeDragItem={activeDragItem}
           dragPreviewWidth={dragPreviewWidth}
+          sourcePlanDate={sourcePlanDate}
         />
       ) : (
         <StaticPlanItemList

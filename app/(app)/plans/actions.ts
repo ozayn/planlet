@@ -45,6 +45,7 @@ import {
   getYearPlan,
   moveItemToRoot,
   moveItemUnderTask,
+  movePlanItemToDate,
   promoteSubtaskToRoot,
   movePlanItem,
   reorderPlanItems,
@@ -489,6 +490,50 @@ export async function promoteSubtaskToRootAction(
     await recordUserActivity(userId);
     revalidatePlanPaths(planId);
     return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof PlanError
+          ? error.message
+          : mapServerActionError(error, "Couldn't move this item. Reload and try again."),
+    };
+  }
+}
+
+export type MovePlanItemToDateActionResult =
+  | {
+      success: true;
+      targetDate: string;
+      targetDateLabel: string;
+      targetPlanHref: string;
+      movedOpenSubtasksOnly: boolean;
+    }
+  | { success: false; error: string };
+
+export async function movePlanItemToDateAction(input: {
+  itemId: string;
+  targetDate: string;
+  keepCopy?: boolean;
+}): Promise<MovePlanItemToDateActionResult> {
+  try {
+    const userId = await requireUserId();
+    const result = await movePlanItemToDate(
+      userId,
+      input.itemId,
+      input.targetDate,
+      input.keepCopy ?? false,
+    );
+    await recordUserActivity(userId);
+    revalidatePlanPaths(result.sourcePlanId, { dayDate: result.sourceDate });
+    revalidatePlanPaths(result.targetPlanId, { dayDate: result.targetDate });
+    return {
+      success: true,
+      targetDate: result.targetDate,
+      targetDateLabel: result.targetDateLabel,
+      targetPlanHref: `/plans/day/${result.targetDate}`,
+      movedOpenSubtasksOnly: result.movedOpenSubtasksOnly,
+    };
   } catch (error) {
     return {
       success: false,

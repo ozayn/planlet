@@ -50,6 +50,7 @@ type PlanItemCardProps = {
   showNestDropHint?: boolean;
   showPromoteDropHint?: boolean;
   subtasksContent?: React.ReactNode;
+  sourcePlanDate?: string;
 };
 
 export function PlanItemCard({
@@ -69,6 +70,7 @@ export function PlanItemCard({
   showNestDropHint = false,
   showPromoteDropHint = false,
   subtasksContent,
+  sourcePlanDate,
 }: PlanItemCardProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -108,6 +110,9 @@ export function PlanItemCard({
   }
 
   const subtaskCount = item.subtasks.length;
+  const movableSubtaskCount = item.subtasks.filter(
+    (subtask) => subtask.status === "OPEN" || subtask.status === "PARTIAL",
+  ).length;
   const isNested = depth > 0;
   const actionLabels = getItemActionLabels(item.type, isNested);
   const timeHintLabel = getTimeHintLabel(item.timeHint);
@@ -316,6 +321,9 @@ export function PlanItemCard({
                 canMoveUp={canMoveUp}
                 canMoveDown={canMoveDown}
                 nestableParentTasks={nestableParentTasks}
+                sourcePlanDate={sourcePlanDate}
+                hasSubtasks={!isNested && subtaskCount > 0}
+                movableSubtaskCount={!isNested ? movableSubtaskCount : 0}
                 commentCount={item.commentCount}
                 onEdit={() => setDetailsOpen(true)}
                 onAddSubtask={

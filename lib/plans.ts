@@ -12,11 +12,15 @@ import type {
 import { PlanType as PlanTypeEnum } from "@/app/generated/prisma/client";
 
 import {
+  formatDateString,
+  formatDayPlanDisplayDate,
   getDayRange,
   getMonthRange,
   getTodayRange,
   getWeekRange,
   getYearRange,
+  isValidDateString,
+  parseDateString,
 } from "@/lib/dates";
 import { canEditPlan, canViewPlan } from "@/lib/plan-sharing";
 import { deriveParentStatusFromSubtasks } from "@/lib/parent-task-status";
@@ -859,6 +863,255 @@ export async function moveItemToRoot(
 
 /** Promote a subtask to the root Tasks section (last root task order). */
 export const promoteSubtaskToRoot = moveItemToRoot;
+
+export type MovePlanItemToDateResult = {
+  sourcePlanId: string;
+  sourceDate: string;
+  targetPlanId: string;
+  targetDate: string;
+  targetDateLabel: string;
+  movedOpenSubtasksOnly: boolean;
+};
+
+async function nextRootTaskSortOrder(planId: string): Promise<number> {
+  const lastTask = await prisma.planItem.findFirst({
+    where: {
+      planId,
+      parentItemId: null,
+      type: { in: [...TASK_ITEM_TYPES] },
+    },
+    orderBy: { sortOrder: "desc" },
+    select: { sortOrder: true },
+  });
+
+  return lastTask ? lastTask.sortOrder + 100 : 0;
+}
+
+function appendMovedNote(existingComment: string | null, targetDateLabel: string) {
+  const movedLine = `Moved to ${targetDateLabel}`;
+  const trimmed = existingComment?.trim();
+
+  if (!trimmed) {
+    return movedLine;
+  }
+
+  if (trimmed.includes(movedLine)) {
+    return trimmed;
+  }
+
+  return `${trimmed}\n\n${movedLine}`;
+}
+
+type CopyablePlanItemFields = {
+  title: string;
+  description: string | null;
+  type: PlanItemType;
+  importance: PriorityLevel | null;
+  urgency: PriorityLevel | null;
+  timeHint: TimeHint | null;
+  startTime: Date | null;
+  endTime: Date | null;
+  durationMinutes: number | null;
+  comment: string | null;
+  shareable: boolean;
+  sortOrder: number;
+};
+
+function isMovableSubtaskStatus(status: PlanItemStatus): boolean {
+  return status === "OPEN" || status === "PARTIAL";
+}
+
+async function copyRootItemToPlan(
+  userId: string,
+  targetPlanId: string,
+  item: CopyablePlanItemFields,
+) {
+  const rootSortOrder = await nextRootTaskSortOrder(targetPlanId);
+
+  return createPlanItem({
+    userId,
+    planId: targetPlanId,
+    title: item.title,
+    description: item.description ?? undefined,
+    type: item.type,
+    status: "OPEN",
+    importance: item.importance ?? undefined,
+    urgency: item.urgency ?? undefined,
+    timeHint: item.timeHint ?? undefined,
+    startTime: item.startTime ?? undefined,
+    endTime: item.endTime ?? undefined,
+    durationMinutes: item.durationMinutes ?? undefined,
+    comment: item.comment ?? undefined,
+    shareable: item.shareable,
+    sortOrder: rootSortOrder,
+  });
+}
+
+async function copyParentWithMovableSubtasksToPlan(
+  userId: string,
+  targetPlanId: string,
+  parent: CopyablePlanItemFields,
+  movableSubtasks: CopyablePlanItemFields[],
+) {
+  const createdRoot = await copyRootItemToPlan(userId, targetPlanId, {
+    ...parent,
+    comment: null,
+  });
+
+  for (const subtask of movableSubtasks) {
+    await createPlanItem({
+      userId,
+      planId: targetPlanId,
+      parentItemId: createdRoot.id,
+      title: subtask.title,
+      description: subtask.description ?? undefined,
+      type: subtask.type,
+      status: "OPEN",
+      importance: subtask.importance ?? undefined,
+      urgency: subtask.urgency ?? undefined,
+      timeHint: subtask.timeHint ?? undefined,
+      startTime: subtask.startTime ?? undefined,
+      endTime: subtask.endTime ?? undefined,
+      durationMinutes: subtask.durationMinutes ?? undefined,
+      comment: subtask.comment ?? undefined,
+      shareable: subtask.shareable,
+      sortOrder: subtask.sortOrder,
+    });
+  }
+
+  return createdRoot;
+}
+
+function toCopyablePlanItemFields(
+  item: CopyablePlanItemFields & { id?: string },
+): CopyablePlanItemFields {
+  return {
+    title: item.title,
+    description: item.description,
+    type: item.type,
+    importance: item.importance,
+    urgency: item.urgency,
+    timeHint: item.timeHint,
+    startTime: item.startTime,
+    endTime: item.endTime,
+    durationMinutes: item.durationMinutes,
+    comment: item.comment,
+    shareable: item.shareable,
+    sortOrder: item.sortOrder,
+  };
+}
+
+export async function movePlanItemToDate(
+  userId: string,
+  itemId: string,
+  targetDate: string,
+  keepCopy = false,
+): Promise<MovePlanItemToDateResult> {
+  if (!isValidDateString(targetDate)) {
+    throw new PlanError("Choose a valid date.");
+  }
+
+  const item = await prisma.planItem.findFirst({
+    where: { id: itemId, plan: { userId } },
+    include: {
+      plan: true,
+      subtasks: {
+        orderBy: itemOrderBy,
+      },
+    },
+  });
+
+  if (!item) {
+    throw new PlanAccessError("Plan item not found");
+  }
+
+  if (item.parentItemId) {
+    throw new PlanError("Only root tasks can be moved to another date.");
+  }
+
+  if (!isTaskItemType(item.type)) {
+    throw new PlanError("Only tasks can be moved to another date.");
+  }
+
+  if (item.plan.type !== PlanTypeEnum.DAY) {
+    throw new PlanError("Only daily plan tasks can be moved to another date.");
+  }
+
+  const sourceDate = formatDateString(item.plan.dateStart);
+  if (targetDate === sourceDate) {
+    throw new PlanError("Choose a different date.");
+  }
+
+  const targetDateLabel = formatDayPlanDisplayDate(targetDate);
+  const targetPlan = await getOrCreateDayPlan(
+    userId,
+    parseDateString(targetDate),
+  );
+
+  const parentFields = toCopyablePlanItemFields(item);
+  const hasSubtasks = item.subtasks.length > 0;
+  let movedOpenSubtasksOnly = false;
+
+  if (!hasSubtasks) {
+    await copyRootItemToPlan(userId, targetPlan.id, parentFields);
+
+    if (!keepCopy) {
+      await prisma.planItem.update({
+        where: { id: itemId },
+        data: {
+          status: "MOVED",
+          progressLevel: normalizeProgressForStatus("MOVED"),
+          comment: appendMovedNote(item.comment, targetDateLabel),
+        },
+      });
+    }
+  } else {
+    const movableSubtasks = item.subtasks.filter((subtask) =>
+      isMovableSubtaskStatus(subtask.status),
+    );
+
+    if (movableSubtasks.length === 0) {
+      throw new PlanError("No open subtasks to move.");
+    }
+
+    movedOpenSubtasksOnly = true;
+
+    await copyParentWithMovableSubtasksToPlan(
+      userId,
+      targetPlan.id,
+      parentFields,
+      movableSubtasks.map(toCopyablePlanItemFields),
+    );
+
+    if (!keepCopy) {
+      for (const subtask of movableSubtasks) {
+        await prisma.planItem.update({
+          where: { id: subtask.id },
+          data: {
+            status: "MOVED",
+            progressLevel: normalizeProgressForStatus("MOVED"),
+            comment: appendMovedNote(subtask.comment, targetDateLabel),
+          },
+        });
+      }
+
+      await syncParentStatusFromSubtasks(itemId, userId);
+    }
+  }
+
+  await touchPlan(item.planId);
+  await touchPlan(targetPlan.id);
+  await touchUserSeen(userId);
+
+  return {
+    sourcePlanId: item.planId,
+    sourceDate,
+    targetPlanId: targetPlan.id,
+    targetDate,
+    targetDateLabel,
+    movedOpenSubtasksOnly,
+  };
+}
 
 export async function movePlanItem(
   planId: string,

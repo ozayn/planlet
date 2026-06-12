@@ -13,6 +13,7 @@ type PlanItemSectionsProps = {
   items: SerializedPlanItem[];
   itemView?: PlanItemView;
   canEdit?: boolean;
+  sourcePlanDate?: string;
 };
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -28,6 +29,7 @@ export function PlanItemSections({
   items,
   itemView = "MINIMAL",
   canEdit = true,
+  sourcePlanDate,
 }: PlanItemSectionsProps) {
   const { tasks, intentions, notes } = partitionPlanItems(items);
   if (tasks.length === 0 && intentions.length === 0 && notes.length === 0) {
@@ -45,6 +47,7 @@ export function PlanItemSections({
             sectionGroup="tasks"
             itemView={itemView}
             canEdit={canEdit}
+            sourcePlanDate={sourcePlanDate}
           />
         </section>
       ) : null}

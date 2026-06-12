@@ -19,6 +19,7 @@ import { formatPlanActivityLabel } from "@/lib/plan-activity";
 import { isDefaultPlanTitle } from "@/lib/plan-title";
 import type { SerializedGratitude } from "@/lib/gratitude";
 import type { SerializedObservation } from "@/lib/observations";
+import { formatDateString } from "@/lib/dates";
 import type { SerializedPlan } from "@/lib/plan-serialize";
 import type { RecentShareRecipient } from "@/lib/plan-sharing";
 
@@ -79,6 +80,8 @@ export function PlanEditor({
   sharePanelRef: controlledSharePanelRef,
 }: PlanEditorProps) {
   const dateStart = new Date(plan.dateStart);
+  const sourcePlanDate =
+    plan.type === "DAY" ? formatDateString(dateStart) : undefined;
   const dateEnd = new Date(plan.dateEnd);
   const itemCount = plan.items.length;
   const activityAt = new Date(plan.updatedAt);
@@ -228,6 +231,7 @@ export function PlanEditor({
             items={plan.items}
             itemView={itemView}
             canEdit={canEdit}
+            sourcePlanDate={sourcePlanDate}
           />
         </section>
       ) : null}

@@ -64,6 +64,10 @@ export const ACTION_LABELS = {
     title: "Move to root tasks",
     ariaLabel: "Move to root tasks",
   },
+  moveToDate: {
+    title: "Move to date",
+    ariaLabel: "Move to another date",
+  },
   deleteItem: {
     title: "Delete",
     ariaLabel: "Delete item",

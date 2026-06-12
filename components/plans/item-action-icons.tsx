@@ -1,4 +1,5 @@
 export {
+  CalendarIcon as MoveToDateIcon,
   ChevronDownIcon as MoveDownIcon,
   ChevronUpIcon as MoveUpIcon,
   PencilIcon as EditItemIcon,
