@@ -7,8 +7,11 @@ import { createPortal } from "react-dom";
 
 import {
   deletePlanItemAction,
+  promoteSubtaskToRootAction,
+  moveItemUnderTaskAction,
   movePlanItemAction,
 } from "@/app/(app)/plans/actions";
+import { MoveUnderTaskDialog } from "@/components/plans/move-under-task-dialog";
 import {
   AddSubtaskIcon,
   CommentIcon,
@@ -27,17 +30,25 @@ import {
   getMutationError,
   invokeServerAction,
 } from "@/lib/invoke-server-action";
+import { isTaskItemType } from "@/lib/plan-item-sections";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
+
+type NestableParentTask = {
+  id: string;
+  title: string;
+};
 
 type ItemActionsMenuProps = {
   planId: string;
   itemId: string;
+  itemTitle: string;
   itemType: PlanItemType;
   isSubtask?: boolean;
   canEdit?: boolean;
   visibleActionsAreShown?: boolean;
   canMoveUp?: boolean;
   canMoveDown?: boolean;
+  nestableParentTasks?: NestableParentTask[];
   onEdit: () => void;
   onAddSubtask?: () => void;
   onTaskNote?: () => void;
@@ -48,12 +59,14 @@ type ItemActionsMenuProps = {
 export function ItemActionsMenu({
   planId,
   itemId,
+  itemTitle,
   itemType,
   isSubtask = false,
   canEdit = true,
   visibleActionsAreShown = false,
   canMoveUp = false,
   canMoveDown = false,
+  nestableParentTasks,
   onEdit,
   onAddSubtask,
   onTaskNote,
@@ -67,6 +80,8 @@ export function ItemActionsMenu({
   const [error, setError] = useState<string | null>(null);
   const [isDeleting, startDelete] = useTransition();
   const [isMoving, startMove] = useTransition();
+  const [isReparenting, startReparent] = useTransition();
+  const [moveUnderOpen, setMoveUnderOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [menuPosition, setMenuPosition] = useState({ top: 0, left: 0, width: 0 });
   const menuId = useId();
@@ -157,6 +172,42 @@ export function ItemActionsMenu({
     });
   }
 
+  function handleMoveUnder(parentItemId: string) {
+    setError(null);
+
+    startReparent(async () => {
+      const invoked = await invokeServerAction(() =>
+        moveItemUnderTaskAction(planId, itemId, parentItemId),
+      );
+      const mutationError = getMutationError(invoked);
+      if (mutationError) {
+        setError(mutationError.message);
+        return;
+      }
+
+      setMoveUnderOpen(false);
+      router.refresh();
+    });
+  }
+
+  function handleMoveToRoot() {
+    setMenuOpen(false);
+    setError(null);
+
+    startReparent(async () => {
+      const invoked = await invokeServerAction(() =>
+        promoteSubtaskToRootAction(planId, itemId),
+      );
+      const mutationError = getMutationError(invoked);
+      if (mutationError) {
+        setError(mutationError.message);
+        return;
+      }
+
+      router.refresh();
+    });
+  }
+
   function handleDelete() {
     startDelete(async () => {
       const invoked = await invokeServerAction(() =>
@@ -178,6 +229,13 @@ export function ItemActionsMenu({
   const menuShowsEdit = mobileFullMenu;
   const menuShowsMoveUp = mobileFullMenu;
   const menuShowsMoveDown = mobileFullMenu;
+  const menuShowsMoveUnder =
+    mobileFullMenu &&
+    !isSubtask &&
+    isTaskItemType(itemType) &&
+    Boolean(nestableParentTasks?.length);
+  const menuShowsMoveToRoot =
+    mobileFullMenu && isSubtask && isTaskItemType(itemType);
   const menuShowsAddSubtask =
     mobileFullMenu &&
     !isSubtask &&
@@ -192,6 +250,8 @@ export function ItemActionsMenu({
     menuShowsEdit ||
     menuShowsMoveUp ||
     menuShowsMoveDown ||
+    menuShowsMoveUnder ||
+    menuShowsMoveToRoot ||
     menuShowsAddSubtask ||
     menuShowsTaskNote ||
     menuShowsComments ||
@@ -201,6 +261,8 @@ export function ItemActionsMenu({
     menuShowsEdit ||
     menuShowsMoveUp ||
     menuShowsMoveDown ||
+    menuShowsMoveUnder ||
+    menuShowsMoveToRoot ||
     menuShowsAddSubtask ||
     menuShowsTaskNote ||
     menuShowsComments;
@@ -267,6 +329,38 @@ export function ItemActionsMenu({
               >
                 <MoveDownIcon className="h-4 w-4 shrink-0 text-muted" />
                 <span>Move down</span>
+              </button>
+            ) : null}
+            {menuShowsMoveUnder ? (
+              <button
+                type="button"
+                role="menuitem"
+                aria-label={ACTION_LABELS.moveUnderTask.ariaLabel}
+                disabled={isReparenting}
+                {...passwordManagerSafeControlProps}
+                onClick={() => {
+                  setMenuOpen(false);
+                  setError(null);
+                  setMoveUnderOpen(true);
+                }}
+                className={menuItemClassName}
+              >
+                <AddSubtaskIcon className="h-4 w-4 shrink-0 text-muted" />
+                <span>Move under task</span>
+              </button>
+            ) : null}
+            {menuShowsMoveToRoot ? (
+              <button
+                type="button"
+                role="menuitem"
+                aria-label={ACTION_LABELS.moveToRootTasks.ariaLabel}
+                disabled={isReparenting}
+                {...passwordManagerSafeControlProps}
+                onClick={handleMoveToRoot}
+                className={menuItemClassName}
+              >
+                <MoveUpIcon className="h-4 w-4 shrink-0 text-muted" />
+                <span>Move to root tasks</span>
               </button>
             ) : null}
             {menuShowsAddSubtask ? (
@@ -380,6 +474,23 @@ export function ItemActionsMenu({
         <div className="absolute end-0 top-full z-[60] mt-1 w-56">
           <ActionErrorBanner message={error} />
         </div>
+      ) : null}
+
+      {menuShowsMoveUnder ? (
+        <MoveUnderTaskDialog
+          open={moveUnderOpen}
+          itemTitle={itemTitle}
+          candidates={nestableParentTasks ?? []}
+          onSelect={handleMoveUnder}
+          onClose={() => {
+            if (!isReparenting) {
+              setMoveUnderOpen(false);
+              setError(null);
+            }
+          }}
+          isPending={isReparenting}
+          error={error}
+        />
       ) : null}
 
       {menuShowsDelete ? (

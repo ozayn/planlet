@@ -56,6 +56,14 @@ export const ACTION_LABELS = {
     title: "Move down",
     ariaLabel: "Move item down",
   },
+  moveUnderTask: {
+    title: "Move under task",
+    ariaLabel: "Move under another task",
+  },
+  moveToRootTasks: {
+    title: "Move to root tasks",
+    ariaLabel: "Move to root tasks",
+  },
   deleteItem: {
     title: "Delete",
     ariaLabel: "Delete item",

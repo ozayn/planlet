@@ -43,6 +43,9 @@ import {
   getTodayPlan,
   getWeekPlan,
   getYearPlan,
+  moveItemToRoot,
+  moveItemUnderTask,
+  promoteSubtaskToRoot,
   movePlanItem,
   reorderPlanItems,
   PlanError,
@@ -443,6 +446,56 @@ export async function reorderPlanItemsAction(input: {
         error instanceof PlanError
           ? error.message
           : mapServerActionError(error, "Couldn't reorder this item. Reload and try again."),
+    };
+  }
+}
+
+export async function moveItemUnderTaskAction(
+  planId: string,
+  itemId: string,
+  parentItemId: string,
+): Promise<ShareActionResult> {
+  try {
+    const userId = await requireUserId();
+    await moveItemUnderTask(planId, userId, itemId, parentItemId);
+    await recordUserActivity(userId);
+    revalidatePlanPaths(planId);
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof PlanError
+          ? error.message
+          : mapServerActionError(error, "Couldn't move this item. Reload and try again."),
+    };
+  }
+}
+
+export async function moveItemToRootAction(
+  planId: string,
+  itemId: string,
+): Promise<ShareActionResult> {
+  return promoteSubtaskToRootAction(planId, itemId);
+}
+
+export async function promoteSubtaskToRootAction(
+  planId: string,
+  itemId: string,
+): Promise<ShareActionResult> {
+  try {
+    const userId = await requireUserId();
+    await promoteSubtaskToRoot(planId, userId, itemId);
+    await recordUserActivity(userId);
+    revalidatePlanPaths(planId);
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof PlanError
+          ? error.message
+          : mapServerActionError(error, "Couldn't move this item. Reload and try again."),
     };
   }
 }

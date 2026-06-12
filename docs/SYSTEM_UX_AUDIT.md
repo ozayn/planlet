@@ -80,6 +80,8 @@ Remaining issues were mostly **copy drift**, **small redundancies**, and **incon
 - Share panel: header icon + disclosure row (intentional dual entry)
 - Mobile items: status · title · More; metadata subline only when informative
 - Desktop items: edit, subtask, note (focuses comment), comments, More (delete only on md+)
+- Desktop task drag: vertical reorder; drag right ≥36px over root task to nest; drag subtask left ≥36px to promote to root (see `docs/DRAG_NESTING.md`)
+- Mobile tasks: More → Move under task / Move to root tasks (no drag nest/promote)
 - Private observations/gratitude: capability-gated, collapsed on mobile when empty, not in shared view
 
 \*Summary in More when `periodSummaryHref` passed (month/year on `/plans/[id]`; week summary also in week page header).

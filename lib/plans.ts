@@ -23,6 +23,7 @@ import { normalizeProgressForStatus } from "@/lib/plan-status";
 import {
   getPlanItemSectionGroup,
   getSiblingItemsWhere,
+  isTaskItemType,
   TASK_ITEM_TYPES,
   type PlanItemReorderScope,
   type PlanItemSectionGroup,
@@ -648,6 +649,146 @@ export async function reorderPlanItems({
   await touchPlan(planId);
   await touchUserSeen(userId);
 }
+
+export const MOVE_ITEM_FAILED_MESSAGE =
+  "Couldn't move this item. Reload and try again.";
+
+async function collectDescendantItemIds(
+  itemId: string,
+  planId: string,
+): Promise<Set<string>> {
+  const descendants = new Set<string>();
+  const queue = [itemId];
+
+  while (queue.length > 0) {
+    const currentId = queue.shift()!;
+    const children = await prisma.planItem.findMany({
+      where: { planId, parentItemId: currentId },
+      select: { id: true },
+    });
+
+    for (const child of children) {
+      descendants.add(child.id);
+      queue.push(child.id);
+    }
+  }
+
+  return descendants;
+}
+
+export async function moveItemUnderTask(
+  planId: string,
+  userId: string,
+  itemId: string,
+  parentItemId: string,
+) {
+  await requirePlanForUser(planId, userId);
+
+  if (itemId === parentItemId) {
+    throw new PlanError(MOVE_ITEM_FAILED_MESSAGE);
+  }
+
+  const item = await prisma.planItem.findFirst({
+    where: { id: itemId, planId },
+    select: { id: true, parentItemId: true, type: true },
+  });
+
+  if (!item) {
+    throw new PlanAccessError("Plan item not found");
+  }
+
+  if (item.parentItemId !== null) {
+    throw new PlanError(MOVE_ITEM_FAILED_MESSAGE);
+  }
+
+  if (!isTaskItemType(item.type)) {
+    throw new PlanError(MOVE_ITEM_FAILED_MESSAGE);
+  }
+
+  const parent = await prisma.planItem.findFirst({
+    where: { id: parentItemId, planId },
+    select: { id: true, parentItemId: true, type: true },
+  });
+
+  if (!parent) {
+    throw new PlanAccessError("Plan item not found");
+  }
+
+  if (parent.parentItemId !== null) {
+    throw new PlanError(MOVE_ITEM_FAILED_MESSAGE);
+  }
+
+  if (!isTaskItemType(parent.type)) {
+    throw new PlanError(MOVE_ITEM_FAILED_MESSAGE);
+  }
+
+  const descendants = await collectDescendantItemIds(itemId, planId);
+  if (descendants.has(parentItemId)) {
+    throw new PlanError(MOVE_ITEM_FAILED_MESSAGE);
+  }
+
+  const lastSubtask = await prisma.planItem.findFirst({
+    where: { planId, parentItemId },
+    orderBy: { sortOrder: "desc" },
+    select: { sortOrder: true },
+  });
+  const sortOrder = lastSubtask ? lastSubtask.sortOrder + 100 : 0;
+
+  await prisma.planItem.update({
+    where: { id: itemId },
+    data: { parentItemId, sortOrder },
+  });
+
+  await touchPlan(planId);
+  await touchUserSeen(userId);
+}
+
+export async function moveItemToRoot(
+  planId: string,
+  userId: string,
+  itemId: string,
+) {
+  await requirePlanForUser(planId, userId);
+
+  const item = await prisma.planItem.findFirst({
+    where: { id: itemId, planId },
+    select: { id: true, parentItemId: true, type: true },
+  });
+
+  if (!item) {
+    throw new PlanAccessError("Plan item not found");
+  }
+
+  if (!item.parentItemId) {
+    throw new PlanError(MOVE_ITEM_FAILED_MESSAGE);
+  }
+
+  if (!isTaskItemType(item.type)) {
+    throw new PlanError(MOVE_ITEM_FAILED_MESSAGE);
+  }
+
+  const lastRootTask = await prisma.planItem.findFirst({
+    where: {
+      planId,
+      parentItemId: null,
+      type: { in: [...TASK_ITEM_TYPES] },
+    },
+    orderBy: { sortOrder: "desc" },
+    select: { sortOrder: true },
+  });
+  const sortOrder = lastRootTask ? lastRootTask.sortOrder + 100 : 0;
+
+  await prisma.planItem.update({
+    where: { id: itemId },
+    data: { parentItemId: null, sortOrder },
+  });
+
+  await touchPlan(planId);
+  await touchUserSeen(userId);
+}
+
+/** Promote a subtask to the root Tasks section (last root task order). */
+export const promoteSubtaskToRoot = moveItemToRoot;
 
 export async function movePlanItem(
   planId: string,

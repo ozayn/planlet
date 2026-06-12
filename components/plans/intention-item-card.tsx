@@ -148,6 +148,7 @@ export function IntentionItemCard({
                   <ItemActionsMenu
                     planId={planId}
                     itemId={item.id}
+                    itemTitle={item.title}
                     itemType={item.type}
                     canEdit={canEdit}
                     visibleActionsAreShown={visibleActionsAreShown}

@@ -28,6 +28,7 @@ import {
   getPlanItemTypeLabel,
   getTimeHintLabel,
 } from "@/lib/plan-labels";
+import { getNestableParentCandidates } from "@/lib/plan-drag-nesting";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 import { STATUS_STYLES } from "@/lib/plan-status";
 import type { SerializedPlanItem } from "@/lib/plan-serialize";
@@ -36,7 +37,7 @@ type PlanItemCardProps = {
   planId: string;
   item: SerializedPlanItem;
   depth?: number;
-  isDragging?: boolean;
+  isDragPlaceholder?: boolean;
   dragHandleRef?: (element: HTMLElement | null) => void;
   dragHandleAttributes?: DraggableAttributes;
   dragHandleListeners?: DraggableSyntheticListeners;
@@ -44,13 +45,18 @@ type PlanItemCardProps = {
   canEdit?: boolean;
   canMoveUp?: boolean;
   canMoveDown?: boolean;
+  rootTasksForNesting?: SerializedPlanItem[];
+  isNestDropTarget?: boolean;
+  showNestDropHint?: boolean;
+  showPromoteDropHint?: boolean;
+  subtasksContent?: React.ReactNode;
 };
 
 export function PlanItemCard({
   planId,
   item,
   depth = 0,
-  isDragging = false,
+  isDragPlaceholder = false,
   dragHandleRef,
   dragHandleAttributes,
   dragHandleListeners,
@@ -58,6 +64,11 @@ export function PlanItemCard({
   canEdit = true,
   canMoveUp = false,
   canMoveDown = false,
+  rootTasksForNesting,
+  isNestDropTarget = false,
+  showNestDropHint = false,
+  showPromoteDropHint = false,
+  subtasksContent,
 }: PlanItemCardProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -141,15 +152,22 @@ export function PlanItemCard({
 
   const mobileSubmetaLine = mobileMetaParts.join(" · ");
 
-  const showDragHandle =
-    !isNested && dragHandleAttributes && dragHandleListeners;
+  const showDragHandle = Boolean(dragHandleAttributes && dragHandleListeners);
+  const nestableParentTasks = rootTasksForNesting
+    ? getNestableParentCandidates(item.id, rootTasksForNesting).map(
+        (candidate) => ({
+          id: candidate.id,
+          title: candidate.title,
+        }),
+      )
+    : undefined;
 
   return (
     <article className={isNested ? "ms-3 border-s border-border-soft ps-2" : ""}>
       <div
-        className={`ui-plan-item group relative overflow-visible px-3 py-2.5 transition-shadow sm:px-4 sm:py-2.5 ${STATUS_STYLES[item.status].card} ${
-          isDragging ? "opacity-80 ui-shadow-elevated" : ""
-        }`}
+        className={`ui-plan-item group relative overflow-visible px-3 py-2.5 sm:px-4 sm:py-2.5 ${STATUS_STYLES[item.status].card} ${
+          isDragPlaceholder ? "pointer-events-none" : "transition-shadow"
+        } ${isNestDropTarget ? "ring-2 ring-accent-cream/90" : ""}`}
       >
         <span
           className={`absolute inset-y-2 start-0 w-0.5 rounded-full opacity-50 transition-opacity group-hover:opacity-80 group-focus-within:opacity-90 ${STATUS_STYLES[item.status].accentBar}`}
@@ -162,7 +180,7 @@ export function PlanItemCard({
                 type="button"
                 ref={dragHandleRef}
                 {...passwordManagerSafeControlProps}
-                className="ui-plan-item-drag hidden h-8 w-5 shrink-0 cursor-grab touch-none items-center justify-center rounded text-muted-light transition-colors hover:text-muted active:cursor-grabbing md:flex"
+                className={`ui-plan-item-drag hidden h-8 shrink-0 cursor-grab touch-none items-center justify-center rounded text-muted-light transition-colors hover:text-muted active:cursor-grabbing md:flex ${isNested ? "w-4" : "w-5"}`}
                 aria-label="Drag to reorder item"
                 {...dragHandleAttributes}
                 {...dragHandleListeners}
@@ -209,6 +227,16 @@ export function PlanItemCard({
               {desktopMetaParts.length > 0 ? (
                 <p className="ui-plan-item-meta mt-0.5 hidden truncate text-[0.6875rem] leading-tight text-muted-light md:block">
                   {desktopMetaParts.join(" · ")}
+                </p>
+              ) : null}
+              {showNestDropHint ? (
+                <p className="mt-0.5 hidden text-[0.6875rem] font-medium text-muted md:block">
+                  Drop as subtask
+                </p>
+              ) : null}
+              {showPromoteDropHint ? (
+                <p className="mt-0.5 hidden text-[0.6875rem] font-medium text-muted md:block">
+                  Drop as task
                 </p>
               ) : null}
             </div>
@@ -280,12 +308,14 @@ export function PlanItemCard({
               <ItemActionsMenu
                 planId={planId}
                 itemId={item.id}
+                itemTitle={item.title}
                 itemType={item.type}
                 isSubtask={isNested}
                 canEdit={canEdit}
                 visibleActionsAreShown={visibleActionsAreShown}
                 canMoveUp={canMoveUp}
                 canMoveDown={canMoveDown}
+                nestableParentTasks={nestableParentTasks}
                 commentCount={item.commentCount}
                 onEdit={() => setDetailsOpen(true)}
                 onAddSubtask={
@@ -319,24 +349,26 @@ export function PlanItemCard({
         </div>
       ) : null}
 
-      {item.subtasks.length > 0 ? (
-        <div className="mt-1.5 space-y-1.5">
-          {item.subtasks.map((subtask, subtaskIndex) => (
-            <PlanItemCard
-              key={subtask.id}
-              planId={planId}
-              item={subtask}
-              depth={depth + 1}
-              itemView={itemView}
-              canEdit={canEdit}
-              canMoveUp={canEdit && subtaskIndex > 0}
-              canMoveDown={
-                canEdit && subtaskIndex < item.subtasks.length - 1
-              }
-            />
-          ))}
-        </div>
-      ) : null}
+      {!isDragPlaceholder &&
+        (subtasksContent ??
+          (item.subtasks.length > 0 ? (
+          <div className="mt-1.5 space-y-1.5">
+            {item.subtasks.map((subtask, subtaskIndex) => (
+              <PlanItemCard
+                key={subtask.id}
+                planId={planId}
+                item={subtask}
+                depth={depth + 1}
+                itemView={itemView}
+                canEdit={canEdit}
+                canMoveUp={canEdit && subtaskIndex > 0}
+                canMoveDown={
+                  canEdit && subtaskIndex < item.subtasks.length - 1
+                }
+              />
+            ))}
+          </div>
+        ) : null))}
 
       {canEdit ? (
         <ItemDetailsSheet
