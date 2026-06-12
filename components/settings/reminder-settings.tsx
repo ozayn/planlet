@@ -3,10 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
-import {
-  sendTestNotificationAction,
-  updateNotificationPreferencesAction,
-} from "@/app/(app)/settings/actions";
+import { updateNotificationPreferencesAction } from "@/app/(app)/settings/actions";
 import type { SerializedNotificationPreferences } from "@/lib/notification-preferences";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 
@@ -39,9 +36,7 @@ export function ReminderSettings({
   );
   const [eveningTime, setEveningTime] = useState(preferences.eveningTime);
   const [error, setError] = useState<string | null>(null);
-  const [testMessage, setTestMessage] = useState<string | null>(null);
   const [isSaving, startSave] = useTransition();
-  const [isTesting, startTest] = useTransition();
 
   function savePreferences(next: {
     morningEnabled?: boolean;
@@ -58,7 +53,6 @@ export function ReminderSettings({
     };
 
     setError(null);
-    setTestMessage(null);
 
     startSave(async () => {
       const result = await updateNotificationPreferencesAction(payload);
@@ -96,27 +90,14 @@ export function ReminderSettings({
     savePreferences({ eveningTime: value });
   }
 
-  function handleSendTest() {
-    setError(null);
-    setTestMessage(null);
-
-    startTest(async () => {
-      const result = await sendTestNotificationAction();
-
-      if (!result.success) {
-        setError(result.error);
-        return;
-      }
-
-      setTestMessage("Test notification sent.");
-    });
-  }
-
   return (
     <div className="ui-settings-row-block">
       <p className="ui-settings-subsection-title">Daily reminders</p>
       <p className="ui-settings-subsection-helper">
         Optional push reminders for planning and evening review.
+        {!pushSubscribed ? (
+          <> Enable phone notifications to receive reminders.</>
+        ) : null}
       </p>
 
       <div className="space-y-3">
@@ -171,23 +152,6 @@ export function ReminderSettings({
           {formatReminderTimeLabel(eveningTime)}
         </p>
       </div>
-
-      {pushSubscribed ? (
-        <div className="mt-3">
-          <button
-            type="button"
-            onClick={handleSendTest}
-            disabled={isTesting}
-            className="ui-btn-secondary ui-btn-compact min-h-9 px-3 text-xs"
-          >
-            {isTesting ? "Sending…" : "Send test notification"}
-          </button>
-        </div>
-      ) : null}
-
-      {testMessage ? (
-        <p className="mt-2 text-sm text-muted">{testMessage}</p>
-      ) : null}
 
       {error ? (
         <p className="mt-2 text-sm text-accent-red" role="alert">

@@ -1,10 +1,54 @@
-export function isPushApiSupported(): boolean {
+export type PushSupportIssue =
+  | "no-window"
+  | "no-service-worker"
+  | "no-push-manager"
+  | "no-notification"
+  | "requires-https"
+  | "ios-requires-install";
+
+export function isSecurePushContext(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
   return (
-    typeof window !== "undefined" &&
-    "serviceWorker" in navigator &&
-    "PushManager" in window &&
-    "Notification" in window
+    window.isSecureContext ||
+    window.location.protocol === "https:" ||
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1"
   );
+}
+
+export function getPushSupportIssue(): PushSupportIssue | null {
+  if (typeof window === "undefined") {
+    return "no-window";
+  }
+
+  if (!isSecurePushContext()) {
+    return "requires-https";
+  }
+
+  if (!("serviceWorker" in navigator)) {
+    return "no-service-worker";
+  }
+
+  if (!("PushManager" in window)) {
+    return "no-push-manager";
+  }
+
+  if (!("Notification" in window)) {
+    return "no-notification";
+  }
+
+  if (isIosDevice() && !isInstalledPwa()) {
+    return "ios-requires-install";
+  }
+
+  return null;
+}
+
+export function isPushApiSupported(): boolean {
+  return getPushSupportIssue() === null;
 }
 
 export function isIosDevice(): boolean {
@@ -50,6 +94,16 @@ export function urlBase64ToUint8Array(base64String: string): BufferSource {
 export async function registerPushServiceWorker(): Promise<ServiceWorkerRegistration> {
   await navigator.serviceWorker.register("/sw.js");
   return navigator.serviceWorker.ready;
+}
+
+export async function getExistingPushSubscription(): Promise<PushSubscription | null> {
+  const registration = await navigator.serviceWorker.getRegistration();
+
+  if (!registration) {
+    return null;
+  }
+
+  return registration.pushManager.getSubscription();
 }
 
 export function subscriptionToJson(subscription: PushSubscription) {

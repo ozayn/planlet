@@ -88,6 +88,14 @@ export async function sendPushSubscription(
   }
 }
 
+export async function sendTestPushNotification(userId: string): Promise<void> {
+  await sendPushToUser(userId, {
+    title: "Planlet",
+    body: "Notifications are working.",
+    url: "/today",
+  });
+}
+
 export async function sendPushToUser(
   userId: string,
   payload: PushPayload,

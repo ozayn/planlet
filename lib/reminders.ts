@@ -2,7 +2,7 @@ import type { ReminderType } from "@/app/generated/prisma/client";
 import { formatInTimeZone } from "date-fns-tz";
 
 import { canUseReflectionFeatures } from "@/lib/roles";
-import { sendPushToUser } from "@/lib/web-push";
+import { sendPushToUser, sendTestPushNotification } from "@/lib/web-push";
 import { prisma } from "@/lib/prisma";
 
 const REMINDER_URL = "/today";
@@ -65,11 +65,7 @@ function getReminderPayload(
 }
 
 export async function sendTestReminderPush(userId: string): Promise<void> {
-  await sendPushToUser(userId, {
-    title: REMINDER_TITLE,
-    body: "This is a test notification from Planlet.",
-    url: REMINDER_URL,
-  });
+  await sendTestPushNotification(userId);
 }
 
 export async function runReminderCron(

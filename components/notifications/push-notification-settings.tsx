@@ -4,27 +4,63 @@ import { useEffect, useState } from "react";
 
 import { SettingsPlatformDetails } from "@/components/settings/settings-platform-details";
 import {
-  isInstalledPwa,
-  isIosDevice,
-  isPushApiSupported,
+  getExistingPushSubscription,
+  getPushSupportIssue,
   registerPushServiceWorker,
   subscriptionToJson,
   urlBase64ToUint8Array,
+  type PushSupportIssue,
 } from "@/lib/push-client";
 
 type PushPublicKeyResponse = {
   enabled: boolean;
   publicKey?: string;
+  reason?: string;
 };
 
 type PushSettingsState =
   | "loading"
   | "unsupported"
-  | "disabled"
+  | "requires-https"
   | "ios-install"
+  | "keys-not-configured"
+  | "sw-registration-failed"
+  | "denied"
   | "default"
-  | "subscribed"
-  | "denied";
+  | "subscribed";
+
+const SUPPORT_ISSUE_MESSAGES: Record<PushSupportIssue, string> = {
+  "no-window": "Browser does not support push notifications.",
+  "no-service-worker": "Browser does not support push notifications.",
+  "no-push-manager": "Browser does not support push notifications.",
+  "no-notification": "Browser does not support push notifications.",
+  "requires-https": "Notifications require HTTPS.",
+  "ios-requires-install":
+    "On iPhone, install Planlet to your Home Screen first.",
+};
+
+const STATE_MESSAGES: Record<
+  Exclude<
+    PushSettingsState,
+    "loading" | "default" | "subscribed" | "unsupported"
+  >,
+  string
+> = {
+  "requires-https": "Notifications require HTTPS.",
+  "ios-install": "On iPhone, install Planlet to your Home Screen first.",
+  "keys-not-configured": "Push keys are not configured.",
+  "sw-registration-failed": "Service worker could not register.",
+  denied: "Notification permission was denied.",
+};
+
+function logPushSettings(
+  state: PushSettingsState,
+  details: Record<string, unknown>,
+) {
+  if (process.env.NODE_ENV === "development") {
+    console.info("[push-settings]", { state, ...details });
+  }
+}
 
 type PushNotificationSettingsProps = {
   /** When true, omit section heading and use compact copy for settings list. */
@@ -38,34 +74,53 @@ export function PushNotificationSettings({
 }: PushNotificationSettingsProps) {
   const [state, setState] = useState<PushSettingsState>("loading");
   const [error, setError] = useState<string | null>(null);
+  const [testMessage, setTestMessage] = useState<string | null>(null);
   const [isWorking, setIsWorking] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
   const [publicKey, setPublicKey] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
 
     async function loadState() {
-      if (!isPushApiSupported()) {
-        if (!cancelled) {
-          setState("unsupported");
-        }
-        return;
-      }
+      const supportIssue = getPushSupportIssue();
 
-      if (isIosDevice() && !isInstalledPwa()) {
+      if (supportIssue) {
         if (!cancelled) {
-          setState("ios-install");
+          const nextState =
+            supportIssue === "requires-https"
+              ? "requires-https"
+              : supportIssue === "ios-requires-install"
+                ? "ios-install"
+                : "unsupported";
+          setState(nextState);
+          logPushSettings(nextState, { supportIssue });
         }
         return;
       }
 
       try {
         const response = await fetch("/api/push/public-key");
+
+        if (!response.ok) {
+          if (!cancelled) {
+            setState("keys-not-configured");
+            logPushSettings("keys-not-configured", {
+              reason: "public_key_request_failed",
+              status: response.status,
+            });
+          }
+          return;
+        }
+
         const data = (await response.json()) as PushPublicKeyResponse;
 
         if (!data.enabled || !data.publicKey) {
           if (!cancelled) {
-            setState("disabled");
+            setState("keys-not-configured");
+            logPushSettings("keys-not-configured", {
+              reason: data.reason ?? "disabled",
+            });
           }
           return;
         }
@@ -77,21 +132,30 @@ export function PushNotificationSettings({
         if (Notification.permission === "denied") {
           if (!cancelled) {
             setState("denied");
+            logPushSettings("denied", { permission: "denied" });
           }
           return;
         }
 
-        const registration = await registerPushServiceWorker();
-        const subscription = await registration.pushManager.getSubscription();
+        const subscription = await getExistingPushSubscription();
 
         if (!cancelled) {
           const subscribed = Boolean(subscription);
-          setState(subscribed ? "subscribed" : "default");
+          const nextState = subscribed ? "subscribed" : "default";
+          setState(nextState);
           onSubscriptionChange?.(subscribed);
+          logPushSettings(nextState, {
+            permission: Notification.permission,
+            subscribed,
+          });
         }
-      } catch {
+      } catch (loadError) {
         if (!cancelled) {
-          setState("disabled");
+          setState("sw-registration-failed");
+          logPushSettings("sw-registration-failed", {
+            message:
+              loadError instanceof Error ? loadError.message : "Unknown error",
+          });
         }
       }
     }
@@ -109,6 +173,7 @@ export function PushNotificationSettings({
     }
 
     setError(null);
+    setTestMessage(null);
     setIsWorking(true);
 
     try {
@@ -159,6 +224,7 @@ export function PushNotificationSettings({
 
   async function handleDisable() {
     setError(null);
+    setTestMessage(null);
     setIsWorking(true);
 
     try {
@@ -191,7 +257,46 @@ export function PushNotificationSettings({
     }
   }
 
+  async function handleSendTest() {
+    setError(null);
+    setTestMessage(null);
+    setIsTesting(true);
+
+    try {
+      const response = await fetch("/api/push/test", { method: "POST" });
+
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as {
+          error?: string;
+        } | null;
+        throw new Error(
+          data?.error ?? "Failed to send test notification.",
+        );
+      }
+
+      setTestMessage("Test notification sent.");
+    } catch (testError) {
+      setError(
+        testError instanceof Error
+          ? testError.message
+          : "Failed to send test notification.",
+      );
+    } finally {
+      setIsTesting(false);
+    }
+  }
+
   const rowClass = embedded ? "ui-settings-row-block" : "space-y-2";
+  const statusMessage =
+    state === "unsupported"
+      ? SUPPORT_ISSUE_MESSAGES["no-service-worker"]
+      : state === "loading"
+        ? null
+        : state === "default"
+          ? "Not enabled"
+          : state === "subscribed"
+            ? "Enabled"
+            : STATE_MESSAGES[state];
 
   return (
     <div className={embedded ? "" : "space-y-3"}>
@@ -204,46 +309,31 @@ export function PushNotificationSettings({
           <p className="ui-settings-subsection-status">Checking…</p>
         ) : null}
 
-        {state === "unsupported" ? (
-          <p className="ui-settings-subsection-status">
-            Not supported in this browser.
-          </p>
-        ) : null}
-
-        {state === "disabled" ? (
-          <p className="ui-settings-subsection-status">Not available right now.</p>
-        ) : null}
-
-        {state === "ios-install" && !embedded ? (
-          <p className="ui-settings-subsection-status">
-            Install Planlet to your Home Screen first, then open it from the
-            icon.
-          </p>
-        ) : null}
-
-        {state === "denied" ? (
-          <p className="ui-settings-subsection-status">
-            Blocked in your browser settings.
-          </p>
+        {statusMessage ? (
+          <p className="ui-settings-subsection-status">{statusMessage}</p>
         ) : null}
 
         {state === "default" ? (
-          <>
-            <p className="ui-settings-subsection-status">Not enabled</p>
-            <button
-              type="button"
-              onClick={handleEnable}
-              disabled={isWorking}
-              className="ui-btn-secondary ui-btn-compact min-h-10"
-            >
-              {isWorking ? "Enabling…" : "Enable phone notifications"}
-            </button>
-          </>
+          <button
+            type="button"
+            onClick={handleEnable}
+            disabled={isWorking}
+            className="ui-btn-secondary ui-btn-compact min-h-10"
+          >
+            {isWorking ? "Enabling…" : "Enable phone notifications"}
+          </button>
         ) : null}
 
         {state === "subscribed" ? (
           <div className="flex flex-wrap items-center gap-2">
-            <span className="ui-settings-subsection-status">Enabled</span>
+            <button
+              type="button"
+              onClick={handleSendTest}
+              disabled={isTesting}
+              className="ui-btn-secondary ui-btn-compact min-h-9 px-3 text-xs"
+            >
+              {isTesting ? "Sending…" : "Send test notification"}
+            </button>
             <button
               type="button"
               onClick={handleDisable}
@@ -253,6 +343,10 @@ export function PushNotificationSettings({
               {isWorking ? "Disabling…" : "Disable phone notifications"}
             </button>
           </div>
+        ) : null}
+
+        {testMessage ? (
+          <p className="text-sm text-muted">{testMessage}</p>
         ) : null}
 
         {error ? (
