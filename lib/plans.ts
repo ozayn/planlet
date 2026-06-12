@@ -19,6 +19,7 @@ import {
   getYearRange,
 } from "@/lib/dates";
 import { canEditPlan, canViewPlan } from "@/lib/plan-sharing";
+import { deriveParentStatusFromSubtasks } from "@/lib/parent-task-status";
 import { normalizeProgressForStatus } from "@/lib/plan-status";
 import {
   getPlanItemSectionGroup,
@@ -442,6 +443,10 @@ export async function createPlanItem(input: CreatePlanItemInput) {
     include: planItemInclude,
   });
 
+  if (input.parentItemId) {
+    await syncParentStatusFromSubtasks(input.parentItemId, input.userId);
+  }
+
   await touchPlan(input.planId);
   await touchUserSeen(input.userId);
 
@@ -454,6 +459,46 @@ export type UpdatePlanItemStatusInput = {
   status: PlanItemStatus;
   progressLevel?: number;
 };
+
+async function syncParentStatusFromSubtasks(
+  parentItemId: string,
+  userId: string,
+) {
+  const parent = await prisma.planItem.findFirst({
+    where: { id: parentItemId, plan: { userId } },
+    select: { id: true, status: true, progressLevel: true },
+  });
+
+  if (!parent) {
+    return;
+  }
+
+  const subtasks = await prisma.planItem.findMany({
+    where: { parentItemId },
+    select: { status: true },
+    orderBy: itemOrderBy,
+  });
+
+  const derivedStatus = deriveParentStatusFromSubtasks(
+    subtasks.map((subtask) => subtask.status),
+    parent.status,
+  );
+
+  if (derivedStatus === parent.status) {
+    return;
+  }
+
+  await prisma.planItem.update({
+    where: { id: parentItemId },
+    data: {
+      status: derivedStatus,
+      progressLevel: normalizeProgressForStatus(
+        derivedStatus,
+        parent.progressLevel,
+      ),
+    },
+  });
+}
 
 export async function updatePlanItemStatus(input: UpdatePlanItemStatusInput) {
   const item = await requirePlanItemForUser(input.itemId, input.userId);
@@ -470,6 +515,10 @@ export async function updatePlanItemStatus(input: UpdatePlanItemStatusInput) {
     },
     include: planItemInclude,
   });
+
+  if (item.parentItemId) {
+    await syncParentStatusFromSubtasks(item.parentItemId, input.userId);
+  }
 
   await touchPlan(item.planId);
   await touchUserSeen(input.userId);
@@ -519,6 +568,10 @@ export async function updatePlanItem(input: UpdatePlanItemInput) {
     include: planItemInclude,
   });
 
+  if (status !== undefined && item.parentItemId) {
+    await syncParentStatusFromSubtasks(item.parentItemId, input.userId);
+  }
+
   await touchPlan(item.planId);
   await touchUserSeen(input.userId);
 
@@ -527,10 +580,21 @@ export async function updatePlanItem(input: UpdatePlanItemInput) {
 
 export async function deletePlanItem(itemId: string, userId: string) {
   const item = await requirePlanItemForUser(itemId, userId);
+  const parentItemId = item.parentItemId;
 
   const deleted = await prisma.planItem.delete({
     where: { id: itemId },
   });
+
+  if (parentItemId) {
+    const remainingSubtasks = await prisma.planItem.count({
+      where: { parentItemId },
+    });
+
+    if (remainingSubtasks > 0) {
+      await syncParentStatusFromSubtasks(parentItemId, userId);
+    }
+  }
 
   await touchPlan(item.planId);
   await touchUserSeen(userId);
@@ -739,6 +803,8 @@ export async function moveItemUnderTask(
     data: { parentItemId, sortOrder },
   });
 
+  await syncParentStatusFromSubtasks(parentItemId, userId);
+
   await touchPlan(planId);
   await touchUserSeen(userId);
 }
@@ -767,6 +833,8 @@ export async function moveItemToRoot(
     throw new PlanError(MOVE_ITEM_FAILED_MESSAGE);
   }
 
+  const previousParentItemId = item.parentItemId;
+
   const lastRootTask = await prisma.planItem.findFirst({
     where: {
       planId,
@@ -782,6 +850,8 @@ export async function moveItemToRoot(
     where: { id: itemId },
     data: { parentItemId: null, sortOrder },
   });
+
+  await syncParentStatusFromSubtasks(previousParentItemId, userId);
 
   await touchPlan(planId);
   await touchUserSeen(userId);
