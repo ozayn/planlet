@@ -29,10 +29,12 @@ type PushSettingsState =
 type PushNotificationSettingsProps = {
   /** When true, omit section heading and use compact copy for settings list. */
   embedded?: boolean;
+  onSubscriptionChange?: (subscribed: boolean) => void;
 };
 
 export function PushNotificationSettings({
   embedded = false,
+  onSubscriptionChange,
 }: PushNotificationSettingsProps) {
   const [state, setState] = useState<PushSettingsState>("loading");
   const [error, setError] = useState<string | null>(null);
@@ -83,7 +85,9 @@ export function PushNotificationSettings({
         const subscription = await registration.pushManager.getSubscription();
 
         if (!cancelled) {
-          setState(subscription ? "subscribed" : "default");
+          const subscribed = Boolean(subscription);
+          setState(subscribed ? "subscribed" : "default");
+          onSubscriptionChange?.(subscribed);
         }
       } catch {
         if (!cancelled) {
@@ -97,7 +101,7 @@ export function PushNotificationSettings({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [onSubscriptionChange]);
 
   async function handleEnable() {
     if (!publicKey) {
@@ -141,6 +145,7 @@ export function PushNotificationSettings({
       }
 
       setState("subscribed");
+      onSubscriptionChange?.(true);
     } catch (enableError) {
       setError(
         enableError instanceof Error
@@ -171,7 +176,10 @@ export function PushNotificationSettings({
         body: JSON.stringify(endpoint ? { endpoint } : {}),
       });
 
-      setState(Notification.permission === "denied" ? "denied" : "default");
+      const nextState =
+        Notification.permission === "denied" ? "denied" : "default";
+      setState(nextState);
+      onSubscriptionChange?.(false);
     } catch (disableError) {
       setError(
         disableError instanceof Error
@@ -220,14 +228,17 @@ export function PushNotificationSettings({
         ) : null}
 
         {state === "default" ? (
-          <button
-            type="button"
-            onClick={handleEnable}
-            disabled={isWorking}
-            className="ui-btn-secondary ui-btn-compact min-h-10"
-          >
-            {isWorking ? "Enabling…" : "Enable notifications"}
-          </button>
+          <>
+            <p className="ui-settings-subsection-status">Not enabled</p>
+            <button
+              type="button"
+              onClick={handleEnable}
+              disabled={isWorking}
+              className="ui-btn-secondary ui-btn-compact min-h-10"
+            >
+              {isWorking ? "Enabling…" : "Enable phone notifications"}
+            </button>
+          </>
         ) : null}
 
         {state === "subscribed" ? (
@@ -239,7 +250,7 @@ export function PushNotificationSettings({
               disabled={isWorking}
               className="ui-btn-secondary ui-btn-compact min-h-9 px-3 text-xs"
             >
-              {isWorking ? "Turning off…" : "Turn off"}
+              {isWorking ? "Disabling…" : "Disable phone notifications"}
             </button>
           </div>
         ) : null}

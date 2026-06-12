@@ -4,6 +4,12 @@ import type { PlanItemView } from "@/app/generated/prisma/client";
 import { revalidatePath } from "next/cache";
 
 import { auth } from "@/auth";
+import {
+  updateNotificationPreferences,
+  type NotificationPreferencesInput,
+} from "@/lib/notification-preferences";
+import { sendTestReminderPush } from "@/lib/reminders";
+import { isWebPushConfigured } from "@/lib/env";
 import { updatePlanItemView } from "@/lib/user-preferences";
 
 const PLAN_ITEM_VIEWS = new Set<PlanItemView>(["MINIMAL", "CHECKLIST"]);
@@ -26,6 +32,48 @@ function revalidatePlanSurfaces() {
 export type SettingsActionResult =
   | { success: true }
   | { success: false; error: string };
+
+export async function updateNotificationPreferencesAction(
+  input: NotificationPreferencesInput,
+): Promise<SettingsActionResult> {
+  try {
+    const userId = await requireUserId();
+    await updateNotificationPreferences(userId, input);
+    revalidatePath("/settings");
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to update notification preferences.",
+    };
+  }
+}
+
+export async function sendTestNotificationAction(): Promise<SettingsActionResult> {
+  if (!isWebPushConfigured()) {
+    return {
+      success: false,
+      error: "Push notifications are not configured on the server.",
+    };
+  }
+
+  try {
+    const userId = await requireUserId();
+    await sendTestReminderPush(userId);
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to send test notification.",
+    };
+  }
+}
 
 export async function updatePlanItemViewAction(
   value: PlanItemView,

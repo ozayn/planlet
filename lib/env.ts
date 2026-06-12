@@ -67,3 +67,27 @@ export function getWebPushPublicKey(): string | undefined {
   const publicKey = process.env.WEB_PUSH_PUBLIC_KEY?.trim();
   return publicKey || undefined;
 }
+
+export function isCronAuthorized(request: Request): boolean {
+  const secret = process.env.CRON_SECRET?.trim();
+
+  if (!secret) {
+    return false;
+  }
+
+  const authorization = request.headers.get("authorization");
+
+  if (authorization === `Bearer ${secret}`) {
+    return true;
+  }
+
+  const cronHeader = request.headers.get("x-cron-secret");
+
+  if (cronHeader === secret) {
+    return true;
+  }
+
+  const url = new URL(request.url);
+
+  return url.searchParams.get("secret") === secret;
+}

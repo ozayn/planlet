@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { PageHeader } from "@/components/page-header";
 import { SettingsAppNotifications } from "@/components/settings/settings-app-notifications";
+import { getNotificationPreferencesForUser } from "@/lib/notification-preferences";
 import { PlanItemViewSettings } from "@/components/settings/plan-item-view-settings";
 import { SettingsProfile } from "@/components/settings/settings-profile";
 import { SettingsReflectionFeatures } from "@/components/settings/settings-reflection-features";
@@ -28,6 +29,9 @@ export default async function SettingsPage() {
   const planItemView = session?.user?.id
     ? await getPlanItemViewForUser(session.user.id)
     : "CHECKLIST";
+  const notificationPreferences = session?.user?.id
+    ? await getNotificationPreferencesForUser(session.user.id)
+    : null;
 
   return (
     <section className="ui-settings-page mx-auto max-w-lg space-y-5">
@@ -59,7 +63,9 @@ export default async function SettingsPage() {
         />
       ) : null}
 
-      <SettingsAppNotifications />
+      {notificationPreferences ? (
+        <SettingsAppNotifications preferences={notificationPreferences} />
+      ) : null}
 
       <SettingsTechnicalInfo
         rows={[

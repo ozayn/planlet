@@ -152,6 +152,11 @@ enum ObservationCategory {
   OTHER
 }
 
+enum ReminderType {
+  MORNING_PLAN
+  EVENING_REFLECTION
+}
+
 model User {
   id            String      @id @default(cuid())
   name          String?
@@ -174,8 +179,10 @@ model User {
   sentKudos          PlanKudos[] @relation("SentKudos")
   receivedKudos      PlanKudos[] @relation("ReceivedKudos")
   notifications      Notification[]
-  pushSubscriptions  PushSubscription[]
-  planItemComments   PlanItemComment[]
+  pushSubscriptions        PushSubscription[]
+  notificationPreference   NotificationPreference?
+  sentReminders            SentReminder[]
+  planItemComments         PlanItemComment[]
   observations       PlanObservation[]
   gratitudes         PlanGratitude[]
   feedbackItems      AppFeedback[] @relation("AuthoredFeedback")
@@ -197,6 +204,31 @@ model PushSubscription {
   updatedAt DateTime @updatedAt
 
   @@index([userId])
+}
+
+model NotificationPreference {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  morningEnabled Boolean  @default(false)
+  morningTime    String   @default("09:00")
+  eveningEnabled Boolean  @default(false)
+  eveningTime    String   @default("21:00")
+  timezone       String   @default("America/New_York")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model SentReminder {
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      ReminderType
+  localDate String
+  sentAt    DateTime     @default(now())
+
+  @@unique([userId, type, localDate])
+  @@index([userId, localDate])
 }
 
 model Notification {
