@@ -52,6 +52,19 @@ function getPushErrorStatusCode(error: unknown): number | undefined {
   return undefined;
 }
 
+function getPushErrorBody(error: unknown): string | undefined {
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "body" in error &&
+    typeof error.body === "string"
+  ) {
+    return error.body;
+  }
+
+  return undefined;
+}
+
 export async function sendPushSubscription(
   subscription: Pick<StoredPushSubscription, "endpoint" | "p256dh" | "auth">,
   payload: PushPayload,
@@ -82,26 +95,37 @@ export async function sendPushSubscription(
     console.warn("[web-push] Failed to send notification:", {
       endpoint: subscription.endpoint,
       statusCode,
+      body: getPushErrorBody(error),
       message: error instanceof Error ? error.message : "Unknown error",
     });
     return "failed";
   }
 }
 
-export async function sendTestPushNotification(userId: string): Promise<void> {
-  await sendPushToUser(userId, {
-    title: "Planlet",
-    body: "Notifications are working.",
-    url: "/today",
-  });
-}
+export type PushSendResult = {
+  subscriptionCount: number;
+  sent: number;
+  failed: number;
+  staleRemoved: number;
+};
 
-export async function sendPushToUser(
+const TEST_PUSH_PAYLOAD: PushPayload = {
+  title: "Planlet",
+  body: "Notifications are working.",
+  url: "/today",
+};
+
+export async function sendPushToUserWithResult(
   userId: string,
   payload: PushPayload,
-): Promise<void> {
+): Promise<PushSendResult> {
   if (!ensureVapidConfigured()) {
-    return;
+    return {
+      subscriptionCount: 0,
+      sent: 0,
+      failed: 0,
+      staleRemoved: 0,
+    };
   }
 
   const subscriptions = await prisma.pushSubscription.findMany({
@@ -114,13 +138,47 @@ export async function sendPushToUser(
     },
   });
 
+  let sent = 0;
+  let failed = 0;
+  let staleRemoved = 0;
+
   for (const subscription of subscriptions) {
     const result = await sendPushSubscription(subscription, payload);
 
+    if (result === "sent") {
+      sent += 1;
+      continue;
+    }
+
     if (result === "stale") {
+      staleRemoved += 1;
       await prisma.pushSubscription.delete({
         where: { id: subscription.id },
       });
+      continue;
     }
+
+    failed += 1;
   }
+
+  return {
+    subscriptionCount: subscriptions.length,
+    sent,
+    failed,
+    staleRemoved,
+  };
 }
+
+export async function sendTestPushNotification(
+  userId: string,
+): Promise<PushSendResult> {
+  return sendPushToUserWithResult(userId, TEST_PUSH_PAYLOAD);
+}
+
+export async function sendPushToUser(
+  userId: string,
+  payload: PushPayload,
+): Promise<void> {
+  await sendPushToUserWithResult(userId, payload);
+}
+

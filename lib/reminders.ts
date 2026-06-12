@@ -65,7 +65,21 @@ function getReminderPayload(
 }
 
 export async function sendTestReminderPush(userId: string): Promise<void> {
-  await sendTestPushNotification(userId);
+  const result = await sendTestPushNotification(userId);
+
+  if (result.subscriptionCount === 0) {
+    throw new Error(
+      "No push subscription found. Enable phone notifications again.",
+    );
+  }
+
+  if (result.sent === 0) {
+    throw new Error(
+      result.staleRemoved > 0
+        ? "This notification subscription expired. Enable phone notifications again."
+        : "Couldn't send test notification.",
+    );
+  }
 }
 
 export async function runReminderCron(

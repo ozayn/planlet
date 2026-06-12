@@ -62,6 +62,34 @@ function logPushSettings(
   }
 }
 
+type TestNotificationStatus = "idle" | "sending" | "success" | "error";
+
+type PushTestResponse = {
+  ok?: boolean;
+  message?: string;
+  sent?: number;
+};
+
+function getFriendlyTestError(message: string): string {
+  if (message.includes("No push subscription found")) {
+    return "No push subscription found. Enable phone notifications again.";
+  }
+
+  if (message.includes("subscription expired")) {
+    return "This notification subscription expired. Enable phone notifications again.";
+  }
+
+  if (message.includes("Push keys are not configured")) {
+    return "Push keys are not configured.";
+  }
+
+  if (message.includes("permission")) {
+    return "Notification permission is not granted.";
+  }
+
+  return message || "Couldn't send test notification.";
+}
+
 type PushNotificationSettingsProps = {
   /** When true, omit section heading and use compact copy for settings list. */
   embedded?: boolean;
@@ -74,9 +102,9 @@ export function PushNotificationSettings({
 }: PushNotificationSettingsProps) {
   const [state, setState] = useState<PushSettingsState>("loading");
   const [error, setError] = useState<string | null>(null);
-  const [testMessage, setTestMessage] = useState<string | null>(null);
+  const [testStatus, setTestStatus] = useState<TestNotificationStatus>("idle");
+  const [testError, setTestError] = useState<string | null>(null);
   const [isWorking, setIsWorking] = useState(false);
-  const [isTesting, setIsTesting] = useState(false);
   const [publicKey, setPublicKey] = useState<string | null>(null);
 
   useEffect(() => {
@@ -173,7 +201,8 @@ export function PushNotificationSettings({
     }
 
     setError(null);
-    setTestMessage(null);
+    setTestStatus("idle");
+    setTestError(null);
     setIsWorking(true);
 
     try {
@@ -224,7 +253,8 @@ export function PushNotificationSettings({
 
   async function handleDisable() {
     setError(null);
-    setTestMessage(null);
+    setTestStatus("idle");
+    setTestError(null);
     setIsWorking(true);
 
     try {
@@ -259,30 +289,43 @@ export function PushNotificationSettings({
 
   async function handleSendTest() {
     setError(null);
-    setTestMessage(null);
-    setIsTesting(true);
+    setTestError(null);
+    setTestStatus("sending");
+
+    if (Notification.permission !== "granted") {
+      setTestStatus("error");
+      setTestError("Notification permission is not granted.");
+      return;
+    }
 
     try {
       const response = await fetch("/api/push/test", { method: "POST" });
+      const data = (await response.json().catch(() => null)) as
+        | PushTestResponse
+        | null;
 
-      if (!response.ok) {
-        const data = (await response.json().catch(() => null)) as {
-          error?: string;
-        } | null;
+      if (!response.ok || !data?.ok) {
         throw new Error(
-          data?.error ?? "Failed to send test notification.",
+          data?.message ?? "Couldn't send test notification.",
         );
       }
 
-      setTestMessage("Test notification sent.");
-    } catch (testError) {
-      setError(
-        testError instanceof Error
-          ? testError.message
-          : "Failed to send test notification.",
-      );
-    } finally {
-      setIsTesting(false);
+      setTestStatus("success");
+      logPushSettings("subscribed", {
+        action: "test_notification_sent",
+        sent: data.sent ?? 0,
+      });
+    } catch (sendTestError) {
+      const message =
+        sendTestError instanceof Error
+          ? sendTestError.message
+          : "Couldn't send test notification.";
+      setTestStatus("error");
+      setTestError(getFriendlyTestError(message));
+      logPushSettings("subscribed", {
+        action: "test_notification_failed",
+        message,
+      });
     }
   }
 
@@ -325,28 +368,40 @@ export function PushNotificationSettings({
         ) : null}
 
         {state === "subscribed" ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              onClick={handleSendTest}
-              disabled={isTesting}
-              className="ui-btn-secondary ui-btn-compact min-h-9 px-3 text-xs"
-            >
-              {isTesting ? "Sending…" : "Send test notification"}
-            </button>
-            <button
-              type="button"
-              onClick={handleDisable}
-              disabled={isWorking}
-              className="ui-btn-secondary ui-btn-compact min-h-9 px-3 text-xs"
-            >
-              {isWorking ? "Disabling…" : "Disable phone notifications"}
-            </button>
-          </div>
-        ) : null}
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={handleSendTest}
+                disabled={testStatus === "sending" || isWorking}
+                className="ui-btn-secondary ui-btn-compact min-h-9 px-3 text-xs disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {testStatus === "sending"
+                  ? "Sending…"
+                  : "Send test notification"}
+              </button>
+              <button
+                type="button"
+                onClick={handleDisable}
+                disabled={isWorking || testStatus === "sending"}
+                className="ui-btn-secondary ui-btn-compact min-h-9 px-3 text-xs"
+              >
+                {isWorking ? "Disabling…" : "Disable phone notifications"}
+              </button>
+            </div>
 
-        {testMessage ? (
-          <p className="text-sm text-muted">{testMessage}</p>
+            {testStatus === "success" ? (
+              <p className="text-sm text-foreground" role="status">
+                Test notification sent.
+              </p>
+            ) : null}
+
+            {testStatus === "error" && testError ? (
+              <p className="text-sm text-accent-red" role="alert">
+                {testError}
+              </p>
+            ) : null}
+          </div>
         ) : null}
 
         {error ? (
