@@ -21,7 +21,12 @@ import {
 import { getItemActionLabels } from "@/components/plans/item-action-labels";
 import { MoreHorizontalIcon } from "@/components/ui/action-icons";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ActionErrorBanner } from "@/components/ui/action-error-banner";
 import { ACTION_LABELS } from "@/lib/action-labels";
+import {
+  getMutationError,
+  invokeServerAction,
+} from "@/lib/invoke-server-action";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 
 type ItemActionsMenuProps = {
@@ -139,10 +144,12 @@ export function ItemActionsMenu({
     setError(null);
 
     startMove(async () => {
-      const result = await movePlanItemAction(planId, itemId, direction);
-
-      if (!result.success) {
-        setError(result.error ?? "Failed to move item.");
+      const invoked = await invokeServerAction(() =>
+        movePlanItemAction(planId, itemId, direction),
+      );
+      const mutationError = getMutationError(invoked);
+      if (mutationError) {
+        setError(mutationError.message);
         return;
       }
 
@@ -152,17 +159,16 @@ export function ItemActionsMenu({
 
   function handleDelete() {
     startDelete(async () => {
-      try {
-        await deletePlanItemAction(planId, itemId);
-        setConfirmOpen(false);
-        router.refresh();
-      } catch (deleteError) {
-        setError(
-          deleteError instanceof Error
-            ? deleteError.message
-            : "Failed to delete item.",
-        );
+      const invoked = await invokeServerAction(() =>
+        deletePlanItemAction(planId, itemId),
+      );
+      if (!invoked.ok) {
+        setError(invoked.message);
+        return;
       }
+
+      setConfirmOpen(false);
+      router.refresh();
     });
   }
 
@@ -371,9 +377,9 @@ export function ItemActionsMenu({
       {menu}
 
       {error && !confirmOpen ? (
-        <p className="sr-only" role="alert">
-          {error}
-        </p>
+        <div className="absolute end-0 top-full z-[60] mt-1 w-56">
+          <ActionErrorBanner message={error} />
+        </div>
       ) : null}
 
       {menuShowsDelete ? (
@@ -392,7 +398,11 @@ export function ItemActionsMenu({
           confirmDanger
         >
           <p>{labels.deleteBody}</p>
-          {error ? <p className="mt-3 text-sm text-accent-red">{error}</p> : null}
+          {error ? (
+            <div className="mt-3">
+              <ActionErrorBanner message={error} />
+            </div>
+          ) : null}
         </ConfirmDialog>
       ) : null}
     </>

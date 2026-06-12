@@ -20,9 +20,15 @@ import {
 } from "@/app/(app)/plans/actions";
 import { PrivateEntryActionsMenu } from "@/components/plans/private-entry-actions-menu";
 import { ChevronDownIcon, LockIcon } from "@/components/ui/action-icons";
+import { ActionErrorBanner } from "@/components/ui/action-error-banner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { APP_TIMEZONE } from "@/config/time";
 import { ACTION_LABELS } from "@/lib/action-labels";
+import {
+  getMutationError,
+  invokeServerAction,
+  unwrapMutationSuccess,
+} from "@/lib/invoke-server-action";
 import { OBSERVATION_CATEGORIES } from "@/lib/observation-constants";
 import { getObservationCategoryLabel } from "@/lib/observation-labels";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
@@ -97,13 +103,19 @@ export function PrivateObservationsSection({
     setError(null);
 
     startSubmit(async () => {
-      const result = await addPlanObservationAction(planId, {
-        category,
-        body: textToSubmit,
-      });
-
-      if (!result.success) {
-        setError(result.error);
+      const invoked = await invokeServerAction(() =>
+        addPlanObservationAction(planId, {
+          category,
+          body: textToSubmit,
+        }),
+      );
+      const mutationError = getMutationError(invoked);
+      if (mutationError) {
+        setError(mutationError.message);
+        return;
+      }
+      const result = unwrapMutationSuccess(invoked);
+      if (!result) {
         return;
       }
 
@@ -152,13 +164,19 @@ export function PrivateObservationsSection({
     setError(null);
 
     startSubmit(async () => {
-      const result = await updatePlanObservationAction(observationId, {
-        category: editCategory,
-        body: textToSubmit,
-      });
-
-      if (!result.success) {
-        setError(result.error);
+      const invoked = await invokeServerAction(() =>
+        updatePlanObservationAction(observationId, {
+          category: editCategory,
+          body: textToSubmit,
+        }),
+      );
+      const mutationError = getMutationError(invoked);
+      if (mutationError) {
+        setError(mutationError.message);
+        return;
+      }
+      const result = unwrapMutationSuccess(invoked);
+      if (!result) {
         return;
       }
 
@@ -200,12 +218,18 @@ export function PrivateObservationsSection({
     setError(null);
     setDeletingId(observationId);
 
-    void deletePlanObservationAction(observationId).then((result) => {
+    void invokeServerAction(() =>
+      deletePlanObservationAction(observationId),
+    ).then((invoked) => {
       setDeletingId(null);
       setConfirmDeleteId(null);
 
-      if (!result.success) {
-        setError(result.error);
+      const mutationError = getMutationError(invoked);
+      if (mutationError) {
+        setError(mutationError.message);
+        return;
+      }
+      if (!unwrapMutationSuccess(invoked)) {
         return;
       }
 
@@ -398,7 +422,7 @@ export function PrivateObservationsSection({
             </ul>
           ) : null}
 
-          {error ? <p className="text-sm text-accent-red">{error}</p> : null}
+          {error ? <ActionErrorBanner message={error} /> : null}
         </div>
       ) : null}
 

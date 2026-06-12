@@ -84,6 +84,7 @@ import {
   sharePlanWithUser,
 } from "@/lib/plan-sharing";
 import { prisma } from "@/lib/prisma";
+import { mapServerActionError } from "@/lib/action-errors";
 import { touchUserSeenSafely } from "@/lib/user-activity";
 
 async function requireUserId(): Promise<string> {
@@ -301,29 +302,44 @@ export async function createPlanAction(type: PlanType) {
   redirect(`/plans/${plan.id}`);
 }
 
+export type PlanItemActionResult =
+  | { success: true }
+  | { success: false; error: string };
+
 export async function createPlanItemAction(input: {
   planId: string;
   title: string;
   parentItemId?: string;
   type?: PlanItemType;
-}) {
-  const userId = await requireUserId();
-  const title = input.title.trim();
+}): Promise<PlanItemActionResult> {
+  try {
+    const userId = await requireUserId();
+    const title = input.title.trim();
 
-  if (!title) {
-    throw new Error("Title is required");
+    if (!title) {
+      return { success: false, error: "Title is required" };
+    }
+
+    await createPlanItem({
+      userId,
+      planId: input.planId,
+      title,
+      parentItemId: input.parentItemId,
+      type: input.type,
+    });
+
+    await recordUserActivity(userId);
+    revalidatePlanPaths(input.planId);
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof PlanError
+          ? error.message
+          : mapServerActionError(error, "Failed to add item."),
+    };
   }
-
-  await createPlanItem({
-    userId,
-    planId: input.planId,
-    title,
-    parentItemId: input.parentItemId,
-    type: input.type,
-  });
-
-  await recordUserActivity(userId);
-  revalidatePlanPaths(input.planId);
 }
 
 export async function updatePlanItemAction(
@@ -426,9 +442,8 @@ export async function movePlanItemAction(
   itemId: string,
   direction: "up" | "down",
 ): Promise<ShareActionResult> {
-  const userId = await requireUserId();
-
   try {
+    const userId = await requireUserId();
     await movePlanItem(planId, userId, itemId, direction);
     await recordUserActivity(userId);
     revalidatePlanPaths(planId);
@@ -437,7 +452,9 @@ export async function movePlanItemAction(
     return {
       success: false,
       error:
-        error instanceof Error ? error.message : "Failed to move item.",
+        error instanceof PlanError
+          ? error.message
+          : mapServerActionError(error, "Failed to move item."),
     };
   }
 }
@@ -979,9 +996,8 @@ export async function addPlanObservationAction(
   planId: string,
   data: { category: ObservationCategory; body: string },
 ): Promise<ObservationActionResult> {
-  const userId = await requireUserId();
-
   try {
+    const userId = await requireUserId();
     const result = await addPlanObservation(planId, userId, data);
     await recordUserActivity(userId);
     revalidatePlanPaths(result.planId);
@@ -992,9 +1008,7 @@ export async function addPlanObservationAction(
       error:
         error instanceof ObservationError
           ? error.message
-          : error instanceof Error
-            ? error.message
-            : "Failed to add observation.",
+          : mapServerActionError(error, "Failed to add observation."),
     };
   }
 }
@@ -1003,9 +1017,8 @@ export async function updatePlanObservationAction(
   observationId: string,
   data: { category: ObservationCategory; body: string },
 ): Promise<ObservationActionResult> {
-  const userId = await requireUserId();
-
   try {
+    const userId = await requireUserId();
     const result = await updatePlanObservation(observationId, userId, data);
     await recordUserActivity(userId);
     revalidatePlanPaths(result.planId);
@@ -1016,9 +1029,7 @@ export async function updatePlanObservationAction(
       error:
         error instanceof ObservationError
           ? error.message
-          : error instanceof Error
-            ? error.message
-            : "Failed to update observation.",
+          : mapServerActionError(error, "Failed to update observation."),
     };
   }
 }
@@ -1026,9 +1037,8 @@ export async function updatePlanObservationAction(
 export async function deletePlanObservationAction(
   observationId: string,
 ): Promise<DeleteObservationResult> {
-  const userId = await requireUserId();
-
   try {
+    const userId = await requireUserId();
     const result = await deletePlanObservation(observationId, userId);
     await recordUserActivity(userId);
     revalidatePlanPaths(result.planId);
@@ -1039,9 +1049,7 @@ export async function deletePlanObservationAction(
       error:
         error instanceof ObservationError
           ? error.message
-          : error instanceof Error
-            ? error.message
-            : "Failed to delete observation.",
+          : mapServerActionError(error, "Failed to delete observation."),
     };
   }
 }
@@ -1058,9 +1066,8 @@ export async function addPlanGratitudeAction(
   planId: string,
   body: string,
 ): Promise<GratitudeActionResult> {
-  const userId = await requireUserId();
-
   try {
+    const userId = await requireUserId();
     const result = await addPlanGratitude(planId, userId, body);
     await recordUserActivity(userId);
     revalidatePlanPaths(result.planId);
@@ -1071,9 +1078,7 @@ export async function addPlanGratitudeAction(
       error:
         error instanceof GratitudeError
           ? error.message
-          : error instanceof Error
-            ? error.message
-            : "Failed to add gratitude.",
+          : mapServerActionError(error, "Failed to add gratitude."),
     };
   }
 }
@@ -1082,9 +1087,8 @@ export async function updatePlanGratitudeAction(
   gratitudeId: string,
   body: string,
 ): Promise<GratitudeActionResult> {
-  const userId = await requireUserId();
-
   try {
+    const userId = await requireUserId();
     const result = await updatePlanGratitude(gratitudeId, userId, body);
     await recordUserActivity(userId);
     revalidatePlanPaths(result.planId);
@@ -1095,9 +1099,7 @@ export async function updatePlanGratitudeAction(
       error:
         error instanceof GratitudeError
           ? error.message
-          : error instanceof Error
-            ? error.message
-            : "Failed to update gratitude.",
+          : mapServerActionError(error, "Failed to update gratitude."),
     };
   }
 }
@@ -1105,9 +1107,8 @@ export async function updatePlanGratitudeAction(
 export async function deletePlanGratitudeAction(
   gratitudeId: string,
 ): Promise<DeleteGratitudeResult> {
-  const userId = await requireUserId();
-
   try {
+    const userId = await requireUserId();
     const result = await deletePlanGratitude(gratitudeId, userId);
     await recordUserActivity(userId);
     revalidatePlanPaths(result.planId);
@@ -1118,9 +1119,7 @@ export async function deletePlanGratitudeAction(
       error:
         error instanceof GratitudeError
           ? error.message
-          : error instanceof Error
-            ? error.message
-            : "Failed to delete gratitude.",
+          : mapServerActionError(error, "Failed to delete gratitude."),
     };
   }
 }

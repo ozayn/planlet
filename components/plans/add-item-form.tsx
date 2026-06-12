@@ -4,7 +4,12 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 import { createPlanItemAction } from "@/app/(app)/plans/actions";
+import { ActionErrorBanner } from "@/components/ui/action-error-banner";
 import type { AddItemKind } from "@/lib/plan-item-sections";
+import {
+  getMutationError,
+  invokeServerAction,
+} from "@/lib/invoke-server-action";
 import { passwordManagerSafeControlProps, passwordManagerSafeFormProps } from "@/lib/password-manager-ignore";
 
 type AddItemFormProps = {
@@ -49,6 +54,7 @@ export function AddItemForm({
   const router = useRouter();
   const [title, setTitle] = useState("");
   const [kind, setKind] = useState<AddItemKind>("TASK");
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const canSubmit = title.trim().length > 0;
   const showKindSelector = !parentItemId;
@@ -61,13 +67,23 @@ export function AddItemForm({
     const trimmed = title.trim();
     if (!trimmed) return;
 
+    setError(null);
+
     startTransition(async () => {
-      await createPlanItemAction({
-        planId,
-        title: trimmed,
-        parentItemId,
-        type: parentItemId ? "TASK" : kind,
-      });
+      const invoked = await invokeServerAction(() =>
+        createPlanItemAction({
+          planId,
+          title: trimmed,
+          parentItemId,
+          type: parentItemId ? "TASK" : kind,
+        }),
+      );
+      const mutationError = getMutationError(invoked);
+      if (mutationError) {
+        setError(mutationError.message);
+        return;
+      }
+
       setTitle("");
       router.refresh();
     });
@@ -106,6 +122,8 @@ export function AddItemForm({
           ))}
         </div>
       ) : null}
+
+      {error ? <ActionErrorBanner message={error} /> : null}
 
       <div
         className={

@@ -19,9 +19,15 @@ import {
 } from "@/app/(app)/plans/actions";
 import { PrivateEntryActionsMenu } from "@/components/plans/private-entry-actions-menu";
 import { ChevronDownIcon, LockIcon, SparklesIcon } from "@/components/ui/action-icons";
+import { ActionErrorBanner } from "@/components/ui/action-error-banner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { APP_TIMEZONE } from "@/config/time";
 import { ACTION_LABELS } from "@/lib/action-labels";
+import {
+  getMutationError,
+  invokeServerAction,
+  unwrapMutationSuccess,
+} from "@/lib/invoke-server-action";
 import type { SerializedGratitude } from "@/lib/gratitude";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 import {
@@ -91,10 +97,16 @@ export function GratitudeSection({
     setError(null);
 
     startSubmit(async () => {
-      const result = await addPlanGratitudeAction(planId, textToSubmit);
-
-      if (!result.success) {
-        setError(result.error);
+      const invoked = await invokeServerAction(() =>
+        addPlanGratitudeAction(planId, textToSubmit),
+      );
+      const mutationError = getMutationError(invoked);
+      if (mutationError) {
+        setError(mutationError.message);
+        return;
+      }
+      const result = unwrapMutationSuccess(invoked);
+      if (!result) {
         return;
       }
 
@@ -142,10 +154,16 @@ export function GratitudeSection({
     setError(null);
 
     startSubmit(async () => {
-      const result = await updatePlanGratitudeAction(gratitudeId, textToSubmit);
-
-      if (!result.success) {
-        setError(result.error);
+      const invoked = await invokeServerAction(() =>
+        updatePlanGratitudeAction(gratitudeId, textToSubmit),
+      );
+      const mutationError = getMutationError(invoked);
+      if (mutationError) {
+        setError(mutationError.message);
+        return;
+      }
+      const result = unwrapMutationSuccess(invoked);
+      if (!result) {
         return;
       }
 
@@ -187,20 +205,26 @@ export function GratitudeSection({
     setError(null);
     setDeletingId(gratitudeId);
 
-    void deletePlanGratitudeAction(gratitudeId).then((result) => {
-      setDeletingId(null);
-      setConfirmDeleteId(null);
+    void invokeServerAction(() => deletePlanGratitudeAction(gratitudeId)).then(
+      (invoked) => {
+        setDeletingId(null);
+        setConfirmDeleteId(null);
 
-      if (!result.success) {
-        setError(result.error);
-        return;
-      }
+        const mutationError = getMutationError(invoked);
+        if (mutationError) {
+          setError(mutationError.message);
+          return;
+        }
+        if (!unwrapMutationSuccess(invoked)) {
+          return;
+        }
 
-      setGratitudes((current) =>
-        current.filter((entry) => entry.id !== gratitudeId),
-      );
-      router.refresh();
-    });
+        setGratitudes((current) =>
+          current.filter((entry) => entry.id !== gratitudeId),
+        );
+        router.refresh();
+      },
+    );
   }
 
   return (
@@ -340,7 +364,7 @@ export function GratitudeSection({
             </ul>
           ) : null}
 
-          {error ? <p className="text-sm text-accent-red">{error}</p> : null}
+          {error ? <ActionErrorBanner message={error} /> : null}
         </div>
       ) : null}
 
