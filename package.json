@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate",
-    "db:migrate": "prisma migrate deploy"
+    "db:migrate": "prisma migrate deploy",
+    "cron:reminders": "tsx scripts/run-reminders-cron.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.103.0",
@@ -43,6 +44,7 @@
     "prisma": "^7.8.0",
     "sharp": "^0.34.5",
     "tailwindcss": "^4",
+    "tsx": "^4.20.5",
     "typescript": "^5"
   }
 }

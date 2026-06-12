@@ -7,16 +7,34 @@ import { prisma } from "@/lib/prisma";
 
 const REMINDER_URL = "/today";
 const REMINDER_TITLE = "Planlet";
+const REMINDER_WINDOW_MINUTES = 10;
+
+function parseTimeToMinutes(hhmm: string): number {
+  const [hours, minutes] = hhmm.split(":").map(Number);
+  return hours * 60 + minutes;
+}
+
+function isWithinReminderWindow(
+  currentHhmm: string,
+  reminderHhmm: string,
+  windowMinutes = REMINDER_WINDOW_MINUTES,
+): boolean {
+  const current = parseTimeToMinutes(currentHhmm);
+  const reminder = parseTimeToMinutes(reminderHhmm);
+
+  return current >= reminder && current < reminder + windowMinutes;
+}
 
 const MORNING_BODY = "Take a moment to fill today’s plan.";
 const EVENING_BODY_WITH_GRATITUDE =
   "Review today, update your tasks, and add gratitude.";
 const EVENING_BODY_DEFAULT = "Review today and update your tasks.";
 
-export type ReminderDispatchResult = {
-  checked: number;
+export type ReminderCronResult = {
+  checkedUsers: number;
   sent: number;
   skipped: number;
+  errors: number;
 };
 
 function getEveningReminderBody(user: {
@@ -54,9 +72,9 @@ export async function sendTestReminderPush(userId: string): Promise<void> {
   });
 }
 
-export async function dispatchDueReminders(
+export async function runReminderCron(
   now = new Date(),
-): Promise<ReminderDispatchResult> {
+): Promise<ReminderCronResult> {
   const preferences = await prisma.notificationPreference.findMany({
     where: {
       OR: [{ morningEnabled: true }, { eveningEnabled: true }],
@@ -79,6 +97,7 @@ export async function dispatchDueReminders(
 
   let sent = 0;
   let skipped = 0;
+  let errors = 0;
 
   for (const preference of preferences) {
     const localTime = formatInTimeZone(now, preference.timezone, "HH:mm");
@@ -86,11 +105,17 @@ export async function dispatchDueReminders(
 
     const dueTypes: ReminderType[] = [];
 
-    if (preference.morningEnabled && preference.morningTime === localTime) {
+    if (
+      preference.morningEnabled &&
+      isWithinReminderWindow(localTime, preference.morningTime)
+    ) {
       dueTypes.push("MORNING_PLAN");
     }
 
-    if (preference.eveningEnabled && preference.eveningTime === localTime) {
+    if (
+      preference.eveningEnabled &&
+      isWithinReminderWindow(localTime, preference.eveningTime)
+    ) {
       dueTypes.push("EVENING_REFLECTION");
     }
 
@@ -116,26 +141,40 @@ export async function dispatchDueReminders(
         continue;
       }
 
-      await sendPushToUser(
-        preference.userId,
-        getReminderPayload(type, preference.user),
-      );
+      try {
+        await sendPushToUser(
+          preference.userId,
+          getReminderPayload(type, preference.user),
+        );
 
-      await prisma.sentReminder.create({
-        data: {
+        await prisma.sentReminder.create({
+          data: {
+            userId: preference.userId,
+            type,
+            localDate,
+          },
+        });
+
+        sent += 1;
+      } catch (error) {
+        errors += 1;
+        console.warn("[reminders] Failed to send reminder:", {
           userId: preference.userId,
           type,
           localDate,
-        },
-      });
-
-      sent += 1;
+          message: error instanceof Error ? error.message : "Unknown error",
+        });
+      }
     }
   }
 
   return {
-    checked: preferences.length,
+    checkedUsers: preferences.length,
     sent,
     skipped,
+    errors,
   };
 }
+
+/** @deprecated Use runReminderCron */
+export const dispatchDueReminders = runReminderCron;
