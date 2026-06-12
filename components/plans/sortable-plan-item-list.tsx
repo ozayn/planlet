@@ -24,11 +24,19 @@ import type { PlanItemView } from "@/app/generated/prisma/client";
 
 import { reorderPlanItemsAction } from "@/app/(app)/plans/actions";
 import { PlanItemCard } from "@/components/plans/plan-item-card";
+import { ActionErrorBanner } from "@/components/ui/action-error-banner";
+import {
+  getMutationError,
+  invokeServerAction,
+} from "@/lib/invoke-server-action";
+import type { PlanItemSectionGroup } from "@/lib/plan-item-sections";
 import type { SerializedPlanItem } from "@/lib/plan-serialize";
 
 type SortablePlanItemListProps = {
   planId: string;
   items: SerializedPlanItem[];
+  sectionGroup: PlanItemSectionGroup;
+  parentItemId?: string | null;
   itemView?: PlanItemView;
   canEdit?: boolean;
 };
@@ -163,6 +171,8 @@ function SortablePlanItemRows({
 export function SortablePlanItemList({
   planId,
   items: initialItems,
+  sectionGroup,
+  parentItemId = null,
   itemView = "MINIMAL",
   canEdit = true,
 }: SortablePlanItemListProps) {
@@ -194,18 +204,24 @@ export function SortablePlanItemList({
       return;
     }
 
+    const previousItems = items;
     const nextItems = arrayMove(items, oldIndex, newIndex);
     setItems(nextItems);
     setError(null);
 
     startTransition(async () => {
-      const result = await reorderPlanItemsAction(
-        planId,
-        nextItems.map((item) => item.id),
+      const invoked = await invokeServerAction(() =>
+        reorderPlanItemsAction({
+          planId,
+          orderedItemIds: nextItems.map((item) => item.id),
+          parentItemId,
+          sectionGroup,
+        }),
       );
-
-      if (!result.success) {
-        setError(result.error ?? "Failed to reorder items.");
+      const mutationError = getMutationError(invoked);
+      if (mutationError) {
+        setError(mutationError.message);
+        setItems(previousItems);
         router.refresh();
         return;
       }
@@ -233,11 +249,7 @@ export function SortablePlanItemList({
         />
       )}
 
-      {error ? (
-        <p className="text-xs text-accent-red" role="alert">
-          {error}
-        </p>
-      ) : null}
+      {error ? <ActionErrorBanner message={error} /> : null}
 
       {isPending ? (
         <p className="sr-only" aria-live="polite">

@@ -58,6 +58,45 @@ export function addItemKindToType(kind: AddItemKind): PlanItemType {
 
 export type PlanItemSectionGroup = "tasks" | "intentions" | "notes";
 
+export type PlanItemReorderScope = {
+  parentItemId: string | null;
+  sectionGroup: PlanItemSectionGroup;
+};
+
+export function getSiblingItemsWhere(
+  planId: string,
+  scope: PlanItemReorderScope,
+) {
+  if (scope.parentItemId) {
+    return {
+      planId,
+      parentItemId: scope.parentItemId,
+    };
+  }
+
+  if (scope.sectionGroup === "intentions") {
+    return {
+      planId,
+      parentItemId: null,
+      type: "INTENTION" as const,
+    };
+  }
+
+  if (scope.sectionGroup === "notes") {
+    return {
+      planId,
+      parentItemId: null,
+      type: "NOTE" as const,
+    };
+  }
+
+  return {
+    planId,
+    parentItemId: null,
+    type: { in: [...TASK_ITEM_TYPES] },
+  };
+}
+
 export function getPlanItemSectionGroup(type: PlanItemType): PlanItemSectionGroup {
   if (isNoteItemType(type)) {
     return "notes";

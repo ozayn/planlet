@@ -22,13 +22,17 @@ import { canEditPlan, canViewPlan } from "@/lib/plan-sharing";
 import { normalizeProgressForStatus } from "@/lib/plan-status";
 import {
   getPlanItemSectionGroup,
+  getSiblingItemsWhere,
   TASK_ITEM_TYPES,
+  type PlanItemReorderScope,
+  type PlanItemSectionGroup,
 } from "@/lib/plan-item-sections";
 import {
   formatDayPlanTitle,
   formatWeekPlanTitle,
   resolvePlanTitle,
 } from "@/lib/plan-titles";
+import { STALE_LIST_MESSAGE } from "@/lib/action-errors";
 import { touchPlan } from "@/lib/touch-plan";
 import { touchUserSeen } from "@/lib/user-activity";
 import { prisma } from "@/lib/prisma";
@@ -550,27 +554,85 @@ export async function deletePlan(planId: string, userId: string) {
   return plan;
 }
 
-export async function reorderPlanItems(
-  planId: string,
-  userId: string,
-  orderedItemIds: string[],
-) {
+export const REORDER_FAILED_MESSAGE =
+  "Couldn't reorder this item. Reload and try again.";
+
+function rejectInvalidItemOrder(detail: string): never {
+  if (process.env.NODE_ENV === "development") {
+    console.warn("[reorderPlanItems]", detail);
+  }
+
+  throw new PlanError(REORDER_FAILED_MESSAGE);
+}
+
+export type ReorderPlanItemsInput = {
+  planId: string;
+  userId: string;
+  orderedItemIds: string[];
+  parentItemId?: string | null;
+  sectionGroup: PlanItemSectionGroup;
+};
+
+export async function reorderPlanItems({
+  planId,
+  userId,
+  orderedItemIds,
+  parentItemId = null,
+  sectionGroup,
+}: ReorderPlanItemsInput) {
   await requirePlanForUser(planId, userId);
 
-  const rootItems = await prisma.planItem.findMany({
-    where: { planId, parentItemId: null },
+  if (parentItemId) {
+    const parent = await prisma.planItem.findFirst({
+      where: { id: parentItemId, planId },
+      select: { id: true },
+    });
+
+    if (!parent) {
+      rejectInvalidItemOrder(`Parent item ${parentItemId} not found on plan ${planId}`);
+    }
+  }
+
+  const scope: PlanItemReorderScope = { parentItemId, sectionGroup };
+  const siblings = await prisma.planItem.findMany({
+    where: getSiblingItemsWhere(planId, scope),
     select: { id: true },
+    orderBy: itemOrderBy,
   });
 
-  const rootIds = new Set(rootItems.map((item) => item.id));
+  const siblingIds = new Set(siblings.map((item) => item.id));
+  const uniqueSubmittedIds = new Set(orderedItemIds);
 
-  if (orderedItemIds.length !== rootItems.length) {
-    throw new PlanAccessError("Invalid item order");
+  if (uniqueSubmittedIds.size !== orderedItemIds.length) {
+    rejectInvalidItemOrder("Duplicate item IDs in reorder payload");
+  }
+
+  if (orderedItemIds.length !== siblings.length) {
+    const allSubmittedAreSiblings = orderedItemIds.every((itemId) =>
+      siblingIds.has(itemId),
+    );
+
+    if (allSubmittedAreSiblings && orderedItemIds.length < siblings.length) {
+      if (process.env.NODE_ENV === "development") {
+        console.warn(
+          "[reorderPlanItems] Stale reorder payload:",
+          `expected ${siblings.length} siblings, received ${orderedItemIds.length}`,
+        );
+      }
+
+      throw new PlanError(STALE_LIST_MESSAGE);
+    }
+
+    rejectInvalidItemOrder(
+      `Expected ${siblings.length} sibling IDs for ${sectionGroup}, received ${orderedItemIds.length}`,
+    );
   }
 
   for (const itemId of orderedItemIds) {
-    if (!rootIds.has(itemId)) {
-      throw new PlanAccessError("Invalid item order");
+    if (!siblingIds.has(itemId)) {
+      rejectInvalidItemOrder(
+        `Item ${itemId} is not a sibling in ${sectionGroup} (parentItemId=${parentItemId ?? "null"})`,
+      );
     }
   }
 

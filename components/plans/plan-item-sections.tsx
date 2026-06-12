@@ -42,6 +42,7 @@ export function PlanItemSections({
           <SortablePlanItemList
             planId={planId}
             items={tasks}
+            sectionGroup="tasks"
             itemView={itemView}
             canEdit={canEdit}
           />

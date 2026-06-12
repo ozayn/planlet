@@ -85,6 +85,7 @@ import {
 } from "@/lib/plan-sharing";
 import { prisma } from "@/lib/prisma";
 import { mapServerActionError } from "@/lib/action-errors";
+import type { PlanItemSectionGroup } from "@/lib/plan-item-sections";
 import { touchUserSeenSafely } from "@/lib/user-activity";
 
 async function requireUserId(): Promise<string> {
@@ -417,22 +418,31 @@ export async function deletePlanAction(
   return { success: true };
 }
 
-export async function reorderPlanItemsAction(
-  planId: string,
-  orderedItemIds: string[],
-): Promise<ShareActionResult> {
-  const userId = await requireUserId();
-
+export async function reorderPlanItemsAction(input: {
+  planId: string;
+  orderedItemIds: string[];
+  parentItemId?: string | null;
+  sectionGroup: PlanItemSectionGroup;
+}): Promise<ShareActionResult> {
   try {
-    await reorderPlanItems(planId, userId, orderedItemIds);
+    const userId = await requireUserId();
+    await reorderPlanItems({
+      planId: input.planId,
+      userId,
+      orderedItemIds: input.orderedItemIds,
+      parentItemId: input.parentItemId ?? null,
+      sectionGroup: input.sectionGroup,
+    });
     await recordUserActivity(userId);
-    revalidatePlanPaths(planId);
+    revalidatePlanPaths(input.planId);
     return { success: true };
   } catch (error) {
     return {
       success: false,
       error:
-        error instanceof Error ? error.message : "Failed to reorder items.",
+        error instanceof PlanError
+          ? error.message
+          : mapServerActionError(error, "Couldn't reorder this item. Reload and try again."),
     };
   }
 }

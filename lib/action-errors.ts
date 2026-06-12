@@ -1,6 +1,9 @@
 export const STALE_PAGE_MESSAGE =
   "This page may be out of date. Reload and try again.";
 
+export const STALE_LIST_MESSAGE =
+  "This list may be out of date. Reload and try again.";
+
 export const SESSION_EXPIRED_MESSAGE =
   "Your session expired. Please sign in again.";
 
@@ -55,7 +58,11 @@ export function shouldOfferReload(error: unknown): boolean {
 }
 
 export function shouldOfferReloadForMessage(message: string): boolean {
-  return message === STALE_PAGE_MESSAGE || message === SESSION_EXPIRED_MESSAGE;
+  return (
+    message === STALE_PAGE_MESSAGE ||
+    message === STALE_LIST_MESSAGE ||
+    message === SESSION_EXPIRED_MESSAGE
+  );
 }
 
 /** Map server-side action failures to safe user-facing messages. */
