@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
 import { CreateTodayPlanButton } from "@/components/plans/create-today-plan-button";
@@ -21,7 +22,7 @@ export default async function TodayPage() {
   const userId = session?.user?.id;
 
   if (!userId) {
-    return null;
+    redirect("/");
   }
 
   const [plan, planItemView] = await Promise.all([

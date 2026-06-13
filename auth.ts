@@ -48,23 +48,28 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return token;
     },
     async session({ session, token }) {
-      if (session.user && token.sub) {
-        session.user.id = token.sub;
-
-        const dbUser = await prisma.user.findUnique({
-          where: { id: token.sub },
-          select: {
-            role: true,
-            canGiveFeedback: true,
-            canUseReflectionFeatures: true,
-          },
-        });
-
-        session.user.role = dbUser?.role ?? "USER";
-        session.user.canGiveFeedback = dbUser?.canGiveFeedback ?? false;
-        session.user.canUseReflectionFeatures =
-          dbUser?.canUseReflectionFeatures ?? false;
+      if (!session.user || !token.sub) {
+        return session;
       }
+
+      const dbUser = await prisma.user.findUnique({
+        where: { id: token.sub },
+        select: {
+          role: true,
+          canGiveFeedback: true,
+          canUseReflectionFeatures: true,
+        },
+      });
+
+      if (!dbUser) {
+        return { ...session, user: undefined };
+      }
+
+      session.user.id = token.sub;
+      session.user.role = dbUser.role;
+      session.user.canGiveFeedback = dbUser.canGiveFeedback;
+      session.user.canUseReflectionFeatures = dbUser.canUseReflectionFeatures;
+
       return session;
     },
   },

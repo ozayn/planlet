@@ -7,6 +7,33 @@ export const STALE_LIST_MESSAGE =
 export const SESSION_EXPIRED_MESSAGE =
   "Your session expired. Please sign in again.";
 
+function isStaleUserForeignKeyError(error: unknown): boolean {
+  if (
+    typeof error !== "object" ||
+    error === null ||
+    !("code" in error) ||
+    error.code !== "P2003"
+  ) {
+    return false;
+  }
+
+  const meta =
+    "meta" in error && typeof error.meta === "object" && error.meta !== null
+      ? error.meta
+      : null;
+  const constraint =
+    meta && "constraint" in meta ? String(meta.constraint) : "";
+  const fieldName =
+    meta && "field_name" in meta ? String(meta.field_name) : "";
+
+  return (
+    constraint.includes("userId") ||
+    fieldName.includes("userId") ||
+    constraint.includes("Plan_userId_fkey") ||
+    fieldName.includes("Plan_userId_fkey")
+  );
+}
+
 export function getActionErrorMessage(error: unknown): string {
   if (error instanceof Error) {
     return error.message;
@@ -31,6 +58,14 @@ export function isLikelyStalePageError(error: unknown): boolean {
 }
 
 export function isSessionExpiredError(error: unknown): boolean {
+  if (error instanceof Error && error.name === "SessionExpiredError") {
+    return true;
+  }
+
+  if (isStaleUserForeignKeyError(error)) {
+    return true;
+  }
+
   const message = getActionErrorMessage(error).toLowerCase();
 
   return (

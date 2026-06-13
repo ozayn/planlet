@@ -1,9 +1,6 @@
-import NextAuth from "next-auth";
 import { NextResponse } from "next/server";
 
-import { authConfig } from "@/auth.config";
-
-const { auth } = NextAuth(authConfig);
+import { auth } from "@/auth";
 
 const protectedPrefixes = [
   "/dashboard",
@@ -20,7 +17,7 @@ export const proxy = auth((req) => {
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   );
 
-  if (isProtected && !req.auth) {
+  if (isProtected && !req.auth?.user) {
     const signInUrl = new URL("/", req.url);
     signInUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(signInUrl);

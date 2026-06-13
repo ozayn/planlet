@@ -9,7 +9,7 @@ import type {
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { auth } from "@/auth";
+import { requireUserId } from "@/lib/require-auth";
 import { parsePlanFromText } from "@/lib/ai/parse-plan";
 import {
   saveParsedPlanSchema,
@@ -98,14 +98,6 @@ import { prisma } from "@/lib/prisma";
 import { mapServerActionError } from "@/lib/action-errors";
 import type { PlanItemSectionGroup } from "@/lib/plan-item-sections";
 import { touchUserSeenSafely } from "@/lib/user-activity";
-
-async function requireUserId(): Promise<string> {
-  const session = await auth();
-  if (!session?.user?.id) {
-    throw new Error("Unauthorized");
-  }
-  return session.user.id;
-}
 
 async function recordUserActivity(userId: string) {
   await touchUserSeenSafely(userId);
