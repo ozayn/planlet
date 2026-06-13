@@ -34,6 +34,10 @@ export function canUseReflectionFeatures(user: UserAccess): boolean {
   return user.canUseReflectionFeatures === true;
 }
 
+export function canUseTherapyThoughts(user: UserAccess | RoleInput): boolean {
+  return isReflector(user);
+}
+
 export function formatUserRoleLabel(role: RoleInput): string {
   switch (role) {
     case "ADMIN":

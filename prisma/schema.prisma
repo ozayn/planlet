@@ -185,6 +185,7 @@ model User {
   planItemComments         PlanItemComment[]
   observations       PlanObservation[]
   gratitudes         PlanGratitude[]
+  therapyThoughts    TherapyThought[]
   feedbackItems      AppFeedback[] @relation("AuthoredFeedback")
   resolvedFeedback   AppFeedback[] @relation("ResolvedFeedback")
   loginEvents   LoginEvent[]
@@ -310,6 +311,7 @@ model Plan {
   kudos        PlanKudos[]
   observations PlanObservation[]
   gratitudes   PlanGratitude[]
+  therapyThoughts TherapyThought[]
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 
@@ -349,6 +351,20 @@ model PlanGratitude {
 
   @@index([planId, createdAt])
   @@index([userId, createdAt])
+}
+
+model TherapyThought {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId    String?
+  plan      Plan?    @relation(fields: [planId], references: [id], onDelete: SetNull)
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, createdAt])
+  @@index([planId, createdAt])
 }
 
 model PlanObservation {

@@ -14,11 +14,13 @@ import {
 } from "@/components/plans/plan-kudos-summary";
 import { GratitudeSection } from "@/components/plans/gratitude-section";
 import { PrivateObservationsSection } from "@/components/plans/private-observations-section";
+import { TherapyThoughtsSection } from "@/components/plans/therapy-thoughts-section";
 import { ShareWithUserPanel } from "@/components/plans/share-with-user-panel";
 import { formatPlanActivityLabel } from "@/lib/plan-activity";
 import { isDefaultPlanTitle } from "@/lib/plan-title";
 import type { SerializedGratitude } from "@/lib/gratitude";
 import type { SerializedObservation } from "@/lib/observations";
+import type { SerializedTherapyThought } from "@/lib/therapy-thoughts";
 import { formatDateString } from "@/lib/dates";
 import type { SerializedPlan } from "@/lib/plan-serialize";
 import type { RecentShareRecipient } from "@/lib/plan-sharing";
@@ -47,6 +49,7 @@ export type PlanEditorProps = {
   periodSummaryLabel?: string;
   observations?: SerializedObservation[];
   gratitudes?: SerializedGratitude[];
+  therapyThoughts?: SerializedTherapyThought[];
   canEdit?: boolean;
   headerActionsPlacement?: "inline" | "desktop-only" | "none";
   titleMode?: "full" | "custom-only";
@@ -72,6 +75,7 @@ export function PlanEditor({
   periodSummaryLabel,
   observations,
   gratitudes,
+  therapyThoughts,
   headerActionsPlacement = "inline",
   titleMode = "full",
   titleEditSignal = 0,
@@ -249,6 +253,13 @@ export function PlanEditor({
 
       {gratitudes !== undefined ? (
         <GratitudeSection planId={plan.id} gratitudes={gratitudes} />
+      ) : null}
+
+      {therapyThoughts !== undefined ? (
+        <TherapyThoughtsSection
+          planId={plan.id}
+          thoughts={therapyThoughts}
+        />
       ) : null}
     </div>
   );

@@ -108,6 +108,22 @@ export const ACTION_LABELS = {
     title: "Delete",
     ariaLabel: "Delete gratitude",
   },
+  therapyThoughts: {
+    title: "Therapy thoughts",
+    ariaLabel: "Therapy thoughts",
+  },
+  moreTherapyThought: {
+    title: "More",
+    ariaLabel: "Open therapy thought actions",
+  },
+  editTherapyThought: {
+    title: "Edit",
+    ariaLabel: "Edit therapy thought",
+  },
+  deleteTherapyThought: {
+    title: "Delete",
+    ariaLabel: "Delete therapy thought",
+  },
   notifications: {
     title: "Notifications",
     ariaLabel: "Notifications",

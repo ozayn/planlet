@@ -35,7 +35,7 @@ export default async function TodayPage() {
         getPlanSharesForOwner(plan.id, userId),
         getRecentShareRecipients(userId, plan.id),
       ])
-    : [[], { observations: undefined, gratitudes: undefined }, [], []];
+    : [[], { observations: undefined, gratitudes: undefined, therapyThoughts: undefined }, [], []];
   const firstName = session.user?.name?.split(" ")[0];
   const todayDate = formatDateString(new Date());
 
@@ -66,6 +66,7 @@ export default async function TodayPage() {
           itemView={planItemView}
           observations={reflectionData.observations}
           gratitudes={reflectionData.gratitudes}
+          therapyThoughts={reflectionData.therapyThoughts}
         />
       ) : (
         <>

@@ -113,6 +113,7 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
         periodSummaryLabel={periodSummaryLabel}
         observations={reflectionData.observations}
         gratitudes={reflectionData.gratitudes}
+        therapyThoughts={reflectionData.therapyThoughts}
       />
     </section>
   );

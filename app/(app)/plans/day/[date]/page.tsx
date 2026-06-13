@@ -93,6 +93,7 @@ export default async function DayPlanPage({ params }: DayPlanPageProps) {
         itemView={planItemView}
         observations={reflectionData.observations}
         gratitudes={reflectionData.gratitudes}
+        therapyThoughts={reflectionData.therapyThoughts}
       />
     </section>
   );

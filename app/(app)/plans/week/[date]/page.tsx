@@ -120,6 +120,7 @@ export default async function WeekPlanPage({ params }: WeekPlanPageProps) {
         itemView={planItemView}
         observations={reflectionData.observations}
         gratitudes={reflectionData.gratitudes}
+        therapyThoughts={reflectionData.therapyThoughts}
       />
     </section>
   );

@@ -71,6 +71,13 @@ import {
   type SerializedGratitude,
 } from "@/lib/gratitude";
 import {
+  addTherapyThought,
+  deleteTherapyThought,
+  TherapyThoughtError,
+  updateTherapyThought,
+  type SerializedTherapyThought,
+} from "@/lib/therapy-thoughts";
+import {
   addPlanObservation,
   deletePlanObservation,
   ObservationError,
@@ -1228,6 +1235,82 @@ export async function deletePlanGratitudeAction(
         error instanceof GratitudeError
           ? error.message
           : mapServerActionError(error, "Failed to delete gratitude."),
+    };
+  }
+}
+
+export type TherapyThoughtActionResult =
+  | { success: true; thought: SerializedTherapyThought }
+  | { success: false; error: string };
+
+export type DeleteTherapyThoughtResult =
+  | { success: true }
+  | { success: false; error: string };
+
+export async function addTherapyThoughtAction(
+  planId: string,
+  content: string,
+): Promise<TherapyThoughtActionResult> {
+  try {
+    const userId = await requireUserId();
+    const result = await addTherapyThought(userId, content, planId);
+    await recordUserActivity(userId);
+    if (result.planId) {
+      revalidatePlanPaths(result.planId);
+    }
+    return { success: true, thought: result.thought };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof TherapyThoughtError
+          ? error.message
+          : mapServerActionError(error, "Failed to add therapy thought."),
+    };
+  }
+}
+
+export async function updateTherapyThoughtAction(
+  thoughtId: string,
+  content: string,
+): Promise<TherapyThoughtActionResult> {
+  try {
+    const userId = await requireUserId();
+    const result = await updateTherapyThought(thoughtId, userId, content);
+    await recordUserActivity(userId);
+    if (result.planId) {
+      revalidatePlanPaths(result.planId);
+    }
+    return { success: true, thought: result.thought };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof TherapyThoughtError
+          ? error.message
+          : mapServerActionError(error, "Failed to update therapy thought."),
+    };
+  }
+}
+
+export async function deleteTherapyThoughtAction(
+  thoughtId: string,
+): Promise<DeleteTherapyThoughtResult> {
+  try {
+    const userId = await requireUserId();
+    const result = await deleteTherapyThought(thoughtId, userId);
+    await recordUserActivity(userId);
+    if (result.planId) {
+      revalidatePlanPaths(result.planId);
+    }
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof TherapyThoughtError
+          ? error.message
+          : mapServerActionError(error, "Failed to delete therapy thought."),
     };
   }
 }
