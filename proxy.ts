@@ -8,6 +8,7 @@ const protectedPrefixes = [
   "/plans",
   "/insights",
   "/settings",
+  "/therapy-thoughts",
   "/admin",
 ];
 
@@ -33,6 +34,7 @@ export const config = {
     "/plans/:path*",
     "/insights/:path*",
     "/settings/:path*",
+    "/therapy-thoughts/:path*",
     "/admin/:path*",
   ],
 };

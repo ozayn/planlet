@@ -35,6 +35,10 @@ export function canUseReflectionFeatures(user: UserAccess): boolean {
 }
 
 export function canUseTherapyThoughts(user: UserAccess | RoleInput): boolean {
+  if (isAdmin(user)) {
+    return true;
+  }
+
   return isReflector(user);
 }
 

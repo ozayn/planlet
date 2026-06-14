@@ -244,15 +244,15 @@ export function PlanEditor({
         {canEdit ? <AddItemForm planId={plan.id} /> : null}
       </section>
 
+      {gratitudes !== undefined ? (
+        <GratitudeSection planId={plan.id} gratitudes={gratitudes} />
+      ) : null}
+
       {observations !== undefined ? (
         <PrivateObservationsSection
           planId={plan.id}
           observations={observations}
         />
-      ) : null}
-
-      {gratitudes !== undefined ? (
-        <GratitudeSection planId={plan.id} gratitudes={gratitudes} />
       ) : null}
 
       {therapyThoughts !== undefined ? (

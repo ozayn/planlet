@@ -32,7 +32,9 @@ export default async function TodayPage() {
   const [kudos, reflectionData, platformShares, recentShareRecipients] = plan
     ? await Promise.all([
         getKudosForPlan(plan.id, userId),
-        getPlanReflectionData(plan.id, userId, session.user),
+        getPlanReflectionData(plan.id, userId, session.user, {
+          includeTherapyThoughts: true,
+        }),
         getPlanSharesForOwner(plan.id, userId),
         getRecentShareRecipients(userId, plan.id),
       ])

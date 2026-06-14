@@ -111,6 +111,7 @@ function revalidatePlanPaths(
   revalidatePath("/plans");
   revalidatePath("/dashboard");
   revalidatePath("/insights");
+  revalidatePath("/therapy-thoughts");
   revalidatePath(`/plans/${planId}`);
   if (options?.dayDate) {
     revalidatePath(`/plans/day/${options.dayDate}`);

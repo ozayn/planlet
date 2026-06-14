@@ -17,13 +17,19 @@ export type PlanReflectionData = {
   therapyThoughts: SerializedTherapyThought[] | undefined;
 };
 
+export type PlanReflectionOptions = {
+  includeTherapyThoughts?: boolean;
+};
+
 export async function getPlanReflectionData(
   planId: string,
   userId: string,
   access: UserAccess,
+  options?: PlanReflectionOptions,
 ): Promise<PlanReflectionData> {
   const hasReflection = canUseReflectionFeatures(access);
-  const hasTherapyThoughts = canUseTherapyThoughts(access);
+  const hasTherapyThoughts =
+    options?.includeTherapyThoughts === true && canUseTherapyThoughts(access);
 
   if (!hasReflection && !hasTherapyThoughts) {
     return {

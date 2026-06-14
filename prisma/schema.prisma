@@ -357,9 +357,9 @@ model TherapyThought {
   id        String   @id @default(cuid())
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  planId    String?
-  plan      Plan?    @relation(fields: [planId], references: [id], onDelete: SetNull)
-  content   String   @db.Text
+  planId    String
+  plan      Plan     @relation(fields: [planId], references: [id], onDelete: Cascade)
+  body      String   @db.Text
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

@@ -57,10 +57,10 @@ export function TherapyThoughtsSection({
   const [thoughts, setThoughts] =
     useState<SerializedTherapyThought[]>(initialThoughts);
   const [expanded, setExpanded] = useState(false);
-  const [content, setContent] = useState("");
+  const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editContent, setEditContent] = useState("");
+  const [editBody, setEditBody] = useState("");
   const [isSubmitting, startSubmit] = useTransition();
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -82,7 +82,7 @@ export function TherapyThoughtsSection({
   const collapsedCount = String(thoughts.length);
 
   function handleAdd(textOverride?: string) {
-    const textToSubmit = (textOverride ?? content).trim();
+    const textToSubmit = (textOverride ?? body).trim();
     if (!textToSubmit) {
       return;
     }
@@ -103,7 +103,7 @@ export function TherapyThoughtsSection({
         return;
       }
 
-      setContent("");
+      setBody("");
       setExpanded(true);
       setThoughts((current) => [...current, result.thought]);
       router.refresh();
@@ -118,7 +118,7 @@ export function TherapyThoughtsSection({
 
     event.preventDefault();
 
-    if (!content.trim() || isSubmitting) {
+    if (!body.trim() || isSubmitting) {
       return;
     }
 
@@ -127,19 +127,19 @@ export function TherapyThoughtsSection({
 
   function startEdit(thought: SerializedTherapyThought) {
     setEditingId(thought.id);
-    setEditContent(thought.content);
+    setEditBody(thought.body);
     setError(null);
     setExpanded(true);
   }
 
   function cancelEdit() {
     setEditingId(null);
-    setEditContent("");
+    setEditBody("");
     setError(null);
   }
 
   function handleSaveEdit(thoughtId: string, textOverride?: string) {
-    const textToSubmit = (textOverride ?? editContent).trim();
+    const textToSubmit = (textOverride ?? editBody).trim();
     if (!textToSubmit) {
       return;
     }
@@ -166,7 +166,7 @@ export function TherapyThoughtsSection({
         ),
       );
       setEditingId(null);
-      setEditContent("");
+      setEditBody("");
       router.refresh();
     });
   }
@@ -187,7 +187,7 @@ export function TherapyThoughtsSection({
 
     event.preventDefault();
 
-    if (!editContent.trim() || isSubmitting) {
+    if (!editBody.trim() || isSubmitting) {
       return;
     }
 
@@ -261,8 +261,8 @@ export function TherapyThoughtsSection({
                 id="therapy-thought-content"
                 name="therapyThoughtContent"
                 {...passwordManagerSafeControlProps}
-                value={content}
-                onChange={(event) => setContent(event.target.value)}
+                value={body}
+                onChange={(event) => setBody(event.target.value)}
                 onKeyDown={handleBodyKeyDown}
                 placeholder="Topic, insight, question, dream, or experience…"
                 rows={2}
@@ -271,15 +271,12 @@ export function TherapyThoughtsSection({
                 aria-label="Add a therapy thought"
                 className="ui-input min-h-9 w-full resize-y py-2"
               />
-              <p className="hidden text-xs text-muted-light sm:block">
-                Enter to add · Shift+Enter for a new line
-              </p>
             </div>
             <button
               type="button"
               onMouseDown={preventQuickAddButtonBlur}
               onClick={() => handleAdd()}
-              disabled={isSubmitting || !content.trim()}
+              disabled={isSubmitting || !body.trim()}
               aria-label="Add therapy thought"
               {...passwordManagerSafeControlProps}
               className="ui-btn-secondary ui-btn-compact min-h-9 shrink-0 px-4"
@@ -298,8 +295,8 @@ export function TherapyThoughtsSection({
                       id={`therapy-thought-edit-${thought.id}`}
                       name={`therapyThoughtEdit-${thought.id}`}
                       {...passwordManagerSafeControlProps}
-                      value={editContent}
-                      onChange={(event) => setEditContent(event.target.value)}
+                      value={editBody}
+                      onChange={(event) => setEditBody(event.target.value)}
                       onKeyDown={(event) =>
                         handleEditKeyDown(event, thought.id)
                       }
@@ -308,14 +305,11 @@ export function TherapyThoughtsSection({
                       aria-label={ACTION_LABELS.editTherapyThought.ariaLabel}
                       className="ui-input min-h-9 w-full resize-y py-2"
                     />
-                    <p className="hidden text-xs text-muted-light sm:block">
-                      Enter to save · Shift+Enter for a new line
-                    </p>
                     <div className="flex gap-2">
                       <button
                         type="button"
                         onClick={() => handleSaveEdit(thought.id)}
-                        disabled={isSubmitting || !editContent.trim()}
+                        disabled={isSubmitting || !editBody.trim()}
                         {...passwordManagerSafeControlProps}
                         className="ui-btn-secondary ui-btn-compact min-h-8 px-3 text-xs"
                       >
@@ -348,7 +342,7 @@ export function TherapyThoughtsSection({
                           className="whitespace-pre-wrap text-sm text-foreground"
                           dir="auto"
                         >
-                          {thought.content}
+                          {thought.body}
                         </p>
                       </button>
                       <p className="mt-0.5 text-xs text-muted-light">

@@ -78,7 +78,9 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
     await Promise.all([
       getPlanSharesForOwner(id, userId),
       getKudosForPlan(id, userId),
-      getPlanReflectionData(id, userId, session.user),
+      getPlanReflectionData(id, userId, session.user, {
+        includeTherapyThoughts: plan.type === "DAY",
+      }),
       getRecentShareRecipients(userId, id),
     ]);
 

@@ -1,9 +1,14 @@
+import { PlanType as PlanTypeEnum } from "@/app/generated/prisma/client";
+import { formatDateString, formatDayPlanContextLabel } from "@/lib/dates";
 import { canUseTherapyThoughts } from "@/lib/roles";
 import { touchPlan } from "@/lib/touch-plan";
 import { touchUserSeen } from "@/lib/user-activity";
 import { prisma } from "@/lib/prisma";
+import { subDays } from "date-fns";
 
 export const MAX_THERAPY_THOUGHT_LENGTH = 4000;
+
+export type TherapyThoughtCollectionFilter = "7d" | "30d" | "all";
 
 export class TherapyThoughtError extends Error {
   constructor(message: string) {
@@ -14,30 +19,43 @@ export class TherapyThoughtError extends Error {
 
 export type SerializedTherapyThought = {
   id: string;
-  planId: string | null;
-  content: string;
+  planId: string;
+  body: string;
   createdAt: string;
   updatedAt: string;
 };
 
+export type TherapyThoughtCollectionEntry = {
+  id: string;
+  planId: string;
+  body: string;
+  createdAt: string;
+};
+
+export type TherapyThoughtCollectionGroup = {
+  dateString: string;
+  dateLabel: string;
+  thoughts: TherapyThoughtCollectionEntry[];
+};
+
 function serializeTherapyThought(thought: {
   id: string;
-  planId: string | null;
-  content: string;
+  planId: string;
+  body: string;
   createdAt: Date;
   updatedAt: Date;
 }): SerializedTherapyThought {
   return {
     id: thought.id,
     planId: thought.planId,
-    content: thought.content,
+    body: thought.body,
     createdAt: thought.createdAt.toISOString(),
     updatedAt: thought.updatedAt.toISOString(),
   };
 }
 
-function validateContent(content: string): string {
-  const trimmed = content.trim();
+function validateBody(body: string): string {
+  const trimmed = body.trim();
 
   if (!trimmed) {
     throw new TherapyThoughtError("Therapy thought cannot be empty.");
@@ -52,7 +70,7 @@ function validateContent(content: string): string {
   return trimmed;
 }
 
-async function requireReflectorUser(userId: string) {
+async function requireTherapyThoughtAccess(userId: string) {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     select: { role: true },
@@ -63,9 +81,13 @@ async function requireReflectorUser(userId: string) {
   }
 }
 
-async function requirePlanOwner(planId: string, userId: string) {
+async function requireDayPlanOwner(planId: string, userId: string) {
   const plan = await prisma.plan.findFirst({
-    where: { id: planId, userId },
+    where: {
+      id: planId,
+      userId,
+      type: PlanTypeEnum.DAY,
+    },
     select: { id: true },
   });
 
@@ -93,8 +115,8 @@ export async function getTherapyThoughtsForPlan(
   planId: string,
   userId: string,
 ): Promise<SerializedTherapyThought[]> {
-  await requireReflectorUser(userId);
-  await requirePlanOwner(planId, userId);
+  await requireTherapyThoughtAccess(userId);
+  await requireDayPlanOwner(planId, userId);
 
   const thoughts = await prisma.therapyThought.findMany({
     where: { planId, userId },
@@ -104,30 +126,88 @@ export async function getTherapyThoughtsForPlan(
   return thoughts.map(serializeTherapyThought);
 }
 
-export async function addTherapyThought(
+export async function getTherapyThoughtCollection(
   userId: string,
-  content: string,
-  planId?: string | null,
-) {
-  await requireReflectorUser(userId);
+  filter: TherapyThoughtCollectionFilter,
+): Promise<TherapyThoughtCollectionGroup[]> {
+  await requireTherapyThoughtAccess(userId);
 
-  if (planId) {
-    await requirePlanOwner(planId, userId);
+  const createdAtFilter =
+    filter === "all"
+      ? undefined
+      : {
+          gte: subDays(new Date(), filter === "7d" ? 7 : 30),
+        };
+
+  const thoughts = await prisma.therapyThought.findMany({
+    where: {
+      userId,
+      ...(createdAtFilter ? { createdAt: createdAtFilter } : {}),
+      plan: { type: PlanTypeEnum.DAY },
+    },
+    select: {
+      id: true,
+      planId: true,
+      body: true,
+      createdAt: true,
+      plan: {
+        select: {
+          dateStart: true,
+        },
+      },
+    },
+    orderBy: [{ createdAt: "desc" }],
+  });
+
+  const groups = new Map<string, TherapyThoughtCollectionGroup>();
+
+  for (const thought of thoughts) {
+    const dateString = formatDateString(thought.plan.dateStart);
+    const existing = groups.get(dateString);
+
+    const entry: TherapyThoughtCollectionEntry = {
+      id: thought.id,
+      planId: thought.planId,
+      body: thought.body,
+      createdAt: thought.createdAt.toISOString(),
+    };
+
+    if (existing) {
+      existing.thoughts.unshift(entry);
+      continue;
+    }
+
+    groups.set(dateString, {
+      dateString,
+      dateLabel: formatDayPlanContextLabel(thought.plan.dateStart),
+      thoughts: [entry],
+    });
   }
 
-  const trimmed = validateContent(content);
+  return Array.from(groups.values()).sort((left, right) =>
+    right.dateString.localeCompare(left.dateString),
+  );
+}
+
+export async function addTherapyThought(
+  userId: string,
+  body: string,
+  planId: string,
+) {
+  await requireTherapyThoughtAccess(userId);
+  await requireDayPlanOwner(planId, userId);
+
+  const trimmed = validateBody(body);
 
   const thought = await prisma.therapyThought.create({
     data: {
       userId,
-      planId: planId ?? null,
-      content: trimmed,
+      planId,
+      body: trimmed,
     },
   });
 
-  if (planId) {
-    await touchPlan(planId);
-  }
+  await touchPlan(planId);
   await touchUserSeen(userId);
 
   return {
@@ -139,21 +219,19 @@ export async function addTherapyThought(
 export async function updateTherapyThought(
   thoughtId: string,
   userId: string,
-  content: string,
+  body: string,
 ) {
-  await requireReflectorUser(userId);
+  await requireTherapyThoughtAccess(userId);
 
   const existing = await requireTherapyThoughtOwner(thoughtId, userId);
-  const trimmed = validateContent(content);
+  const trimmed = validateBody(body);
 
   const thought = await prisma.therapyThought.update({
     where: { id: thoughtId },
-    data: { content: trimmed },
+    data: { body: trimmed },
   });
 
-  if (existing.planId) {
-    await touchPlan(existing.planId);
-  }
+  await touchPlan(existing.planId);
   await touchUserSeen(userId);
 
   return {
@@ -166,7 +244,7 @@ export async function deleteTherapyThought(
   thoughtId: string,
   userId: string,
 ) {
-  await requireReflectorUser(userId);
+  await requireTherapyThoughtAccess(userId);
 
   const existing = await requireTherapyThoughtOwner(thoughtId, userId);
 
@@ -174,9 +252,7 @@ export async function deleteTherapyThought(
     where: { id: thoughtId },
   });
 
-  if (existing.planId) {
-    await touchPlan(existing.planId);
-  }
+  await touchPlan(existing.planId);
   await touchUserSeen(userId);
 
   return { planId: existing.planId };

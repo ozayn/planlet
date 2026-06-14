@@ -19,6 +19,7 @@ type DesktopNavProps = {
   userImage?: string | null;
   isAdmin?: boolean;
   canGiveFeedback?: boolean;
+  canUseTherapyThoughts?: boolean;
   signOutButton: React.ReactNode;
   unreadNotificationCount?: number;
   notifications?: SerializedNotification[];
@@ -30,6 +31,7 @@ export function DesktopNav({
   userImage,
   isAdmin = false,
   canGiveFeedback = false,
+  canUseTherapyThoughts = false,
   signOutButton,
   unreadNotificationCount = 0,
   notifications = [],
@@ -86,6 +88,7 @@ export function DesktopNav({
             image={userImage}
             isAdmin={isAdmin}
             canGiveFeedback={canGiveFeedback}
+            canUseTherapyThoughts={canUseTherapyThoughts}
             signOutButton={signOutButton}
           />
         </div>

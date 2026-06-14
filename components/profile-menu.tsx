@@ -13,6 +13,7 @@ type ProfileMenuProps = {
   image?: string | null;
   isAdmin?: boolean;
   canGiveFeedback?: boolean;
+  canUseTherapyThoughts?: boolean;
   signOutButton: React.ReactNode;
   compact?: boolean;
   showThemeInMenu?: boolean;
@@ -24,6 +25,7 @@ export function ProfileMenu({
   image,
   isAdmin = false,
   canGiveFeedback = false,
+  canUseTherapyThoughts = false,
   signOutButton,
   compact = false,
   showThemeInMenu = false,
@@ -35,6 +37,9 @@ export function ProfileMenu({
   const onSettings = pathname === "/settings" || pathname.startsWith("/settings/");
   const onFeedback = pathname === "/feedback" || pathname.startsWith("/feedback/");
   const onAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
+  const onTherapyThoughts =
+    pathname === "/therapy-thoughts" ||
+    pathname.startsWith("/therapy-thoughts/");
   const feedbackHref =
     pathname && pathname !== "/feedback"
       ? `/feedback?from=${encodeURIComponent(pathname)}`
@@ -155,6 +160,21 @@ export function ProfileMenu({
                 }`}
               >
                 Feedback
+              </Link>
+            ) : null}
+            {canUseTherapyThoughts ? (
+              <Link
+                href="/therapy-thoughts"
+                role="menuitem"
+                aria-current={onTherapyThoughts ? "page" : undefined}
+                onClick={() => setOpen(false)}
+                className={`flex min-h-10 items-center rounded-xl px-3 text-sm transition-colors hover:bg-accent-cream ${
+                  onTherapyThoughts
+                    ? "bg-accent-cream/60 font-medium text-foreground"
+                    : "text-foreground"
+                }`}
+              >
+                Therapy thoughts
               </Link>
             ) : null}
             {isAdmin ? (
