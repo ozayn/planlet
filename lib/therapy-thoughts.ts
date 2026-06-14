@@ -120,6 +120,13 @@ export async function getTherapyThoughtsForPlan(
 
   const thoughts = await prisma.therapyThought.findMany({
     where: { planId, userId },
+    select: {
+      id: true,
+      planId: true,
+      body: true,
+      createdAt: true,
+      updatedAt: true,
+    },
     orderBy: { createdAt: "asc" },
   });
 

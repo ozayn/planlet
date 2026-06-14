@@ -1242,11 +1242,11 @@ export type DeleteTherapyThoughtResult =
 
 export async function addTherapyThoughtAction(
   planId: string,
-  content: string,
+  body: string,
 ): Promise<TherapyThoughtActionResult> {
   try {
     const userId = await requireUserId();
-    const result = await addTherapyThought(userId, content, planId);
+    const result = await addTherapyThought(userId, body, planId);
     await recordUserActivity(userId);
     if (result.planId) {
       revalidatePlanPaths(result.planId);
@@ -1265,11 +1265,11 @@ export async function addTherapyThoughtAction(
 
 export async function updateTherapyThoughtAction(
   thoughtId: string,
-  content: string,
+  body: string,
 ): Promise<TherapyThoughtActionResult> {
   try {
     const userId = await requireUserId();
-    const result = await updateTherapyThought(thoughtId, userId, content);
+    const result = await updateTherapyThought(thoughtId, userId, body);
     await recordUserActivity(userId);
     if (result.planId) {
       revalidatePlanPaths(result.planId);

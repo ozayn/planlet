@@ -8,6 +8,9 @@ source "$SCRIPT_DIR/lib/common.sh"
 echo "Planlet — starting dev server"
 setup_project
 
+echo "→ Applying database migrations"
+npx prisma migrate deploy
+
 echo "→ Generating Prisma client"
 npx prisma generate
 

@@ -258,8 +258,8 @@ export function TherapyThoughtsSection({
             <div className="min-w-0 flex-1 space-y-1">
               <textarea
                 ref={bodyInputRef}
-                id="therapy-thought-content"
-                name="therapyThoughtContent"
+                id="therapy-thought-body"
+                name="therapyThoughtBody"
                 {...passwordManagerSafeControlProps}
                 value={body}
                 onChange={(event) => setBody(event.target.value)}
