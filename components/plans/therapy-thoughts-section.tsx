@@ -235,7 +235,6 @@ export function TherapyThoughtsSection({
         <span className="flex min-w-0 flex-1 items-center gap-2">
           <LockIcon className="h-4 w-4 shrink-0 text-muted" aria-hidden="true" />
           <span className="truncate text-sm text-foreground">
-            <span aria-hidden="true">🧠 </span>
             Therapy thoughts
           </span>
         </span>
