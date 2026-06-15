@@ -6,10 +6,11 @@ export const OBSERVATION_CATEGORIES: readonly ObservationCategory[] = [
   "MIND",
   "EMOTION",
   "BODY",
+  "SLEEP",
+  "ENERGY",
   "CYCLE",
   "PAIN",
   "SKIN",
-  "SLEEP",
-  "ENERGY",
+  "SUBSTANCES",
   "OTHER",
 ] as const;

@@ -9,7 +9,8 @@
     "lint": "eslint",
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate deploy",
-    "cron:reminders": "tsx scripts/run-reminders-cron.ts"
+    "cron:reminders": "tsx scripts/run-reminders-cron.ts",
+    "cron:reminders:debug": "tsx scripts/run-reminders-cron.ts --debug"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.103.0",

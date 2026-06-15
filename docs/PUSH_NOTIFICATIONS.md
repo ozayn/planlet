@@ -73,9 +73,15 @@ Local test:
 
 ```bash
 npm run cron:reminders
+npm run cron:reminders:debug
+npm run cron:reminders -- --debug --at=2026-06-09T13:05:00.000Z
 ```
 
-Expected: logs a summary, exits 0 when no reminders are due, sends due reminders when local time falls within the 10-minute window after the configured time, and dedupes via `SentReminder`.
+Expected: logs timing breakdown, push delivery stats, and a summary; exits within a few seconds. The worker calls `prisma.$disconnect()` before exit so Railway does not keep the service in a long-running state while idle DB connections close.
+
+Timing fields: `loadPreferencesMs`, `timezoneMatchingMs`, `duplicateChecksMs`, `pushSubscriptionLookupMs`, `pushDeliveryMs`, `databaseWritesMs`, `totalMs`.
+
+Push fields: `subscriptionsFound`, `subscriptionsSent`, `subscriptionsFailed`, `subscriptionsTimedOut`, `staleRemoved`.
 
 ### Fallback: HTTP cron route
 

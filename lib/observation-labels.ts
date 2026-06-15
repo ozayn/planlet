@@ -4,11 +4,12 @@ const CATEGORY_LABELS: Record<ObservationCategory, string> = {
   MIND: "Mind",
   EMOTION: "Emotion",
   BODY: "Body",
+  SLEEP: "Sleep",
+  ENERGY: "Energy",
   CYCLE: "Cycle",
   PAIN: "Pain",
   SKIN: "Skin",
-  SLEEP: "Sleep",
-  ENERGY: "Energy",
+  SUBSTANCES: "Substances",
   OTHER: "Other",
 };
 

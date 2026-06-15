@@ -16,6 +16,8 @@ type StoredPushSubscription = {
   auth: string;
 };
 
+export const PUSH_SEND_TIMEOUT_MS = 10_000;
+
 let vapidConfigured = false;
 
 export function getPublicVapidKey(): string | undefined {
@@ -65,24 +67,39 @@ function getPushErrorBody(error: unknown): string | undefined {
   return undefined;
 }
 
+function withPushTimeout<T>(promise: Promise<T>): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => {
+      setTimeout(() => {
+        reject(
+          new Error(`Push send timed out after ${PUSH_SEND_TIMEOUT_MS}ms`),
+        );
+      }, PUSH_SEND_TIMEOUT_MS);
+    }),
+  ]);
+}
+
 export async function sendPushSubscription(
   subscription: Pick<StoredPushSubscription, "endpoint" | "p256dh" | "auth">,
   payload: PushPayload,
-): Promise<"sent" | "stale" | "failed"> {
+): Promise<"sent" | "stale" | "failed" | "timed_out"> {
   if (!ensureVapidConfigured()) {
     return "failed";
   }
 
   try {
-    await webpush.sendNotification(
-      {
-        endpoint: subscription.endpoint,
-        keys: {
-          p256dh: subscription.p256dh,
-          auth: subscription.auth,
+    await withPushTimeout(
+      webpush.sendNotification(
+        {
+          endpoint: subscription.endpoint,
+          keys: {
+            p256dh: subscription.p256dh,
+            auth: subscription.auth,
+          },
         },
-      },
-      JSON.stringify(payload),
+        JSON.stringify(payload),
+      ),
     );
     return "sent";
   } catch (error) {
@@ -92,13 +109,20 @@ export async function sendPushSubscription(
       return "stale";
     }
 
-    console.warn("[web-push] Failed to send notification:", {
-      endpoint: subscription.endpoint,
-      statusCode,
-      body: getPushErrorBody(error),
-      message: error instanceof Error ? error.message : "Unknown error",
-    });
-    return "failed";
+    const timedOut =
+      error instanceof Error &&
+      error.message.includes("Push send timed out after");
+
+    if (!timedOut) {
+      console.warn("[web-push] Failed to send notification:", {
+        endpoint: subscription.endpoint,
+        statusCode,
+        body: getPushErrorBody(error),
+        message: error instanceof Error ? error.message : "Unknown error",
+      });
+    }
+
+    return timedOut ? "timed_out" : "failed";
   }
 }
 
@@ -106,6 +130,7 @@ export type PushSendResult = {
   subscriptionCount: number;
   sent: number;
   failed: number;
+  timedOut: number;
   staleRemoved: number;
 };
 
@@ -115,19 +140,84 @@ const TEST_PUSH_PAYLOAD: PushPayload = {
   url: "/today",
 };
 
-export async function sendPushToUserWithResult(
-  userId: string,
+export async function sendPushToSubscriptionsWithResult(
+  subscriptions: StoredPushSubscription[],
   payload: PushPayload,
 ): Promise<PushSendResult> {
   if (!ensureVapidConfigured()) {
     return {
-      subscriptionCount: 0,
+      subscriptionCount: subscriptions.length,
       sent: 0,
       failed: 0,
+      timedOut: 0,
       staleRemoved: 0,
     };
   }
 
+  const outcomes = await Promise.allSettled(
+    subscriptions.map(async (subscription) => {
+      const result = await sendPushSubscription(subscription, payload);
+      return { subscription, result };
+    }),
+  );
+
+  let sent = 0;
+  let failed = 0;
+  let timedOut = 0;
+  const staleIds: string[] = [];
+
+  for (const outcome of outcomes) {
+    if (outcome.status === "rejected") {
+      failed += 1;
+      console.warn("[web-push] Unexpected push send rejection:", {
+        message:
+          outcome.reason instanceof Error
+            ? outcome.reason.message
+            : "Unknown error",
+      });
+      continue;
+    }
+
+    const { subscription, result } = outcome.value;
+
+    if (result === "sent") {
+      sent += 1;
+      continue;
+    }
+
+    if (result === "stale") {
+      staleIds.push(subscription.id);
+      continue;
+    }
+
+    if (result === "timed_out") {
+      timedOut += 1;
+      failed += 1;
+      continue;
+    }
+
+    failed += 1;
+  }
+
+  if (staleIds.length > 0) {
+    await prisma.pushSubscription.deleteMany({
+      where: { id: { in: staleIds } },
+    });
+  }
+
+  return {
+    subscriptionCount: subscriptions.length,
+    sent,
+    failed,
+    timedOut,
+    staleRemoved: staleIds.length,
+  };
+}
+
+export async function sendPushToUserWithResult(
+  userId: string,
+  payload: PushPayload,
+): Promise<PushSendResult> {
   const subscriptions = await prisma.pushSubscription.findMany({
     where: { userId },
     select: {
@@ -138,35 +228,7 @@ export async function sendPushToUserWithResult(
     },
   });
 
-  let sent = 0;
-  let failed = 0;
-  let staleRemoved = 0;
-
-  for (const subscription of subscriptions) {
-    const result = await sendPushSubscription(subscription, payload);
-
-    if (result === "sent") {
-      sent += 1;
-      continue;
-    }
-
-    if (result === "stale") {
-      staleRemoved += 1;
-      await prisma.pushSubscription.delete({
-        where: { id: subscription.id },
-      });
-      continue;
-    }
-
-    failed += 1;
-  }
-
-  return {
-    subscriptionCount: subscriptions.length,
-    sent,
-    failed,
-    staleRemoved,
-  };
+  return sendPushToSubscriptionsWithResult(subscriptions, payload);
 }
 
 export async function sendTestPushNotification(
@@ -181,4 +243,3 @@ export async function sendPushToUser(
 ): Promise<void> {
   await sendPushToUserWithResult(userId, payload);
 }
-
