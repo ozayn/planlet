@@ -45,11 +45,24 @@ Run the reminder sender every 10 minutes from a dedicated Railway service in the
 1. In Railway, create a new service from the same GitHub repo.
 2. Name it `planlet-reminders`.
 3. Use the same root directory as the web service.
-4. Set the start command:
+4. Configure the start command using **one** of these options:
 
-   ```bash
-   npm run cron:reminders
-   ```
+   **Option A (recommended):** Point the service to a dedicated config file.
+
+   - Railway → `planlet-reminders` → Settings → Config-as-code
+   - Set config file path: `/railway.reminders.json`
+   - This runs `npm run cron:reminders` and sets `restartPolicyType: never` so the worker exits after each run.
+
+   **Option B:** Use the shared `railway.json` with an env var.
+
+   - Leave config file as `/railway.json` (default)
+   - Add variable on the `planlet-reminders` service only:
+
+     ```env
+     PLANLET_SERVICE_KIND=reminders
+     ```
+
+   - The shared start command `npm run start:railway` will run `npm run cron:reminders`.
 
 5. Add a cron schedule:
 
@@ -67,11 +80,19 @@ Run the reminder sender every 10 minutes from a dedicated Railway service in the
 
    `AUTH_SECRET` is not required for the cron worker. Evening reminder copy reads `canUseReflectionFeatures` from the database, not from env.
 
-7. Deploy. Each run executes `scripts/run-reminders-cron.ts`, which calls `runReminderCron()` in `lib/reminders.ts`.
+7. Deploy. Each run executes `scripts/run-reminders-cron.ts`, which calls `runReminderCron()` in `lib/reminders.ts` and exits after `prisma.$disconnect()`.
+
+### Web service (`planlet`)
+
+The default `/railway.json` uses `npm run start:railway`, which starts the Next.js server when `PLANLET_SERVICE_KIND` is unset or set to `web`.
+
+Do **not** set `PLANLET_SERVICE_KIND=reminders` on the web service.
 
 Local test:
 
 ```bash
+PLANLET_SERVICE_KIND=reminders npm run start:railway   # runs cron, exits
+PLANLET_SERVICE_KIND=web npm run start:railway         # runs next start
 npm run cron:reminders
 npm run cron:reminders:debug
 npm run cron:reminders -- --debug --at=2026-06-09T13:05:00.000Z

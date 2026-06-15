@@ -4,6 +4,7 @@
     "buildCommand": "npm run build"
   },
   "deploy": {
-    "startCommand": "npm run start:railway"
+    "startCommand": "npm run cron:reminders",
+    "restartPolicyType": "never"
   }
 }
