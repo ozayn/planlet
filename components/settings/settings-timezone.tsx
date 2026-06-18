@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 
 import {
+  syncBrowserTimezoneAction,
   updateUserTimezoneAction,
   updateUserTimezoneModeAction,
 } from "@/app/(app)/settings/actions";
@@ -43,8 +44,21 @@ export function SettingsTimezone({
   const isAutomatic = selectedMode === "AUTOMATIC";
 
   useEffect(() => {
-    setDetectedTimezone(getBrowserTimezone());
-  }, []);
+    const detected = getBrowserTimezone();
+    setDetectedTimezone(detected);
+
+    if (
+      timezoneMode === "AUTOMATIC" &&
+      detected &&
+      detected !== timezone
+    ) {
+      void syncBrowserTimezoneAction(detected).then((result) => {
+        if (result.success && result.updated) {
+          router.refresh();
+        }
+      });
+    }
+  }, [timezone, timezoneMode, router]);
 
   useEffect(() => {
     setSelectedTimezone(timezone);
@@ -95,6 +109,7 @@ export function SettingsTimezone({
 
       if (nextMode === "AUTOMATIC" && browserTimezone) {
         setSelectedTimezone(browserTimezone);
+        setDetectedTimezone(browserTimezone);
       }
 
       router.refresh();
@@ -109,6 +124,41 @@ export function SettingsTimezone({
 
   return (
     <SettingsSection title="Timezone">
+      {isAutomatic ? (
+        <div className="space-y-1">
+          <p className="text-sm text-foreground">
+            <span className="font-medium">Timezone:</span> Automatic
+          </p>
+          {detectedTimezone ? (
+            <p className="text-xs text-muted-light">
+              Detected: {detectedTimezone}
+            </p>
+          ) : null}
+        </div>
+      ) : (
+        <label
+          htmlFor="settings-timezone"
+          className="flex min-h-10 flex-col gap-1.5 text-sm text-foreground"
+        >
+          <span className="font-medium">Your timezone</span>
+          <select
+            id="settings-timezone"
+            name="timezone"
+            value={selectedTimezone}
+            disabled={isPending}
+            onChange={(event) => handleTimezoneChange(event.target.value)}
+            className="ui-input min-h-10 w-full px-3 text-sm"
+            {...passwordManagerSafeControlProps}
+          >
+            {options.map((option) => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
       <fieldset className="ui-settings-fieldset">
         <legend className="sr-only">Timezone mode</legend>
         <p className="text-sm font-medium text-foreground">Timezone mode</p>
@@ -143,44 +193,6 @@ export function SettingsTimezone({
           }
         </p>
       </fieldset>
-
-      {isAutomatic ? (
-        <div className="space-y-1">
-          <p className="text-sm font-medium text-foreground">Current timezone</p>
-          <p className="text-sm text-foreground">{selectedTimezone}</p>
-          {detectedTimezone && detectedTimezone !== selectedTimezone ? (
-            <p className="text-xs text-muted-light">
-              Browser detected: {detectedTimezone}. It will sync on your next visit.
-            </p>
-          ) : detectedTimezone ? (
-            <p className="text-xs text-muted-light">
-              Detected: {detectedTimezone}
-            </p>
-          ) : null}
-        </div>
-      ) : (
-        <label
-          htmlFor="settings-timezone"
-          className="flex min-h-10 flex-col gap-1.5 text-sm text-foreground"
-        >
-          <span className="font-medium">Your timezone</span>
-          <select
-            id="settings-timezone"
-            name="timezone"
-            value={selectedTimezone}
-            disabled={isPending}
-            onChange={(event) => handleTimezoneChange(event.target.value)}
-            className="ui-input min-h-10 w-full px-3 text-sm"
-            {...passwordManagerSafeControlProps}
-          >
-            {options.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
 
       {error ? (
         <p className="text-sm text-accent-red" role="alert">

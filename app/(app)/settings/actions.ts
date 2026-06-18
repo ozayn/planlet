@@ -52,7 +52,7 @@ export async function syncBrowserTimezoneAction(
     const updated = await syncAutomaticBrowserTimezone(userId, browserTimezone);
 
     if (updated) {
-      revalidatePath("/settings");
+      revalidatePlanSurfaces();
     }
 
     return { success: true, updated };

@@ -119,10 +119,7 @@ export async function updateUserTimezone(
 
   await prisma.user.update({
     where: { id: userId },
-    data: {
-      timezone: normalized,
-      timezoneMode: "MANUAL",
-    },
+    data: { timezone: normalized },
   });
   await syncNotificationPreferenceTimezone(userId, normalized);
 
