@@ -141,6 +141,11 @@ enum PlanItemView {
   CHECKLIST
 }
 
+enum TimezoneMode {
+  AUTOMATIC
+  MANUAL
+}
+
 enum ObservationCategory {
   MIND
   EMOTION
@@ -171,6 +176,7 @@ model User {
   canUseCoachingFeatures    Boolean     @default(false)
   planItemView              PlanItemView @default(CHECKLIST)
   timezone                  String?
+  timezoneMode              TimezoneMode @default(AUTOMATIC)
   lastSeenAt    DateTime?
   lastLoginAt   DateTime?
   loginCount    Int         @default(0)

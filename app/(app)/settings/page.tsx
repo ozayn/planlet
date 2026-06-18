@@ -37,6 +37,7 @@ export default async function SettingsPage() {
   const userTimezone = session?.user?.id
     ? await getUserTimezone(session.user.id)
     : APP_TIMEZONE;
+  const timezoneMode = session?.user?.timezoneMode ?? "AUTOMATIC";
   const notificationPreferences = session?.user?.id
     ? await getNotificationPreferencesForUser(session.user.id)
     : null;
@@ -69,7 +70,9 @@ export default async function SettingsPage() {
 
       <PlanItemViewSettings value={planItemView} />
 
-      {session?.user?.id ? <SettingsTimezone timezone={userTimezone} /> : null}
+      {session?.user?.id ? (
+        <SettingsTimezone timezone={userTimezone} timezoneMode={timezoneMode} />
+      ) : null}
 
       {(canGiveFeedback(session?.user ?? {}) ||
         canUseReflectionFeatures(session?.user ?? {}) ||

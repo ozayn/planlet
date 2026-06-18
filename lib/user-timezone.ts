@@ -1,17 +1,28 @@
 import { auth } from "@/auth";
+import type { TimezoneMode } from "@/app/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   FALLBACK_TIMEZONE,
   normalizeTimezone,
+  type TimezoneModeValue,
 } from "@/lib/user-timezone-constants";
 
 export {
   FALLBACK_TIMEZONE,
   SETTINGS_TIMEZONE_OPTIONS,
+  TIMEZONE_MODE_OPTIONS,
+  TIMEZONE_MODES,
   type SettingsTimezoneOption,
+  type TimezoneModeValue,
   isValidTimezone,
   normalizeTimezone,
 } from "@/lib/user-timezone-constants";
+
+export type UserTimezoneSettings = {
+  timezone: string | null;
+  timezoneMode: TimezoneMode;
+  effectiveTimezone: string;
+};
 
 export async function getUserTimezone(userId: string): Promise<string> {
   const user = await prisma.user.findUnique({
@@ -22,17 +33,29 @@ export async function getUserTimezone(userId: string): Promise<string> {
   return user?.timezone ?? FALLBACK_TIMEZONE;
 }
 
-export async function getUserTimezoneRecord(
+export async function getUserTimezoneSettings(
   userId: string,
-): Promise<{ timezone: string | null; effectiveTimezone: string }> {
+): Promise<UserTimezoneSettings> {
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { timezone: true },
+    select: { timezone: true, timezoneMode: true },
   });
 
   return {
     timezone: user?.timezone ?? null,
+    timezoneMode: user?.timezoneMode ?? "AUTOMATIC",
     effectiveTimezone: user?.timezone ?? FALLBACK_TIMEZONE,
+  };
+}
+
+export async function getUserTimezoneRecord(
+  userId: string,
+): Promise<{ timezone: string | null; effectiveTimezone: string }> {
+  const settings = await getUserTimezoneSettings(userId);
+
+  return {
+    timezone: settings.timezone,
+    effectiveTimezone: settings.effectiveTimezone,
   };
 }
 
@@ -61,17 +84,21 @@ export async function syncNotificationPreferenceTimezone(
   });
 }
 
-export async function setUserTimezoneIfUnset(
+export async function syncAutomaticBrowserTimezone(
   userId: string,
-  timezone: string,
+  browserTimezone: string,
 ): Promise<boolean> {
-  const normalized = normalizeTimezone(timezone);
+  const normalized = normalizeTimezone(browserTimezone);
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { timezone: true },
+    select: { timezone: true, timezoneMode: true },
   });
 
-  if (!user || user.timezone !== null) {
+  if (!user || user.timezoneMode !== "AUTOMATIC") {
+    return false;
+  }
+
+  if (user.timezone === normalized) {
     return false;
   }
 
@@ -92,9 +119,44 @@ export async function updateUserTimezone(
 
   await prisma.user.update({
     where: { id: userId },
-    data: { timezone: normalized },
+    data: {
+      timezone: normalized,
+      timezoneMode: "MANUAL",
+    },
   });
   await syncNotificationPreferenceTimezone(userId, normalized);
 
   return normalized;
+}
+
+export async function updateUserTimezoneMode(
+  userId: string,
+  mode: TimezoneModeValue,
+  browserTimezone?: string,
+): Promise<string> {
+  if (mode === "AUTOMATIC") {
+    if (!browserTimezone) {
+      throw new Error("Browser timezone is required for automatic mode.");
+    }
+
+    const normalized = normalizeTimezone(browserTimezone);
+
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        timezoneMode: "AUTOMATIC",
+        timezone: normalized,
+      },
+    });
+    await syncNotificationPreferenceTimezone(userId, normalized);
+
+    return normalized;
+  }
+
+  await prisma.user.update({
+    where: { id: userId },
+    data: { timezoneMode: "MANUAL" },
+  });
+
+  return getUserTimezone(userId);
 }

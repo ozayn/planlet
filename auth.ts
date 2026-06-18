@@ -61,6 +61,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           canUseReflectionFeatures: true,
           canUseCoachingFeatures: true,
           timezone: true,
+          timezoneMode: true,
         },
       });
 
@@ -74,7 +75,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       session.user.canUseReflectionFeatures = dbUser.canUseReflectionFeatures;
       session.user.canUseCoachingFeatures = dbUser.canUseCoachingFeatures;
       session.user.timezone = dbUser.timezone ?? FALLBACK_TIMEZONE;
-      session.user.timezoneIsUnset = dbUser.timezone === null;
+      session.user.timezoneMode = dbUser.timezoneMode;
 
       return session;
     },

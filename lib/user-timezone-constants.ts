@@ -15,6 +15,23 @@ export const SETTINGS_TIMEZONE_OPTIONS = [
 
 export type SettingsTimezoneOption = (typeof SETTINGS_TIMEZONE_OPTIONS)[number];
 
+export const TIMEZONE_MODES = ["AUTOMATIC", "MANUAL"] as const;
+
+export type TimezoneModeValue = (typeof TIMEZONE_MODES)[number];
+
+export const TIMEZONE_MODE_OPTIONS = [
+  {
+    value: "AUTOMATIC" as const,
+    label: "Automatic",
+    description: "Use your browser timezone and update when it changes.",
+  },
+  {
+    value: "MANUAL" as const,
+    label: "Manual",
+    description: "Use a timezone you choose until you change it.",
+  },
+] as const;
+
 export function isValidTimezone(value: string): boolean {
   const trimmed = value.trim();
   if (!trimmed) {

@@ -1,4 +1,4 @@
-import type { UserRole } from "@/app/generated/prisma/client";
+import type { TimezoneMode, UserRole } from "@/app/generated/prisma/client";
 import "next-auth";
 
 declare module "next-auth" {
@@ -13,7 +13,7 @@ declare module "next-auth" {
       canUseReflectionFeatures: boolean;
       canUseCoachingFeatures: boolean;
       timezone: string;
-      timezoneIsUnset: boolean;
+      timezoneMode: TimezoneMode;
     };
   }
 }

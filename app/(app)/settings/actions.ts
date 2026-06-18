@@ -13,8 +13,10 @@ import { isWebPushConfigured } from "@/lib/env";
 import { updatePlanItemView } from "@/lib/user-preferences";
 import {
   normalizeTimezone,
-  setUserTimezoneIfUnset,
+  syncAutomaticBrowserTimezone,
   updateUserTimezone,
+  updateUserTimezoneMode,
+  type TimezoneModeValue,
 } from "@/lib/user-timezone";
 
 const PLAN_ITEM_VIEWS = new Set<PlanItemView>(["MINIMAL", "CHECKLIST"]);
@@ -38,16 +40,16 @@ export type SettingsActionResult =
   | { success: true }
   | { success: false; error: string };
 
-export type DetectBrowserTimezoneResult =
+export type SyncBrowserTimezoneResult =
   | { success: true; updated: boolean }
   | { success: false; error: string };
 
-export async function detectBrowserTimezoneAction(
+export async function syncBrowserTimezoneAction(
   browserTimezone: string,
-): Promise<DetectBrowserTimezoneResult> {
+): Promise<SyncBrowserTimezoneResult> {
   try {
     const userId = await requireUserId();
-    const updated = await setUserTimezoneIfUnset(userId, browserTimezone);
+    const updated = await syncAutomaticBrowserTimezone(userId, browserTimezone);
 
     if (updated) {
       revalidatePath("/settings");
@@ -60,7 +62,27 @@ export async function detectBrowserTimezoneAction(
       error:
         error instanceof Error
           ? error.message
-          : "Failed to save detected timezone.",
+          : "Failed to sync browser timezone.",
+    };
+  }
+}
+
+export async function updateUserTimezoneModeAction(
+  mode: TimezoneModeValue,
+  browserTimezone?: string,
+): Promise<SettingsActionResult> {
+  try {
+    const userId = await requireUserId();
+    await updateUserTimezoneMode(userId, mode, browserTimezone);
+    revalidatePath("/settings");
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to update timezone mode.",
     };
   }
 }

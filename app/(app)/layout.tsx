@@ -31,8 +31,8 @@ export default async function AppLayout({
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
-      {session?.user?.timezoneIsUnset ? (
-        <BrowserTimezoneDetector shouldDetect />
+      {session?.user?.timezoneMode === "AUTOMATIC" ? (
+        <BrowserTimezoneDetector enabled />
       ) : null}
       <DesktopNav
         userName={session?.user?.name}
