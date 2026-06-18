@@ -1,5 +1,6 @@
 /**
- * Profile menu visibility. Therapy review appears when the route ships.
+ * Profile menu visibility. Therapy thoughts live under Insights, not here.
+ * Therapy review appears in the Reflection section when the route ships.
  */
 export const PROFILE_MENU_THERAPY_REVIEW_ENABLED = false;
 

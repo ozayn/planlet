@@ -81,9 +81,6 @@ export function ProfileMenu({
     pathname === "/insights" || pathname.startsWith("/insights/");
   const onFeedback = pathname === "/feedback" || pathname.startsWith("/feedback/");
   const onAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
-  const onTherapyThoughts =
-    pathname === "/therapy-thoughts" ||
-    pathname.startsWith("/therapy-thoughts/");
   const onTherapyReview =
     pathname === "/therapy-review" ||
     pathname.startsWith("/therapy-review/");
@@ -158,18 +155,6 @@ export function ProfileMenu({
   ];
 
   const reflectionItems: ReactNode[] = [
-    canUseTherapyThoughts ? (
-      <Link
-        key="therapy-thoughts"
-        href="/therapy-thoughts"
-        role="menuitem"
-        aria-current={onTherapyThoughts ? "page" : undefined}
-        onClick={closeMenu}
-        className={menuItemClass(onTherapyThoughts)}
-      >
-        Therapy thoughts
-      </Link>
-    ) : null,
     canShowTherapyReviewInProfileMenu(access) ? (
       <Link
         key="therapy-review"
