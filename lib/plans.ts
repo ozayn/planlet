@@ -37,6 +37,7 @@ import {
   formatDayPlanTitle,
   formatMonthPlanTitle,
   formatWeekPlanTitle,
+  formatYearPlanTitle,
   resolvePlanTitle,
 } from "@/lib/plan-titles";
 import { STALE_LIST_MESSAGE } from "@/lib/action-errors";
@@ -279,6 +280,38 @@ export async function getYearPlan(userId: string, date: Date) {
       items: rootItemsInclude,
     },
   });
+}
+
+export async function getOrCreateYearPlan(
+  userId: string,
+  date: Date,
+  title?: string,
+) {
+  const existing = await getYearPlan(userId, date);
+
+  if (existing) {
+    return existing;
+  }
+
+  const { start, end } = getYearRange(date);
+
+  const plan = await prisma.plan.create({
+    data: {
+      userId,
+      type: PlanTypeEnum.YEAR,
+      title: title ?? formatYearPlanTitle(date),
+      dateStart: start,
+      dateEnd: end,
+      language: "UNKNOWN",
+    },
+    include: {
+      items: rootItemsInclude,
+    },
+  });
+
+  await touchUserSeen(userId);
+
+  return plan;
 }
 
 export async function getUpcomingWeekPlans(userId: string) {

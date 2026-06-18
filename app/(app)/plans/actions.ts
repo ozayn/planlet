@@ -24,6 +24,7 @@ import {
   formatDateString,
   formatMonthStartString,
   formatWeekStartString,
+  formatYearStartString,
   getDateRangeForPlanType,
   getMonthRange,
   getTodayRange,
@@ -42,6 +43,7 @@ import {
   getOrCreateDayPlan,
   getOrCreateMonthPlan,
   getOrCreateWeekPlan,
+  getOrCreateYearPlan,
   getTodayPlan,
   getWeekPlan,
   getYearPlan,
@@ -107,7 +109,7 @@ async function recordUserActivity(userId: string) {
 
 function revalidatePlanPaths(
   planId: string,
-  options?: { dayDate?: string; weekDate?: string; monthDate?: string },
+  options?: { dayDate?: string; weekDate?: string; monthDate?: string; yearDate?: string },
 ) {
   revalidatePath("/today");
   revalidatePath("/plans");
@@ -123,6 +125,9 @@ function revalidatePlanPaths(
   }
   if (options?.monthDate) {
     revalidatePath(`/plans/month/${options.monthDate}`);
+  }
+  if (options?.yearDate) {
+    revalidatePath(`/plans/year/${options.yearDate}`);
   }
 }
 
@@ -141,6 +146,10 @@ function revalidateAfterPlanDelete(plan: {
     monthDate:
       plan.type === "MONTH"
         ? formatMonthStartString(plan.dateStart)
+        : undefined,
+    yearDate:
+      plan.type === "YEAR"
+        ? formatYearStartString(plan.dateStart)
         : undefined,
   });
 }
@@ -191,6 +200,17 @@ export async function createMonthPlanForDateAction(dateString: string) {
   await recordUserActivity(userId);
   revalidatePlanPaths(plan.id, { monthDate: monthStart });
   redirect(`/plans/month/${monthStart}`);
+}
+
+export async function createYearPlanForDateAction(dateString: string) {
+  const userId = await requireUserId();
+  const date = parseActionDateString(dateString);
+  const yearStart = formatYearStartString(date);
+  const plan = await getOrCreateYearPlan(userId, date);
+
+  await recordUserActivity(userId);
+  revalidatePlanPaths(plan.id, { yearDate: yearStart });
+  redirect(`/plans/year/${yearStart}`);
 }
 
 export async function dayPlanExistsAction(dateString: string): Promise<boolean> {

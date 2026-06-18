@@ -31,16 +31,16 @@ const KIND_COPY: Record<
   { placeholder: string; buttonLabel: string }
 > = {
   TASK: {
-    placeholder: "What’s on your mind?",
-    buttonLabel: "Add item",
+    placeholder: "What needs doing?",
+    buttonLabel: "Add",
   },
   INTENTION: {
-    placeholder: "Add an intention…",
-    buttonLabel: "Add intention",
+    placeholder: "What do you want to hold in mind?",
+    buttonLabel: "Add",
   },
   NOTE: {
-    placeholder: "Add a note or reflection…",
-    buttonLabel: "Add note",
+    placeholder: "What do you want to remember?",
+    buttonLabel: "Add",
   },
 };
 

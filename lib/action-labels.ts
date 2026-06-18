@@ -168,6 +168,18 @@ export const ACTION_LABELS = {
     title: "Choose month",
     ariaLabel: "Choose month",
   },
+  previousYear: {
+    title: "Previous year",
+    ariaLabel: "Previous year",
+  },
+  nextYear: {
+    title: "Next year",
+    ariaLabel: "Next year",
+  },
+  chooseYear: {
+    title: "Choose year",
+    ariaLabel: "Choose year",
+  },
   itemStatus: {
     title: "Item status",
     ariaLabel: "Item status",

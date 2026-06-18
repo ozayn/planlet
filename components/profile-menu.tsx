@@ -41,7 +41,8 @@ export function ProfileMenu({
     (pathname.startsWith("/plans/") &&
       !pathname.startsWith("/plans/day/") &&
       !pathname.startsWith("/plans/week/") &&
-      !pathname.startsWith("/plans/month/"));
+      !pathname.startsWith("/plans/month/") &&
+      !pathname.startsWith("/plans/year/"));
   const onInsights =
     pathname === "/insights" || pathname.startsWith("/insights/");
   const onFeedback = pathname === "/feedback" || pathname.startsWith("/feedback/");

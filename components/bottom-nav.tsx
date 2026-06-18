@@ -22,7 +22,7 @@ export function BottomNav() {
             <li key={item.key} className="flex-1">
               <Link
                 href={item.href}
-                className={`ui-bottom-nav-link relative flex min-h-[3.75rem] flex-col items-center justify-center gap-1 px-2 text-[0.6875rem] font-medium tracking-wide transition-colors ${
+                className={`ui-bottom-nav-link relative flex min-h-[3.75rem] flex-col items-center justify-center gap-1 px-1 text-[0.6875rem] font-medium tracking-wide transition-colors ${
                   isActive ? "text-foreground" : "text-muted hover:text-foreground"
                 }`}
                 aria-current={isActive ? "page" : undefined}
@@ -85,6 +85,18 @@ function NavIcon({ navKey, active }: { navKey: MainNavKey; active: boolean }) {
           aria-hidden="true"
         >
           <path d="M7 4v2M17 4v2M5 8h14M6 6h12a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Z" />
+        </svg>
+      );
+    case "year":
+      return (
+        <svg
+          className={className}
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth={1.75}
+          aria-hidden="true"
+        >
+          <path d="M4 7h16M4 11h16M4 15h16M4 19h16" />
         </svg>
       );
     default:

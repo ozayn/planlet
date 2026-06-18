@@ -2,6 +2,7 @@ import {
   addDays,
   addMonths,
   addWeeks,
+  addYears,
   endOfDay,
   endOfMonth,
   endOfWeek,
@@ -154,6 +155,27 @@ export function formatMonthNavLabel(monthStartString: string): string {
   }
 
   return formatShareMonthPeriod(parseDateString(monthStartString));
+}
+
+export function formatYearStartString(date: Date): string {
+  return formatDateString(getYearRange(date).start);
+}
+
+export function shiftYearString(dateString: string, years: number): string {
+  const yearStart = formatYearStartString(parseDateString(dateString));
+  const [year, month, day] = yearStart.split("-").map(Number);
+  return format(addYears(new Date(year, month - 1, day), years), "yyyy-MM-dd");
+}
+
+/** Compact label for year plan nav center (This year, 2026, …). */
+export function formatYearNavLabel(yearStartString: string): string {
+  const thisYearStart = formatYearStartString(new Date());
+
+  if (yearStartString === thisYearStart) {
+    return "This year";
+  }
+
+  return formatShareYearPeriod(parseDateString(yearStartString));
 }
 
 export function getDateRangeForPlanType(
