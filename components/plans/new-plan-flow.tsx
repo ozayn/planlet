@@ -182,27 +182,35 @@ export function NewPlanFlow() {
     setError(null);
 
     startParse(async () => {
-      const result = await parsePlanTextAction(rawInput);
+      const result = await parsePlanTextAction(rawInput, selectedDate);
 
       if (!result.success) {
         setError(result.error);
         return;
       }
 
-      const defaultTitle = defaultTitleFor(targetPlanType, selectedDate);
+      if (result.planDate) {
+        setSelectedDate(result.planDate);
+      }
+
+      const planDate = result.planDate ?? selectedDate;
+      const defaultTitle = defaultTitleFor(targetPlanType, planDate);
       const parserTitle = result.draft.title.trim();
-      const title = isGenericPlanHeaderTitle(parserTitle)
-        ? defaultTitle
-        : parserTitle.slice(0, MAX_PLAN_TITLE_LENGTH);
+      const title =
+        !parserTitle ||
+        parserTitle === "Imported plan" ||
+        isGenericPlanHeaderTitle(parserTitle)
+          ? defaultTitle
+          : parserTitle.slice(0, MAX_PLAN_TITLE_LENGTH);
 
       setTitleCustomized(
         !isDefaultPlanTitle(
           title,
           targetPlanType,
-          parseDateString(selectedDate),
+          parseDateString(planDate),
           getDateRangeForPlanType(
             targetPlanType,
-            parseDateString(selectedDate),
+            parseDateString(planDate),
           ).end,
         ),
       );

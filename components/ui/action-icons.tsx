@@ -420,3 +420,43 @@ export function FileTextIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+/** Lucide-equivalent: Heart */
+export function HeartIcon({ className }: IconProps) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth={1.75}
+      stroke="currentColor"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"
+      />
+    </svg>
+  );
+}
+
+/** Lucide-equivalent: ExternalLink */
+export function ExternalLinkIcon({ className }: IconProps) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth={1.75}
+      stroke="currentColor"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"
+      />
+    </svg>
+  );
+}

@@ -12,7 +12,7 @@ export type ResolvedDateHint = {
   explanation?: string;
 };
 
-const ENGLISH_MONTHS: Record<string, number> = {
+export const ENGLISH_MONTHS: Record<string, number> = {
   january: 1,
   jan: 1,
   february: 2,

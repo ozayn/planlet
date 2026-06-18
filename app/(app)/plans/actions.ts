@@ -12,6 +12,11 @@ import { redirect } from "next/navigation";
 import { requireUserId } from "@/lib/require-auth";
 import { parsePlanFromText } from "@/lib/ai/parse-plan";
 import {
+  messyPlanDraftToParsedPlan,
+  parseMessyPlanText,
+  shouldUseMessyPlanParser,
+} from "@/lib/plan-import/parse-messy-plan-text";
+import {
   saveParsedPlanSchema,
   type ParsedPlan,
   type ParsedPlanItem,
@@ -627,11 +632,12 @@ export async function movePlanItemAction(
 }
 
 export type ParsePlanTextResult =
-  | { success: true; draft: ParsedPlan }
+  | { success: true; draft: ParsedPlan; planDate?: string }
   | { success: false; error: string };
 
 export async function parsePlanTextAction(
   rawText: string,
+  fallbackDate?: string,
 ): Promise<ParsePlanTextResult> {
   await requireUserId();
 
@@ -639,6 +645,16 @@ export async function parsePlanTextAction(
 
   if (!trimmed) {
     return { success: false, error: "Please enter some text to structure." };
+  }
+
+  const messyDraft = parseMessyPlanText(trimmed, { fallbackDate });
+
+  if (shouldUseMessyPlanParser(messyDraft)) {
+    return {
+      success: true,
+      draft: messyPlanDraftToParsedPlan(messyDraft),
+      planDate: messyDraft.date ?? fallbackDate,
+    };
   }
 
   try {

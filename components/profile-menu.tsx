@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 
 import { ThemeToggle } from "@/components/theme-toggle";
+import { ExternalLinkIcon, HeartIcon } from "@/components/ui/action-icons";
 import { UserAvatar } from "@/components/user-avatar";
 
 type ProfileMenuProps = {
@@ -54,6 +55,7 @@ export function ProfileMenu({
     pathname && pathname !== "/feedback"
       ? `/feedback?from=${encodeURIComponent(pathname)}`
       : "/feedback";
+  const supportUrl = process.env.NEXT_PUBLIC_STRIPE_SUPPORT_URL?.trim();
 
   useEffect(() => {
     if (!open) return;
@@ -227,6 +229,20 @@ export function ProfileMenu({
               >
                 Admin
               </Link>
+            ) : null}
+            {supportUrl ? (
+              <a
+                href={supportUrl}
+                role="menuitem"
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={() => setOpen(false)}
+                className="flex min-h-10 items-center gap-2 rounded-xl px-3 text-sm text-foreground transition-colors hover:bg-accent-cream"
+              >
+                <HeartIcon className="h-4 w-4 shrink-0 text-muted" />
+                <span className="min-w-0 flex-1">Support Planlet</span>
+                <ExternalLinkIcon className="h-3.5 w-3.5 shrink-0 text-muted-light" />
+              </a>
             ) : null}
             <div role="menuitem" className="px-1">
               <div className="[&_button]:w-full [&_button]:justify-start">

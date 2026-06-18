@@ -24,6 +24,10 @@ import {
   PRIORITY_LEVEL_LABELS,
   TIME_HINT_LABELS,
 } from "@/lib/plan-labels";
+import {
+  getStatusLabel,
+  PLAN_ITEM_STATUS_ORDER,
+} from "@/lib/plan-status";
 
 const PLAN_TYPES = ["DAY", "WEEK", "MONTH", "YEAR"] as const;
 const LANGUAGES = ["FA", "EN", "MIXED", "UNKNOWN"] as const;
@@ -46,6 +50,7 @@ const TIME_HINTS = [
   "SPECIFIC",
 ] as const;
 const PRIORITIES = ["LOW", "MEDIUM", "HIGH"] as const;
+const ITEM_STATUSES = PLAN_ITEM_STATUS_ORDER;
 
 const inputClass = "ui-input min-h-11 py-2";
 
@@ -414,6 +419,27 @@ function ReviewItemCard({
             {ITEM_TYPES.map((type) => (
               <option key={type} value={type}>
                 {getPlanItemTypeLabel(type)}
+              </option>
+            ))}
+          </select>
+        </Field>
+
+        <Field label="Status" fieldId={`${itemPrefix}-status`}>
+          <select
+            id={`${itemPrefix}-status`}
+            name={`${itemPrefix}-status`}
+            value={item.status ?? "OPEN"}
+            onChange={(event) =>
+              onChange({
+                ...item,
+                status: event.target.value as NonNullable<ParsedPlanItem["status"]>,
+              })
+            }
+            className={`${selectClass} w-full`}
+          >
+            {ITEM_STATUSES.map((status) => (
+              <option key={status} value={status}>
+                {getStatusLabel(status)}
               </option>
             ))}
           </select>
