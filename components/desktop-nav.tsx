@@ -8,10 +8,8 @@ import { PlanletLogo } from "@/components/planlet-logo";
 import { ProfileMenu } from "@/components/profile-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
 import type { SerializedNotification } from "@/lib/notification-serialize";
-import { MAIN_NAV_ITEMS } from "@/config/nav-items";
+import { getMainNavItems, isMainNavActive } from "@/lib/main-nav";
 import { PRODUCT } from "@/config/product";
-
-const navItems = MAIN_NAV_ITEMS;
 
 type DesktopNavProps = {
   userName?: string | null;
@@ -37,6 +35,7 @@ export function DesktopNav({
   notifications = [],
 }: DesktopNavProps) {
   const pathname = usePathname();
+  const navItems = getMainNavItems();
 
   return (
     <header className="hidden border-b border-border-soft bg-surface md:block">
@@ -52,18 +51,18 @@ export function DesktopNav({
         </Link>
         <nav className="flex items-center gap-1" aria-label="Main navigation">
           {navItems.map((item) => {
-            const isActive =
-              pathname === item.href || pathname.startsWith(`${item.href}/`);
+            const isActive = isMainNavActive(pathname, item.key);
 
             return (
               <Link
-                key={item.href}
+                key={item.key}
                 href={item.href}
                 className={`relative rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
                   isActive
                     ? "text-foreground"
                     : "text-muted hover:text-foreground"
                 }`}
+                aria-current={isActive ? "page" : undefined}
               >
                 {isActive ? (
                   <span

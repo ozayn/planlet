@@ -3,16 +3,11 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import { MAIN_NAV_ITEMS } from "@/config/nav-items";
-
-const navItems = [
-  { ...MAIN_NAV_ITEMS[0], accent: "bg-accent-red" },
-  { ...MAIN_NAV_ITEMS[1], accent: "bg-accent-blue" },
-  { ...MAIN_NAV_ITEMS[2], accent: "bg-accent-yellow" },
-] as const;
+import { getMainNavItems, isMainNavActive, type MainNavKey } from "@/lib/main-nav";
 
 export function BottomNav() {
   const pathname = usePathname();
+  const navItems = getMainNavItems();
 
   return (
     <nav
@@ -21,16 +16,16 @@ export function BottomNav() {
     >
       <ul className="ui-bottom-nav-list mx-auto flex max-w-lg items-stretch justify-around">
         {navItems.map((item) => {
-          const isActive =
-            pathname === item.href || pathname.startsWith(`${item.href}/`);
+          const isActive = isMainNavActive(pathname, item.key);
 
           return (
-            <li key={item.href} className="flex-1">
+            <li key={item.key} className="flex-1">
               <Link
                 href={item.href}
                 className={`ui-bottom-nav-link relative flex min-h-[3.75rem] flex-col items-center justify-center gap-1 px-2 text-[0.6875rem] font-medium tracking-wide transition-colors ${
                   isActive ? "text-foreground" : "text-muted hover:text-foreground"
                 }`}
+                aria-current={isActive ? "page" : undefined}
               >
                 {isActive ? (
                   <span
@@ -38,7 +33,7 @@ export function BottomNav() {
                     aria-hidden="true"
                   />
                 ) : null}
-                <NavIcon href={item.href} active={isActive} />
+                <NavIcon navKey={item.key} active={isActive} />
                 <span className="ui-bottom-nav-label" dir="auto">
                   {item.label}
                 </span>
@@ -51,11 +46,11 @@ export function BottomNav() {
   );
 }
 
-function NavIcon({ href, active }: { href: string; active: boolean }) {
+function NavIcon({ navKey, active }: { navKey: MainNavKey; active: boolean }) {
   const className = `h-5 w-5 ${active ? "stroke-foreground" : "stroke-muted-light"}`;
 
-  switch (href) {
-    case "/today":
+  switch (navKey) {
+    case "day":
       return (
         <svg
           className={className}
@@ -68,7 +63,7 @@ function NavIcon({ href, active }: { href: string; active: boolean }) {
           <path d="M12 7v5l3 2" />
         </svg>
       );
-    case "/plans":
+    case "week":
       return (
         <svg
           className={className}
@@ -77,10 +72,10 @@ function NavIcon({ href, active }: { href: string; active: boolean }) {
           strokeWidth={1.75}
           aria-hidden="true"
         >
-          <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" />
+          <path d="M4 7h16M4 12h16M4 17h10" />
         </svg>
       );
-    case "/insights":
+    case "month":
       return (
         <svg
           className={className}
@@ -89,7 +84,7 @@ function NavIcon({ href, active }: { href: string; active: boolean }) {
           strokeWidth={1.75}
           aria-hidden="true"
         >
-          <path d="M4 19V5M4 19h16M8 15l3-4 3 2 4-6" />
+          <path d="M7 4v2M17 4v2M5 8h14M6 6h12a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1Z" />
         </svg>
       );
     default:

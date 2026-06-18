@@ -156,6 +156,18 @@ export const ACTION_LABELS = {
     title: "Choose week",
     ariaLabel: "Choose week",
   },
+  previousMonth: {
+    title: "Previous month",
+    ariaLabel: "Previous month",
+  },
+  nextMonth: {
+    title: "Next month",
+    ariaLabel: "Next month",
+  },
+  chooseMonth: {
+    title: "Choose month",
+    ariaLabel: "Choose month",
+  },
   itemStatus: {
     title: "Item status",
     ariaLabel: "Item status",

@@ -35,6 +35,15 @@ export function ProfileMenu({
   const menuId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
   const onSettings = pathname === "/settings" || pathname.startsWith("/settings/");
+  const onPlans =
+    pathname === "/plans" ||
+    pathname.startsWith("/plans/new") ||
+    (pathname.startsWith("/plans/") &&
+      !pathname.startsWith("/plans/day/") &&
+      !pathname.startsWith("/plans/week/") &&
+      !pathname.startsWith("/plans/month/"));
+  const onInsights =
+    pathname === "/insights" || pathname.startsWith("/insights/");
   const onFeedback = pathname === "/feedback" || pathname.startsWith("/feedback/");
   const onAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
   const onTherapyThoughts =
@@ -134,6 +143,32 @@ export function ProfileMenu({
                 <ThemeToggle variant="compact" />
               </div>
             ) : null}
+            <Link
+              href="/plans"
+              role="menuitem"
+              aria-current={onPlans ? "page" : undefined}
+              onClick={() => setOpen(false)}
+              className={`flex min-h-10 items-center rounded-xl px-3 text-sm transition-colors hover:bg-accent-cream ${
+                onPlans
+                  ? "bg-accent-cream/60 font-medium text-foreground"
+                  : "text-foreground"
+              }`}
+            >
+              Plans
+            </Link>
+            <Link
+              href="/insights"
+              role="menuitem"
+              aria-current={onInsights ? "page" : undefined}
+              onClick={() => setOpen(false)}
+              className={`flex min-h-10 items-center rounded-xl px-3 text-sm transition-colors hover:bg-accent-cream ${
+                onInsights
+                  ? "bg-accent-cream/60 font-medium text-foreground"
+                  : "text-foreground"
+              }`}
+            >
+              Insights
+            </Link>
             <Link
               href="/settings"
               role="menuitem"

@@ -35,6 +35,7 @@ import {
 } from "@/lib/plan-item-sections";
 import {
   formatDayPlanTitle,
+  formatMonthPlanTitle,
   formatWeekPlanTitle,
   resolvePlanTitle,
 } from "@/lib/plan-titles";
@@ -231,6 +232,38 @@ export async function getMonthPlan(userId: string, date: Date) {
       items: rootItemsInclude,
     },
   });
+}
+
+export async function getOrCreateMonthPlan(
+  userId: string,
+  date: Date,
+  title?: string,
+) {
+  const existing = await getMonthPlan(userId, date);
+
+  if (existing) {
+    return existing;
+  }
+
+  const { start, end } = getMonthRange(date);
+
+  const plan = await prisma.plan.create({
+    data: {
+      userId,
+      type: PlanTypeEnum.MONTH,
+      title: title ?? formatMonthPlanTitle(date),
+      dateStart: start,
+      dateEnd: end,
+      language: "UNKNOWN",
+    },
+    include: {
+      items: rootItemsInclude,
+    },
+  });
+
+  await touchUserSeen(userId);
+
+  return plan;
 }
 
 export async function getYearPlan(userId: string, date: Date) {

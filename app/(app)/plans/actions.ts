@@ -22,6 +22,7 @@ import { toZonedTime } from "date-fns-tz";
 import { APP_TIMEZONE } from "@/config/time";
 import {
   formatDateString,
+  formatMonthStartString,
   formatWeekStartString,
   getDateRangeForPlanType,
   getMonthRange,
@@ -39,6 +40,7 @@ import {
   getDayPlan,
   getMonthPlan,
   getOrCreateDayPlan,
+  getOrCreateMonthPlan,
   getOrCreateWeekPlan,
   getTodayPlan,
   getWeekPlan,
@@ -105,7 +107,7 @@ async function recordUserActivity(userId: string) {
 
 function revalidatePlanPaths(
   planId: string,
-  options?: { dayDate?: string; weekDate?: string },
+  options?: { dayDate?: string; weekDate?: string; monthDate?: string },
 ) {
   revalidatePath("/today");
   revalidatePath("/plans");
@@ -118,6 +120,9 @@ function revalidatePlanPaths(
   }
   if (options?.weekDate) {
     revalidatePath(`/plans/week/${options.weekDate}`);
+  }
+  if (options?.monthDate) {
+    revalidatePath(`/plans/month/${options.monthDate}`);
   }
 }
 
@@ -132,6 +137,10 @@ function revalidateAfterPlanDelete(plan: {
     weekDate:
       plan.type === "WEEK"
         ? formatWeekStartString(plan.dateStart)
+        : undefined,
+    monthDate:
+      plan.type === "MONTH"
+        ? formatMonthStartString(plan.dateStart)
         : undefined,
   });
 }
@@ -171,6 +180,17 @@ export async function createWeekPlanForDateAction(dateString: string) {
   await recordUserActivity(userId);
   revalidatePlanPaths(plan.id, { weekDate: weekStart });
   redirect(`/plans/week/${weekStart}`);
+}
+
+export async function createMonthPlanForDateAction(dateString: string) {
+  const userId = await requireUserId();
+  const date = parseActionDateString(dateString);
+  const monthStart = formatMonthStartString(date);
+  const plan = await getOrCreateMonthPlan(userId, date);
+
+  await recordUserActivity(userId);
+  revalidatePlanPaths(plan.id, { monthDate: monthStart });
+  redirect(`/plans/month/${monthStart}`);
 }
 
 export async function dayPlanExistsAction(dateString: string): Promise<boolean> {

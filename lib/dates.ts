@@ -1,5 +1,6 @@
 import {
   addDays,
+  addMonths,
   addWeeks,
   endOfDay,
   endOfMonth,
@@ -124,6 +125,35 @@ export function shiftWeekString(dateString: string, weeks: number): string {
     weekStartsOn: WEEK_STARTS_ON,
   });
   return format(addWeeks(weekStart, weeks), "yyyy-MM-dd");
+}
+
+export function formatMonthStartString(date: Date): string {
+  return formatDateString(getMonthRange(date).start);
+}
+
+export function shiftMonthString(dateString: string, months: number): string {
+  const monthStart = formatMonthStartString(parseDateString(dateString));
+  const [year, month, day] = monthStart.split("-").map(Number);
+  return format(addMonths(new Date(year, month - 1, day), months), "yyyy-MM-dd");
+}
+
+/** Page title for week plans, e.g. Week of Jun 9. */
+export function formatWeekPlanPageTitle(weekStart: Date): string {
+  const label = shareDateFormatter({ month: "short", day: "numeric" }).format(
+    weekStart,
+  );
+  return `Week of ${label}`;
+}
+
+/** Compact label for month plan nav center (This month, Jun 2026, …). */
+export function formatMonthNavLabel(monthStartString: string): string {
+  const thisMonthStart = formatMonthStartString(new Date());
+
+  if (monthStartString === thisMonthStart) {
+    return "This month";
+  }
+
+  return formatShareMonthPeriod(parseDateString(monthStartString));
 }
 
 export function getDateRangeForPlanType(
