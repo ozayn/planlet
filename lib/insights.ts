@@ -2,7 +2,6 @@ import type {
   ObservationCategory,
   PlanItemStatus,
   PlanItemType,
-  PriorityLevel,
 } from "@/app/generated/prisma/client";
 
 import { APP_TIMEZONE } from "@/config/time";
@@ -13,6 +12,7 @@ import { getObservationCategoryLabel } from "@/lib/observation-labels";
 import type { UserAccess } from "@/lib/roles";
 import { canUseReflectionFeatures } from "@/lib/roles";
 import { prisma } from "@/lib/prisma";
+import { classifyPriorityQuadrant } from "@/lib/item-priority";
 import { PLAN_ITEM_STATUS_ORDER } from "@/lib/plan-status";
 
 export type MonthlyInsightsTotals = {
@@ -59,48 +59,6 @@ const TYPE_ORDER: PlanItemType[] = [
   "SOCIAL",
   "REST",
 ];
-
-function isHigh(level: PriorityLevel | null | undefined): boolean {
-  return level === "HIGH";
-}
-
-function isLowOrMedium(level: PriorityLevel | null | undefined): boolean {
-  return level === "LOW" || level === "MEDIUM";
-}
-
-/**
- * Simple Eisenhower-style buckets for reflection (not scoring).
- *
- * - Do soon: importance HIGH + urgency HIGH
- * - Protect time: importance HIGH + urgency LOW/MEDIUM/null
- * - Contain: importance LOW/MEDIUM/null + urgency HIGH
- * - Maybe release: both set to LOW or MEDIUM (neither HIGH)
- * - Unclassified: both importance and urgency are null
- */
-export function classifyPriorityQuadrant(item: {
-  importance: PriorityLevel | null;
-  urgency: PriorityLevel | null;
-}): keyof MonthlyInsights["priorityQuadrants"] {
-  const { importance, urgency } = item;
-
-  if (isHigh(importance) && isHigh(urgency)) {
-    return "doSoon";
-  }
-
-  if (isHigh(importance)) {
-    return "protectTime";
-  }
-
-  if (isHigh(urgency)) {
-    return "contain";
-  }
-
-  if (isLowOrMedium(importance) || isLowOrMedium(urgency)) {
-    return "maybeRelease";
-  }
-
-  return "unclassified";
-}
 
 function formatMonthLabel(date: Date): string {
   return new Intl.DateTimeFormat("en", {

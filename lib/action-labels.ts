@@ -192,4 +192,8 @@ export const ACTION_LABELS = {
     title: "Item actions",
     ariaLabel: "Item actions",
   },
+  importanceUrgency: {
+    title: "Importance and urgency",
+    ariaLabel: "Importance and urgency",
+  },
 } as const satisfies Record<string, ActionLabel>;

@@ -21,6 +21,7 @@ import { ItemCommentsButton } from "@/components/plans/item-comments-button";
 import { ItemActionsMenu } from "@/components/plans/item-actions-menu";
 import { ItemDetailsSheet } from "@/components/plans/item-details-sheet";
 import { InlineItemTitle } from "@/components/plans/inline-item-title";
+import { ItemPriorityButton } from "@/components/plans/item-priority-button";
 import { StatusButton } from "@/components/plans/status-button";
 import { GripVerticalIcon } from "@/components/ui/action-icons";
 import { ACTION_LABELS } from "@/lib/action-labels";
@@ -137,10 +138,6 @@ export function PlanItemCard({
     mobileMetaParts.push(timeHintLabel);
   }
 
-  if (item.importance === "HIGH" || item.urgency === "HIGH") {
-    mobileMetaParts.push("High priority");
-  }
-
   if (subtaskCount > 0) {
     mobileMetaParts.push(
       `${subtaskCount} subtask${subtaskCount === 1 ? "" : "s"}`,
@@ -246,6 +243,15 @@ export function PlanItemCard({
             </div>
 
             <div className="ui-item-card-actions ui-plan-item-actions flex shrink-0 items-center gap-0.5">
+              {item.type === "TASK" ? (
+                <ItemPriorityButton
+                  planId={planId}
+                  itemId={item.id}
+                  importance={item.importance}
+                  urgency={item.urgency}
+                  canEdit={canEdit}
+                />
+              ) : null}
               {canEdit ? (
                 <>
                   <button

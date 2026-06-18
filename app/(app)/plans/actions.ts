@@ -402,6 +402,25 @@ export async function updatePlanItemAction(
   revalidatePlanPaths(planId);
 }
 
+export async function updatePlanItemImportanceUrgencyAction(input: {
+  planId: string;
+  itemId: string;
+  importance: UpdatePlanItemInput["importance"];
+  urgency: UpdatePlanItemInput["urgency"];
+}) {
+  const userId = await requireUserId();
+
+  await updatePlanItem({
+    userId,
+    itemId: input.itemId,
+    importance: input.importance ?? null,
+    urgency: input.urgency ?? null,
+  });
+
+  await recordUserActivity(userId);
+  revalidatePlanPaths(input.planId);
+}
+
 export async function updatePlanItemStatusAction(input: {
   planId: string;
   itemId: string;

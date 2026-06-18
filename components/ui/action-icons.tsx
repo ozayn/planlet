@@ -379,6 +379,27 @@ export function SparklesIcon({ className }: IconProps) {
   );
 }
 
+/** Lucide-equivalent: Flag */
+export function FlagIcon({ className }: IconProps) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth={1.75}
+      stroke="currentColor"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"
+      />
+      <path strokeLinecap="round" d="M4 22v-7" />
+    </svg>
+  );
+}
+
 /** Lucide-equivalent: FileText */
 export function FileTextIcon({ className }: IconProps) {
   return (
