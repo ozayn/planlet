@@ -20,11 +20,11 @@ function BreakdownGroup({
   }
 
   return (
-    <div className="ui-insights-breakdown-group">
-      <h3 className="ui-insights-breakdown-label">{title}</h3>
-      <ul className="ui-insights-breakdown-list">
+    <div className="ui-insights-subsection">
+      <h3 className="ui-insights-subheading">{title}</h3>
+      <ul className="ui-insights-compact-list">
         {rows.map((row) => (
-          <li key={row.label} className="ui-insights-breakdown-row">
+          <li key={row.label} className="ui-insights-compact-row">
             <span className="min-w-0 truncate text-foreground" dir="auto">
               {row.label}
             </span>
@@ -43,11 +43,9 @@ export function InsightsBreakdown({ types, statuses }: InsightsBreakdownProps) {
 
   return (
     <section className="ui-insights-section">
-      <h2 className="ui-insights-section-title">Breakdown</h2>
-      <div className="ui-insights-breakdown rounded-lg border border-border-soft/80 bg-surface/60 px-3 py-2.5">
-        <BreakdownGroup title="Types" rows={types} />
-        <BreakdownGroup title="Status" rows={statuses} />
-      </div>
+      <h2 className="ui-insights-heading">Patterns</h2>
+      <BreakdownGroup title="Types" rows={types} />
+      <BreakdownGroup title="Status" rows={statuses} />
     </section>
   );
 }

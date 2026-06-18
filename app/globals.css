@@ -535,6 +535,23 @@ body {
     padding-bottom: 0.5rem;
   }
 
+  .ui-insights-divider {
+    border: 0;
+    border-top: 1px solid var(--border-soft);
+  }
+
+  .ui-insights-heading {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--foreground);
+  }
+
+  .ui-insights-subheading {
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: var(--muted);
+  }
+
   .ui-insights-section-title {
     font-size: 0.6875rem;
     font-weight: 600;
@@ -546,7 +563,68 @@ body {
   .ui-insights-section {
     display: flex;
     flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .ui-insights-subsection {
+    display: flex;
+    flex-direction: column;
     gap: 0.375rem;
+  }
+
+  .ui-insights-bullet-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+    padding-inline-start: 0;
+    list-style: none;
+  }
+
+  .ui-insights-bullet-item {
+    position: relative;
+    padding-inline-start: 1rem;
+    font-size: 0.875rem;
+    line-height: 1.45;
+    color: var(--foreground);
+  }
+
+  .ui-insights-bullet-item::before {
+    content: "•";
+    position: absolute;
+    inset-inline-start: 0;
+    color: var(--muted-light);
+  }
+
+  .ui-insights-compact-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .ui-insights-compact-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-size: 0.8125rem;
+    line-height: 1.35;
+  }
+
+  .ui-insights-progress-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem 0.75rem;
+  }
+
+  .ui-insights-progress-row {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.25rem;
+    border-radius: 9999px;
+    border: 1px solid var(--border-soft);
+    padding: 0.125rem 0.625rem;
+    font-size: 0.8125rem;
+    line-height: 1.35;
   }
 
   .ui-insights-period-links {
@@ -619,10 +697,6 @@ body {
     display: flex;
     flex-direction: column;
     gap: 0.25rem;
-    border-radius: 0.5rem;
-    border: 1px solid var(--border-soft);
-    background: var(--surface);
-    padding: 0.5rem 0.75rem;
   }
 
   .ui-insights-intention-row {

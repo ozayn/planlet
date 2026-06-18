@@ -10,7 +10,10 @@ import { isActionableItemType } from "@/lib/plan-item-sections";
 import { OBSERVATION_CATEGORIES } from "@/lib/observation-constants";
 import { getObservationCategoryLabel } from "@/lib/observation-labels";
 import type { UserAccess } from "@/lib/roles";
-import { canUseReflectionFeatures } from "@/lib/roles";
+import {
+  canUseReflectionFeatures,
+  canUseTherapyThoughts,
+} from "@/lib/roles";
 import { prisma } from "@/lib/prisma";
 import { classifyPriorityQuadrant } from "@/lib/item-priority";
 import { PLAN_ITEM_STATUS_ORDER } from "@/lib/plan-status";
@@ -23,11 +26,23 @@ export type MonthlyInsightsTotals = {
   intentions: number;
   done: number;
   partial: number;
+  notDone: number;
   moved: number;
   skipped: number;
   released: number;
   open: number;
   observations: number;
+};
+
+export type MonthlyInsightsObservation = {
+  body: string;
+  category: ObservationCategory;
+  label: string;
+};
+
+export type MonthlyInsightsTherapyThoughts = {
+  count: number;
+  recent: Array<{ id: string; body: string }>;
 };
 
 export type MonthlyInsights = {
@@ -45,6 +60,8 @@ export type MonthlyInsights = {
   intentions: Array<{ title: string; count: number }>;
   oftenMovedTypes: Array<{ type: PlanItemType; count: number }>;
   observationCategories: Array<{ category: ObservationCategory; label: string; count: number }>;
+  recentObservations: MonthlyInsightsObservation[];
+  therapyThoughts: MonthlyInsightsTherapyThoughts | null;
 };
 
 const STATUS_ORDER = PLAN_ITEM_STATUS_ORDER;
@@ -92,8 +109,9 @@ export async function getMonthlyInsights(
 ): Promise<MonthlyInsights> {
   const { start, end } = getMonthRange(date);
   const canReflect = canUseReflectionFeatures(access ?? {});
+  const canTherapy = canUseTherapyThoughts(access ?? {});
 
-  const [plans, observations] = await Promise.all([
+  const [plans, observations, therapyThoughts] = await Promise.all([
     prisma.plan.findMany({
       where: {
         userId,
@@ -110,7 +128,19 @@ export async function getMonthlyInsights(
             userId,
             createdAt: { gte: start, lte: end },
           },
-          select: { category: true },
+          select: { category: true, body: true, createdAt: true },
+          orderBy: { createdAt: "desc" },
+        })
+      : Promise.resolve([]),
+    canTherapy
+      ? prisma.therapyThought.findMany({
+          where: {
+            userId,
+            createdAt: { gte: start, lte: end },
+            plan: { type: "DAY" },
+          },
+          select: { id: true, body: true, createdAt: true },
+          orderBy: { createdAt: "desc" },
         })
       : Promise.resolve([]),
   ]);
@@ -195,6 +225,32 @@ export async function getMonthlyInsights(
     ];
   });
 
+  const recentObservations = observations
+    .map((observation) => {
+      const body = observation.body.trim();
+      if (!body) {
+        return null;
+      }
+
+      return {
+        body,
+        category: observation.category,
+        label: getObservationCategoryLabel(observation.category),
+      };
+    })
+    .filter((entry): entry is MonthlyInsightsObservation => entry !== null)
+    .slice(0, 5);
+
+  const therapyThoughtsSummary = canTherapy
+    ? {
+        count: therapyThoughts.length,
+        recent: therapyThoughts.slice(0, 5).map((thought) => ({
+          id: thought.id,
+          body: thought.body.trim(),
+        })),
+      }
+    : null;
+
   return {
     dateLabel: formatMonthLabel(date),
     totals: {
@@ -205,6 +261,7 @@ export async function getMonthlyInsights(
       intentions: intentionCount,
       done: statusCounts.get("DONE") ?? 0,
       partial: statusCounts.get("PARTIAL") ?? 0,
+      notDone: statusCounts.get("NOT_DONE") ?? 0,
       moved: statusCounts.get("MOVED") ?? 0,
       skipped: statusCounts.get("SKIPPED") ?? 0,
       released: statusCounts.get("RELEASED") ?? 0,
@@ -225,5 +282,7 @@ export async function getMonthlyInsights(
     intentions,
     oftenMovedTypes,
     observationCategories,
+    recentObservations,
+    therapyThoughts: therapyThoughtsSummary,
   };
 }

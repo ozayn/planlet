@@ -6,7 +6,7 @@ import { PlansEmptyState } from "@/components/plans/plans-empty-state";
 import { SharedPlanList } from "@/components/plans/shared-plan-list";
 import { PageHeader } from "@/components/page-header";
 import { getSharedPlansForUser } from "@/lib/plan-sharing";
-import { getPlansByType } from "@/lib/plans";
+import { getRecentPlansForList } from "@/lib/plans";
 
 export default async function PlansPage() {
   const session = await auth();
@@ -17,7 +17,7 @@ export default async function PlansPage() {
   }
 
   const [plans, sharedPlans] = await Promise.all([
-    getPlansByType(userId),
+    getRecentPlansForList(userId),
     getSharedPlansForUser(userId),
   ]);
   const hasPlans = plans.length > 0;

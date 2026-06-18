@@ -18,19 +18,19 @@ export function InsightsPeriodLinks({
   ] as const;
 
   return (
-    <nav className="ui-insights-period-links" aria-label="Period summaries">
-      <p className="ui-insights-period-links-label">Summaries</p>
-      <div className="flex flex-wrap gap-1.5">
-        {links.map((link) => (
-          <Link
-            key={link.href}
-            href={link.href}
-            className="ui-insights-period-chip"
-          >
-            {link.label}
-          </Link>
-        ))}
-      </div>
+    <nav
+      className="ui-insights-period-links flex flex-wrap gap-1.5"
+      aria-label="Period summaries"
+    >
+      {links.map((link) => (
+        <Link
+          key={link.href}
+          href={link.href}
+          className="ui-insights-period-chip"
+        >
+          {link.label}
+        </Link>
+      ))}
     </nav>
   );
 }

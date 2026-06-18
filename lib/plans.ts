@@ -349,6 +349,22 @@ export async function getPlanWithItems(planId: string, userId: string) {
   });
 }
 
+export const PLANS_LIST_FETCH_LIMIT = 100;
+
+export async function getRecentPlansForList(
+  userId: string,
+  limit = PLANS_LIST_FETCH_LIMIT,
+) {
+  return prisma.plan.findMany({
+    where: { userId },
+    orderBy: { updatedAt: "desc" },
+    take: limit,
+    include: {
+      _count: { select: { items: true } },
+    },
+  });
+}
+
 export async function getPlansByType(userId: string, type?: PlanType) {
   return prisma.plan.findMany({
     where: {

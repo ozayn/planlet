@@ -17,9 +17,9 @@ function QuadrantRows({
   quadrants: MonthlyInsights["priorityQuadrants"];
 }) {
   return (
-    <ul className="ui-insights-breakdown-list mt-2">
+    <ul className="ui-insights-compact-list">
       {QUADRANTS.map((quadrant) => (
-        <li key={quadrant.key} className="ui-insights-breakdown-row">
+        <li key={quadrant.key} className="ui-insights-compact-row">
           <span className="text-foreground">{quadrant.title}</span>
           <span className="tabular-nums text-muted">
             {quadrants[quadrant.key]}
@@ -28,18 +28,6 @@ function QuadrantRows({
       ))}
     </ul>
   );
-}
-
-function unclassifiedLabel(count: number): string {
-  if (count === 0) {
-    return "No items were labeled by importance or urgency.";
-  }
-
-  if (count === 1) {
-    return "1 item was not labeled by importance or urgency.";
-  }
-
-  return `${count} items were not labeled by importance or urgency.`;
 }
 
 export function PriorityMatrix({ quadrants }: PriorityMatrixProps) {
@@ -52,11 +40,11 @@ export function PriorityMatrix({ quadrants }: PriorityMatrixProps) {
   if (classified === 0) {
     return (
       <section className="ui-insights-section">
-        <h2 className="ui-insights-section-title">Priority</h2>
+        <h2 className="ui-insights-heading">Priority</h2>
         <p className="text-sm text-muted">
-          {unclassifiedLabel(quadrants.unclassified)}
+          You haven&apos;t been using priority labels much yet.
         </p>
-        <details className="ui-insights-priority-details mt-2">
+        <details className="ui-insights-priority-details mt-1">
           <summary className="text-sm text-muted-light">
             Show priority map
           </summary>
@@ -71,16 +59,16 @@ export function PriorityMatrix({ quadrants }: PriorityMatrixProps) {
 
   return (
     <section className="ui-insights-section">
-      <h2 className="ui-insights-section-title">Priority</h2>
+      <h2 className="ui-insights-heading">Priority</h2>
       <p className="text-xs text-muted-light">
         Based on importance and urgency labels.
       </p>
-      <div className="ui-insights-breakdown mt-2 rounded-lg border border-border-soft/80 bg-surface/60 px-3 py-2.5">
-        <QuadrantRows quadrants={quadrants} />
-      </div>
+      <QuadrantRows quadrants={quadrants} />
       {quadrants.unclassified > 0 ? (
-        <p className="mt-2 text-sm text-muted">
-          {unclassifiedLabel(quadrants.unclassified)}
+        <p className="text-sm text-muted">
+          {quadrants.unclassified === 1
+            ? "1 item without priority labels."
+            : `${quadrants.unclassified} items without priority labels.`}
         </p>
       ) : null}
     </section>

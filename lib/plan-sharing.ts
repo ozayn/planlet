@@ -285,8 +285,11 @@ export type SharedPlanEntry = {
   ownerEmail: string | null;
 };
 
+export const SHARED_PLANS_LIST_FETCH_LIMIT = 100;
+
 export async function getSharedPlansForUser(
   userId: string,
+  limit = SHARED_PLANS_LIST_FETCH_LIMIT,
 ): Promise<SharedPlanEntry[]> {
   const shares = await prisma.planShare.findMany({
     where: { sharedWithUserId: userId },
@@ -300,7 +303,8 @@ export async function getSharedPlansForUser(
         select: { name: true, email: true },
       },
     },
-    orderBy: { createdAt: "desc" },
+    orderBy: { plan: { updatedAt: "desc" } },
+    take: limit,
   });
 
   return shares.map((share) => ({
