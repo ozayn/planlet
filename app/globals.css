@@ -321,6 +321,48 @@ body {
     box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--focus-ring);
   }
 
+  .ui-profile-menu-section + .ui-profile-menu-section {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+    border-top: 1px solid var(--border-soft);
+  }
+
+  .ui-profile-menu-section-label {
+    padding: 0.125rem 0.75rem 0.25rem;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted-light);
+  }
+
+  .ui-profile-menu-sign-out {
+    display: flex;
+    width: 100%;
+    min-height: 2.5rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem;
+    border: 1px solid var(--border-soft);
+    padding-inline: 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--muted);
+    background: transparent;
+    transition: color 0.15s, border-color 0.15s, background-color 0.15s;
+  }
+
+  .ui-profile-menu-sign-out:hover {
+    border-color: var(--border);
+    background: color-mix(in srgb, var(--accent-cream) 35%, transparent);
+    color: var(--foreground);
+  }
+
+  .ui-profile-menu-sign-out:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--focus-ring);
+  }
+
   .ui-settings-row-block {
     display: flex;
     flex-direction: column;

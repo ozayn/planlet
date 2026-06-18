@@ -37,7 +37,7 @@ export default async function AppLayout({
         isAdmin={isAdminRole(session?.user?.role)}
         canGiveFeedback={canGiveFeedback(session?.user ?? {})}
         canUseTherapyThoughts={canUseTherapyThoughts(session?.user ?? {})}
-        signOutButton={<SignOutButton />}
+        signOutButton={<SignOutButton variant="quiet" className="ui-profile-menu-sign-out" />}
         unreadNotificationCount={unreadNotificationCount}
         notifications={serializedNotifications}
       />
@@ -48,7 +48,7 @@ export default async function AppLayout({
         isAdmin={isAdminRole(session?.user?.role)}
         canGiveFeedback={canGiveFeedback(session?.user ?? {})}
         canUseTherapyThoughts={canUseTherapyThoughts(session?.user ?? {})}
-        signOutButton={<SignOutButton />}
+        signOutButton={<SignOutButton variant="quiet" className="ui-profile-menu-sign-out" />}
         unreadNotificationCount={unreadNotificationCount}
         notifications={serializedNotifications}
       />

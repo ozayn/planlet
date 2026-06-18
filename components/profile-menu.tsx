@@ -2,11 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 import { ExternalLinkIcon, HeartIcon } from "@/components/ui/action-icons";
 import { UserAvatar } from "@/components/user-avatar";
+import {
+  canShowFeedbackInProfileMenu,
+  canShowInsightsInProfileMenu,
+  canShowTherapyReviewInProfileMenu,
+} from "@/lib/profile-menu";
 
 type ProfileMenuProps = {
   name?: string | null;
@@ -19,6 +24,34 @@ type ProfileMenuProps = {
   compact?: boolean;
   showThemeInMenu?: boolean;
 };
+
+type ProfileMenuSectionConfig = {
+  title: string;
+  items: ReactNode[];
+};
+
+function menuItemClass(active: boolean): string {
+  return `flex min-h-10 items-center rounded-xl px-3 text-sm transition-colors hover:bg-accent-cream ${
+    active
+      ? "bg-accent-cream/60 font-medium text-foreground"
+      : "text-foreground"
+  }`;
+}
+
+function ProfileMenuSection({ title, items }: ProfileMenuSectionConfig) {
+  const visibleItems = items.filter(Boolean);
+
+  if (visibleItems.length === 0) {
+    return null;
+  }
+
+  return (
+    <section className="ui-profile-menu-section">
+      <p className="ui-profile-menu-section-label">{title}</p>
+      <div className="space-y-0.5">{visibleItems}</div>
+    </section>
+  );
+}
 
 export function ProfileMenu({
   name,
@@ -51,11 +84,20 @@ export function ProfileMenu({
   const onTherapyThoughts =
     pathname === "/therapy-thoughts" ||
     pathname.startsWith("/therapy-thoughts/");
+  const onTherapyReview =
+    pathname === "/therapy-review" ||
+    pathname.startsWith("/therapy-review/");
   const feedbackHref =
     pathname && pathname !== "/feedback"
       ? `/feedback?from=${encodeURIComponent(pathname)}`
       : "/feedback";
   const supportUrl = process.env.NEXT_PUBLIC_STRIPE_SUPPORT_URL?.trim();
+
+  const access = {
+    canGiveFeedback,
+    canUseTherapyThoughts,
+    isAdmin,
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -85,6 +127,143 @@ export function ProfileMenu({
   }, [open]);
 
   const displayName = name?.trim() || email?.trim() || "Account";
+
+  function closeMenu() {
+    setOpen(false);
+  }
+
+  const planningItems: ReactNode[] = [
+    <Link
+      key="plans"
+      href="/plans"
+      role="menuitem"
+      aria-current={onPlans ? "page" : undefined}
+      onClick={closeMenu}
+      className={menuItemClass(onPlans)}
+    >
+      Plans
+    </Link>,
+    canShowInsightsInProfileMenu() ? (
+      <Link
+        key="insights"
+        href="/insights"
+        role="menuitem"
+        aria-current={onInsights ? "page" : undefined}
+        onClick={closeMenu}
+        className={menuItemClass(onInsights)}
+      >
+        Insights
+      </Link>
+    ) : null,
+  ];
+
+  const reflectionItems: ReactNode[] = [
+    canUseTherapyThoughts ? (
+      <Link
+        key="therapy-thoughts"
+        href="/therapy-thoughts"
+        role="menuitem"
+        aria-current={onTherapyThoughts ? "page" : undefined}
+        onClick={closeMenu}
+        className={menuItemClass(onTherapyThoughts)}
+      >
+        Therapy thoughts
+      </Link>
+    ) : null,
+    canShowTherapyReviewInProfileMenu(access) ? (
+      <Link
+        key="therapy-review"
+        href="/therapy-review"
+        role="menuitem"
+        aria-current={onTherapyReview ? "page" : undefined}
+        onClick={closeMenu}
+        className={menuItemClass(onTherapyReview)}
+      >
+        Therapy review
+      </Link>
+    ) : null,
+  ];
+
+  const appItems: ReactNode[] = [
+    showThemeInMenu ? (
+      <div
+        key="appearance"
+        role="menuitem"
+        className="flex min-h-10 items-center justify-between gap-3 rounded-xl px-3"
+      >
+        <span className="text-sm text-foreground">Appearance</span>
+        <ThemeToggle variant="compact" />
+      </div>
+    ) : null,
+    <Link
+      key="settings"
+      href="/settings"
+      role="menuitem"
+      aria-current={onSettings ? "page" : undefined}
+      onClick={closeMenu}
+      className={menuItemClass(onSettings)}
+    >
+      Settings
+    </Link>,
+    canShowFeedbackInProfileMenu(access) ? (
+      <Link
+        key="feedback"
+        href={feedbackHref}
+        role="menuitem"
+        aria-current={onFeedback ? "page" : undefined}
+        onClick={closeMenu}
+        className={menuItemClass(onFeedback)}
+      >
+        Feedback
+      </Link>
+    ) : null,
+    isAdmin ? (
+      <Link
+        key="admin"
+        href="/admin"
+        role="menuitem"
+        aria-current={onAdmin ? "page" : undefined}
+        onClick={closeMenu}
+        className={menuItemClass(onAdmin)}
+      >
+        Admin
+      </Link>
+    ) : null,
+  ];
+
+  const supportItems: ReactNode[] = supportUrl
+    ? [
+        <a
+          key="support"
+          href={supportUrl}
+          role="menuitem"
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={closeMenu}
+          className={`${menuItemClass(false)} gap-2`}
+        >
+          <HeartIcon className="h-4 w-4 shrink-0 text-muted" />
+          <span className="min-w-0 flex-1">Support Planlet</span>
+          <ExternalLinkIcon className="h-3.5 w-3.5 shrink-0 text-muted-light" />
+        </a>,
+      ]
+    : [];
+
+  const accountItems: ReactNode[] = [
+    <div key="sign-out" role="menuitem" className="px-0.5 pt-0.5">
+      <div className="[&_button]:ui-profile-menu-sign-out [&_form]:w-full">
+        {signOutButton}
+      </div>
+    </div>,
+  ];
+
+  const sections: ProfileMenuSectionConfig[] = [
+    { title: "Planning", items: planningItems },
+    { title: "Reflection", items: reflectionItems },
+    { title: "App", items: appItems },
+    { title: "Support", items: supportItems },
+    { title: "Account", items: accountItems },
+  ];
 
   return (
     <div ref={containerRef} className="relative">
@@ -136,119 +315,14 @@ export function ProfileMenu({
             </div>
           </div>
 
-          <div className="space-y-1 p-1">
-            {showThemeInMenu ? (
-              <div
-                role="menuitem"
-                className="flex min-h-10 items-center justify-between gap-3 rounded-xl px-3"
-              >
-                <span className="text-sm text-foreground">Appearance</span>
-                <ThemeToggle variant="compact" />
-              </div>
-            ) : null}
-            <Link
-              href="/plans"
-              role="menuitem"
-              aria-current={onPlans ? "page" : undefined}
-              onClick={() => setOpen(false)}
-              className={`flex min-h-10 items-center rounded-xl px-3 text-sm transition-colors hover:bg-accent-cream ${
-                onPlans
-                  ? "bg-accent-cream/60 font-medium text-foreground"
-                  : "text-foreground"
-              }`}
-            >
-              Plans
-            </Link>
-            <Link
-              href="/insights"
-              role="menuitem"
-              aria-current={onInsights ? "page" : undefined}
-              onClick={() => setOpen(false)}
-              className={`flex min-h-10 items-center rounded-xl px-3 text-sm transition-colors hover:bg-accent-cream ${
-                onInsights
-                  ? "bg-accent-cream/60 font-medium text-foreground"
-                  : "text-foreground"
-              }`}
-            >
-              Insights
-            </Link>
-            <Link
-              href="/settings"
-              role="menuitem"
-              aria-current={onSettings ? "page" : undefined}
-              onClick={() => setOpen(false)}
-              className={`flex min-h-10 items-center rounded-xl px-3 text-sm transition-colors hover:bg-accent-cream ${
-                onSettings
-                  ? "bg-accent-cream/60 font-medium text-foreground"
-                  : "text-foreground"
-              }`}
-            >
-              Settings
-            </Link>
-            {canGiveFeedback ? (
-              <Link
-                href={feedbackHref}
-                role="menuitem"
-                aria-current={onFeedback ? "page" : undefined}
-                onClick={() => setOpen(false)}
-                className={`flex min-h-10 items-center rounded-xl px-3 text-sm transition-colors hover:bg-accent-cream ${
-                  onFeedback
-                    ? "bg-accent-cream/60 font-medium text-foreground"
-                    : "text-foreground"
-                }`}
-              >
-                Feedback
-              </Link>
-            ) : null}
-            {canUseTherapyThoughts ? (
-              <Link
-                href="/therapy-thoughts"
-                role="menuitem"
-                aria-current={onTherapyThoughts ? "page" : undefined}
-                onClick={() => setOpen(false)}
-                className={`flex min-h-10 items-center rounded-xl px-3 text-sm transition-colors hover:bg-accent-cream ${
-                  onTherapyThoughts
-                    ? "bg-accent-cream/60 font-medium text-foreground"
-                    : "text-foreground"
-                }`}
-              >
-                Therapy thoughts
-              </Link>
-            ) : null}
-            {isAdmin ? (
-              <Link
-                href="/admin"
-                role="menuitem"
-                aria-current={onAdmin ? "page" : undefined}
-                onClick={() => setOpen(false)}
-                className={`flex min-h-10 items-center rounded-xl px-3 text-sm transition-colors hover:bg-accent-cream ${
-                  onAdmin
-                    ? "bg-accent-cream/60 font-medium text-foreground"
-                    : "text-foreground"
-                }`}
-              >
-                Admin
-              </Link>
-            ) : null}
-            {supportUrl ? (
-              <a
-                href={supportUrl}
-                role="menuitem"
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setOpen(false)}
-                className="flex min-h-10 items-center gap-2 rounded-xl px-3 text-sm text-foreground transition-colors hover:bg-accent-cream"
-              >
-                <HeartIcon className="h-4 w-4 shrink-0 text-muted" />
-                <span className="min-w-0 flex-1">Support Planlet</span>
-                <ExternalLinkIcon className="h-3.5 w-3.5 shrink-0 text-muted-light" />
-              </a>
-            ) : null}
-            <div role="menuitem" className="px-1">
-              <div className="[&_button]:w-full [&_button]:justify-start">
-                {signOutButton}
-              </div>
-            </div>
+          <div className="p-1">
+            {sections.map((section) => (
+              <ProfileMenuSection
+                key={section.title}
+                title={section.title}
+                items={section.items}
+              />
+            ))}
           </div>
         </div>
       ) : null}
