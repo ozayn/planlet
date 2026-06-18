@@ -6,15 +6,16 @@ import { useState, useTransition } from "react";
 import { generateCoachingReflectionAction } from "@/app/(app)/insights/actions";
 import {
   formatReflectionInfluenceLabels,
-  type ReflectionInfluenceId,
+  getAllSelectedInfluenceIds,
+  type ReflectionInfluencePreferences,
 } from "@/lib/reflection-influences";
 
 type InsightsReflectionLensProps = {
-  selectedInfluences: ReflectionInfluenceId[];
+  preferences: ReflectionInfluencePreferences;
 };
 
 export function InsightsReflectionLens({
-  selectedInfluences,
+  preferences,
 }: InsightsReflectionLensProps) {
   const [error, setError] = useState<string | null>(null);
   const [reflection, setReflection] = useState<string | null>(null);
@@ -22,7 +23,8 @@ export function InsightsReflectionLens({
   const [experiment, setExperiment] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  const hasInfluences = selectedInfluences.length > 0;
+  const selectedCount = getAllSelectedInfluenceIds(preferences).length;
+  const hasInfluences = selectedCount > 0;
 
   function handleGenerate() {
     setError(null);
@@ -51,7 +53,7 @@ export function InsightsReflectionLens({
         <p className="text-sm text-muted">
           Selected influences:{" "}
           <span className="text-foreground">
-            {formatReflectionInfluenceLabels(selectedInfluences)}
+            {formatReflectionInfluenceLabels(preferences)}
           </span>
         </p>
       ) : (
@@ -107,7 +109,7 @@ export function InsightsReflectionLens({
             </div>
           ) : null}
           <p className="text-xs text-muted-light">
-            This is a reflective prompt, not therapy or medical advice.
+            AI-generated reflection. Not therapy, coaching, or medical advice.
           </p>
         </div>
       ) : null}

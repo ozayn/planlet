@@ -15,7 +15,7 @@ import {
   formatWeekStartString,
 } from "@/lib/dates";
 import { getMonthlyInsights } from "@/lib/insights";
-import { getReflectionInfluenceIdsForUser } from "@/lib/reflection-influence-preferences";
+import { getReflectionInfluencePreferencesForUser } from "@/lib/reflection-influence-preferences";
 import {
   canUseCoachingFeatures,
   canUseReflectionFeatures,
@@ -34,9 +34,9 @@ export default async function InsightsPage() {
   const insights = await getMonthlyInsights(userId, new Date(), session.user);
   const showReflection = canUseReflectionFeatures(session.user);
   const showCoaching = canUseCoachingFeatures(session.user);
-  const selectedInfluences = showCoaching
-    ? await getReflectionInfluenceIdsForUser(userId, session.user)
-    : [];
+  const reflectionPreferences = showCoaching
+    ? await getReflectionInfluencePreferencesForUser(userId, session.user)
+    : { primary: [], secondary: [] };
   const isEmpty = insights.totals.plans === 0 && insights.totals.items === 0;
   const now = new Date();
   const summaryDate = formatDateString(now);
@@ -111,7 +111,7 @@ export default async function InsightsPage() {
       {showCoaching ? (
         <>
           {!isEmpty ? <hr className="ui-insights-divider" /> : null}
-          <InsightsReflectionLens selectedInfluences={selectedInfluences} />
+          <InsightsReflectionLens preferences={reflectionPreferences} />
         </>
       ) : null}
     </section>

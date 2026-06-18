@@ -6,26 +6,29 @@ import {
 } from "@/lib/ai/coaching-reflection-schema";
 import { DEFAULT_PARSE_MODEL, getOpenAIClient } from "@/lib/ai/openai-client";
 import { parseModelJsonResponse } from "@/lib/ai/parse-model-json";
-import { buildReflectionInfluencePromptSection } from "@/lib/reflection-influences";
-import type { ReflectionInfluenceId } from "@/lib/reflection-influences";
+import {
+  buildReflectionInfluencePromptSection,
+  getAllSelectedInfluenceIds,
+  type ReflectionInfluencePreferences,
+} from "@/lib/reflection-influences";
 import { getPlanletAiProvider, getAnthropicModel } from "@/lib/env";
 
 type GenerateCoachingReflectionInput = {
   context: string;
-  influenceIds: ReflectionInfluenceId[];
+  preferences: ReflectionInfluencePreferences;
 };
 
 function buildUserPrompt(input: GenerateCoachingReflectionInput): string {
   const influenceSection = buildReflectionInfluencePromptSection(
-    input.influenceIds,
+    input.preferences,
   );
 
   return [
     influenceSection,
-    "Here is the user's month in their own words and counts:",
+    "Here is the user's planning activity in their own words and counts:",
     input.context,
     "",
-    "Write one reflection, one question, and one small experiment.",
+    "Write one reflection (150–300 words), one question, and one small experiment.",
   ]
     .filter(Boolean)
     .join("\n\n");
@@ -59,7 +62,7 @@ async function generateWithAnthropic(
   const anthropic = getAnthropicClient();
   const response = await anthropic.messages.create({
     model: getAnthropicModel(),
-    max_tokens: 1024,
+    max_tokens: 2048,
     temperature: 0.5,
     system: COACHING_REFLECTION_SYSTEM_PROMPT,
     messages: [{ role: "user", content: buildUserPrompt(input) }],
@@ -81,7 +84,7 @@ async function generateWithAnthropic(
 export async function generateCoachingReflection(
   input: GenerateCoachingReflectionInput,
 ): Promise<CoachingReflection> {
-  if (input.influenceIds.length === 0) {
+  if (getAllSelectedInfluenceIds(input.preferences).length === 0) {
     throw new Error("Choose at least one reflection influence in Settings.");
   }
 

@@ -7,12 +7,13 @@ import { buildCoachingReflectionContext } from "@/lib/coaching-reflection-contex
 import { generateCoachingReflection } from "@/lib/ai/generate-coaching-reflection";
 import { isTextParserConfigured } from "@/lib/env";
 import {
-  getReflectionInfluenceIdsForUser,
-  saveReflectionInfluenceIdsForUser,
+  getReflectionInfluencePreferencesForUser,
+  saveReflectionInfluencePreferencesForUser,
 } from "@/lib/reflection-influence-preferences";
 import {
-  reflectionInfluenceIdsSchema,
-  type ReflectionInfluenceId,
+  reflectionInfluencePreferencesSchema,
+  getAllSelectedInfluenceIds,
+  type ReflectionInfluencePreferences,
 } from "@/lib/reflection-influences";
 import { canUseCoachingFeatures } from "@/lib/roles";
 
@@ -39,17 +40,17 @@ async function requireCoachingSession() {
 }
 
 export async function saveReflectionInfluencesAction(
-  influences: ReflectionInfluenceId[],
+  preferences: ReflectionInfluencePreferences,
 ): Promise<CoachingActionResult> {
   try {
     const session = await requireCoachingSession();
-    const parsed = reflectionInfluenceIdsSchema.safeParse(influences);
+    const parsed = reflectionInfluencePreferencesSchema.safeParse(preferences);
 
     if (!parsed.success) {
       return { success: false, error: "Invalid reflection influences." };
     }
 
-    await saveReflectionInfluenceIdsForUser(
+    await saveReflectionInfluencePreferencesForUser(
       session.user.id,
       session.user,
       parsed.data,
@@ -79,12 +80,12 @@ export async function generateCoachingReflectionAction(): Promise<GenerateCoachi
       };
     }
 
-    const influenceIds = await getReflectionInfluenceIdsForUser(
+    const preferences = await getReflectionInfluencePreferencesForUser(
       session.user.id,
       session.user,
     );
 
-    if (influenceIds.length === 0) {
+    if (getAllSelectedInfluenceIds(preferences).length === 0) {
       return {
         success: false,
         error: "Choose reflection influences in Settings first.",
@@ -97,7 +98,7 @@ export async function generateCoachingReflectionAction(): Promise<GenerateCoachi
     );
     const result = await generateCoachingReflection({
       context,
-      influenceIds,
+      preferences,
     });
 
     return {

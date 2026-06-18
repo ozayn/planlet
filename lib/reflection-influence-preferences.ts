@@ -1,6 +1,8 @@
 import {
-  normalizeReflectionInfluenceIds,
+  getAllSelectedInfluenceIds,
+  normalizeReflectionInfluencePreferences,
   type ReflectionInfluenceId,
+  type ReflectionInfluencePreferences,
 } from "@/lib/reflection-influences";
 import { canUseCoachingFeatures, type UserAccess } from "@/lib/roles";
 import { prisma } from "@/lib/prisma";
@@ -11,10 +13,10 @@ export async function requireCoachingAccess(access: UserAccess): Promise<void> {
   }
 }
 
-export async function getReflectionInfluenceIdsForUser(
+export async function getReflectionInfluencePreferencesForUser(
   userId: string,
   access: UserAccess,
-): Promise<ReflectionInfluenceId[]> {
+): Promise<ReflectionInfluencePreferences> {
   await requireCoachingAccess(access);
 
   const preference = await prisma.reflectionInfluencePreference.findUnique({
@@ -22,17 +24,29 @@ export async function getReflectionInfluenceIdsForUser(
     select: { influences: true },
   });
 
-  return normalizeReflectionInfluenceIds(preference?.influences ?? []);
+  return normalizeReflectionInfluencePreferences(preference?.influences ?? []);
 }
 
-export async function saveReflectionInfluenceIdsForUser(
+/** @deprecated Use getReflectionInfluencePreferencesForUser */
+export async function getReflectionInfluenceIdsForUser(
   userId: string,
   access: UserAccess,
-  influences: ReflectionInfluenceId[],
 ): Promise<ReflectionInfluenceId[]> {
+  const preferences = await getReflectionInfluencePreferencesForUser(
+    userId,
+    access,
+  );
+  return getAllSelectedInfluenceIds(preferences);
+}
+
+export async function saveReflectionInfluencePreferencesForUser(
+  userId: string,
+  access: UserAccess,
+  preferences: ReflectionInfluencePreferences,
+): Promise<ReflectionInfluencePreferences> {
   await requireCoachingAccess(access);
 
-  const normalized = normalizeReflectionInfluenceIds(influences);
+  const normalized = normalizeReflectionInfluencePreferences(preferences);
 
   await prisma.reflectionInfluencePreference.upsert({
     where: { userId },
@@ -46,4 +60,18 @@ export async function saveReflectionInfluenceIdsForUser(
   });
 
   return normalized;
+}
+
+/** @deprecated Use saveReflectionInfluencePreferencesForUser */
+export async function saveReflectionInfluenceIdsForUser(
+  userId: string,
+  access: UserAccess,
+  influences: ReflectionInfluenceId[],
+): Promise<ReflectionInfluenceId[]> {
+  const normalized = await saveReflectionInfluencePreferencesForUser(
+    userId,
+    access,
+    { primary: [], secondary: influences },
+  );
+  return getAllSelectedInfluenceIds(normalized);
 }

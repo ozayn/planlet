@@ -16,7 +16,7 @@ import {
   isOpenAIConfigured,
   isTextParserConfigured,
 } from "@/lib/env";
-import { getReflectionInfluenceIdsForUser } from "@/lib/reflection-influence-preferences";
+import { getReflectionInfluencePreferencesForUser } from "@/lib/reflection-influence-preferences";
 import {
   canGiveFeedback,
   canUseCoachingFeatures,
@@ -36,10 +36,13 @@ export default async function SettingsPage() {
     ? await getNotificationPreferencesForUser(session.user.id)
     : null;
   const showCoaching = canUseCoachingFeatures(session?.user ?? {});
-  const selectedInfluences =
+  const reflectionPreferences =
     session?.user?.id && showCoaching
-      ? await getReflectionInfluenceIdsForUser(session.user.id, session.user)
-      : [];
+      ? await getReflectionInfluencePreferencesForUser(
+          session.user.id,
+          session.user,
+        )
+      : { primary: [], secondary: [] };
 
   return (
     <section className="ui-settings-page mx-auto max-w-lg space-y-5">
@@ -74,7 +77,7 @@ export default async function SettingsPage() {
       ) : null}
 
       {showCoaching ? (
-        <SettingsReflectionLens selectedInfluences={selectedInfluences} />
+        <SettingsReflectionLens preferences={reflectionPreferences} />
       ) : null}
 
       {notificationPreferences ? (
