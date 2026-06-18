@@ -5,6 +5,7 @@ import { authConfig } from "@/auth.config";
 import { syncUserAccessOnSignIn } from "@/lib/auth-roles";
 import { trackUserSignInSafely } from "@/lib/login-activity";
 import { prisma } from "@/lib/prisma";
+import { FALLBACK_TIMEZONE } from "@/lib/user-timezone-constants";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
   ...authConfig,
@@ -59,6 +60,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           canGiveFeedback: true,
           canUseReflectionFeatures: true,
           canUseCoachingFeatures: true,
+          timezone: true,
         },
       });
 
@@ -71,6 +73,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       session.user.canGiveFeedback = dbUser.canGiveFeedback;
       session.user.canUseReflectionFeatures = dbUser.canUseReflectionFeatures;
       session.user.canUseCoachingFeatures = dbUser.canUseCoachingFeatures;
+      session.user.timezone = dbUser.timezone ?? FALLBACK_TIMEZONE;
+      session.user.timezoneIsUnset = dbUser.timezone === null;
 
       return session;
     },

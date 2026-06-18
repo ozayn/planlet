@@ -3,6 +3,7 @@ import { BottomNav } from "@/components/bottom-nav";
 import { DesktopNav } from "@/components/desktop-nav";
 import { MobileAppBar } from "@/components/mobile-app-bar";
 import { SignOutButton } from "@/components/sign-out-button";
+import { BrowserTimezoneDetector } from "@/components/timezone/browser-timezone-detector";
 import { isAdminRole } from "@/lib/auth-roles";
 import { canGiveFeedback, canUseTherapyThoughts } from "@/lib/roles";
 import { serializeNotification } from "@/lib/notification-serialize";
@@ -30,6 +31,9 @@ export default async function AppLayout({
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
+      {session?.user?.timezoneIsUnset ? (
+        <BrowserTimezoneDetector shouldDetect />
+      ) : null}
       <DesktopNav
         userName={session?.user?.name}
         userEmail={session?.user?.email}

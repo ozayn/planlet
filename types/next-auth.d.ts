@@ -12,6 +12,8 @@ declare module "next-auth" {
       canGiveFeedback: boolean;
       canUseReflectionFeatures: boolean;
       canUseCoachingFeatures: boolean;
+      timezone: string;
+      timezoneIsUnset: boolean;
     };
   }
 }

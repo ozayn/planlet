@@ -8,6 +8,7 @@ import { SettingsReflectionFeatures } from "@/components/settings/settings-refle
 import { SettingsReflectionLens } from "@/components/settings/settings-reflection-lens";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { SettingsTechnicalInfo } from "@/components/settings/settings-technical-info";
+import { SettingsTimezone } from "@/components/settings/settings-timezone";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { PRODUCT } from "@/config/product";
 import { APP_TIMEZONE } from "@/config/time";
@@ -23,6 +24,7 @@ import {
   canUseReflectionFeatures,
 } from "@/lib/roles";
 import { getPlanItemViewForUser } from "@/lib/user-preferences";
+import { getUserTimezone } from "@/lib/user-timezone";
 
 export default async function SettingsPage() {
   const session = await auth();
@@ -32,6 +34,9 @@ export default async function SettingsPage() {
   const planItemView = session?.user?.id
     ? await getPlanItemViewForUser(session.user.id)
     : "CHECKLIST";
+  const userTimezone = session?.user?.id
+    ? await getUserTimezone(session.user.id)
+    : APP_TIMEZONE;
   const notificationPreferences = session?.user?.id
     ? await getNotificationPreferencesForUser(session.user.id)
     : null;
@@ -64,6 +69,8 @@ export default async function SettingsPage() {
 
       <PlanItemViewSettings value={planItemView} />
 
+      {session?.user?.id ? <SettingsTimezone timezone={userTimezone} /> : null}
+
       {(canGiveFeedback(session?.user ?? {}) ||
         canUseReflectionFeatures(session?.user ?? {}) ||
         showCoaching) &&
@@ -87,7 +94,8 @@ export default async function SettingsPage() {
       <SettingsTechnicalInfo
         rows={[
           { label: "Name", value: PRODUCT.name },
-          { label: "Timezone", value: APP_TIMEZONE },
+          { label: "Your timezone", value: userTimezone },
+          { label: "Fallback timezone", value: APP_TIMEZONE },
           {
             label: "AI parsing",
             value: textParserConfigured ? "Available" : "Not configured",

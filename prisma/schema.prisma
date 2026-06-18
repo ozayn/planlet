@@ -170,6 +170,7 @@ model User {
   canUseReflectionFeatures  Boolean     @default(false)
   canUseCoachingFeatures    Boolean     @default(false)
   planItemView              PlanItemView @default(CHECKLIST)
+  timezone                  String?
   lastSeenAt    DateTime?
   lastLoginAt   DateTime?
   loginCount    Int         @default(0)

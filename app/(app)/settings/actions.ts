@@ -11,6 +11,11 @@ import {
 import { sendTestReminderPush } from "@/lib/reminders";
 import { isWebPushConfigured } from "@/lib/env";
 import { updatePlanItemView } from "@/lib/user-preferences";
+import {
+  normalizeTimezone,
+  setUserTimezoneIfUnset,
+  updateUserTimezone,
+} from "@/lib/user-timezone";
 
 const PLAN_ITEM_VIEWS = new Set<PlanItemView>(["MINIMAL", "CHECKLIST"]);
 
@@ -32,6 +37,51 @@ function revalidatePlanSurfaces() {
 export type SettingsActionResult =
   | { success: true }
   | { success: false; error: string };
+
+export type DetectBrowserTimezoneResult =
+  | { success: true; updated: boolean }
+  | { success: false; error: string };
+
+export async function detectBrowserTimezoneAction(
+  browserTimezone: string,
+): Promise<DetectBrowserTimezoneResult> {
+  try {
+    const userId = await requireUserId();
+    const updated = await setUserTimezoneIfUnset(userId, browserTimezone);
+
+    if (updated) {
+      revalidatePath("/settings");
+    }
+
+    return { success: true, updated };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to save detected timezone.",
+    };
+  }
+}
+
+export async function updateUserTimezoneAction(
+  timezone: string,
+): Promise<SettingsActionResult> {
+  try {
+    const userId = await requireUserId();
+    normalizeTimezone(timezone);
+    await updateUserTimezone(userId, timezone);
+    revalidatePath("/settings");
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to update timezone.",
+    };
+  }
+}
 
 export async function updateNotificationPreferencesAction(
   input: NotificationPreferencesInput,

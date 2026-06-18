@@ -1,6 +1,6 @@
 import type { NotificationPreference } from "@/app/generated/prisma/client";
-import { APP_TIMEZONE } from "@/config/time";
 import { prisma } from "@/lib/prisma";
+import { getUserTimezone } from "@/lib/user-timezone";
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -39,11 +39,13 @@ export function serializeNotificationPreferences(
 export async function getNotificationPreferencesForUser(
   userId: string,
 ): Promise<SerializedNotificationPreferences> {
+  const timezone = await getUserTimezone(userId);
+
   const preference = await prisma.notificationPreference.upsert({
     where: { userId },
     create: {
       userId,
-      timezone: APP_TIMEZONE,
+      timezone,
     },
     update: {},
   });
@@ -63,7 +65,7 @@ export async function updateNotificationPreferences(
     throw new Error("Choose a valid evening reminder time.");
   }
 
-  const timezone = input.timezone?.trim() || APP_TIMEZONE;
+  const timezone = input.timezone?.trim() || (await getUserTimezone(userId));
 
   const preference = await prisma.notificationPreference.upsert({
     where: { userId },
