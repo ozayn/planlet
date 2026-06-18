@@ -228,6 +228,12 @@ export function PlanEditor({
 
       <PlanKudosSummary kudos={kudos} />
 
+      {canEdit ? (
+        <section>
+          <AddItemForm planId={plan.id} />
+        </section>
+      ) : null}
+
       {plan.items.length > 0 ? (
         <section>
           <PlanItemSections
@@ -239,10 +245,6 @@ export function PlanEditor({
           />
         </section>
       ) : null}
-
-      <section className={plan.items.length === 0 ? "mt-4" : undefined}>
-        {canEdit ? <AddItemForm planId={plan.id} /> : null}
-      </section>
 
       {gratitudes !== undefined ? (
         <GratitudeSection planId={plan.id} gratitudes={gratitudes} />
