@@ -1,3 +1,7 @@
+import {
+  InsightsBarChart,
+  type InsightsBarChartRow,
+} from "@/components/insights/insights-bar-chart";
 import type { MonthlyInsights } from "@/lib/insights";
 
 type PriorityMatrixProps = {
@@ -11,26 +15,17 @@ const QUADRANTS = [
   { key: "maybeRelease" as const, title: "Maybe release" },
 ] as const;
 
-function QuadrantRows({
-  quadrants,
-}: {
-  quadrants: MonthlyInsights["priorityQuadrants"];
-}) {
-  return (
-    <ul className="ui-insights-compact-list">
-      {QUADRANTS.map((quadrant) => (
-        <li key={quadrant.key} className="ui-insights-compact-row">
-          <span className="text-foreground">{quadrant.title}</span>
-          <span className="tabular-nums text-muted">
-            {quadrants[quadrant.key]}
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
+function getPriorityRows(
+  quadrants: MonthlyInsights["priorityQuadrants"],
+): InsightsBarChartRow[] {
+  return QUADRANTS.map((quadrant) => ({
+    label: quadrant.title,
+    count: quadrants[quadrant.key],
+  }));
 }
 
 export function PriorityMatrix({ quadrants }: PriorityMatrixProps) {
+  const rows = getPriorityRows(quadrants);
   const classified =
     quadrants.doSoon +
     quadrants.protectTime +
@@ -51,7 +46,9 @@ export function PriorityMatrix({ quadrants }: PriorityMatrixProps) {
           <p className="mt-2 text-xs text-muted-light">
             Based on importance and urgency labels.
           </p>
-          <QuadrantRows quadrants={quadrants} />
+          <div className="mt-2">
+            <InsightsBarChart rows={rows} />
+          </div>
         </details>
       </section>
     );
@@ -63,7 +60,7 @@ export function PriorityMatrix({ quadrants }: PriorityMatrixProps) {
       <p className="text-xs text-muted-light">
         Based on importance and urgency labels.
       </p>
-      <QuadrantRows quadrants={quadrants} />
+      <InsightsBarChart rows={rows} />
       {quadrants.unclassified > 0 ? (
         <p className="text-sm text-muted">
           {quadrants.unclassified === 1

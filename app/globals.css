@@ -627,6 +627,47 @@ body {
     line-height: 1.35;
   }
 
+  .ui-insights-bar-chart {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .ui-insights-bar-row {
+    display: grid;
+    grid-template-columns: minmax(4rem, 5.25rem) minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .ui-insights-bar-label {
+    font-size: 0.8125rem;
+    line-height: 1.35;
+    color: var(--foreground);
+  }
+
+  .ui-insights-bar-track {
+    min-width: 0;
+    height: 0.5rem;
+    overflow: hidden;
+    border-radius: 9999px;
+    background: color-mix(in srgb, var(--border-soft) 55%, transparent);
+  }
+
+  .ui-insights-bar-fill {
+    height: 100%;
+    min-width: 0;
+    border-radius: 9999px;
+    background: color-mix(in srgb, var(--muted-light) 45%, var(--accent-cream));
+  }
+
+  .ui-insights-bar-count {
+    min-width: 1.25rem;
+    font-size: 0.8125rem;
+    line-height: 1.35;
+    text-align: end;
+  }
+
   .ui-insights-period-links {
     display: flex;
     flex-direction: column;
