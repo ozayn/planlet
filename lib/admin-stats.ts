@@ -18,6 +18,7 @@ export type AdminUserStatRow = {
   role: UserRole;
   canGiveFeedback: boolean;
   canUseReflectionFeatures: boolean;
+  canUseCoachingFeatures: boolean;
   createdAt: Date;
   lastSeenAt: Date | null;
   lastLoginAt: Date | null;
@@ -110,6 +111,7 @@ export async function getAdminUserStats(): Promise<AdminStats> {
         role: true,
         canGiveFeedback: true,
         canUseReflectionFeatures: true,
+        canUseCoachingFeatures: true,
         createdAt: true,
         lastSeenAt: true,
         lastLoginAt: true,
@@ -206,6 +208,7 @@ export async function getAdminUserStats(): Promise<AdminStats> {
       role: user.role,
       canGiveFeedback: user.canGiveFeedback,
       canUseReflectionFeatures: user.canUseReflectionFeatures,
+      canUseCoachingFeatures: user.canUseCoachingFeatures,
       createdAt: user.createdAt,
       lastSeenAt: user.lastSeenAt,
       lastLoginAt: user.lastLoginAt,

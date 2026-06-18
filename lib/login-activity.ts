@@ -71,6 +71,7 @@ export async function trackUserSignIn({
       role: true,
       canGiveFeedback: true,
       canUseReflectionFeatures: true,
+      canUseCoachingFeatures: true,
       lastLoginAt: true,
     },
   });
@@ -84,6 +85,7 @@ export async function trackUserSignIn({
     role: UserRole;
     canGiveFeedback: boolean;
     canUseReflectionFeatures: boolean;
+    canUseCoachingFeatures: boolean;
     lastSeenAt: Date;
     lastLoginAt?: Date;
     loginCount?: { increment: number };
@@ -91,6 +93,7 @@ export async function trackUserSignIn({
     role: access.role,
     canGiveFeedback: access.canGiveFeedback,
     canUseReflectionFeatures: access.canUseReflectionFeatures,
+    canUseCoachingFeatures: access.canUseCoachingFeatures,
     lastSeenAt: now,
   };
 

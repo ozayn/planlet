@@ -11,6 +11,7 @@ declare module "next-auth" {
       role: UserRole;
       canGiveFeedback: boolean;
       canUseReflectionFeatures: boolean;
+      canUseCoachingFeatures: boolean;
     };
   }
 }

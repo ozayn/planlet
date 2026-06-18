@@ -21,5 +21,9 @@ export function formatAdminRoleCapabilities(user: AdminUserStatRow): string {
     parts.push("Reflection");
   }
 
+  if (user.canUseCoachingFeatures) {
+    parts.push("Coach");
+  }
+
   return parts.join(" · ");
 }

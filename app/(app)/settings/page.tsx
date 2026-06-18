@@ -5,6 +5,7 @@ import { getNotificationPreferencesForUser } from "@/lib/notification-preference
 import { PlanItemViewSettings } from "@/components/settings/plan-item-view-settings";
 import { SettingsProfile } from "@/components/settings/settings-profile";
 import { SettingsReflectionFeatures } from "@/components/settings/settings-reflection-features";
+import { SettingsReflectionLens } from "@/components/settings/settings-reflection-lens";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { SettingsTechnicalInfo } from "@/components/settings/settings-technical-info";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -15,8 +16,10 @@ import {
   isOpenAIConfigured,
   isTextParserConfigured,
 } from "@/lib/env";
+import { getReflectionInfluenceIdsForUser } from "@/lib/reflection-influence-preferences";
 import {
   canGiveFeedback,
+  canUseCoachingFeatures,
   canUseReflectionFeatures,
 } from "@/lib/roles";
 import { getPlanItemViewForUser } from "@/lib/user-preferences";
@@ -32,6 +35,11 @@ export default async function SettingsPage() {
   const notificationPreferences = session?.user?.id
     ? await getNotificationPreferencesForUser(session.user.id)
     : null;
+  const showCoaching = canUseCoachingFeatures(session?.user ?? {});
+  const selectedInfluences =
+    session?.user?.id && showCoaching
+      ? await getReflectionInfluenceIdsForUser(session.user.id, session.user)
+      : [];
 
   return (
     <section className="ui-settings-page mx-auto max-w-lg space-y-5">
@@ -54,13 +62,19 @@ export default async function SettingsPage() {
       <PlanItemViewSettings value={planItemView} />
 
       {(canGiveFeedback(session?.user ?? {}) ||
-        canUseReflectionFeatures(session?.user ?? {})) &&
+        canUseReflectionFeatures(session?.user ?? {}) ||
+        showCoaching) &&
       session?.user?.role ? (
         <SettingsReflectionFeatures
           role={session.user.role}
           canGiveFeedback={session.user.canGiveFeedback}
           canUseReflectionFeatures={session.user.canUseReflectionFeatures}
+          canUseCoachingFeatures={showCoaching}
         />
+      ) : null}
+
+      {showCoaching ? (
+        <SettingsReflectionLens selectedInfluences={selectedInfluences} />
       ) : null}
 
       {notificationPreferences ? (

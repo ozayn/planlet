@@ -58,6 +58,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           role: true,
           canGiveFeedback: true,
           canUseReflectionFeatures: true,
+          canUseCoachingFeatures: true,
         },
       });
 
@@ -69,6 +70,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       session.user.role = dbUser.role;
       session.user.canGiveFeedback = dbUser.canGiveFeedback;
       session.user.canUseReflectionFeatures = dbUser.canUseReflectionFeatures;
+      session.user.canUseCoachingFeatures = dbUser.canUseCoachingFeatures;
 
       return session;
     },

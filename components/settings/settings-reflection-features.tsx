@@ -6,16 +6,19 @@ type SettingsReflectionFeaturesProps = {
   role: UserRole;
   canGiveFeedback: boolean;
   canUseReflectionFeatures: boolean;
+  canUseCoachingFeatures: boolean;
 };
 
 export function SettingsReflectionFeatures({
   role,
   canGiveFeedback,
   canUseReflectionFeatures,
+  canUseCoachingFeatures,
 }: SettingsReflectionFeaturesProps) {
   const badges = [
     canGiveFeedback ? "Feedback enabled" : null,
     canUseReflectionFeatures ? "Reflection enabled" : null,
+    canUseCoachingFeatures ? "Coaching enabled" : null,
   ].filter(Boolean);
 
   return (

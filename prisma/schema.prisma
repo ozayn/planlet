@@ -168,6 +168,7 @@ model User {
   role                      UserRole    @default(USER)
   canGiveFeedback           Boolean     @default(false)
   canUseReflectionFeatures  Boolean     @default(false)
+  canUseCoachingFeatures    Boolean     @default(false)
   planItemView              PlanItemView @default(CHECKLIST)
   lastSeenAt    DateTime?
   lastLoginAt   DateTime?
@@ -191,6 +192,7 @@ model User {
   feedbackItems      AppFeedback[] @relation("AuthoredFeedback")
   resolvedFeedback   AppFeedback[] @relation("ResolvedFeedback")
   loginEvents   LoginEvent[]
+  reflectionInfluencePreference ReflectionInfluencePreference?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 }
@@ -504,4 +506,13 @@ model ShareExport {
   createdAt DateTime          @default(now())
 
   @@index([planId, createdAt])
+}
+
+model ReflectionInfluencePreference {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  influences Json
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }

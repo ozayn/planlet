@@ -31,6 +31,10 @@ export function getFeedbackEmails(): string[] {
   return parseEmailList(process.env.PLANLET_FEEDBACK_EMAILS);
 }
 
+export function getCoachEmails(): string[] {
+  return parseEmailList(process.env.PLANLET_COACH_EMAILS);
+}
+
 export function isAdminEmail(email?: string | null): boolean {
   if (!email?.trim()) {
     return false;
@@ -53,6 +57,14 @@ export function isFeedbackEmail(email?: string | null): boolean {
   }
 
   return getFeedbackEmails().includes(email.trim().toLowerCase());
+}
+
+export function isCoachEmail(email?: string | null): boolean {
+  if (!email?.trim()) {
+    return false;
+  }
+
+  return getCoachEmails().includes(email.trim().toLowerCase());
 }
 
 export function isEmailAllowed(email?: string | null): boolean {

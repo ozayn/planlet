@@ -1,6 +1,7 @@
 import type { UserRole } from "@/app/generated/prisma/client";
 import {
   isAdminEmail,
+  isCoachEmail,
   isFeedbackEmail,
   isReflectorEmail,
 } from "@/lib/auth-allowlist";
@@ -11,12 +12,14 @@ export type ResolvedUserAccess = {
   role: UserRole;
   canGiveFeedback: boolean;
   canUseReflectionFeatures: boolean;
+  canUseCoachingFeatures: boolean;
 };
 
 type ExistingUserAccess = {
   role: UserRole;
   canGiveFeedback?: boolean;
   canUseReflectionFeatures?: boolean;
+  canUseCoachingFeatures?: boolean;
 };
 
 export function resolveUserAccessFromEmail(
@@ -28,11 +31,13 @@ export function resolveUserAccessFromEmail(
       role: "ADMIN",
       canGiveFeedback: true,
       canUseReflectionFeatures: true,
+      canUseCoachingFeatures: true,
     };
   }
 
   const canGiveFeedback = isFeedbackEmail(email);
   const canUseReflectionFeatures = isReflectorEmail(email);
+  const canUseCoachingFeatures = isCoachEmail(email);
 
   let role: UserRole = "USER";
   if (canUseReflectionFeatures) {
@@ -43,6 +48,7 @@ export function resolveUserAccessFromEmail(
     role,
     canGiveFeedback,
     canUseReflectionFeatures,
+    canUseCoachingFeatures,
   };
 }
 
@@ -65,6 +71,7 @@ export async function syncUserAccessOnSignIn(
       role: true,
       canGiveFeedback: true,
       canUseReflectionFeatures: true,
+      canUseCoachingFeatures: true,
     },
   });
 
@@ -73,7 +80,8 @@ export async function syncUserAccessOnSignIn(
   if (
     existing?.role !== access.role ||
     existing?.canGiveFeedback !== access.canGiveFeedback ||
-    existing?.canUseReflectionFeatures !== access.canUseReflectionFeatures
+    existing?.canUseReflectionFeatures !== access.canUseReflectionFeatures ||
+    existing?.canUseCoachingFeatures !== access.canUseCoachingFeatures
   ) {
     await prisma.user.update({
       where: { id: userId },
