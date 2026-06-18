@@ -49,6 +49,20 @@ export function PlanItemStatusIcon({
           <path d="M12 4v8l4 2" />
         </svg>
       );
+    case "NOT_DONE":
+      return (
+        <svg
+          className={className}
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth={1.75}
+          stroke="currentColor"
+          aria-hidden="true"
+        >
+          <circle cx="12" cy="12" r="8" />
+          <path d="m9 9 6 6M15 9l-6 6" />
+        </svg>
+      );
     case "MOVED":
       return (
         <svg

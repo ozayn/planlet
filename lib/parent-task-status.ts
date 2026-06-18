@@ -26,15 +26,29 @@ export function deriveParentStatusFromSubtasks(
     return "MOVED";
   }
 
-  const completedCount = subtaskStatuses.filter((status) => status === "DONE")
-    .length;
-  const progressCount = subtaskStatuses.filter(countsTowardProgress).length;
-
-  if (completedCount === subtaskStatuses.length) {
+  const allDone = subtaskStatuses.every((status) => status === "DONE");
+  if (allDone) {
     return "DONE";
   }
 
-  if (progressCount > 0) {
+  const hasDone = subtaskStatuses.some((status) => status === "DONE");
+  const hasNotDone = subtaskStatuses.some((status) => status === "NOT_DONE");
+  const allNotDone = subtaskStatuses.every((status) => status === "NOT_DONE");
+  const hasPartial = subtaskStatuses.some((status) => status === "PARTIAL");
+
+  if (hasDone && (hasNotDone || hasPartial)) {
+    return "PARTIAL";
+  }
+
+  if (hasDone) {
+    return "PARTIAL";
+  }
+
+  if (allNotDone) {
+    return "NOT_DONE";
+  }
+
+  if (hasNotDone || hasPartial) {
     return "PARTIAL";
   }
 

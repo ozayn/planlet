@@ -9,7 +9,10 @@ import type {
 
 import { formatPlanPeriodForShare } from "@/lib/dates";
 import { isDefaultPlanTitle } from "@/lib/plan-title";
-import { getStatusIcon } from "@/lib/plan-status";
+import {
+  getSimpleShareStatusMarker,
+  getStatusIcon,
+} from "@/lib/plan-status";
 
 export { formatPlanPeriodForShare } from "@/lib/dates";
 
@@ -120,6 +123,7 @@ const SIMPLE_SECTION_LABELS: Record<ShareLanguage, Record<ShareSectionKey, strin
 const UPDATE_STATUS_ORDER: PlanItemStatus[] = [
   "DONE",
   "PARTIAL",
+  "NOT_DONE",
   "MOVED",
   "SKIPPED",
   "RELEASED",
@@ -130,6 +134,7 @@ const UPDATE_STATUS_LABELS: Record<ShareLanguage, Record<PlanItemStatus, string>
     OPEN: "باقی‌مانده",
     DONE: "انجام‌شده",
     PARTIAL: "در جریان",
+    NOT_DONE: "انجام نشد",
     MOVED: "منتقل‌شده",
     SKIPPED: "ردشده",
     RELEASED: "رها شده",
@@ -138,6 +143,7 @@ const UPDATE_STATUS_LABELS: Record<ShareLanguage, Record<PlanItemStatus, string>
     OPEN: "Remaining",
     DONE: "Done",
     PARTIAL: "In progress",
+    NOT_DONE: "Not done",
     MOVED: "Moved",
     SKIPPED: "Skipped",
     RELEASED: "Released",
@@ -252,7 +258,13 @@ function formatPrettyItemTitle(item: SharePlanItem): string {
 }
 
 function formatSimpleItemTitle(item: SharePlanItem, indent = ""): string {
-  return `${indent}- ${item.title}`;
+  if (item.type === "NOTE" || item.type === "INTENTION") {
+    return `${indent}- ${item.title}`;
+  }
+
+  const marker = getSimpleShareStatusMarker(item.status);
+  const prefix = marker ? `${marker} ` : "";
+  return `${indent}- ${prefix}${item.title}`;
 }
 
 function formatItemLine(

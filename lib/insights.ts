@@ -13,6 +13,7 @@ import { getObservationCategoryLabel } from "@/lib/observation-labels";
 import type { UserAccess } from "@/lib/roles";
 import { canUseReflectionFeatures } from "@/lib/roles";
 import { prisma } from "@/lib/prisma";
+import { PLAN_ITEM_STATUS_ORDER } from "@/lib/plan-status";
 
 export type MonthlyInsightsTotals = {
   plans: number;
@@ -46,14 +47,7 @@ export type MonthlyInsights = {
   observationCategories: Array<{ category: ObservationCategory; label: string; count: number }>;
 };
 
-const STATUS_ORDER: PlanItemStatus[] = [
-  "OPEN",
-  "DONE",
-  "PARTIAL",
-  "MOVED",
-  "SKIPPED",
-  "RELEASED",
-];
+const STATUS_ORDER = PLAN_ITEM_STATUS_ORDER;
 
 const TYPE_ORDER: PlanItemType[] = [
   "TASK",

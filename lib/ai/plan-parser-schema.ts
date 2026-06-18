@@ -25,6 +25,7 @@ const planItemStatusSchema = z.enum([
   "OPEN",
   "DONE",
   "PARTIAL",
+  "NOT_DONE",
   "MOVED",
   "SKIPPED",
   "RELEASED",

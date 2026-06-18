@@ -301,6 +301,14 @@ export function generatePeriodSummaryText(
     lines.push("");
   }
 
+  if (summary.notDone.length > 0) {
+    lines.push("Not done");
+    for (const item of summary.notDone) {
+      lines.push(`- ${item.source.groupLabel}: ${formatItemLine(item)}`);
+    }
+    lines.push("");
+  }
+
   const movedSkipped = [
     ...summary.moved.map((item) => ({ kind: "Moved", item })),
     ...summary.skipped.map((item) => ({ kind: "Skipped", item })),
@@ -429,6 +437,7 @@ export function buildPeriodSummary(input: PeriodSummaryBuildInput): PeriodSummar
   const stillOpen = actionable.filter(
     (item) => item.status === "OPEN" || item.status === "PARTIAL",
   );
+  const notDone = actionable.filter((item) => item.status === "NOT_DONE");
   const moved = actionable.filter((item) => item.status === "MOVED");
   const skipped = actionable.filter((item) => item.status === "SKIPPED");
   const released = actionable.filter((item) => item.status === "RELEASED");
@@ -467,6 +476,7 @@ export function buildPeriodSummary(input: PeriodSummaryBuildInput): PeriodSummar
     },
     completed: groupCompletedByTier(completedItems, input.periodType),
     stillOpen,
+    notDone,
     moved,
     skipped,
     released,

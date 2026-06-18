@@ -6,6 +6,7 @@ export type ImageItemHintStatus =
   | "OPEN"
   | "DONE"
   | "PARTIAL"
+  | "NOT_DONE"
   | "MOVED"
   | "SKIPPED"
   | "RELEASED"
@@ -43,6 +44,8 @@ export function statusMarkerForHint(
       return "☐";
     case "PARTIAL":
       return "◐";
+    case "NOT_DONE":
+      return "❌";
     default:
       return null;
   }
@@ -177,6 +180,7 @@ export function mapHintStatusToPlanStatus(
     case "OPEN":
     case "DONE":
     case "PARTIAL":
+    case "NOT_DONE":
     case "MOVED":
     case "SKIPPED":
     case "RELEASED":

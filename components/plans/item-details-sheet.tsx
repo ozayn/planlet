@@ -21,7 +21,7 @@ import {
   TIME_HINT_LABELS,
 } from "@/lib/plan-labels";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
-import { getStatusLabel } from "@/lib/plan-status";
+import { getStatusLabel, PLAN_ITEM_STATUS_ORDER } from "@/lib/plan-status";
 import type { SerializedPlanItem } from "@/lib/plan-serialize";
 
 type ItemDetailsSheetProps = {
@@ -35,14 +35,7 @@ type ItemDetailsSheetProps = {
 
 const PROGRESS_LEVELS = [0, 25, 50, 75, 100] as const;
 
-const STATUS_LEVELS: PlanItemStatus[] = [
-  "OPEN",
-  "DONE",
-  "PARTIAL",
-  "MOVED",
-  "SKIPPED",
-  "RELEASED",
-];
+const STATUS_LEVELS = PLAN_ITEM_STATUS_ORDER;
 
 const SATISFACTION_LEVELS: SatisfactionLevel[] = [
   "LOW",

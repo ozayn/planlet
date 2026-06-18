@@ -263,6 +263,15 @@ export function PeriodSummaryView({ summary }: PeriodSummaryViewProps) {
         </Section>
       ) : null}
 
+      {summary.notDone.length > 0 ? (
+        <Section title="Not done">
+          <p className="text-sm text-muted">
+            Items that did not get done this period.
+          </p>
+          <ItemList items={summary.notDone} />
+        </Section>
+      ) : null}
+
       {summary.moved.length > 0 ||
       summary.skipped.length > 0 ||
       summary.released.length > 0 ? (

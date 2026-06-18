@@ -95,6 +95,7 @@ export type PeriodSummary = PeriodSummaryData & {
   atAGlance: PeriodSummaryAtAGlance;
   completed: PeriodSummaryCompletedTier[];
   stillOpen: PeriodSummaryItem[];
+  notDone: PeriodSummaryItem[];
   moved: PeriodSummaryItem[];
   skipped: PeriodSummaryItem[];
   released: PeriodSummaryItem[];

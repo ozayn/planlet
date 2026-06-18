@@ -61,7 +61,7 @@ JSON schema:
     {
       "title": string,
       "description": string (optional),
-      "status": "OPEN" | "DONE" | "PARTIAL" | "MOVED" | "SKIPPED" | "RELEASED" (optional),
+      "status": "OPEN" | "DONE" | "PARTIAL" | "NOT_DONE" | "MOVED" | "SKIPPED" | "RELEASED" (optional),
       "type": "TASK" | "EVENT" | "INTENTION" | "NOTE" | "WORK_BLOCK" | "ERRAND" | "SOCIAL" | "REST",
       "timeHint": "MORNING" | "AFTERNOON" | "EVENING" | "ANYTIME" | "ALL_DAY" | "SPECIFIC" (optional),
       "importance": "LOW" | "MEDIUM" | "HIGH" (optional),

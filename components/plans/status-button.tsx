@@ -11,25 +11,9 @@ import { CheckIcon, ChevronDownIcon } from "@/components/ui/action-icons";
 import { ACTION_LABELS } from "@/lib/action-labels";
 import { isExpressiveItemView } from "@/lib/plan-item-view";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
-import { getStatusLabel, STATUS_STYLES } from "@/lib/plan-status";
+import { getStatusLabel, PLAN_ITEM_STATUS_ORDER, STATUS_DESCRIPTIONS, STATUS_STYLES } from "@/lib/plan-status";
 
-const STATUSES: PlanItemStatus[] = [
-  "OPEN",
-  "DONE",
-  "PARTIAL",
-  "MOVED",
-  "SKIPPED",
-  "RELEASED",
-];
-
-const STATUS_DESCRIPTIONS: Record<PlanItemStatus, string> = {
-  OPEN: "Not started yet",
-  DONE: "Completed",
-  PARTIAL: "Some progress",
-  MOVED: "Moved to another time",
-  SKIPPED: "Intentionally skipped",
-  RELEASED: "Let go",
-};
+const STATUSES = PLAN_ITEM_STATUS_ORDER;
 
 const MOBILE_MENU_WIDTH = 176;
 const DESKTOP_MENU_MIN_WIDTH = 220;
