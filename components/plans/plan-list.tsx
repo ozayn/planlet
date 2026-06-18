@@ -1,7 +1,5 @@
-import type { PlanType } from "@/app/generated/prisma/client";
 import { PlanListItem } from "@/components/plans/plan-list-item";
-import { getTodayRange, getWeekRange } from "@/lib/dates";
-import { getPlanTypeLabel } from "@/lib/plan-labels";
+import type { PlanType } from "@/app/generated/prisma/client";
 
 export type PlanListEntry = {
   id: string;
@@ -13,74 +11,30 @@ export type PlanListEntry = {
   updatedAt: Date;
 };
 
-type PlanListProps = {
+type RecentPlanListProps = {
   plans: PlanListEntry[];
 };
 
-const TYPE_ORDER: PlanType[] = ["DAY", "WEEK", "MONTH", "YEAR"];
-
-function sortPlansForType(plans: PlanListEntry[], type: PlanType): PlanListEntry[] {
-  const filtered = plans.filter((plan) => plan.type === type);
-  const now = new Date();
-
-  if (type === "DAY") {
-    const todayStart = getTodayRange(now).start.getTime();
-    const upcoming = filtered
-      .filter((plan) => plan.dateStart.getTime() >= todayStart)
-      .sort((a, b) => a.dateStart.getTime() - b.dateStart.getTime());
-    const past = filtered
-      .filter((plan) => plan.dateStart.getTime() < todayStart)
-      .sort((a, b) => b.dateStart.getTime() - a.dateStart.getTime());
-
-    return [...upcoming, ...past];
-  }
-
-  if (type === "WEEK") {
-    const weekStart = getWeekRange(now).start.getTime();
-    const upcoming = filtered
-      .filter((plan) => plan.dateStart.getTime() >= weekStart)
-      .sort((a, b) => a.dateStart.getTime() - b.dateStart.getTime());
-    const past = filtered
-      .filter((plan) => plan.dateStart.getTime() < weekStart)
-      .sort((a, b) => b.dateStart.getTime() - a.dateStart.getTime());
-
-    return [...upcoming, ...past];
-  }
-
-  return filtered.sort(
-    (a, b) => b.dateStart.getTime() - a.dateStart.getTime(),
+export function RecentPlanList({ plans }: RecentPlanListProps) {
+  const sorted = [...plans].sort(
+    (a, b) =>
+      new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
   );
-}
-
-export function PlanList({ plans }: PlanListProps) {
-  const grouped = TYPE_ORDER.map((type) => ({
-    type,
-    plans: sortPlansForType(plans, type),
-  })).filter((group) => group.plans.length > 0);
 
   return (
-    <div className="space-y-4">
-      {grouped.map((group) => (
-        <section key={group.type}>
-          <h3 className="ui-plans-type-label mb-1">
-            {getPlanTypeLabel(group.type)}
-          </h3>
-          <ul className="ui-plan-list divide-y divide-border-soft/70 rounded-lg border border-border-soft/80 bg-surface/60">
-            {group.plans.map((plan) => (
-              <PlanListItem
-                key={plan.id}
-                id={plan.id}
-                title={plan.title}
-                type={plan.type}
-                dateStart={plan.dateStart}
-                dateEnd={plan.dateEnd}
-                itemCount={plan.itemCount}
-                updatedAt={plan.updatedAt}
-              />
-            ))}
-          </ul>
-        </section>
+    <ul className="ui-plan-list divide-y divide-border-soft/70 rounded-lg border border-border-soft/80 bg-surface/60">
+      {sorted.map((plan) => (
+        <PlanListItem
+          key={plan.id}
+          id={plan.id}
+          title={plan.title}
+          type={plan.type}
+          dateStart={plan.dateStart}
+          dateEnd={plan.dateEnd}
+          itemCount={plan.itemCount}
+          updatedAt={plan.updatedAt}
+        />
       ))}
-    </div>
+    </ul>
   );
 }

@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { NewPlanLink } from "@/components/plans/new-plan-link";
-import { PlanList } from "@/components/plans/plan-list";
-import { PlanQuickOpen } from "@/components/plans/plan-quick-open";
+import { PlanOpenSection } from "@/components/plans/plan-open-section";
+import { RecentPlanList } from "@/components/plans/plan-list";
 import { PlansEmptyState } from "@/components/plans/plans-empty-state";
 import { SharedPlanList } from "@/components/plans/shared-plan-list";
 import { PageHeader } from "@/components/page-header";
@@ -23,26 +23,18 @@ export default async function PlansPage() {
   const hasPlans = plans.length > 0;
 
   return (
-    <section className="ui-plans-page space-y-5">
+    <section className="ui-plans-page space-y-6">
       <PageHeader
         title="Plans"
-        subtitle="Daily, weekly, monthly, yearly."
         action={<NewPlanLink className="ui-btn-compact min-h-9" />}
       />
 
-      <PlanQuickOpen />
+      <PlanOpenSection />
 
-      {sharedPlans.length > 0 ? (
-        <section className="ui-plans-section">
-          <h2 className="ui-plans-section-title">Shared with me</h2>
-          <SharedPlanList plans={sharedPlans} />
-        </section>
-      ) : null}
-
-      <section className="ui-plans-section">
-        <h2 className="ui-plans-section-title">Your plans</h2>
+      <section className="ui-plans-section space-y-2">
+        <h2 className="text-sm font-medium text-foreground">Recent plans</h2>
         {hasPlans ? (
-          <PlanList
+          <RecentPlanList
             plans={plans.map((plan) => ({
               id: plan.id,
               title: plan.title,
@@ -55,6 +47,15 @@ export default async function PlansPage() {
           />
         ) : (
           <PlansEmptyState />
+        )}
+      </section>
+
+      <section className="ui-plans-section space-y-2">
+        <h2 className="text-sm font-medium text-foreground">Shared with me</h2>
+        {sharedPlans.length > 0 ? (
+          <SharedPlanList plans={sharedPlans} />
+        ) : (
+          <p className="text-sm text-muted">Nothing shared with you yet.</p>
         )}
       </section>
     </section>

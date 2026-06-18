@@ -13,6 +13,14 @@ export const PLAN_TYPE_LABELS: Record<PlanType, string> = {
   YEAR: "Yearly",
 };
 
+/** Compact badges for plan list rows. */
+export const PLAN_TYPE_BADGE_LABELS: Record<PlanType, string> = {
+  DAY: "Day",
+  WEEK: "Week",
+  MONTH: "Month",
+  YEAR: "Year",
+};
+
 export const PLAN_ITEM_TYPE_LABELS: Record<PlanItemType, string> = {
   TASK: "Task",
   EVENT: "Event",
@@ -26,6 +34,10 @@ export const PLAN_ITEM_TYPE_LABELS: Record<PlanItemType, string> = {
 
 export function getPlanTypeLabel(type: PlanType): string {
   return PLAN_TYPE_LABELS[type];
+}
+
+export function getPlanTypeBadgeLabel(type: PlanType): string {
+  return PLAN_TYPE_BADGE_LABELS[type];
 }
 
 export function getPlanItemTypeLabel(type: PlanItemType): string {

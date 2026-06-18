@@ -13,32 +13,29 @@ export function SharedPlanList({ plans }: SharedPlanListProps) {
   }
 
   return (
-    <ul className="ui-plan-list space-y-0.5">
+    <ul className="ui-plan-list divide-y divide-border-soft/70 rounded-lg border border-border-soft/80 bg-surface/60">
       {plans.map((plan) => (
         <li key={plan.shareId}>
-          <Link href={`/plans/${plan.planId}`} className="ui-plan-list-row block">
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <p
-                  className="truncate text-sm font-medium text-foreground"
-                  dir="auto"
-                >
-                  {plan.title}
-                </p>
-                <p className="truncate text-xs text-muted-light" dir="auto">
-                  {formatSharedPlanSubline({
-                    ownerName: plan.ownerName,
-                    ownerEmail: plan.ownerEmail,
-                    type: plan.type,
-                    dateStart: plan.dateStart,
-                    dateEnd: plan.dateEnd,
-                  })}
-                </p>
-              </div>
-              <span className="shrink-0 pt-0.5 text-sm tabular-nums text-muted-light">
-                {plan.itemCount}
-              </span>
-            </div>
+          <Link
+            href={`/plans/${plan.planId}`}
+            className="ui-plan-list-row block min-h-11"
+          >
+            <p
+              className="truncate text-sm font-medium text-foreground"
+              dir="auto"
+            >
+              {plan.title}
+            </p>
+            <p className="truncate text-xs text-muted-light" dir="auto">
+              {formatSharedPlanSubline({
+                ownerName: plan.ownerName,
+                ownerEmail: plan.ownerEmail,
+                type: plan.type,
+                dateStart: plan.dateStart,
+                dateEnd: plan.dateEnd,
+                itemCount: plan.itemCount,
+              })}
+            </p>
           </Link>
         </li>
       ))}
