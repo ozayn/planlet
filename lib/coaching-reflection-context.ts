@@ -118,6 +118,25 @@ export async function buildCoachingReflectionContext(
     lines.push(`Completed tasks (sample): ${completedSample}`);
   }
 
+  const openSample = sampleTitles(
+    monthSummary.stillOpen.filter((item) => item.status === "OPEN"),
+  );
+  if (openSample) {
+    lines.push(`Open tasks (sample): ${openSample}`);
+  }
+
+  const partialSample = sampleTitles(
+    monthSummary.stillOpen.filter((item) => item.status === "PARTIAL"),
+  );
+  if (partialSample) {
+    lines.push(`Partial tasks (sample): ${partialSample}`);
+  }
+
+  const notDoneSample = sampleTitles(monthSummary.notDone);
+  if (notDoneSample) {
+    lines.push(`Not done tasks (sample): ${notDoneSample}`);
+  }
+
   const movedSample = sampleTitles(monthSummary.moved);
   if (movedSample) {
     lines.push(`Moved tasks (sample): ${movedSample}`);
@@ -126,6 +145,11 @@ export async function buildCoachingReflectionContext(
   const releasedSample = sampleTitles(monthSummary.released);
   if (releasedSample) {
     lines.push(`Released tasks (sample): ${releasedSample}`);
+  }
+
+  const skippedSample = sampleTitles(monthSummary.skipped);
+  if (skippedSample) {
+    lines.push(`Skipped tasks (sample): ${skippedSample}`);
   }
 
   if (canUseReflectionFeatures(access) && monthSummary.gratitudes.length > 0) {
