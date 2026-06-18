@@ -206,7 +206,6 @@ export function PlanItemCard({
                 status={item.status}
                 compact
                 itemView={itemView}
-                mobileIconOnly
               />
             </div>
 

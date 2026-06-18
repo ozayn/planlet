@@ -811,51 +811,95 @@ body {
     display: -webkit-box;
   }
 
+  .ui-status-trigger {
+    flex-shrink: 0;
+    justify-content: center;
+    gap: 0;
+    height: 2.75rem;
+    min-width: 2.75rem;
+    padding: 0;
+    overflow: hidden;
+    transition:
+      gap 0.15s ease,
+      min-width 0.15s ease,
+      padding 0.15s ease;
+  }
+
+  .ui-status-trigger-compact {
+    height: 2.5rem;
+    min-width: 2.5rem;
+  }
+
+  .ui-status-trigger-label,
+  .ui-status-trigger-chevron {
+    max-width: 0;
+    opacity: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    transition:
+      max-width 0.15s ease,
+      opacity 0.15s ease,
+      margin 0.15s ease;
+  }
+
+  .ui-status-trigger-chevron {
+    display: inline-flex;
+  }
+
+  .ui-status-trigger-compact .ui-status-trigger-label {
+    font-size: 0.6875rem;
+  }
+
+  .ui-status-trigger:focus-visible,
+  .ui-status-trigger-expanded {
+    justify-content: flex-start;
+    gap: 0.25rem;
+    min-width: 5.5rem;
+    padding-inline: 0.5rem;
+  }
+
+  .ui-status-trigger:focus-visible .ui-status-trigger-label,
+  .ui-status-trigger-expanded .ui-status-trigger-label,
+  .ui-status-trigger:focus-visible .ui-status-trigger-chevron,
+  .ui-status-trigger-expanded .ui-status-trigger-chevron {
+    max-width: 5rem;
+    opacity: 1;
+  }
+
+  .ui-status-trigger-expressive:focus-visible,
+  .ui-status-trigger-expressive.ui-status-trigger-expanded {
+    min-width: 6.5rem;
+    gap: 0.375rem;
+  }
+
+  @media (hover: hover) {
+    .ui-status-trigger:hover {
+      justify-content: flex-start;
+      gap: 0.25rem;
+      min-width: 5.5rem;
+      padding-inline: 0.5rem;
+    }
+
+    .ui-status-trigger:hover .ui-status-trigger-label,
+    .ui-status-trigger:hover .ui-status-trigger-chevron {
+      max-width: 5rem;
+      opacity: 1;
+    }
+
+    .ui-status-trigger-expressive:hover {
+      min-width: 6.5rem;
+      gap: 0.375rem;
+    }
+  }
+
   @media (max-width: 767px) {
     .ui-plan-item-title {
       -webkit-line-clamp: 2;
       line-clamp: 2;
     }
 
-    .ui-status-trigger-icon-only {
-      height: 2.5rem;
-      width: 2.5rem;
-      min-width: 2.5rem;
-      max-width: 2.5rem;
-      flex-shrink: 0;
-      justify-content: center;
-      gap: 0;
-      padding: 0;
-    }
-
-    .ui-status-trigger-icon-only .ui-status-trigger-label,
-    .ui-status-trigger-icon-only .ui-status-trigger-chevron {
-      display: none;
-    }
-
-    .ui-status-trigger-icon-only .ui-status-trigger-icon {
-      margin: 0;
-    }
-
     .ui-plan-item-submeta {
       margin-top: 0.0625rem;
-    }
-  }
-
-  @media (min-width: 768px) {
-    .ui-status-trigger-icon-only {
-      height: auto;
-      width: auto;
-      min-width: 0;
-      max-width: none;
-    }
-
-    .ui-status-trigger-icon-only .ui-status-trigger-label {
-      display: block;
-    }
-
-    .ui-status-trigger-icon-only .ui-status-trigger-chevron {
-      display: inline-flex;
     }
   }
 
@@ -1291,21 +1335,6 @@ body {
     .ui-plan-item-drag {
       height: 1.75rem;
       width: 1rem;
-    }
-
-    .ui-status-trigger-icon-only {
-      height: 2.5rem !important;
-      width: 2.5rem !important;
-      min-width: 2.5rem !important;
-      max-width: 2.5rem !important;
-      padding: 0 !important;
-      gap: 0 !important;
-      justify-content: center !important;
-    }
-
-    .ui-status-trigger-icon-only .ui-status-trigger-label,
-    .ui-status-trigger-icon-only .ui-status-trigger-chevron {
-      display: none !important;
     }
 
     .ui-plan-item-title {
