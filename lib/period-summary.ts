@@ -60,11 +60,13 @@ const rootItemsInclude = {
     subtasks: {
       orderBy: [{ sortOrder: "asc" as const }, { createdAt: "asc" as const }],
       include: {
-        themes: { include: { theme: true } },
+        theme: { select: { id: true, name: true } },
+        project: { select: { id: true, name: true } },
         _count: { select: { comments: true } },
       },
     },
-    themes: { include: { theme: true } },
+    theme: { select: { id: true, name: true } },
+    project: { select: { id: true, name: true } },
     _count: { select: { comments: true } },
   },
 };

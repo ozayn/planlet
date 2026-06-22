@@ -44,6 +44,7 @@ import { STALE_LIST_MESSAGE } from "@/lib/action-errors";
 import { touchPlan } from "@/lib/touch-plan";
 import { touchUserSeen } from "@/lib/user-activity";
 import { prisma } from "@/lib/prisma";
+import { validatePlanItemAssignment } from "@/lib/themes-projects";
 
 const itemOrderBy = [
   { sortOrder: "asc" as const },
@@ -54,11 +55,13 @@ const planItemInclude = {
   subtasks: {
     orderBy: itemOrderBy,
     include: {
-      themes: { include: { theme: true } },
+      theme: { select: { id: true, name: true } },
+      project: { select: { id: true, name: true } },
       _count: { select: { comments: true } },
     },
   },
-  themes: { include: { theme: true } },
+  theme: { select: { id: true, name: true } },
+  project: { select: { id: true, name: true } },
   _count: { select: { comments: true } },
 };
 
@@ -468,6 +471,8 @@ export type CreatePlanItemInput = {
   comment?: string;
   shareable?: boolean;
   sortOrder?: number;
+  themeId?: string | null;
+  projectId?: string | null;
 };
 
 export async function createPlanItem(input: CreatePlanItemInput) {
@@ -504,6 +509,12 @@ export async function createPlanItem(input: CreatePlanItemInput) {
     sortOrder = lastItem ? lastItem.sortOrder + 100 : 0;
   }
 
+  const assignment = await validatePlanItemAssignment(
+    input.userId,
+    input.themeId,
+    input.projectId,
+  );
+
   const item = await prisma.planItem.create({
     data: {
       planId: input.planId,
@@ -525,6 +536,8 @@ export async function createPlanItem(input: CreatePlanItemInput) {
       comment: input.comment,
       shareable: input.shareable,
       sortOrder,
+      themeId: assignment.themeId,
+      projectId: assignment.projectId,
     },
     include: planItemInclude,
   });
@@ -632,17 +645,37 @@ export type UpdatePlanItemInput = {
   comment?: string | null;
   shareable?: boolean;
   sortOrder?: number;
+  themeId?: string | null;
+  projectId?: string | null;
 };
 
 export async function updatePlanItem(input: UpdatePlanItemInput) {
   const item = await requirePlanItemForUser(input.itemId, input.userId);
 
-  const { userId: _userId, itemId, status, progressLevel, ...fields } = input;
+  const {
+    userId: _userId,
+    itemId,
+    status,
+    progressLevel,
+    themeId,
+    projectId,
+    ...fields
+  } = input;
 
   const nextStatus = status ?? item.status;
   const nextProgress =
     progressLevel ??
     (status ? normalizeProgressForStatus(status, item.progressLevel) : undefined);
+
+  let assignment: { themeId: string | null; projectId: string | null } | undefined;
+
+  if (themeId !== undefined || projectId !== undefined) {
+    assignment = await validatePlanItemAssignment(
+      input.userId,
+      themeId !== undefined ? themeId : item.themeId,
+      projectId !== undefined ? projectId : item.projectId,
+    );
+  }
 
   const updated = await prisma.planItem.update({
     where: { id: itemId },
@@ -650,6 +683,12 @@ export async function updatePlanItem(input: UpdatePlanItemInput) {
       ...fields,
       ...(status ? { status: nextStatus } : {}),
       ...(nextProgress !== undefined ? { progressLevel: nextProgress } : {}),
+      ...(assignment
+        ? {
+            themeId: assignment.themeId,
+            projectId: assignment.projectId,
+          }
+        : {}),
     },
     include: planItemInclude,
   });

@@ -13,6 +13,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 
 import { updatePlanItemAction } from "@/app/(app)/plans/actions";
+import { ItemThemeProjectPicker } from "@/components/plans/item-theme-project-picker";
 import { getItemActionLabels } from "@/components/plans/item-action-labels";
 import { SimpleSheet } from "@/components/ui/simple-sheet";
 import {
@@ -23,6 +24,10 @@ import {
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 import { getStatusLabel, PLAN_ITEM_STATUS_ORDER } from "@/lib/plan-status";
 import type { SerializedPlanItem } from "@/lib/plan-serialize";
+import {
+  EMPTY_THEME_PROJECT_CATALOG,
+  type ThemeProjectCatalog,
+} from "@/lib/theme-project-types";
 
 type ItemDetailsSheetProps = {
   planId: string;
@@ -31,6 +36,7 @@ type ItemDetailsSheetProps = {
   onClose: () => void;
   focusField?: "comment" | null;
   isSubtask?: boolean;
+  themeProjectCatalog?: ThemeProjectCatalog;
 };
 
 const PROGRESS_LEVELS = [0, 25, 50, 75, 100] as const;
@@ -113,6 +119,7 @@ export function ItemDetailsSheet({
   onClose,
   focusField = null,
   isSubtask = false,
+  themeProjectCatalog = EMPTY_THEME_PROJECT_CATALOG,
 }: ItemDetailsSheetProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -251,6 +258,17 @@ export function ItemDetailsSheet({
             />
           )}
         </Field>
+
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-foreground">Theme / project</p>
+          <ItemThemeProjectPicker
+            planId={planId}
+            item={item}
+            catalog={themeProjectCatalog}
+            canEdit
+            emptyOptionLabel="+ Theme"
+          />
+        </div>
 
         <Field label="Type" fieldId={typeFieldId}>
           <select

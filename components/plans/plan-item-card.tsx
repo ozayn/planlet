@@ -4,7 +4,7 @@ import type {
   DraggableAttributes,
   DraggableSyntheticListeners,
 } from "@dnd-kit/core";
-import type { PlanItemView } from "@/app/generated/prisma/client";
+import type { PlanItemView, TaskOrganizationDisplay } from "@/app/generated/prisma/client";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 
@@ -32,7 +32,12 @@ import {
 import { getNestableParentCandidates } from "@/lib/plan-drag-nesting";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 import { STATUS_STYLES } from "@/lib/plan-status";
+import { ItemThemeProjectRowControl } from "@/components/plans/item-theme-project-row-control";
 import type { SerializedPlanItem } from "@/lib/plan-serialize";
+import {
+  EMPTY_THEME_PROJECT_CATALOG,
+  type ThemeProjectCatalog,
+} from "@/lib/theme-project-types";
 
 type PlanItemCardProps = {
   planId: string;
@@ -52,6 +57,8 @@ type PlanItemCardProps = {
   showPromoteDropHint?: boolean;
   subtasksContent?: React.ReactNode;
   sourcePlanDate?: string;
+  themeProjectCatalog?: ThemeProjectCatalog;
+  taskOrganizationDisplay?: TaskOrganizationDisplay;
 };
 
 export function PlanItemCard({
@@ -72,6 +79,8 @@ export function PlanItemCard({
   showPromoteDropHint = false,
   subtasksContent,
   sourcePlanDate,
+  themeProjectCatalog = EMPTY_THEME_PROJECT_CATALOG,
+  taskOrganizationDisplay = "ASSIGNED_ONLY",
 }: PlanItemCardProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -243,6 +252,13 @@ export function PlanItemCard({
             </div>
 
             <div className="ui-item-card-actions ui-plan-item-actions flex shrink-0 items-center gap-0.5">
+              <ItemThemeProjectRowControl
+                planId={planId}
+                item={item}
+                catalog={themeProjectCatalog}
+                canEdit={canEdit}
+                displayMode={taskOrganizationDisplay}
+              />
               {item.type === "TASK" ? (
                 <ItemPriorityButton
                   planId={planId}
@@ -394,6 +410,7 @@ export function PlanItemCard({
           }}
           focusField={detailsFocusField}
           isSubtask={isNested}
+          themeProjectCatalog={themeProjectCatalog}
         />
       ) : null}
     </article>

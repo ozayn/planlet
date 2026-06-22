@@ -7,6 +7,7 @@ import { InsightsPeriodLinks } from "@/components/insights/insights-period-links
 import { InsightsProgress } from "@/components/insights/insights-progress";
 import { InsightsSummaryLine } from "@/components/insights/insights-summary-line";
 import { InsightsReflectionLens } from "@/components/insights/insights-reflection-lens";
+import { InsightsThemeProjectBreakdown } from "@/components/insights/insights-theme-project-breakdown";
 import { InsightsTherapyThoughts } from "@/components/insights/insights-therapy-thoughts";
 import { PriorityMatrix } from "@/components/insights/priority-matrix";
 import { PageHeader } from "@/components/page-header";
@@ -93,6 +94,11 @@ export default async function InsightsPage() {
           <InsightsProgress totals={insights.totals} />
 
           <InsightsBreakdown types={typeRows} statuses={statusRows} />
+
+          <InsightsThemeProjectBreakdown
+            themes={insights.byTheme}
+            projects={insights.byProject}
+          />
 
           <PriorityMatrix quadrants={insights.priorityQuadrants} />
 

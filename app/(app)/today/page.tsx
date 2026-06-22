@@ -15,7 +15,8 @@ import {
 } from "@/lib/plan-sharing";
 import { getTodayPlan } from "@/lib/plans";
 import { serializePlan } from "@/lib/plan-serialize";
-import { getPlanItemViewForUser } from "@/lib/user-preferences";
+import { getPlanningPreferencesForUser } from "@/lib/user-preferences";
+import { getThemeProjectCatalog } from "@/lib/themes-projects";
 
 export default async function TodayPage() {
   const session = await auth();
@@ -25,9 +26,10 @@ export default async function TodayPage() {
     redirect("/");
   }
 
-  const [plan, planItemView] = await Promise.all([
+  const [plan, planningPreferences, themeProjectCatalog] = await Promise.all([
     getTodayPlan(userId),
-    getPlanItemViewForUser(userId),
+    getPlanningPreferencesForUser(userId),
+    getThemeProjectCatalog(userId),
   ]);
   const [kudos, reflectionData, platformShares, recentShareRecipients] = plan
     ? await Promise.all([
@@ -66,10 +68,12 @@ export default async function TodayPage() {
             type: entry.type,
             sender: entry.sender,
           }))}
-          itemView={planItemView}
+          itemView={planningPreferences.planItemView}
           observations={reflectionData.observations}
           gratitudes={reflectionData.gratitudes}
           therapyThoughts={reflectionData.therapyThoughts}
+          themeProjectCatalog={themeProjectCatalog}
+          taskOrganizationDisplay={planningPreferences.taskOrganizationDisplay}
         />
       ) : (
         <>

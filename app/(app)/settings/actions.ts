@@ -1,6 +1,6 @@
 "use server";
 
-import type { PlanItemView } from "@/app/generated/prisma/client";
+import type { PlanItemView, TaskOrganizationDisplay } from "@/app/generated/prisma/client";
 import { revalidatePath } from "next/cache";
 
 import { auth } from "@/auth";
@@ -10,7 +10,11 @@ import {
 } from "@/lib/notification-preferences";
 import { sendTestReminderPush } from "@/lib/reminders";
 import { isWebPushConfigured } from "@/lib/env";
-import { updatePlanItemView } from "@/lib/user-preferences";
+import {
+  updatePlanItemView,
+  updateTaskOrganizationDisplay,
+} from "@/lib/user-preferences";
+import { TASK_ORGANIZATION_DISPLAY_MODES } from "@/lib/task-organization-display";
 import {
   normalizeTimezone,
   syncAutomaticBrowserTimezone,
@@ -166,6 +170,33 @@ export async function updatePlanItemViewAction(
         error instanceof Error
           ? error.message
           : "Failed to update plan item view.",
+    };
+  }
+}
+
+export async function updateTaskOrganizationDisplayAction(
+  value: TaskOrganizationDisplay,
+): Promise<SettingsActionResult> {
+  if (
+    !TASK_ORGANIZATION_DISPLAY_MODES.includes(
+      value as (typeof TASK_ORGANIZATION_DISPLAY_MODES)[number],
+    )
+  ) {
+    return { success: false, error: "Invalid task organization display." };
+  }
+
+  try {
+    const userId = await requireUserId();
+    await updateTaskOrganizationDisplay(userId, value);
+    revalidatePlanSurfaces();
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to update task organization display.",
     };
   }
 }

@@ -62,6 +62,15 @@ export type MonthlyInsights = {
   observationCategories: Array<{ category: ObservationCategory; label: string; count: number }>;
   recentObservations: MonthlyInsightsObservation[];
   therapyThoughts: MonthlyInsightsTherapyThoughts | null;
+  byTheme: Array<{ label: string; count: number }>;
+  byProject: Array<{ label: string; count: number }>;
+  projectPatterns: Array<{
+    name: string;
+    total: number;
+    done: number;
+    moved: number;
+    notDone: number;
+  }>;
 };
 
 const STATUS_ORDER = PLAN_ITEM_STATUS_ORDER;
@@ -119,7 +128,12 @@ export async function getMonthlyInsights(
         dateEnd: { gte: start },
       },
       include: {
-        items: true,
+        items: {
+          include: {
+            theme: { select: { name: true } },
+            project: { select: { name: true } },
+          },
+        },
       },
     }),
     canReflect
@@ -156,6 +170,12 @@ export async function getMonthlyInsights(
   const typeCounts = new Map<PlanItemType, number>();
   const movedTypeCounts = new Map<PlanItemType, number>();
   const intentionTitleCounts = new Map<string, number>();
+  const themeCounts = new Map<string, number>();
+  const projectCounts = new Map<string, number>();
+  const projectPatterns = new Map<
+    string,
+    { total: number; done: number; moved: number; notDone: number }
+  >();
   let actionableItems = 0;
   let noteCount = 0;
   let intentionCount = 0;
@@ -192,6 +212,25 @@ export async function getMonthlyInsights(
     actionableItems += 1;
     incrementMap(statusCounts, item.status);
 
+    if (item.theme?.name) {
+      incrementMap(themeCounts, item.theme.name);
+    }
+
+    if (item.project?.name) {
+      incrementMap(projectCounts, item.project.name);
+      const pattern = projectPatterns.get(item.project.name) ?? {
+        total: 0,
+        done: 0,
+        moved: 0,
+        notDone: 0,
+      };
+      pattern.total += 1;
+      if (item.status === "DONE") pattern.done += 1;
+      if (item.status === "MOVED") pattern.moved += 1;
+      if (item.status === "NOT_DONE") pattern.notDone += 1;
+      projectPatterns.set(item.project.name, pattern);
+    }
+
     if (item.status === "MOVED") {
       incrementMap(movedTypeCounts, item.type);
     }
@@ -209,6 +248,21 @@ export async function getMonthlyInsights(
     .map(([type, count]) => ({ type, count }))
     .sort((a, b) => b.count - a.count)
     .slice(0, 6);
+
+  const byTheme = [...themeCounts.entries()]
+    .map(([label, count]) => ({ label, count }))
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
+    .slice(0, 8);
+
+  const byProject = [...projectCounts.entries()]
+    .map(([label, count]) => ({ label, count }))
+    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
+    .slice(0, 8);
+
+  const projectPatternRows = [...projectPatterns.entries()]
+    .map(([name, stats]) => ({ name, ...stats }))
+    .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name))
+    .slice(0, 8);
 
   const observationCategories = OBSERVATION_CATEGORIES.flatMap((category) => {
     const count = observationCategoryCounts.get(category) ?? 0;
@@ -284,5 +338,8 @@ export async function getMonthlyInsights(
     observationCategories,
     recentObservations,
     therapyThoughts: therapyThoughtsSummary,
+    byTheme,
+    byProject,
+    projectPatterns: projectPatternRows,
   };
 }

@@ -25,6 +25,7 @@ import type { DateHintConfidence } from "@/lib/ai/date-hints";
 import { formatDetectedDateLabel } from "@/lib/ai/date-hints";
 import type { ParsedPlan } from "@/lib/ai/plan-parser-schema";
 import { formatDateString, getDateRangeForPlanType, parseDateString } from "@/lib/dates";
+import type { ThemeProjectCatalog } from "@/lib/theme-project-types";
 import {
   buildDefaultPlanTitle,
   isDefaultPlanTitle,
@@ -44,7 +45,11 @@ type ImageDateSuggestion = {
   explanation?: string;
 };
 
-export function NewPlanFlow() {
+export function NewPlanFlow({
+  themeProjectCatalog,
+}: {
+  themeProjectCatalog: ThemeProjectCatalog;
+}) {
   const defaultTodayDate = formatDateString(new Date());
 
   const [step, setStep] = useState<Step>("input");
@@ -339,6 +344,7 @@ export function NewPlanFlow() {
         <ParsedPlanReview
           draft={draft}
           onChange={handleDraftChange}
+          themeProjectCatalog={themeProjectCatalog}
           planDate={selectedDate}
           onPlanDateChange={handleReviewDateChange}
           existingDayPlan={existingDayPlan}

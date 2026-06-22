@@ -24,7 +24,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 
-import type { PlanItemView } from "@/app/generated/prisma/client";
+import type { PlanItemView, TaskOrganizationDisplay } from "@/app/generated/prisma/client";
 
 import {
   moveItemUnderTaskAction,
@@ -48,6 +48,8 @@ import {
 import type { PlanItemSectionGroup } from "@/lib/plan-item-sections";
 import { useMediaQuery } from "@/lib/use-media-query";
 import type { SerializedPlanItem } from "@/lib/plan-serialize";
+import type { ThemeProjectCatalog } from "@/lib/theme-project-types";
+import { EMPTY_THEME_PROJECT_CATALOG } from "@/lib/theme-project-types";
 
 type SortablePlanItemListProps = {
   planId: string;
@@ -59,6 +61,8 @@ type SortablePlanItemListProps = {
   canEdit?: boolean;
   rootTasksForNesting?: SerializedPlanItem[];
   sourcePlanDate?: string;
+  themeProjectCatalog?: ThemeProjectCatalog;
+  taskOrganizationDisplay?: TaskOrganizationDisplay;
 };
 
 type DragState = {
@@ -83,12 +87,16 @@ function StaticPlanItemList({
   itemView,
   canEdit,
   itemDepth,
+  themeProjectCatalog,
+  taskOrganizationDisplay,
 }: {
   planId: string;
   items: SerializedPlanItem[];
   itemView: PlanItemView;
   canEdit: boolean;
   itemDepth: number;
+  themeProjectCatalog: ThemeProjectCatalog;
+  taskOrganizationDisplay: TaskOrganizationDisplay;
 }) {
   return (
     <>
@@ -102,6 +110,8 @@ function StaticPlanItemList({
           canEdit={canEdit}
           canMoveUp={canEdit && index > 0}
           canMoveDown={canEdit && index < items.length - 1}
+          themeProjectCatalog={themeProjectCatalog}
+          taskOrganizationDisplay={taskOrganizationDisplay}
         />
       ))}
     </>
@@ -114,6 +124,8 @@ function renderSubtasksList(
   itemView: PlanItemView,
   itemDepth: number,
   canEdit: boolean,
+  themeProjectCatalog: ThemeProjectCatalog,
+  taskOrganizationDisplay: TaskOrganizationDisplay,
 ) {
   if (item.subtasks.length === 0) {
     return null;
@@ -129,6 +141,8 @@ function renderSubtasksList(
         itemDepth={itemDepth + 1}
         itemView={itemView}
         canEdit={canEdit}
+        themeProjectCatalog={themeProjectCatalog}
+        taskOrganizationDisplay={taskOrganizationDisplay}
       />
     </div>
   );
@@ -148,6 +162,8 @@ function SortablePlanItemRow({
   showPromoteDropHint,
   showNestedSubtasks,
   sourcePlanDate,
+  themeProjectCatalog,
+  taskOrganizationDisplay,
 }: {
   planId: string;
   item: SerializedPlanItem;
@@ -162,6 +178,8 @@ function SortablePlanItemRow({
   showPromoteDropHint?: boolean;
   showNestedSubtasks?: boolean;
   sourcePlanDate?: string;
+  themeProjectCatalog: ThemeProjectCatalog;
+  taskOrganizationDisplay: TaskOrganizationDisplay;
 }) {
   const {
     attributes,
@@ -198,9 +216,19 @@ function SortablePlanItemRow({
         showNestDropHint={showNestDropHint}
         showPromoteDropHint={showPromoteDropHint}
         sourcePlanDate={sourcePlanDate}
+        themeProjectCatalog={themeProjectCatalog}
+        taskOrganizationDisplay={taskOrganizationDisplay}
         subtasksContent={
           showNestedSubtasks
-            ? renderSubtasksList(planId, item, itemView, itemDepth, canEdit)
+            ? renderSubtasksList(
+                planId,
+                item,
+                itemView,
+                itemDepth,
+                canEdit,
+                themeProjectCatalog,
+                taskOrganizationDisplay,
+              )
             : undefined
         }
       />
@@ -227,6 +255,8 @@ function SortablePlanItemRows({
   activeDragItem,
   dragPreviewWidth,
   sourcePlanDate,
+  themeProjectCatalog,
+  taskOrganizationDisplay,
 }: {
   planId: string;
   items: SerializedPlanItem[];
@@ -246,6 +276,8 @@ function SortablePlanItemRows({
   activeDragItem: SerializedPlanItem | null;
   dragPreviewWidth?: number;
   sourcePlanDate?: string;
+  themeProjectCatalog: ThemeProjectCatalog;
+  taskOrganizationDisplay: TaskOrganizationDisplay;
 }) {
   const dndId = useId();
   const dragNestingEnabled = isDragNestingEnabled(
@@ -315,6 +347,8 @@ function SortablePlanItemRows({
             }
             showNestedSubtasks={parentItemId === null}
             sourcePlanDate={sourcePlanDate}
+            themeProjectCatalog={themeProjectCatalog}
+            taskOrganizationDisplay={taskOrganizationDisplay}
           />
         ))}
       </SortableContext>
@@ -341,6 +375,8 @@ export function SortablePlanItemList({
   canEdit = true,
   rootTasksForNesting,
   sourcePlanDate,
+  themeProjectCatalog = EMPTY_THEME_PROJECT_CATALOG,
+  taskOrganizationDisplay = "ASSIGNED_ONLY",
 }: SortablePlanItemListProps) {
   const router = useRouter();
   const [items, setItems] = useState(initialItems);
@@ -579,6 +615,8 @@ export function SortablePlanItemList({
           activeDragItem={activeDragItem}
           dragPreviewWidth={dragPreviewWidth}
           sourcePlanDate={sourcePlanDate}
+          themeProjectCatalog={themeProjectCatalog}
+          taskOrganizationDisplay={taskOrganizationDisplay}
         />
       ) : (
         <StaticPlanItemList
@@ -587,6 +625,8 @@ export function SortablePlanItemList({
           itemView={itemView}
           canEdit={canEdit}
           itemDepth={itemDepth}
+          themeProjectCatalog={themeProjectCatalog}
+          taskOrganizationDisplay={taskOrganizationDisplay}
         />
       )}
 

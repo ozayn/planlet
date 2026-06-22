@@ -141,6 +141,12 @@ enum PlanItemView {
   CHECKLIST
 }
 
+enum TaskOrganizationDisplay {
+  MINIMAL
+  ASSIGNED_ONLY
+  ALWAYS
+}
+
 enum TimezoneMode {
   AUTOMATIC
   MANUAL
@@ -175,6 +181,7 @@ model User {
   canUseReflectionFeatures  Boolean     @default(false)
   canUseCoachingFeatures    Boolean     @default(false)
   planItemView              PlanItemView @default(CHECKLIST)
+  taskOrganizationDisplay   TaskOrganizationDisplay @default(ASSIGNED_ONLY)
   timezone                  String?
   timezoneMode              TimezoneMode @default(AUTOMATIC)
   lastSeenAt    DateTime?
@@ -184,6 +191,7 @@ model User {
   sessions      Session[]
   plans         Plan[]
   themes        Theme[]
+  projects      Project[]
   planSharesOwned    PlanShare[] @relation("PlanShareOwner")
   planSharesReceived PlanShare[] @relation("PlanShareRecipient")
   sentKudos          PlanKudos[] @relation("SentKudos")
@@ -456,13 +464,49 @@ model PlanItem {
   comment           String?
   shareable         Boolean            @default(true)
   sortOrder         Int                @default(0)
-  themes            PlanItemTheme[]
+  themeId           String?
+  theme             Theme?             @relation(fields: [themeId], references: [id], onDelete: SetNull)
+  projectId         String?
+  project           Project?           @relation(fields: [projectId], references: [id], onDelete: SetNull)
   comments          PlanItemComment[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 
   @@index([planId, sortOrder])
   @@index([parentItemId])
+  @@index([themeId])
+  @@index([projectId])
+}
+
+model Project {
+  id         String     @id @default(cuid())
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  themeId    String?
+  theme      Theme?     @relation(fields: [themeId], references: [id], onDelete: SetNull)
+  name       String
+  isArchived Boolean    @default(false)
+  planItems  PlanItem[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@index([userId, name])
+  @@index([themeId])
+}
+
+model Theme {
+  id         String     @id @default(cuid())
+  userId     String
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  color      String?
+  isArchived Boolean    @default(false)
+  projects   Project[]
+  planItems  PlanItem[]
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@index([userId, name])
 }
 
 model PlanItemComment {
@@ -477,31 +521,6 @@ model PlanItemComment {
 
   @@index([itemId, createdAt])
   @@index([authorId, createdAt])
-}
-
-model Theme {
-  id          String          @id @default(cuid())
-  userId      String
-  user        User            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name        String
-  description String?
-  active      Boolean         @default(true)
-  items       PlanItemTheme[]
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
-
-  @@index([userId, name])
-}
-
-model PlanItemTheme {
-  id         String   @id @default(cuid())
-  planItemId String
-  planItem   PlanItem @relation(fields: [planItemId], references: [id], onDelete: Cascade)
-  themeId    String
-  theme      Theme    @relation(fields: [themeId], references: [id], onDelete: Cascade)
-  createdAt  DateTime @default(now())
-
-  @@unique([planItemId, themeId])
 }
 
 model ShareExport {

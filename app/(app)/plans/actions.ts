@@ -701,6 +701,8 @@ async function appendParsedItemsToPlan(
       durationMinutes: item.durationMinutes,
       shareable: item.shareable ?? true,
       sortOrder: startSortOrder + i,
+      themeId: item.themeId ?? null,
+      projectId: item.projectId ?? null,
     });
 
     if (item.subtasks?.length) {

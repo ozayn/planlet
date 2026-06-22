@@ -7,6 +7,7 @@ import { SettingsProfile } from "@/components/settings/settings-profile";
 import { SettingsReflectionFeatures } from "@/components/settings/settings-reflection-features";
 import { SettingsReflectionLens } from "@/components/settings/settings-reflection-lens";
 import { SettingsSection } from "@/components/settings/settings-section";
+import { TaskOrganizationDisplaySettings } from "@/components/settings/task-organization-display-settings";
 import { SettingsTechnicalInfo } from "@/components/settings/settings-technical-info";
 import { SettingsTimezone } from "@/components/settings/settings-timezone";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -23,7 +24,7 @@ import {
   canUseCoachingFeatures,
   canUseReflectionFeatures,
 } from "@/lib/roles";
-import { getPlanItemViewForUser } from "@/lib/user-preferences";
+import { getPlanningPreferencesForUser } from "@/lib/user-preferences";
 import { getUserTimezone } from "@/lib/user-timezone";
 
 export default async function SettingsPage() {
@@ -31,9 +32,9 @@ export default async function SettingsPage() {
   const textParserConfigured = isTextParserConfigured();
   const openaiConfigured = isOpenAIConfigured();
   const imageExtractionConfigured = isImageExtractionConfigured();
-  const planItemView = session?.user?.id
-    ? await getPlanItemViewForUser(session.user.id)
-    : "CHECKLIST";
+  const planningPreferences = session?.user?.id
+    ? await getPlanningPreferencesForUser(session.user.id)
+    : { planItemView: "CHECKLIST" as const, taskOrganizationDisplay: "ASSIGNED_ONLY" as const };
   const userTimezone = session?.user?.id
     ? await getUserTimezone(session.user.id)
     : APP_TIMEZONE;
@@ -68,7 +69,23 @@ export default async function SettingsPage() {
         </p>
       </SettingsSection>
 
-      <PlanItemViewSettings value={planItemView} />
+      <SettingsSection title="Planning" className="space-y-5">
+        <PlanItemViewSettings value={planningPreferences.planItemView} />
+        <TaskOrganizationDisplaySettings
+          value={planningPreferences.taskOrganizationDisplay}
+        />
+      </SettingsSection>
+
+      <SettingsSection title="Organization">
+        <p className="text-sm text-muted">
+          Group tasks by life area (themes) and ongoing efforts (projects).
+        </p>
+        <p className="text-sm">
+          <a href="/themes" className="ui-text-link">
+            Manage themes & projects
+          </a>
+        </p>
+      </SettingsSection>
 
       {session?.user?.id ? (
         <SettingsTimezone timezone={userTimezone} timezoneMode={timezoneMode} />

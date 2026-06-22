@@ -31,6 +31,10 @@ export type SerializedPlanItem = {
   comment: string | null;
   shareable: boolean;
   sortOrder: number;
+  themeId: string | null;
+  themeName: string | null;
+  projectId: string | null;
+  projectName: string | null;
   commentCount: number;
   subtasks: SerializedPlanItem[];
 };
@@ -68,6 +72,8 @@ type PlanItemWithSubtasks = {
   comment: string | null;
   shareable: boolean;
   sortOrder: number;
+  theme?: { id: string; name: string } | null;
+  project?: { id: string; name: string } | null;
   _count?: { comments: number };
   subtasks?: PlanItemWithSubtasks[];
 };
@@ -94,6 +100,10 @@ export function serializePlanItem(item: PlanItemWithSubtasks): SerializedPlanIte
     comment: item.comment,
     shareable: item.shareable,
     sortOrder: item.sortOrder,
+    themeId: item.theme?.id ?? null,
+    themeName: item.theme?.name ?? null,
+    projectId: item.project?.id ?? null,
+    projectName: item.project?.name ?? null,
     commentCount: item._count?.comments ?? 0,
     subtasks: (item.subtasks ?? []).map(serializePlanItem),
   };

@@ -6,7 +6,6 @@ import { useState, useTransition } from "react";
 
 import { updatePlanItemViewAction } from "@/app/(app)/settings/actions";
 import { PlanItemStatusVisual } from "@/components/plans/plan-item-status-visual";
-import { SettingsSection } from "@/components/settings/settings-section";
 import {
   isExpressiveItemView,
   PLAN_ITEM_VIEW_OPTIONS,
@@ -45,7 +44,7 @@ export function PlanItemViewSettings({ value }: PlanItemViewSettingsProps) {
   }
 
   return (
-    <SettingsSection title="Planning">
+    <>
       <fieldset className="ui-settings-fieldset">
         <legend className="sr-only">Item style</legend>
         <p className="text-sm font-medium text-foreground">Item style</p>
@@ -115,6 +114,6 @@ export function PlanItemViewSettings({ value }: PlanItemViewSettingsProps) {
           {error}
         </p>
       ) : null}
-    </SettingsSection>
+    </>
   );
 }

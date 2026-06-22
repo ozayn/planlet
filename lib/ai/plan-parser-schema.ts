@@ -47,6 +47,8 @@ export const parsedPlanItemSchema = z.object({
   urgency: prioritySchema.optional(),
   durationMinutes: z.number().int().positive().optional(),
   shareable: z.boolean().optional(),
+  themeId: z.string().optional(),
+  projectId: z.string().optional(),
   subtasks: z.array(parsedSubtaskSchema).optional(),
 });
 

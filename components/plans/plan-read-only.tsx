@@ -1,6 +1,7 @@
 import type { KudosType, PlanItemView } from "@/app/generated/prisma/client";
 
 import { ItemCommentsButton } from "@/components/plans/item-comments-button";
+import { ItemThemeProjectLabel } from "@/components/plans/item-theme-project-picker";
 import { PlanItemStatusVisual } from "@/components/plans/plan-item-status-visual";
 import { SendKudosPanel } from "@/components/plans/send-kudos-panel";
 import { SharePlanPanel } from "@/components/plans/share-plan-panel";
@@ -11,6 +12,7 @@ import { isExpressiveItemView } from "@/lib/plan-item-view";
 import { partitionPlanItems } from "@/lib/plan-item-sections";
 import { getStatusLabel, STATUS_STYLES } from "@/lib/plan-status";
 import type { SerializedPlan, SerializedPlanItem } from "@/lib/plan-serialize";
+import { hasThemeProjectAssignment } from "@/lib/theme-project-types";
 
 type ViewerKudos = {
   type: KudosType;
@@ -72,6 +74,11 @@ function ReadOnlyTaskItem({
             <p className="mt-0.5 text-[0.6875rem] text-muted-light">
               {getPlanItemTypeLabel(item.type)}
             </p>
+            {hasThemeProjectAssignment(item) ? (
+              <div className="mt-1">
+                <ItemThemeProjectLabel item={item} />
+              </div>
+            ) : null}
           </div>
           <div className="ui-item-card-actions flex shrink-0 items-center">
             <ItemCommentsButton

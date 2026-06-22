@@ -19,7 +19,8 @@ import { getPlanReflectionData } from "@/lib/reflection-data";
 import { buildMonthPlanPageTitle } from "@/lib/month-plan-header";
 import { getMonthPlan } from "@/lib/plans";
 import { serializePlan } from "@/lib/plan-serialize";
-import { getPlanItemViewForUser } from "@/lib/user-preferences";
+import { getPlanningPreferencesForUser } from "@/lib/user-preferences";
+import { getThemeProjectCatalog } from "@/lib/themes-projects";
 
 type MonthPlanPageProps = {
   params: Promise<{ date: string }>;
@@ -67,12 +68,13 @@ export default async function MonthPlanPage({ params }: MonthPlanPageProps) {
     );
   }
 
-  const [platformShares, planItemView, reflectionData, recentShareRecipients] =
+  const [platformShares, planningPreferences, reflectionData, recentShareRecipients, themeProjectCatalog] =
     await Promise.all([
       getPlanSharesForOwner(plan.id, userId),
-      getPlanItemViewForUser(userId),
+      getPlanningPreferencesForUser(userId),
       getPlanReflectionData(plan.id, userId, session.user),
       getRecentShareRecipients(userId, plan.id),
+      getThemeProjectCatalog(userId),
     ]);
 
   const periodSummaryHref = getPeriodSummaryHref("MONTH", plan.dateStart);
@@ -94,12 +96,14 @@ export default async function MonthPlanPage({ params }: MonthPlanPageProps) {
         showPlatformShare
         platformShares={platformShares}
         recentShareRecipients={recentShareRecipients}
-        itemView={planItemView}
+        itemView={planningPreferences.planItemView}
         periodSummaryHref={periodSummaryHref}
         periodSummaryLabel="Month summary"
         observations={reflectionData.observations}
         gratitudes={reflectionData.gratitudes}
         therapyThoughts={undefined}
+        themeProjectCatalog={themeProjectCatalog}
+        taskOrganizationDisplay={planningPreferences.taskOrganizationDisplay}
       />
     </section>
   );

@@ -1,12 +1,14 @@
 "use client";
 
-import type { PlanItemView } from "@/app/generated/prisma/client";
+import type { PlanItemView, TaskOrganizationDisplay } from "@/app/generated/prisma/client";
 
 import { IntentionItemCard } from "@/components/plans/intention-item-card";
 import { NoteItemCard } from "@/components/plans/note-item-card";
 import { SortablePlanItemList } from "@/components/plans/sortable-plan-item-list";
 import { partitionPlanItems } from "@/lib/plan-item-sections";
 import type { SerializedPlanItem } from "@/lib/plan-serialize";
+import type { ThemeProjectCatalog } from "@/lib/theme-project-types";
+import { EMPTY_THEME_PROJECT_CATALOG } from "@/lib/theme-project-types";
 
 type PlanItemSectionsProps = {
   planId: string;
@@ -14,6 +16,8 @@ type PlanItemSectionsProps = {
   itemView?: PlanItemView;
   canEdit?: boolean;
   sourcePlanDate?: string;
+  themeProjectCatalog?: ThemeProjectCatalog;
+  taskOrganizationDisplay?: TaskOrganizationDisplay;
 };
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -30,6 +34,8 @@ export function PlanItemSections({
   itemView = "MINIMAL",
   canEdit = true,
   sourcePlanDate,
+  themeProjectCatalog = EMPTY_THEME_PROJECT_CATALOG,
+  taskOrganizationDisplay = "ASSIGNED_ONLY",
 }: PlanItemSectionsProps) {
   const { tasks, intentions, notes } = partitionPlanItems(items);
   if (tasks.length === 0 && intentions.length === 0 && notes.length === 0) {
@@ -48,6 +54,8 @@ export function PlanItemSections({
             itemView={itemView}
             canEdit={canEdit}
             sourcePlanDate={sourcePlanDate}
+            themeProjectCatalog={themeProjectCatalog}
+            taskOrganizationDisplay={taskOrganizationDisplay}
           />
         </section>
       ) : null}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, type RefObject } from "react";
-import type { PlanItemView } from "@/app/generated/prisma/client";
+import type { PlanItemView, TaskOrganizationDisplay } from "@/app/generated/prisma/client";
 
 import { AddItemForm } from "@/components/plans/add-item-form";
 import { EditablePlanTitle } from "@/components/plans/editable-plan-title";
@@ -24,6 +24,8 @@ import type { SerializedTherapyThought } from "@/lib/therapy-thoughts";
 import { formatDateString } from "@/lib/dates";
 import type { SerializedPlan } from "@/lib/plan-serialize";
 import type { RecentShareRecipient } from "@/lib/plan-sharing";
+import type { ThemeProjectCatalog } from "@/lib/theme-project-types";
+import { EMPTY_THEME_PROJECT_CATALOG } from "@/lib/theme-project-types";
 
 type PlanShareEntry = {
   id: string;
@@ -51,6 +53,8 @@ export type PlanEditorProps = {
   gratitudes?: SerializedGratitude[];
   therapyThoughts?: SerializedTherapyThought[];
   canEdit?: boolean;
+  themeProjectCatalog?: ThemeProjectCatalog;
+  taskOrganizationDisplay?: TaskOrganizationDisplay;
   headerActionsPlacement?: "inline" | "desktop-only" | "none";
   titleMode?: "full" | "custom-only";
   titleEditSignal?: number;
@@ -76,6 +80,8 @@ export function PlanEditor({
   observations,
   gratitudes,
   therapyThoughts,
+  themeProjectCatalog = EMPTY_THEME_PROJECT_CATALOG,
+  taskOrganizationDisplay = "ASSIGNED_ONLY",
   headerActionsPlacement = "inline",
   titleMode = "full",
   titleEditSignal = 0,
@@ -242,6 +248,8 @@ export function PlanEditor({
             itemView={itemView}
             canEdit={canEdit}
             sourcePlanDate={sourcePlanDate}
+            themeProjectCatalog={themeProjectCatalog}
+            taskOrganizationDisplay={taskOrganizationDisplay}
           />
         </section>
       ) : null}

@@ -18,7 +18,8 @@ import {
 import { getPlanReflectionData } from "@/lib/reflection-data";
 import { getDayPlan } from "@/lib/plans";
 import { serializePlan } from "@/lib/plan-serialize";
-import { getPlanItemViewForUser } from "@/lib/user-preferences";
+import { getPlanningPreferencesForUser } from "@/lib/user-preferences";
+import { getThemeProjectCatalog } from "@/lib/themes-projects";
 
 type DayPlanPageProps = {
   params: Promise<{ date: string }>;
@@ -66,14 +67,15 @@ export default async function DayPlanPage({ params }: DayPlanPageProps) {
     );
   }
 
-  const [platformShares, planItemView, reflectionData, recentShareRecipients] =
+  const [platformShares, planningPreferences, reflectionData, recentShareRecipients, themeProjectCatalog] =
     await Promise.all([
       getPlanSharesForOwner(plan.id, userId),
-      getPlanItemViewForUser(userId),
+      getPlanningPreferencesForUser(userId),
         getPlanReflectionData(plan.id, userId, session.user, {
           includeTherapyThoughts: true,
         }),
       getRecentShareRecipients(userId, plan.id),
+      getThemeProjectCatalog(userId),
     ]);
 
   return (
@@ -92,10 +94,12 @@ export default async function DayPlanPage({ params }: DayPlanPageProps) {
         showPlatformShare
         platformShares={platformShares}
         recentShareRecipients={recentShareRecipients}
-        itemView={planItemView}
+        itemView={planningPreferences.planItemView}
         observations={reflectionData.observations}
         gratitudes={reflectionData.gratitudes}
         therapyThoughts={reflectionData.therapyThoughts}
+        themeProjectCatalog={themeProjectCatalog}
+        taskOrganizationDisplay={planningPreferences.taskOrganizationDisplay}
       />
     </section>
   );

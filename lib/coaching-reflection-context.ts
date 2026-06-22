@@ -162,6 +162,42 @@ export async function buildCoachingReflectionContext(
     );
   }
 
+  if (insights.byTheme.length > 0) {
+    lines.push(
+      `Most active themes: ${insights.byTheme
+        .slice(0, 5)
+        .map((entry) => `${entry.label} (${entry.count})`)
+        .join(", ")}`,
+    );
+  }
+
+  const stuckProjects = insights.projectPatterns.filter(
+    (entry) => entry.moved + entry.notDone >= 2,
+  );
+  if (stuckProjects.length > 0) {
+    lines.push(
+      `Projects with moved/not-done tasks: ${stuckProjects
+        .slice(0, 5)
+        .map(
+          (entry) =>
+            `${entry.name} (moved ${entry.moved}, not done ${entry.notDone})`,
+        )
+        .join("; ")}`,
+    );
+  }
+
+  const completedProjects = insights.projectPatterns.filter(
+    (entry) => entry.done > 0,
+  );
+  if (completedProjects.length > 0) {
+    lines.push(
+      `Projects with completed tasks: ${completedProjects
+        .slice(0, 5)
+        .map((entry) => `${entry.name} (${entry.done} done)`)
+        .join("; ")}`,
+    );
+  }
+
   if (monthSummary.repeatedThemes.length > 0) {
     lines.push(
       `Repeated intention themes: ${monthSummary.repeatedThemes.join("; ")}`,

@@ -28,6 +28,9 @@ import {
   getStatusLabel,
   PLAN_ITEM_STATUS_ORDER,
 } from "@/lib/plan-status";
+import { suggestThemeProjectForTitle } from "@/lib/theme-project-suggestions";
+import type { ThemeProjectCatalog } from "@/lib/theme-project-types";
+import { useMemo } from "react";
 
 const PLAN_TYPES = ["DAY", "WEEK", "MONTH", "YEAR"] as const;
 const LANGUAGES = ["FA", "EN", "MIXED", "UNKNOWN"] as const;
@@ -66,6 +69,7 @@ type ImageDateHintContext = {
 type ParsedPlanReviewProps = {
   draft: ParsedPlan;
   onChange: (draft: ParsedPlan) => void;
+  themeProjectCatalog: ThemeProjectCatalog;
   planDate?: string;
   onPlanDateChange?: (planDate: string) => void;
   existingDayPlan?: boolean;
@@ -80,6 +84,7 @@ type ParsedPlanReviewProps = {
 export function ParsedPlanReview({
   draft,
   onChange,
+  themeProjectCatalog,
   planDate,
   onPlanDateChange,
   existingDayPlan = false,
@@ -345,6 +350,7 @@ export function ParsedPlanReview({
             key={index}
             itemIndex={index}
             item={item}
+            catalog={themeProjectCatalog}
             onChange={(updated) => updateItem(index, updated)}
             onDelete={() => removeItem(index)}
           />
@@ -354,18 +360,50 @@ export function ParsedPlanReview({
   );
 }
 
+function encodeAssignment(
+  themeId?: string | null,
+  projectId?: string | null,
+): string {
+  if (projectId) return `project:${projectId}`;
+  if (themeId) return `theme:${themeId}`;
+  return "";
+}
+
+function decodeAssignment(value: string): {
+  themeId?: string;
+  projectId?: string;
+} {
+  if (value.startsWith("project:")) {
+    return { projectId: value.slice(8) || undefined };
+  }
+  if (value.startsWith("theme:")) {
+    return { themeId: value.slice(6) || undefined };
+  }
+  return {};
+}
+
 function ReviewItemCard({
   itemIndex,
   item,
+  catalog,
   onChange,
   onDelete,
 }: {
   itemIndex: number;
   item: ParsedPlanItem;
+  catalog: ThemeProjectCatalog;
   onChange: (item: ParsedPlanItem) => void;
   onDelete: () => void;
 }) {
   const itemPrefix = `review-item-${itemIndex}`;
+  const suggestion = useMemo(
+    () => suggestThemeProjectForTitle(item.title, catalog),
+    [item.title, catalog],
+  );
+  const assignmentValue = encodeAssignment(item.themeId, item.projectId);
+  const suggestedLabel = [suggestion.themeName, suggestion.projectName]
+    .filter(Boolean)
+    .join(" · ");
   function updateSubtask(subIndex: number, subtask: ParsedSubtask) {
     const subtasks = [...(item.subtasks ?? [])];
     subtasks[subIndex] = subtask;
@@ -400,6 +438,63 @@ function ReviewItemCard({
           onChange={(event) => onChange({ ...item, title: event.target.value })}
           className={inputClass}
         />
+      </Field>
+
+      <Field label="Theme / project" fieldId={`${itemPrefix}-assignment`}>
+        <select
+          id={`${itemPrefix}-assignment`}
+          name={`${itemPrefix}-assignment`}
+          value={assignmentValue}
+          onChange={(event) => {
+            const decoded = decodeAssignment(event.target.value);
+            onChange({
+              ...item,
+              themeId: decoded.themeId,
+              projectId: decoded.projectId,
+            });
+          }}
+          className={`${selectClass} w-full`}
+        >
+          <option value="">No theme</option>
+          {catalog.themes.length > 0 ? (
+            <optgroup label="Themes">
+              {catalog.themes.map((theme) => (
+                <option key={theme.id} value={`theme:${theme.id}`}>
+                  {theme.name}
+                </option>
+              ))}
+            </optgroup>
+          ) : null}
+          {catalog.projects.length > 0 ? (
+            <optgroup label="Projects">
+              {catalog.projects.map((project) => (
+                <option key={project.id} value={`project:${project.id}`}>
+                  {project.name}
+                </option>
+              ))}
+            </optgroup>
+          ) : null}
+        </select>
+        {suggestedLabel &&
+        assignmentValue === "" &&
+        (suggestion.themeId || suggestion.projectId) ? (
+          <p className="text-xs text-muted-light">
+            Suggested: {suggestedLabel}{" "}
+            <button
+              type="button"
+              className="ui-text-link"
+              onClick={() =>
+                onChange({
+                  ...item,
+                  themeId: suggestion.themeId ?? undefined,
+                  projectId: suggestion.projectId ?? undefined,
+                })
+              }
+            >
+              Use
+            </button>
+          </p>
+        ) : null}
       </Field>
 
       <div className="grid gap-3 sm:grid-cols-2">

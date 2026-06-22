@@ -14,7 +14,8 @@ import { getPeriodSummaryHref } from "@/lib/period-summary-links";
 import { getPlanWithItems } from "@/lib/plans";
 import { prisma } from "@/lib/prisma";
 import { serializePlan } from "@/lib/plan-serialize";
-import { getPlanItemViewForUser } from "@/lib/user-preferences";
+import { getPlanningPreferencesForUser } from "@/lib/user-preferences";
+import { getThemeProjectCatalog } from "@/lib/themes-projects";
 
 type PlanDetailPageProps = {
   params: Promise<{ id: string }>;
@@ -42,7 +43,10 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
   }
 
   const serialized = serializePlan(plan);
-  const planItemView = await getPlanItemViewForUser(userId);
+  const [planningPreferences, themeProjectCatalog] = await Promise.all([
+    getPlanningPreferencesForUser(userId),
+    getThemeProjectCatalog(userId),
+  ]);
 
   if (access === "view") {
     const share = await prisma.planShare.findFirst({
@@ -68,7 +72,7 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
               ? { type: viewerKudos.type }
               : null
           }
-          itemView={planItemView}
+          itemView={planningPreferences.planItemView}
         />
       </section>
     );
@@ -110,12 +114,14 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
           type: entry.type,
           sender: entry.sender,
         }))}
-        itemView={planItemView}
+        itemView={planningPreferences.planItemView}
         periodSummaryHref={periodSummaryHref}
         periodSummaryLabel={periodSummaryLabel}
         observations={reflectionData.observations}
         gratitudes={reflectionData.gratitudes}
         therapyThoughts={reflectionData.therapyThoughts}
+        themeProjectCatalog={themeProjectCatalog}
+        taskOrganizationDisplay={planningPreferences.taskOrganizationDisplay}
       />
     </section>
   );

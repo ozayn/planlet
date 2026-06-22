@@ -79,6 +79,7 @@ export function ProfileMenu({
       !pathname.startsWith("/plans/year/"));
   const onInsights =
     pathname === "/insights" || pathname.startsWith("/insights/");
+  const onThemes = pathname === "/themes" || pathname.startsWith("/themes/");
   const onFeedback = pathname === "/feedback" || pathname.startsWith("/feedback/");
   const onAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
   const onTherapyReview =
@@ -152,6 +153,16 @@ export function ProfileMenu({
         Insights
       </Link>
     ) : null,
+    <Link
+      key="themes"
+      href="/themes"
+      role="menuitem"
+      aria-current={onThemes ? "page" : undefined}
+      onClick={closeMenu}
+      className={menuItemClass(onThemes)}
+    >
+      Themes & projects
+    </Link>,
   ];
 
   const reflectionItems: ReactNode[] = [
