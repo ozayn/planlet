@@ -3,6 +3,7 @@ import {
   isAdminEmail,
   isCoachEmail,
   isFeedbackEmail,
+  isJobTrackerEmail,
   isReflectorEmail,
 } from "@/lib/auth-allowlist";
 import { isAdmin } from "@/lib/roles";
@@ -13,6 +14,7 @@ export type ResolvedUserAccess = {
   canGiveFeedback: boolean;
   canUseReflectionFeatures: boolean;
   canUseCoachingFeatures: boolean;
+  canUseJobTrackerFeatures: boolean;
 };
 
 type ExistingUserAccess = {
@@ -20,6 +22,7 @@ type ExistingUserAccess = {
   canGiveFeedback?: boolean;
   canUseReflectionFeatures?: boolean;
   canUseCoachingFeatures?: boolean;
+  canUseJobTrackerFeatures?: boolean;
 };
 
 export function resolveUserAccessFromEmail(
@@ -32,12 +35,14 @@ export function resolveUserAccessFromEmail(
       canGiveFeedback: true,
       canUseReflectionFeatures: true,
       canUseCoachingFeatures: true,
+      canUseJobTrackerFeatures: true,
     };
   }
 
   const canGiveFeedback = isFeedbackEmail(email);
   const canUseReflectionFeatures = isReflectorEmail(email);
   const canUseCoachingFeatures = isCoachEmail(email);
+  const canUseJobTrackerFeatures = isJobTrackerEmail(email);
 
   let role: UserRole = "USER";
   if (canUseReflectionFeatures) {
@@ -49,6 +54,7 @@ export function resolveUserAccessFromEmail(
     canGiveFeedback,
     canUseReflectionFeatures,
     canUseCoachingFeatures,
+    canUseJobTrackerFeatures,
   };
 }
 
@@ -72,6 +78,7 @@ export async function syncUserAccessOnSignIn(
       canGiveFeedback: true,
       canUseReflectionFeatures: true,
       canUseCoachingFeatures: true,
+      canUseJobTrackerFeatures: true,
     },
   });
 
@@ -81,7 +88,8 @@ export async function syncUserAccessOnSignIn(
     existing?.role !== access.role ||
     existing?.canGiveFeedback !== access.canGiveFeedback ||
     existing?.canUseReflectionFeatures !== access.canUseReflectionFeatures ||
-    existing?.canUseCoachingFeatures !== access.canUseCoachingFeatures
+    existing?.canUseCoachingFeatures !== access.canUseCoachingFeatures ||
+    existing?.canUseJobTrackerFeatures !== access.canUseJobTrackerFeatures
   ) {
     await prisma.user.update({
       where: { id: userId },

@@ -5,6 +5,7 @@ export type UserAccess = {
   canGiveFeedback?: boolean | null;
   canUseReflectionFeatures?: boolean | null;
   canUseCoachingFeatures?: boolean | null;
+  canUseJobTrackerFeatures?: boolean | null;
 };
 
 type RoleInput = UserRole | string | null | undefined;
@@ -41,6 +42,14 @@ export function canUseCoachingFeatures(user: UserAccess): boolean {
   }
 
   return user.canUseCoachingFeatures === true;
+}
+
+export function canUseJobTrackerFeatures(user: UserAccess): boolean {
+  if (isAdmin(user)) {
+    return true;
+  }
+
+  return user.canUseJobTrackerFeatures === true;
 }
 
 export function canUseTherapyThoughts(user: UserAccess | RoleInput): boolean {

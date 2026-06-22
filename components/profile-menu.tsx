@@ -10,6 +10,7 @@ import { UserAvatar } from "@/components/user-avatar";
 import {
   canShowFeedbackInProfileMenu,
   canShowInsightsInProfileMenu,
+  canShowJobTrackerInProfileMenu,
   canShowTherapyReviewInProfileMenu,
 } from "@/lib/profile-menu";
 
@@ -20,6 +21,7 @@ type ProfileMenuProps = {
   isAdmin?: boolean;
   canGiveFeedback?: boolean;
   canUseTherapyThoughts?: boolean;
+  canUseJobTrackerFeatures?: boolean;
   signOutButton: React.ReactNode;
   compact?: boolean;
   showThemeInMenu?: boolean;
@@ -60,6 +62,7 @@ export function ProfileMenu({
   isAdmin = false,
   canGiveFeedback = false,
   canUseTherapyThoughts = false,
+  canUseJobTrackerFeatures = false,
   signOutButton,
   compact = false,
   showThemeInMenu = false,
@@ -81,6 +84,7 @@ export function ProfileMenu({
     pathname === "/insights" || pathname.startsWith("/insights/");
   const onThemes = pathname === "/themes" || pathname.startsWith("/themes/");
   const onFeedback = pathname === "/feedback" || pathname.startsWith("/feedback/");
+  const onJobs = pathname === "/jobs" || pathname.startsWith("/jobs/");
   const onAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
   const onTherapyReview =
     pathname === "/therapy-review" ||
@@ -94,6 +98,7 @@ export function ProfileMenu({
   const access = {
     canGiveFeedback,
     canUseTherapyThoughts,
+    canUseJobTrackerFeatures,
     isAdmin,
   };
 
@@ -211,6 +216,18 @@ export function ProfileMenu({
         className={menuItemClass(onFeedback)}
       >
         Feedback
+      </Link>
+    ) : null,
+    canShowJobTrackerInProfileMenu(access) ? (
+      <Link
+        key="jobs"
+        href="/jobs"
+        role="menuitem"
+        aria-current={onJobs ? "page" : undefined}
+        onClick={closeMenu}
+        className={menuItemClass(onJobs)}
+      >
+        Job tracker
       </Link>
     ) : null,
     isAdmin ? (

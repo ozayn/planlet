@@ -60,6 +60,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           canGiveFeedback: true,
           canUseReflectionFeatures: true,
           canUseCoachingFeatures: true,
+          canUseJobTrackerFeatures: true,
           timezone: true,
           timezoneMode: true,
         },
@@ -74,6 +75,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       session.user.canGiveFeedback = dbUser.canGiveFeedback;
       session.user.canUseReflectionFeatures = dbUser.canUseReflectionFeatures;
       session.user.canUseCoachingFeatures = dbUser.canUseCoachingFeatures;
+      session.user.canUseJobTrackerFeatures = dbUser.canUseJobTrackerFeatures;
       session.user.timezone = dbUser.timezone ?? FALLBACK_TIMEZONE;
       session.user.timezoneMode = dbUser.timezoneMode;
 

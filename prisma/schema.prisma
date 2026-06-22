@@ -170,6 +170,16 @@ enum ReminderType {
   EVENING_REFLECTION
 }
 
+enum JobApplicationStatus {
+  SAVED
+  APPLIED
+  INTERVIEWING
+  REJECTED
+  OFFER
+  WITHDRAWN
+  ARCHIVED
+}
+
 model User {
   id            String      @id @default(cuid())
   name          String?
@@ -180,6 +190,7 @@ model User {
   canGiveFeedback           Boolean     @default(false)
   canUseReflectionFeatures  Boolean     @default(false)
   canUseCoachingFeatures    Boolean     @default(false)
+  canUseJobTrackerFeatures  Boolean     @default(false)
   planItemView              PlanItemView @default(CHECKLIST)
   taskOrganizationDisplay   TaskOrganizationDisplay @default(ASSIGNED_ONLY)
   timezone                  String?
@@ -208,6 +219,7 @@ model User {
   resolvedFeedback   AppFeedback[] @relation("ResolvedFeedback")
   loginEvents   LoginEvent[]
   reflectionInfluencePreference ReflectionInfluencePreference?
+  jobApplications               JobApplication[]
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 }
@@ -541,4 +553,27 @@ model ReflectionInfluencePreference {
   influences Json
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+}
+
+model JobApplication {
+  id          String               @id @default(cuid())
+  userId      String
+  user        User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title       String
+  company     String
+  url         String?
+  description String?              @db.Text
+  summary     String?              @db.Text
+  source      String?
+  referrer    String?
+  location    String?
+  salary      String?
+  appliedDate String?
+  status      JobApplicationStatus @default(SAVED)
+  notes       String?              @db.Text
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+
+  @@index([userId, status])
+  @@index([userId, updatedAt])
 }

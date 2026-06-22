@@ -14,6 +14,7 @@ type MobileAppBarProps = {
   isAdmin?: boolean;
   canGiveFeedback?: boolean;
   canUseTherapyThoughts?: boolean;
+  canUseJobTrackerFeatures?: boolean;
   signOutButton: React.ReactNode;
   unreadNotificationCount?: number;
   notifications?: SerializedNotification[];
@@ -26,6 +27,7 @@ export function MobileAppBar({
   isAdmin = false,
   canGiveFeedback = false,
   canUseTherapyThoughts = false,
+  canUseJobTrackerFeatures = false,
   signOutButton,
   unreadNotificationCount = 0,
   notifications = [],
@@ -53,6 +55,7 @@ export function MobileAppBar({
             isAdmin={isAdmin}
             canGiveFeedback={canGiveFeedback}
             canUseTherapyThoughts={canUseTherapyThoughts}
+            canUseJobTrackerFeatures={canUseJobTrackerFeatures}
             signOutButton={signOutButton}
             compact
             showThemeInMenu
