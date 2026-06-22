@@ -1,14 +1,8 @@
-import type { JobApplicationStatus } from "@/app/generated/prisma/client";
-
-export const JOB_APPLICATION_STATUSES = [
-  "SAVED",
-  "APPLIED",
-  "INTERVIEWING",
-  "REJECTED",
-  "OFFER",
-  "WITHDRAWN",
-  "ARCHIVED",
-] as const satisfies readonly JobApplicationStatus[];
+export {
+  getJobApplicationStatusLabel,
+  JOB_APPLICATION_STATUSES,
+  type JobApplicationStatusValue,
+} from "@/lib/job-application-status";
 
 export type JobApplicationFilter =
   | "ALL"

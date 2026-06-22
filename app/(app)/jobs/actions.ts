@@ -2,8 +2,6 @@
 
 import { revalidatePath } from "next/cache";
 
-import type { JobApplicationStatus } from "@/app/generated/prisma/client";
-
 import { extractJobFromUrl } from "@/lib/ai/extract-job-from-url";
 import type { ExtractedJobDetails } from "@/lib/ai/extract-job-from-url";
 import type { JobApplicationFilter } from "@/lib/job-application-constants";
@@ -137,4 +135,5 @@ export async function extractJobFromUrlAction(
   }
 }
 
-export type { JobApplicationStatus, JobApplicationInput, SerializedJobApplication };
+export type { JobApplicationInput, SerializedJobApplication } from "@/lib/job-applications";
+export type { JobApplicationStatusValue } from "@/lib/job-application-status";

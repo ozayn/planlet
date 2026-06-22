@@ -11,7 +11,7 @@ import { SimpleSheet } from "@/components/ui/simple-sheet";
 import { JOB_APPLICATION_STATUSES } from "@/lib/job-application-constants";
 import { getJobApplicationStatusLabel } from "@/lib/job-application-labels";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
-import type { JobApplicationStatus } from "@/app/generated/prisma/client";
+import type { JobApplicationStatusValue } from "@/lib/job-application-status";
 
 type JobApplicationEditorSheetProps = {
   job: SerializedJobApplication | null;
@@ -41,7 +41,7 @@ export function JobApplicationEditorSheet({
     title: "",
     company: "",
     appliedDate: "",
-    status: "APPLIED" as JobApplicationStatus,
+    status: "APPLIED" as JobApplicationStatusValue,
     notes: "",
     source: "",
     referrer: "",
@@ -242,7 +242,7 @@ export function JobApplicationEditorSheet({
               onChange={(event) =>
                 setForm({
                   ...form,
-                  status: event.target.value as JobApplicationStatus,
+                  status: event.target.value as JobApplicationStatusValue,
                 })
               }
               disabled={pending}

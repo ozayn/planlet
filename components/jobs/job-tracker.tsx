@@ -25,7 +25,7 @@ import {
 import { formatDateString } from "@/lib/dates";
 import { ExternalLinkIcon } from "@/components/ui/action-icons";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
-import type { JobApplicationStatus } from "@/app/generated/prisma/client";
+import type { JobApplicationStatusValue } from "@/lib/job-application-status";
 
 type JobTrackerProps = {
   initialJobs: SerializedJobApplication[];
@@ -36,7 +36,7 @@ type AddJobFormState = {
   title: string;
   company: string;
   appliedDate: string;
-  status: JobApplicationStatus;
+  status: JobApplicationStatusValue;
   notes: string;
 };
 
@@ -273,7 +273,7 @@ export function JobTracker({ initialJobs }: JobTrackerProps) {
                 onChange={(event) =>
                   setForm({
                     ...form,
-                    status: event.target.value as JobApplicationStatus,
+                    status: event.target.value as JobApplicationStatusValue,
                   })
                 }
                 disabled={isPending}

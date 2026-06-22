@@ -1,7 +1,10 @@
 import type { JobApplicationStatus } from "@/app/generated/prisma/client";
 
 import {
-  JOB_APPLICATION_STATUSES,
+  isJobApplicationStatus,
+  type JobApplicationStatusValue,
+} from "@/lib/job-application-status";
+import {
   MAX_JOB_COMPANY_LENGTH,
   MAX_JOB_DESCRIPTION_LENGTH,
   MAX_JOB_LOCATION_LENGTH,
@@ -44,7 +47,7 @@ export type SerializedJobApplication = {
   location: string | null;
   salary: string | null;
   appliedDate: string | null;
-  status: JobApplicationStatus;
+  status: JobApplicationStatusValue;
   notes: string | null;
   createdAt: string;
   updatedAt: string;
@@ -61,7 +64,7 @@ export type JobApplicationInput = {
   location?: string | null;
   salary?: string | null;
   appliedDate?: string | null;
-  status?: JobApplicationStatus;
+  status?: JobApplicationStatusValue;
   notes?: string | null;
 };
 
@@ -77,7 +80,7 @@ function serializeJobApplication(job: {
   location: string | null;
   salary: string | null;
   appliedDate: string | null;
-  status: JobApplicationStatus;
+  status: JobApplicationStatusValue;
   notes: string | null;
   createdAt: Date;
   updatedAt: Date;
@@ -187,7 +190,7 @@ function sanitizeJobInput(input: JobApplicationInput) {
   }
 
   const status = input.status ?? "SAVED";
-  if (!JOB_APPLICATION_STATUSES.includes(status)) {
+  if (!isJobApplicationStatus(status)) {
     throw new JobApplicationError("Invalid status.");
   }
 
@@ -202,7 +205,7 @@ function sanitizeJobInput(input: JobApplicationInput) {
     location: trimOptional(input.location, MAX_JOB_LOCATION_LENGTH),
     salary: trimOptional(input.salary, MAX_JOB_SALARY_LENGTH),
     appliedDate,
-    status,
+    status: status as JobApplicationStatus,
     notes: trimOptional(input.notes, MAX_JOB_NOTES_LENGTH),
   };
 }
