@@ -2,8 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 
-import { extractJobFromUrl } from "@/lib/ai/extract-job-from-url";
-import type { ExtractedJobDetails } from "@/lib/ai/extract-job-from-url";
+import {
+  extractJobFromUrlSafe,
+  JOB_URL_EXTRACT_FAILURE_MESSAGE,
+  type ExtractedJobDetails,
+} from "@/lib/ai/extract-job-from-url";
 import type { JobApplicationFilter } from "@/lib/job-application-constants";
 import {
   DuplicateJobApplicationError,
@@ -27,8 +30,8 @@ export type JobTrackerCreateResult =
   | { success: false; error: string; duplicate?: boolean };
 
 export type JobTrackerExtractResult =
-  | { success: true; details: ExtractedJobDetails }
-  | { success: false; error: string };
+  | { ok: true; details: ExtractedJobDetails }
+  | { ok: false; message: string };
 
 async function requireJobTrackerSession() {
   const session = await auth();
@@ -125,14 +128,14 @@ export async function extractJobFromUrlAction(
 ): Promise<JobTrackerExtractResult> {
   try {
     await requireJobTrackerSession();
-    const details = await extractJobFromUrl(url);
-    return { success: true, details };
   } catch {
     return {
-      success: false,
-      error: "Couldn't read this page. You can still enter details manually.",
+      ok: false,
+      message: JOB_URL_EXTRACT_FAILURE_MESSAGE,
     };
   }
+
+  return extractJobFromUrlSafe(url);
 }
 
 export type { JobApplicationInput, SerializedJobApplication } from "@/lib/job-applications";

@@ -9,6 +9,7 @@ import {
 } from "@/app/(app)/jobs/actions";
 import { SimpleSheet } from "@/components/ui/simple-sheet";
 import { JOB_APPLICATION_STATUSES } from "@/lib/job-application-constants";
+import { applyExtractedJobToEditForm } from "@/lib/apply-extracted-job-details";
 import { getJobApplicationStatusLabel } from "@/lib/job-application-labels";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 import type { JobApplicationStatusValue } from "@/lib/job-application-status";
@@ -35,7 +36,11 @@ export function JobApplicationEditorSheet({
   const [isSaving, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [duplicateWarning, setDuplicateWarning] = useState(false);
-  const [fetchMessage, setFetchMessage] = useState<string | null>(null);
+  const [fetchNotice, setFetchNotice] = useState<{
+    tone: "error" | "success";
+    message: string;
+  } | null>(null);
+  const [isFetching, setIsFetching] = useState(false);
   const [form, setForm] = useState({
     url: "",
     title: "",
@@ -72,7 +77,7 @@ export function JobApplicationEditorSheet({
     });
     setError(null);
     setDuplicateWarning(false);
-    setFetchMessage(null);
+    setFetchNotice(null);
   }, [job]);
 
   if (!job) {
@@ -106,33 +111,30 @@ export function JobApplicationEditorSheet({
     });
   }
 
-  function handleFetchDetails() {
+  async function handleFetchDetails() {
     const url = form.url.trim();
-    if (!url || pending) {
+    if (!url || pending || isFetching) {
       return;
     }
 
-    setFetchMessage(null);
-    setError(null);
+    setFetchNotice(null);
+    setIsFetching(true);
 
-    startTransition(async () => {
+    try {
       const result = await extractJobFromUrlAction(url);
-      if (!result.success) {
-        setFetchMessage(result.error);
+      if (!result.ok) {
+        setFetchNotice({ tone: "error", message: result.message });
         return;
       }
 
-      setForm((current) => ({
-        ...current,
-        title: result.details.title?.trim() || current.title,
-        company: result.details.company?.trim() || current.company,
-        location: result.details.location?.trim() || current.location,
-        salary: result.details.salary?.trim() || current.salary,
-        description: result.details.description?.trim() || current.description,
-        summary: result.details.summary?.trim() || current.summary,
-      }));
-      setFetchMessage("Details filled in. Review before saving.");
-    });
+      setForm((current) => applyExtractedJobToEditForm(current, result.details));
+      setFetchNotice({
+        tone: "success",
+        message: "Details filled in. Review before saving.",
+      });
+    } finally {
+      setIsFetching(false);
+    }
   }
 
   return (
@@ -185,13 +187,25 @@ export function JobApplicationEditorSheet({
             />
             <button
               type="button"
-              disabled={pending || !form.url.trim()}
+              disabled={pending || isFetching || !form.url.trim()}
               onClick={handleFetchDetails}
               className="ui-btn-secondary min-h-10 px-3 text-sm"
             >
-              Fetch details
+              {isFetching ? "Fetching…" : "Fetch details"}
             </button>
           </div>
+          {fetchNotice ? (
+            <p
+              className={`text-sm ${
+                fetchNotice.tone === "error"
+                  ? "text-accent-yellow"
+                  : "text-muted"
+              }`}
+              role={fetchNotice.tone === "error" ? "alert" : "status"}
+            >
+              {fetchNotice.message}
+            </p>
+          ) : null}
         </label>
 
         <div className="grid gap-3 sm:grid-cols-2">
@@ -358,11 +372,6 @@ export function JobApplicationEditorSheet({
         {error ? (
           <p className="text-sm text-accent-red" role="alert">
             {error}
-          </p>
-        ) : null}
-        {fetchMessage ? (
-          <p className="text-sm text-muted" role="status">
-            {fetchMessage}
           </p>
         ) : null}
       </div>

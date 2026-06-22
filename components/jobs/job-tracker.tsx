@@ -18,6 +18,7 @@ import {
   JOB_APPLICATION_STATUSES,
   type JobApplicationFilter,
 } from "@/lib/job-application-constants";
+import { applyExtractedJobToAddForm } from "@/lib/apply-extracted-job-details";
 import {
   formatJobListMeta,
   getJobApplicationStatusLabel,
@@ -56,7 +57,11 @@ export function JobTracker({ initialJobs }: JobTrackerProps) {
   const [form, setForm] = useState<AddJobFormState>(emptyForm);
   const [error, setError] = useState<string | null>(null);
   const [duplicateWarning, setDuplicateWarning] = useState(false);
-  const [fetchMessage, setFetchMessage] = useState<string | null>(null);
+  const [fetchNotice, setFetchNotice] = useState<{
+    tone: "error" | "success";
+    message: string;
+  } | null>(null);
+  const [isFetching, setIsFetching] = useState(false);
   const [selectedJob, setSelectedJob] = useState<SerializedJobApplication | null>(
     null,
   );
@@ -83,42 +88,30 @@ export function JobTracker({ initialJobs }: JobTrackerProps) {
     refreshJobs(nextFilter);
   }
 
-  function handleFetchDetails() {
+  async function handleFetchDetails() {
     const url = form.url.trim();
-    if (!url || isPending) {
+    if (!url || isFetching) {
       return;
     }
 
-    setFetchMessage(null);
-    setError(null);
+    setFetchNotice(null);
+    setIsFetching(true);
 
-    startTransition(async () => {
+    try {
       const result = await extractJobFromUrlAction(url);
-      if (!result.success) {
-        setFetchMessage(result.error);
+      if (!result.ok) {
+        setFetchNotice({ tone: "error", message: result.message });
         return;
       }
 
-      setForm((current) => ({
-        ...current,
-        title: result.details.title?.trim() || current.title,
-        company: result.details.company?.trim() || current.company,
-        notes:
-          [
-            current.notes.trim(),
-            result.details.summary?.trim(),
-            result.details.likelySkills?.length
-              ? `Skills: ${result.details.likelySkills.join(", ")}`
-              : "",
-            result.details.applicationDeadline?.trim()
-              ? `Deadline: ${result.details.applicationDeadline.trim()}`
-              : "",
-          ]
-            .filter(Boolean)
-            .join("\n") || current.notes,
-      }));
-      setFetchMessage("Details filled in. Review before saving.");
-    });
+      setForm((current) => applyExtractedJobToAddForm(current, result.details));
+      setFetchNotice({
+        tone: "success",
+        message: "Details filled in. Review before saving.",
+      });
+    } finally {
+      setIsFetching(false);
+    }
   }
 
   function handleAddJob(event: React.FormEvent) {
@@ -147,7 +140,7 @@ export function JobTracker({ initialJobs }: JobTrackerProps) {
       }
 
       setForm(emptyForm());
-      setFetchMessage(null);
+      setFetchNotice(null);
       refreshJobs(filter);
     });
   }
@@ -212,13 +205,25 @@ export function JobTracker({ initialJobs }: JobTrackerProps) {
               />
               <button
                 type="button"
-                disabled={isPending || !form.url.trim()}
+                disabled={isFetching || !form.url.trim()}
                 onClick={handleFetchDetails}
                 className="ui-btn-secondary min-h-10 px-3 text-sm"
               >
-                Fetch details
+                {isFetching ? "Fetching…" : "Fetch details"}
               </button>
             </div>
+            {fetchNotice ? (
+              <p
+                className={`text-sm ${
+                  fetchNotice.tone === "error"
+                    ? "text-accent-yellow"
+                    : "text-muted"
+                }`}
+                role={fetchNotice.tone === "error" ? "alert" : "status"}
+              >
+                {fetchNotice.message}
+              </p>
+            ) : null}
           </label>
 
           <div className="grid gap-3 sm:grid-cols-2">
@@ -311,11 +316,6 @@ export function JobTracker({ initialJobs }: JobTrackerProps) {
           {error ? (
             <p className="text-sm text-accent-red" role="alert">
               {error}
-            </p>
-          ) : null}
-          {fetchMessage ? (
-            <p className="text-sm text-muted" role="status">
-              {fetchMessage}
             </p>
           ) : null}
 
