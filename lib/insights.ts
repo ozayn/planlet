@@ -64,6 +64,13 @@ export type MonthlyInsights = {
   therapyThoughts: MonthlyInsightsTherapyThoughts | null;
   byTheme: Array<{ label: string; count: number }>;
   byProject: Array<{ label: string; count: number }>;
+  themePatterns: Array<{
+    name: string;
+    total: number;
+    done: number;
+    moved: number;
+    notDone: number;
+  }>;
   projectPatterns: Array<{
     name: string;
     total: number;
@@ -72,6 +79,57 @@ export type MonthlyInsights = {
     notDone: number;
   }>;
 };
+
+const UNASSIGNED_THEME_LABEL = "Unassigned";
+
+type ThemeProjectPatternStats = {
+  total: number;
+  done: number;
+  moved: number;
+  notDone: number;
+};
+
+function createPatternStats(): ThemeProjectPatternStats {
+  return { total: 0, done: 0, moved: 0, notDone: 0 };
+}
+
+function recordPatternStatus(
+  pattern: ThemeProjectPatternStats,
+  status: PlanItemStatus,
+) {
+  pattern.total += 1;
+  if (status === "DONE") pattern.done += 1;
+  if (status === "MOVED") pattern.moved += 1;
+  if (status === "NOT_DONE") pattern.notDone += 1;
+}
+
+function resolveThemeLabel(item: {
+  theme: { name: string } | null;
+  project: { name: string; theme: { name: string } | null } | null;
+}): string {
+  if (item.theme?.name) {
+    return item.theme.name;
+  }
+
+  if (item.project?.theme?.name) {
+    return item.project.theme.name;
+  }
+
+  return UNASSIGNED_THEME_LABEL;
+}
+
+function sortThemeRows(
+  entries: Array<[string, number]>,
+): Array<{ label: string; count: number }> {
+  return entries
+    .map(([label, count]) => ({ label, count }))
+    .sort((a, b) => {
+      if (a.label === UNASSIGNED_THEME_LABEL) return 1;
+      if (b.label === UNASSIGNED_THEME_LABEL) return -1;
+      return b.count - a.count || a.label.localeCompare(b.label);
+    })
+    .slice(0, 8);
+}
 
 const STATUS_ORDER = PLAN_ITEM_STATUS_ORDER;
 
@@ -131,7 +189,12 @@ export async function getMonthlyInsights(
         items: {
           include: {
             theme: { select: { name: true } },
-            project: { select: { name: true } },
+            project: {
+              select: {
+                name: true,
+                theme: { select: { name: true } },
+              },
+            },
           },
         },
       },
@@ -172,10 +235,8 @@ export async function getMonthlyInsights(
   const intentionTitleCounts = new Map<string, number>();
   const themeCounts = new Map<string, number>();
   const projectCounts = new Map<string, number>();
-  const projectPatterns = new Map<
-    string,
-    { total: number; done: number; moved: number; notDone: number }
-  >();
+  const themePatterns = new Map<string, ThemeProjectPatternStats>();
+  const projectPatterns = new Map<string, ThemeProjectPatternStats>();
   let actionableItems = 0;
   let noteCount = 0;
   let intentionCount = 0;
@@ -212,23 +273,18 @@ export async function getMonthlyInsights(
     actionableItems += 1;
     incrementMap(statusCounts, item.status);
 
-    if (item.theme?.name) {
-      incrementMap(themeCounts, item.theme.name);
-    }
+    const themeLabel = resolveThemeLabel(item);
+    incrementMap(themeCounts, themeLabel);
+    const themePattern = themePatterns.get(themeLabel) ?? createPatternStats();
+    recordPatternStatus(themePattern, item.status);
+    themePatterns.set(themeLabel, themePattern);
 
     if (item.project?.name) {
       incrementMap(projectCounts, item.project.name);
-      const pattern = projectPatterns.get(item.project.name) ?? {
-        total: 0,
-        done: 0,
-        moved: 0,
-        notDone: 0,
-      };
-      pattern.total += 1;
-      if (item.status === "DONE") pattern.done += 1;
-      if (item.status === "MOVED") pattern.moved += 1;
-      if (item.status === "NOT_DONE") pattern.notDone += 1;
-      projectPatterns.set(item.project.name, pattern);
+      const projectPattern =
+        projectPatterns.get(item.project.name) ?? createPatternStats();
+      recordPatternStatus(projectPattern, item.status);
+      projectPatterns.set(item.project.name, projectPattern);
     }
 
     if (item.status === "MOVED") {
@@ -249,14 +305,23 @@ export async function getMonthlyInsights(
     .sort((a, b) => b.count - a.count)
     .slice(0, 6);
 
-  const byTheme = [...themeCounts.entries()]
-    .map(([label, count]) => ({ label, count }))
-    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
-    .slice(0, 8);
+  const byTheme =
+    actionableItems > 0
+      ? sortThemeRows([...themeCounts.entries()])
+      : [];
 
-  const byProject = [...projectCounts.entries()]
-    .map(([label, count]) => ({ label, count }))
-    .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
+  const byProject =
+    actionableItems > 0
+      ? [...projectCounts.entries()]
+          .map(([label, count]) => ({ label, count }))
+          .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label))
+          .slice(0, 8)
+      : [];
+
+  const themePatternRows = [...themePatterns.entries()]
+    .filter(([name]) => name !== UNASSIGNED_THEME_LABEL)
+    .map(([name, stats]) => ({ name, ...stats }))
+    .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name))
     .slice(0, 8);
 
   const projectPatternRows = [...projectPatterns.entries()]
@@ -340,6 +405,7 @@ export async function getMonthlyInsights(
     therapyThoughts: therapyThoughtsSummary,
     byTheme,
     byProject,
+    themePatterns: themePatternRows,
     projectPatterns: projectPatternRows,
   };
 }

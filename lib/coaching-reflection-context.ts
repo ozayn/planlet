@@ -162,12 +162,39 @@ export async function buildCoachingReflectionContext(
     );
   }
 
-  if (insights.byTheme.length > 0) {
+  const activeThemes = insights.byTheme.filter(
+    (entry) => entry.label !== "Unassigned",
+  );
+  if (activeThemes.length > 0) {
     lines.push(
-      `Most active themes: ${insights.byTheme
+      `Most active themes: ${activeThemes
         .slice(0, 5)
         .map((entry) => `${entry.label} (${entry.count})`)
         .join(", ")}`,
+    );
+  }
+
+  if (insights.byProject.length > 0) {
+    lines.push(
+      `Most active projects: ${insights.byProject
+        .slice(0, 5)
+        .map((entry) => `${entry.label} (${entry.count})`)
+        .join(", ")}`,
+    );
+  }
+
+  const stuckThemes = insights.themePatterns.filter(
+    (entry) => entry.moved + entry.notDone >= 2,
+  );
+  if (stuckThemes.length > 0) {
+    lines.push(
+      `Themes with moved/not-done tasks: ${stuckThemes
+        .slice(0, 5)
+        .map(
+          (entry) =>
+            `${entry.name} (moved ${entry.moved}, not done ${entry.notDone})`,
+        )
+        .join("; ")}`,
     );
   }
 
