@@ -168,6 +168,15 @@ npx prisma studio
 
 **Never** run `prisma migrate reset` against a production database.
 
+## Deployment
+
+Planlet uses **`main` for production** and **`staging` for pre-production** testing on Railway.
+
+- **Production** — Railway service connected to the `main` branch (see [Railway deployment](#railway-deployment) below).
+- **Staging** — separate Railway project/service on the `staging` branch, separate database and env vars.
+
+Full staging setup, env checklist, and promote-to-production workflow: **[docs/STAGING_DEPLOYMENT.md](docs/STAGING_DEPLOYMENT.md)**.
+
 ## Railway deployment
 
 ### 1. Create services
