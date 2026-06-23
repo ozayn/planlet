@@ -75,7 +75,7 @@ export function CoachingPageContent({
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-5">
       <ReflectionLensSelector
         preferences={preferences}
         isSaving={isSaving}
@@ -83,28 +83,29 @@ export function CoachingPageContent({
         onChange={save}
       />
 
-      <section className="space-y-5">
+      <section className="space-y-3">
         {!reflection ? (
-          <div className="space-y-3">
-            <button
-              type="button"
-              onClick={handleGenerate}
-              disabled={!hasInfluences || isGenerating}
-              className="ui-btn-secondary ui-btn-compact min-h-10 w-fit px-4"
-            >
-              {isGenerating ? "Generating…" : "Generate feedback"}
-            </button>
-            {!hasInfluences ? (
-              <p className="text-sm text-muted">
-                Choose at least one perspective to generate feedback.
-              </p>
-            ) : null}
-            {generateError ? (
-              <p className="rounded-lg border border-accent-red/20 px-3 py-2 text-sm text-accent-red">
-                {generateError}
-              </p>
-            ) : null}
-          </div>
+          <>
+            <p className="text-sm leading-relaxed text-muted">
+              Generate thoughtful feedback based on your recent plans, reflections,
+              and selected perspectives.
+            </p>
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={handleGenerate}
+                disabled={!hasInfluences || isGenerating}
+                className="ui-btn-secondary ui-btn-compact min-h-10 w-full px-4 sm:w-fit"
+              >
+                {isGenerating ? "Generating…" : "Generate feedback"}
+              </button>
+              {generateError ? (
+                <p className="rounded-lg border border-accent-red/20 px-3 py-2 text-sm text-accent-red">
+                  {generateError}
+                </p>
+              ) : null}
+            </div>
+          </>
         ) : (
           <>
             {generateError ? (

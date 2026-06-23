@@ -5,10 +5,10 @@ import { useMemo, useState } from "react";
 import { InfluenceNameTooltip } from "@/components/coaching/influence-name-tooltip";
 import { ChevronDownIcon } from "@/components/ui/action-icons";
 import {
-  formatReflectionInfluenceLabels,
   getAllSelectedInfluenceIds,
   getInfluencesByCategory,
   MAX_PRIMARY_INFLUENCES,
+  REFLECTION_INFLUENCES,
   type ReflectionInfluenceCategoryId,
   type ReflectionInfluenceId,
   type ReflectionInfluencePreferences,
@@ -57,10 +57,13 @@ export function ReflectionLensSelector({
   );
   const selectedCount = selected.size;
   const hasSelections = selectedCount > 0;
-  const selectedLabels = formatReflectionInfluenceLabels(preferences);
+  const selectedInfluenceIds = getAllSelectedInfluenceIds(preferences);
   const categories = getInfluencesByCategory();
   const panelId = "coaching-reflection-lens-panel";
   const toggleLabel = hasSelections ? "Change perspectives" : "Choose perspectives";
+  const summarySubtitle = hasSelections
+    ? "Perspectives currently guiding your reflections."
+    : "Choose perspectives that should inform your reflections.";
 
   function toggleCategory(categoryId: ReflectionInfluenceCategoryId) {
     setExpandedCategories((current) => {
@@ -108,31 +111,36 @@ export function ReflectionLensSelector({
 
   return (
     <section className="rounded-xl border border-border-soft">
-      <div className="flex items-start justify-between gap-3 px-4 py-3">
-        <div className="min-w-0 flex-1 space-y-1">
-          <h2 className="text-sm font-medium text-foreground">Reflection lens</h2>
+      <div className="flex flex-col gap-4 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:gap-6 sm:px-5 sm:py-5">
+        <div className="min-w-0 flex-1 space-y-3">
+          <div className="space-y-1">
+            <h2 className="text-sm font-medium text-foreground">Reflection lens</h2>
+            {!sectionExpanded ? (
+              <p className="text-sm leading-relaxed text-muted">{summarySubtitle}</p>
+            ) : null}
+          </div>
+
           {!sectionExpanded ? (
-            <>
-              <p className="text-sm leading-relaxed text-muted">
-                {hasSelections ? (
-                  <>
-                    Selected:{" "}
-                    <span className="break-words text-foreground">
-                      {selectedLabels}
-                    </span>
-                  </>
-                ) : (
-                  "No perspectives selected"
-                )}
-              </p>
-              {hasSelections ? (
-                <p className="text-sm text-muted">
+            hasSelections ? (
+              <>
+                <ul className="flex flex-wrap gap-1.5" aria-label="Selected perspectives">
+                  {selectedInfluenceIds.map((id) => (
+                    <li
+                      key={id}
+                      className="rounded-full bg-accent-cream/55 px-2.5 py-1 text-xs text-foreground/90"
+                    >
+                      {REFLECTION_INFLUENCES[id].label}
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-xs text-muted-light">
                   <span className="tabular-nums">{selectedCount}</span>{" "}
-                  {selectedCount === 1 ? "perspective" : "perspectives"}{" "}
-                  selected
+                  {selectedCount === 1 ? "perspective" : "perspectives"} selected
                 </p>
-              ) : null}
-            </>
+              </>
+            ) : (
+              <p className="text-sm text-muted">No perspectives selected yet.</p>
+            )
           ) : null}
         </div>
 
@@ -140,7 +148,7 @@ export function ReflectionLensSelector({
           <button
             type="button"
             onClick={() => setSectionExpanded(true)}
-            className="ui-btn-secondary ui-btn-compact shrink-0 min-h-9 px-3 text-sm"
+            className="ui-btn-secondary ui-btn-compact min-h-10 w-full shrink-0 px-4 text-sm sm:w-auto"
           >
             {toggleLabel}
           </button>
@@ -148,7 +156,7 @@ export function ReflectionLensSelector({
           <button
             type="button"
             onClick={() => setSectionExpanded(false)}
-            className="shrink-0 text-sm text-muted transition-colors hover:text-foreground"
+            className="shrink-0 self-start text-sm text-muted transition-colors hover:text-foreground"
           >
             Done
           </button>
