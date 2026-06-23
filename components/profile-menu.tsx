@@ -8,6 +8,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { ExternalLinkIcon, HeartIcon } from "@/components/ui/action-icons";
 import { UserAvatar } from "@/components/user-avatar";
 import {
+  canShowCoachingInProfileMenu,
   canShowFeedbackInProfileMenu,
   canShowInsightsInProfileMenu,
   canShowJobTrackerInProfileMenu,
@@ -22,6 +23,7 @@ type ProfileMenuProps = {
   canGiveFeedback?: boolean;
   canUseTherapyThoughts?: boolean;
   canUseJobTrackerFeatures?: boolean;
+  canUseCoachingFeatures?: boolean;
   signOutButton: React.ReactNode;
   compact?: boolean;
   showThemeInMenu?: boolean;
@@ -63,6 +65,7 @@ export function ProfileMenu({
   canGiveFeedback = false,
   canUseTherapyThoughts = false,
   canUseJobTrackerFeatures = false,
+  canUseCoachingFeatures = false,
   signOutButton,
   compact = false,
   showThemeInMenu = false,
@@ -85,6 +88,8 @@ export function ProfileMenu({
   const onThemes = pathname === "/themes" || pathname.startsWith("/themes/");
   const onFeedback = pathname === "/feedback" || pathname.startsWith("/feedback/");
   const onJobs = pathname === "/jobs" || pathname.startsWith("/jobs/");
+  const onCoaching =
+    pathname === "/coaching" || pathname.startsWith("/coaching/");
   const onAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
   const onTherapyReview =
     pathname === "/therapy-review" ||
@@ -99,6 +104,7 @@ export function ProfileMenu({
     canGiveFeedback,
     canUseTherapyThoughts,
     canUseJobTrackerFeatures,
+    canUseCoachingFeatures,
     isAdmin,
   };
 
@@ -171,6 +177,18 @@ export function ProfileMenu({
   ];
 
   const reflectionItems: ReactNode[] = [
+    canShowCoachingInProfileMenu(access) ? (
+      <Link
+        key="coaching"
+        href="/coaching"
+        role="menuitem"
+        aria-current={onCoaching ? "page" : undefined}
+        onClick={closeMenu}
+        className={menuItemClass(onCoaching)}
+      >
+        Coaching
+      </Link>
+    ) : null,
     canShowTherapyReviewInProfileMenu(access) ? (
       <Link
         key="therapy-review"

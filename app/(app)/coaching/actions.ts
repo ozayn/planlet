@@ -55,8 +55,7 @@ export async function saveReflectionInfluencesAction(
       session.user,
       parsed.data,
     );
-    revalidatePath("/settings");
-    revalidatePath("/insights");
+    revalidatePath("/coaching");
     return { success: true };
   } catch (error) {
     return {
@@ -88,7 +87,7 @@ export async function generateCoachingReflectionAction(): Promise<GenerateCoachi
     if (getAllSelectedInfluenceIds(preferences).length === 0) {
       return {
         success: false,
-        error: "Choose reflection influences in Settings first.",
+        error: "Choose at least one reflection influence first.",
       };
     }
 

@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { auth } from "@/auth";
 import { PageHeader } from "@/components/page-header";
 import { SettingsAppNotifications } from "@/components/settings/settings-app-notifications";
@@ -5,7 +7,6 @@ import { getNotificationPreferencesForUser } from "@/lib/notification-preference
 import { PlanItemViewSettings } from "@/components/settings/plan-item-view-settings";
 import { SettingsProfile } from "@/components/settings/settings-profile";
 import { SettingsReflectionFeatures } from "@/components/settings/settings-reflection-features";
-import { SettingsReflectionLens } from "@/components/settings/settings-reflection-lens";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { TaskOrganizationDisplaySettings } from "@/components/settings/task-organization-display-settings";
 import { SettingsTechnicalInfo } from "@/components/settings/settings-technical-info";
@@ -18,7 +19,6 @@ import {
   isOpenAIConfigured,
   isTextParserConfigured,
 } from "@/lib/env";
-import { getReflectionInfluencePreferencesForUser } from "@/lib/reflection-influence-preferences";
 import {
   canGiveFeedback,
   canUseCoachingFeatures,
@@ -43,13 +43,6 @@ export default async function SettingsPage() {
     ? await getNotificationPreferencesForUser(session.user.id)
     : null;
   const showCoaching = canUseCoachingFeatures(session?.user ?? {});
-  const reflectionPreferences =
-    session?.user?.id && showCoaching
-      ? await getReflectionInfluencePreferencesForUser(
-          session.user.id,
-          session.user,
-        )
-      : { primary: [], secondary: [] };
 
   return (
     <section className="ui-settings-page mx-auto max-w-lg space-y-5">
@@ -104,7 +97,13 @@ export default async function SettingsPage() {
       ) : null}
 
       {showCoaching ? (
-        <SettingsReflectionLens preferences={reflectionPreferences} />
+        <SettingsSection title="Coaching">
+          <p className="text-sm">
+            <Link href="/coaching" className="ui-text-link">
+              Manage reflection lens
+            </Link>
+          </p>
+        </SettingsSection>
       ) : null}
 
       {notificationPreferences ? (

@@ -6,7 +6,6 @@ import { InsightsObservations } from "@/components/insights/insights-observation
 import { InsightsPeriodLinks } from "@/components/insights/insights-period-links";
 import { InsightsProgress } from "@/components/insights/insights-progress";
 import { InsightsSummaryLine } from "@/components/insights/insights-summary-line";
-import { InsightsReflectionLens } from "@/components/insights/insights-reflection-lens";
 import { InsightsTherapyThoughts } from "@/components/insights/insights-therapy-thoughts";
 import { PriorityMatrix } from "@/components/insights/priority-matrix";
 import { PageHeader } from "@/components/page-header";
@@ -15,11 +14,7 @@ import {
   formatWeekStartString,
 } from "@/lib/dates";
 import { getMonthlyInsights } from "@/lib/insights";
-import { getReflectionInfluencePreferencesForUser } from "@/lib/reflection-influence-preferences";
-import {
-  canUseCoachingFeatures,
-  canUseReflectionFeatures,
-} from "@/lib/roles";
+import { canUseReflectionFeatures } from "@/lib/roles";
 import { getPlanItemTypeLabel } from "@/lib/plan-labels";
 import { getStatusLabel } from "@/lib/plan-status";
 
@@ -33,10 +28,6 @@ export default async function InsightsPage() {
 
   const insights = await getMonthlyInsights(userId, new Date(), session.user);
   const showReflection = canUseReflectionFeatures(session.user);
-  const showCoaching = canUseCoachingFeatures(session.user);
-  const reflectionPreferences = showCoaching
-    ? await getReflectionInfluencePreferencesForUser(userId, session.user)
-    : { primary: [], secondary: [] };
   const isEmpty = insights.totals.plans === 0 && insights.totals.items === 0;
   const now = new Date();
   const summaryDate = formatDateString(now);
@@ -112,13 +103,6 @@ export default async function InsightsPage() {
           </p>
         </>
       )}
-
-      {showCoaching ? (
-        <>
-          {!isEmpty ? <hr className="ui-insights-divider" /> : null}
-          <InsightsReflectionLens preferences={reflectionPreferences} />
-        </>
-      ) : null}
     </section>
   );
 }

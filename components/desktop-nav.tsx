@@ -19,6 +19,7 @@ type DesktopNavProps = {
   canGiveFeedback?: boolean;
   canUseTherapyThoughts?: boolean;
   canUseJobTrackerFeatures?: boolean;
+  canUseCoachingFeatures?: boolean;
   signOutButton: React.ReactNode;
   unreadNotificationCount?: number;
   notifications?: SerializedNotification[];
@@ -32,6 +33,7 @@ export function DesktopNav({
   canGiveFeedback = false,
   canUseTherapyThoughts = false,
   canUseJobTrackerFeatures = false,
+  canUseCoachingFeatures = false,
   signOutButton,
   unreadNotificationCount = 0,
   notifications = [],
@@ -91,6 +93,7 @@ export function DesktopNav({
             canGiveFeedback={canGiveFeedback}
             canUseTherapyThoughts={canUseTherapyThoughts}
             canUseJobTrackerFeatures={canUseJobTrackerFeatures}
+            canUseCoachingFeatures={canUseCoachingFeatures}
             signOutButton={signOutButton}
           />
         </div>

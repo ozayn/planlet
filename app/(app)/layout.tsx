@@ -5,7 +5,7 @@ import { MobileAppBar } from "@/components/mobile-app-bar";
 import { SignOutButton } from "@/components/sign-out-button";
 import { BrowserTimezoneDetector } from "@/components/timezone/browser-timezone-detector";
 import { isAdminRole } from "@/lib/auth-roles";
-import { canGiveFeedback, canUseJobTrackerFeatures, canUseTherapyThoughts } from "@/lib/roles";
+import { canGiveFeedback, canUseCoachingFeatures, canUseJobTrackerFeatures, canUseTherapyThoughts } from "@/lib/roles";
 import { serializeNotification } from "@/lib/notification-serialize";
 import {
   getNotificationsForUser,
@@ -42,6 +42,7 @@ export default async function AppLayout({
         canGiveFeedback={canGiveFeedback(session?.user ?? {})}
         canUseTherapyThoughts={canUseTherapyThoughts(session?.user ?? {})}
         canUseJobTrackerFeatures={canUseJobTrackerFeatures(session?.user ?? {})}
+        canUseCoachingFeatures={canUseCoachingFeatures(session?.user ?? {})}
         signOutButton={<SignOutButton variant="quiet" className="ui-profile-menu-sign-out" />}
         unreadNotificationCount={unreadNotificationCount}
         notifications={serializedNotifications}
@@ -54,6 +55,7 @@ export default async function AppLayout({
         canGiveFeedback={canGiveFeedback(session?.user ?? {})}
         canUseTherapyThoughts={canUseTherapyThoughts(session?.user ?? {})}
         canUseJobTrackerFeatures={canUseJobTrackerFeatures(session?.user ?? {})}
+        canUseCoachingFeatures={canUseCoachingFeatures(session?.user ?? {})}
         signOutButton={<SignOutButton variant="quiet" className="ui-profile-menu-sign-out" />}
         unreadNotificationCount={unreadNotificationCount}
         notifications={serializedNotifications}
