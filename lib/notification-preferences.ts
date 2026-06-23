@@ -1,8 +1,19 @@
 import type { NotificationPreference } from "@/app/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import {
+  DEFAULT_EVENING_REMINDER_TIME,
+  DEFAULT_MORNING_REMINDER_TIME,
+  isValidReminderTime,
+  normalizeReminderTimeForInput,
+} from "@/lib/reminder-time";
 import { getUserTimezone } from "@/lib/user-timezone";
 
-const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+export {
+  DEFAULT_EVENING_REMINDER_TIME,
+  DEFAULT_MORNING_REMINDER_TIME,
+  isValidReminderTime,
+  normalizeReminderTimeForInput,
+} from "@/lib/reminder-time";
 
 export type NotificationPreferencesInput = {
   morningEnabled: boolean;
@@ -20,18 +31,20 @@ export type SerializedNotificationPreferences = {
   timezone: string;
 };
 
-export function isValidReminderTime(value: string): boolean {
-  return TIME_PATTERN.test(value);
-}
-
 export function serializeNotificationPreferences(
   preference: NotificationPreference,
 ): SerializedNotificationPreferences {
   return {
     morningEnabled: preference.morningEnabled,
-    morningTime: preference.morningTime,
+    morningTime: normalizeReminderTimeForInput(
+      preference.morningTime,
+      DEFAULT_MORNING_REMINDER_TIME,
+    ),
     eveningEnabled: preference.eveningEnabled,
-    eveningTime: preference.eveningTime,
+    eveningTime: normalizeReminderTimeForInput(
+      preference.eveningTime,
+      DEFAULT_EVENING_REMINDER_TIME,
+    ),
     timezone: preference.timezone,
   };
 }

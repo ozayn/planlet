@@ -1,28 +1,21 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 import { updateNotificationPreferencesAction } from "@/app/(app)/settings/actions";
 import type { SerializedNotificationPreferences } from "@/lib/notification-preferences";
+import {
+  DEFAULT_EVENING_REMINDER_TIME,
+  DEFAULT_MORNING_REMINDER_TIME,
+  normalizeReminderTimeForInput,
+} from "@/lib/reminder-time";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 
 type ReminderSettingsProps = {
   preferences: SerializedNotificationPreferences;
   pushSubscribed: boolean;
 };
-
-function formatReminderTimeLabel(value: string): string {
-  const [hoursPart, minutesPart] = value.split(":");
-  const hours = Number(hoursPart);
-  const minutes = Number(minutesPart);
-
-  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
-    return value;
-  }
-
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
-}
 
 export function ReminderSettings({
   preferences,
@@ -32,13 +25,40 @@ export function ReminderSettings({
   const [morningEnabled, setMorningEnabled] = useState(
     preferences.morningEnabled,
   );
-  const [morningTime, setMorningTime] = useState(preferences.morningTime);
+  const [morningTime, setMorningTime] = useState(() =>
+    normalizeReminderTimeForInput(
+      preferences.morningTime,
+      DEFAULT_MORNING_REMINDER_TIME,
+    ),
+  );
   const [eveningEnabled, setEveningEnabled] = useState(
     preferences.eveningEnabled,
   );
-  const [eveningTime, setEveningTime] = useState(preferences.eveningTime);
+  const [eveningTime, setEveningTime] = useState(() =>
+    normalizeReminderTimeForInput(
+      preferences.eveningTime,
+      DEFAULT_EVENING_REMINDER_TIME,
+    ),
+  );
   const [error, setError] = useState<string | null>(null);
   const [isSaving, startSave] = useTransition();
+
+  useEffect(() => {
+    setMorningEnabled(preferences.morningEnabled);
+    setMorningTime(
+      normalizeReminderTimeForInput(
+        preferences.morningTime,
+        DEFAULT_MORNING_REMINDER_TIME,
+      ),
+    );
+    setEveningEnabled(preferences.eveningEnabled);
+    setEveningTime(
+      normalizeReminderTimeForInput(
+        preferences.eveningTime,
+        DEFAULT_EVENING_REMINDER_TIME,
+      ),
+    );
+  }, [preferences]);
 
   function savePreferences(next: {
     morningEnabled?: boolean;
@@ -48,9 +68,15 @@ export function ReminderSettings({
   }) {
     const payload = {
       morningEnabled: next.morningEnabled ?? morningEnabled,
-      morningTime: next.morningTime ?? morningTime,
+      morningTime: normalizeReminderTimeForInput(
+        next.morningTime ?? morningTime,
+        DEFAULT_MORNING_REMINDER_TIME,
+      ),
       eveningEnabled: next.eveningEnabled ?? eveningEnabled,
-      eveningTime: next.eveningTime ?? eveningTime,
+      eveningTime: normalizeReminderTimeForInput(
+        next.eveningTime ?? eveningTime,
+        DEFAULT_EVENING_REMINDER_TIME,
+      ),
       timezone: preferences.timezone,
     };
 
@@ -61,9 +87,19 @@ export function ReminderSettings({
 
       if (!result.success) {
         setMorningEnabled(preferences.morningEnabled);
-        setMorningTime(preferences.morningTime);
+        setMorningTime(
+          normalizeReminderTimeForInput(
+            preferences.morningTime,
+            DEFAULT_MORNING_REMINDER_TIME,
+          ),
+        );
         setEveningEnabled(preferences.eveningEnabled);
-        setEveningTime(preferences.eveningTime);
+        setEveningTime(
+          normalizeReminderTimeForInput(
+            preferences.eveningTime,
+            DEFAULT_EVENING_REMINDER_TIME,
+          ),
+        );
         setError(result.error);
         return;
       }
@@ -83,13 +119,21 @@ export function ReminderSettings({
   }
 
   function handleMorningTimeChange(value: string) {
-    setMorningTime(value);
-    savePreferences({ morningTime: value });
+    const normalized = normalizeReminderTimeForInput(
+      value,
+      DEFAULT_MORNING_REMINDER_TIME,
+    );
+    setMorningTime(normalized);
+    savePreferences({ morningTime: normalized });
   }
 
   function handleEveningTimeChange(value: string) {
-    setEveningTime(value);
-    savePreferences({ eveningTime: value });
+    const normalized = normalizeReminderTimeForInput(
+      value,
+      DEFAULT_EVENING_REMINDER_TIME,
+    );
+    setEveningTime(normalized);
+    savePreferences({ eveningTime: normalized });
   }
 
   return (
@@ -110,6 +154,7 @@ export function ReminderSettings({
               id="reminder-morning-enabled"
               name="reminder-morning-enabled"
               type="checkbox"
+              checked={morningEnabled}
               disabled={isSaving}
               onChange={(event) => handleMorningToggle(event.target.checked)}
               className="h-4 w-4 rounded border-border-soft"
@@ -119,6 +164,7 @@ export function ReminderSettings({
               id="reminder-morning-time"
               name="reminder-morning-time"
               type="time"
+              value={morningTime}
               disabled={!morningEnabled || isSaving}
               onChange={(event) => handleMorningTimeChange(event.target.value)}
               {...passwordManagerSafeControlProps}
@@ -135,6 +181,7 @@ export function ReminderSettings({
               id="reminder-evening-enabled"
               name="reminder-evening-enabled"
               type="checkbox"
+              checked={eveningEnabled}
               disabled={isSaving}
               onChange={(event) => handleEveningToggle(event.target.checked)}
               className="h-4 w-4 rounded border-border-soft"
@@ -144,6 +191,7 @@ export function ReminderSettings({
               id="reminder-evening-time"
               name="reminder-evening-time"
               type="time"
+              value={eveningTime}
               disabled={!eveningEnabled || isSaving}
               onChange={(event) => handleEveningTimeChange(event.target.value)}
               {...passwordManagerSafeControlProps}
@@ -154,8 +202,7 @@ export function ReminderSettings({
         </div>
 
         <p className="ui-settings-subsection-status">
-          Morning: {formatReminderTimeLabel(morningTime)} · Evening:{" "}
-          {formatReminderTimeLabel(eveningTime)}
+          Morning: {morningTime} · Evening: {eveningTime}
         </p>
       </div>
 
