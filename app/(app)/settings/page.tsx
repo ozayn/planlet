@@ -5,8 +5,9 @@ import { PageHeader } from "@/components/page-header";
 import { SettingsAppNotifications } from "@/components/settings/settings-app-notifications";
 import { getNotificationPreferencesForUser } from "@/lib/notification-preferences";
 import { PlanItemViewSettings } from "@/components/settings/plan-item-view-settings";
+import { SettingsInstallPlanlet } from "@/components/settings/settings-install-planlet";
 import { SettingsProfile } from "@/components/settings/settings-profile";
-import { SettingsReflectionFeatures } from "@/components/settings/settings-reflection-features";
+import { SettingsReflectionCoaching } from "@/components/settings/settings-reflection-coaching";
 import { SettingsSection } from "@/components/settings/settings-section";
 import { TaskOrganizationDisplaySettings } from "@/components/settings/task-organization-display-settings";
 import { SettingsTechnicalInfo } from "@/components/settings/settings-technical-info";
@@ -19,9 +20,9 @@ import {
   isTextParserConfigured,
 } from "@/lib/env";
 import {
-  canGiveFeedback,
   canUseCoachingFeatures,
   canUseReflectionFeatures,
+  canUseTherapyThoughts,
 } from "@/lib/roles";
 import { getPlanningPreferencesForUser } from "@/lib/user-preferences";
 import { getUserTimezone } from "@/lib/user-timezone";
@@ -41,7 +42,11 @@ export default async function SettingsPage() {
   const notificationPreferences = session?.user?.id
     ? await getNotificationPreferencesForUser(session.user.id)
     : null;
-  const showCoaching = canUseCoachingFeatures(session?.user ?? {});
+  const user = session?.user ?? {};
+  const showReflectionCoaching =
+    canUseCoachingFeatures(user) ||
+    canUseReflectionFeatures(user) ||
+    canUseTherapyThoughts(user);
 
   return (
     <section className="ui-settings-page mx-auto max-w-lg space-y-5">
@@ -58,16 +63,10 @@ export default async function SettingsPage() {
         <TaskOrganizationDisplaySettings
           value={planningPreferences.taskOrganizationDisplay}
         />
-      </SettingsSection>
-
-      <SettingsSection title="Organization">
-        <p className="text-sm text-muted">
-          Group tasks by life area (themes) and ongoing efforts (projects).
-        </p>
-        <p className="text-sm">
-          <a href="/themes" className="ui-text-link">
+        <p className="border-t border-border-soft pt-4 text-sm">
+          <Link href="/themes" className="ui-text-link">
             Manage themes & projects
-          </a>
+          </Link>
         </p>
       </SettingsSection>
 
@@ -75,31 +74,19 @@ export default async function SettingsPage() {
         <SettingsTimezone timezone={userTimezone} timezoneMode={timezoneMode} />
       ) : null}
 
-      {(canGiveFeedback(session?.user ?? {}) ||
-        canUseReflectionFeatures(session?.user ?? {}) ||
-        showCoaching) &&
-      session?.user?.role ? (
-        <SettingsReflectionFeatures
-          role={session.user.role}
-          canGiveFeedback={session.user.canGiveFeedback}
-          canUseReflectionFeatures={session.user.canUseReflectionFeatures}
-          canUseCoachingFeatures={showCoaching}
+      {showReflectionCoaching ? (
+        <SettingsReflectionCoaching
+          canUseCoachingFeatures={canUseCoachingFeatures(user)}
+          canUseReflectionFeatures={canUseReflectionFeatures(user)}
+          canUseTherapyThoughts={canUseTherapyThoughts(user)}
         />
-      ) : null}
-
-      {showCoaching ? (
-        <SettingsSection title="Coaching">
-          <p className="text-sm">
-            <Link href="/coaching" className="ui-text-link">
-              Manage reflection lens
-            </Link>
-          </p>
-        </SettingsSection>
       ) : null}
 
       {notificationPreferences ? (
         <SettingsAppNotifications preferences={notificationPreferences} />
       ) : null}
+
+      <SettingsInstallPlanlet />
 
       <SettingsTechnicalInfo
         rows={[

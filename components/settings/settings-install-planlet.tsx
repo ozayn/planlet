@@ -1,4 +1,5 @@
 import { SettingsPlatformDetails } from "@/components/settings/settings-platform-details";
+import { SettingsSection } from "@/components/settings/settings-section";
 
 const APPLE_STEPS = [
   "Open Planlet in Safari.",
@@ -26,20 +27,29 @@ function InstallSteps({ steps }: { steps: readonly string[] }) {
 
 export function SettingsInstallPlanlet() {
   return (
-    <div className="ui-settings-row-block">
-      <p className="ui-settings-subsection-title">Install Planlet</p>
-      <p className="ui-settings-subsection-helper">
-        Add Planlet to your phone for a more app-like experience.
-      </p>
-
-      <div className="ui-settings-platform-rows">
-        <SettingsPlatformDetails label="Apple / iPhone">
-          <InstallSteps steps={APPLE_STEPS} />
-        </SettingsPlatformDetails>
-        <SettingsPlatformDetails label="Android">
-          <InstallSteps steps={ANDROID_STEPS} />
-        </SettingsPlatformDetails>
-      </div>
-    </div>
+    <SettingsSection title="Install app">
+      <details className="ui-settings-instruction-details group">
+        <summary className="ui-settings-instruction-summary">
+          <span>Add Planlet to your home screen</span>
+          <span className="text-xs text-muted-light" aria-hidden="true">
+            ›
+          </span>
+        </summary>
+        <div className="space-y-2 pb-1 pt-1">
+          <p className="text-xs leading-relaxed text-muted-light">
+            Install Planlet for a more app-like experience and reliable phone
+            notifications.
+          </p>
+          <div className="ui-settings-platform-rows">
+            <SettingsPlatformDetails label="Apple / iPhone">
+              <InstallSteps steps={APPLE_STEPS} />
+            </SettingsPlatformDetails>
+            <SettingsPlatformDetails label="Android">
+              <InstallSteps steps={ANDROID_STEPS} />
+            </SettingsPlatformDetails>
+          </div>
+        </div>
+      </details>
+    </SettingsSection>
   );
 }

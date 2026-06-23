@@ -14,7 +14,7 @@ export function SettingsProfile({
   image,
 }: SettingsProfileProps) {
   return (
-    <SettingsSection title="Profile">
+    <SettingsSection title="Account">
       <div className="ui-settings-profile flex items-center gap-3">
         <UserAvatar name={name} email={email} image={image} size="lg" />
         <div className="min-w-0 flex-1">

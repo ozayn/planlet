@@ -93,11 +93,14 @@ function getFriendlyTestError(message: string): string {
 type PushNotificationSettingsProps = {
   /** When true, omit section heading and use compact copy for settings list. */
   embedded?: boolean;
+  /** When false, hide Apple/Android install hints (shown elsewhere on Settings). */
+  showInstallHints?: boolean;
   onSubscriptionChange?: (subscribed: boolean) => void;
 };
 
 export function PushNotificationSettings({
   embedded = false,
+  showInstallHints = true,
   onSubscriptionChange,
 }: PushNotificationSettingsProps) {
   const [state, setState] = useState<PushSettingsState>("loading");
@@ -410,7 +413,7 @@ export function PushNotificationSettings({
           </p>
         ) : null}
 
-        {embedded ? (
+        {embedded && showInstallHints ? (
           <div className="ui-settings-platform-rows">
             <SettingsPlatformDetails label="Apple / iPhone">
               <p className="text-xs leading-relaxed text-muted">

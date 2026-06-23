@@ -30,6 +30,13 @@ function getBrowserTimezone(): string | null {
   }
 }
 
+function getModeLabel(mode: TimezoneMode): string {
+  return (
+    TIMEZONE_MODE_OPTIONS.find((option) => option.value === mode)?.label ??
+    mode
+  );
+}
+
 export function SettingsTimezone({
   timezone,
   timezoneMode,
@@ -42,6 +49,9 @@ export function SettingsTimezone({
   const [isPending, startTransition] = useTransition();
 
   const isAutomatic = selectedMode === "AUTOMATIC";
+  const effectiveTimezone = isAutomatic
+    ? (detectedTimezone ?? timezone)
+    : selectedTimezone;
 
   useEffect(() => {
     const detected = getBrowserTimezone();
@@ -124,75 +134,96 @@ export function SettingsTimezone({
 
   return (
     <SettingsSection title="Timezone">
-      {isAutomatic ? (
-        <div className="space-y-1">
-          <p className="text-sm text-foreground">
-            <span className="font-medium">Timezone:</span> Automatic
-          </p>
-          {detectedTimezone ? (
-            <p className="text-xs text-muted-light">
-              Detected: {detectedTimezone}
-            </p>
-          ) : null}
-        </div>
-      ) : (
-        <label
-          htmlFor="settings-timezone"
-          className="flex min-h-10 flex-col gap-1.5 text-sm text-foreground"
-        >
-          <span className="font-medium">Your timezone</span>
-          <select
-            id="settings-timezone"
-            name="timezone"
-            value={selectedTimezone}
-            disabled={isPending}
-            onChange={(event) => handleTimezoneChange(event.target.value)}
-            className="ui-input min-h-10 w-full px-3 text-sm"
-            {...passwordManagerSafeControlProps}
-          >
-            {options.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </label>
-      )}
-
-      <fieldset className="ui-settings-fieldset">
-        <legend className="sr-only">Timezone mode</legend>
-        <p className="text-sm font-medium text-foreground">Timezone mode</p>
-
-        <div className="flex flex-wrap gap-1.5">
-          {TIMEZONE_MODE_OPTIONS.map((option) => (
-            <label
-              key={option.value}
-              className={`flex min-h-10 cursor-pointer items-center rounded-lg px-3 text-sm transition-colors ${
-                selectedMode === option.value ? "ui-segment-active" : "ui-segment"
-              }`}
-            >
-              <input
-                id={`timezone-mode-${option.value}`}
-                type="radio"
-                name="timezone-mode"
-                value={option.value}
-                checked={selectedMode === option.value}
-                disabled={isPending}
-                onChange={() => handleModeChange(option.value)}
-                className="sr-only"
-              />
-              {option.label}
-            </label>
-          ))}
-        </div>
-
-        <p className="text-xs text-muted-light">
-          {
-            TIMEZONE_MODE_OPTIONS.find((option) => option.value === selectedMode)
-              ?.description
-          }
+      <div className="space-y-1">
+        <p className="text-sm text-foreground">
+          <span className="text-muted">Mode:</span> {getModeLabel(selectedMode)}
         </p>
-      </fieldset>
+        <p className="text-sm text-foreground">
+          <span className="text-muted">Using:</span> {effectiveTimezone}
+        </p>
+        {detectedTimezone ? (
+          <p className="text-xs text-muted-light">
+            Detected on this device: {detectedTimezone}
+          </p>
+        ) : null}
+      </div>
+
+      <details className="ui-settings-instruction-details group">
+        <summary className="ui-settings-instruction-summary">
+          <span>Change timezone</span>
+          <span className="text-xs text-muted-light" aria-hidden="true">
+            ›
+          </span>
+        </summary>
+        <div className="space-y-4 pb-1 pt-2">
+          {isAutomatic ? (
+            <p className="text-xs leading-relaxed text-muted-light">
+              Automatic uses your device timezone. Switch to manual to choose a
+              fixed timezone.
+            </p>
+          ) : (
+            <label
+              htmlFor="settings-timezone"
+              className="flex min-h-10 flex-col gap-1.5 text-sm text-foreground"
+            >
+              <span className="font-medium">Your timezone</span>
+              <select
+                id="settings-timezone"
+                name="timezone"
+                value={selectedTimezone}
+                disabled={isPending}
+                onChange={(event) => handleTimezoneChange(event.target.value)}
+                className="ui-input min-h-10 w-full px-3 text-sm"
+                {...passwordManagerSafeControlProps}
+              >
+                {options.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+
+          <fieldset className="ui-settings-fieldset">
+            <legend className="sr-only">Timezone mode</legend>
+            <p className="text-sm font-medium text-foreground">Timezone mode</p>
+
+            <div className="flex flex-wrap gap-1.5">
+              {TIMEZONE_MODE_OPTIONS.map((option) => (
+                <label
+                  key={option.value}
+                  className={`flex min-h-10 cursor-pointer items-center rounded-lg px-3 text-sm transition-colors ${
+                    selectedMode === option.value
+                      ? "ui-segment-active"
+                      : "ui-segment"
+                  }`}
+                >
+                  <input
+                    id={`timezone-mode-${option.value}`}
+                    type="radio"
+                    name="timezone-mode"
+                    value={option.value}
+                    checked={selectedMode === option.value}
+                    disabled={isPending}
+                    onChange={() => handleModeChange(option.value)}
+                    className="sr-only"
+                  />
+                  {option.label}
+                </label>
+              ))}
+            </div>
+
+            <p className="text-xs text-muted-light">
+              {
+                TIMEZONE_MODE_OPTIONS.find(
+                  (option) => option.value === selectedMode,
+                )?.description
+              }
+            </p>
+          </fieldset>
+        </div>
+      </details>
 
       {error ? (
         <p className="text-sm text-accent-red" role="alert">
