@@ -122,7 +122,10 @@ export const REFLECTION_INFLUENCES: Record<
     id: "james_clear",
     label: "James Clear",
     category: "practical",
-    themes: "systems, habits, environment design, small improvements",
+    themes:
+      "identity-based habits, systems over goals, reducing friction, supportive environments, small consistent actions",
+    promptNotes:
+      "Focus on identity-based habits, systems rather than goals, reducing friction, building supportive environments, and making progress through small, consistent actions. Do not refer to any author by name.",
   },
   bj_fogg: {
     id: "bj_fogg",

@@ -42,7 +42,7 @@ export function DesktopNav({
   const navItems = getMainNavItems();
 
   return (
-    <header className="hidden border-b border-border-soft bg-surface md:block">
+    <header className="relative z-50 hidden shrink-0 border-b border-border-soft bg-surface md:block">
       <div className="mx-auto flex max-w-3xl items-center justify-between gap-6 px-6 py-4">
         <Link
           href="/today"

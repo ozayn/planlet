@@ -9,7 +9,6 @@ import {
 import { CoachingReflectionFeedback } from "@/components/coaching/coaching-reflection-feedback";
 import { ReflectionLensSelector } from "@/components/coaching/reflection-lens-selector";
 import {
-  formatReflectionInfluenceLabels,
   getAllSelectedInfluenceIds,
   type ReflectionInfluencePreferences,
 } from "@/lib/reflection-influences";
@@ -40,7 +39,6 @@ export function CoachingPageContent({
     [preferences],
   );
   const hasInfluences = selectedCount > 0;
-  const selectedLabels = formatReflectionInfluenceLabels(preferences);
 
   function save(next: ReflectionInfluencePreferences) {
     setSaveError(null);
@@ -77,7 +75,7 @@ export function CoachingPageContent({
   }
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-8">
       <ReflectionLensSelector
         preferences={preferences}
         isSaving={isSaving}
@@ -85,18 +83,7 @@ export function CoachingPageContent({
         onChange={save}
       />
 
-      <section className="space-y-5 border-t border-border-soft pt-8">
-        {hasInfluences ? (
-          <p className="text-sm leading-relaxed text-muted">
-            Drawing on{" "}
-            <span className="text-foreground">{selectedLabels}</span>.
-          </p>
-        ) : (
-          <p className="text-sm text-muted">
-            Select at least one perspective above to generate feedback.
-          </p>
-        )}
-
+      <section className="space-y-5">
         {!reflection ? (
           <div className="space-y-3">
             <button
@@ -105,8 +92,13 @@ export function CoachingPageContent({
               disabled={!hasInfluences || isGenerating}
               className="ui-btn-secondary ui-btn-compact min-h-10 w-fit px-4"
             >
-              {isGenerating ? "Generating…" : "Generate reflection"}
+              {isGenerating ? "Generating…" : "Generate feedback"}
             </button>
+            {!hasInfluences ? (
+              <p className="text-sm text-muted">
+                Choose at least one perspective to generate feedback.
+              </p>
+            ) : null}
             {generateError ? (
               <p className="rounded-lg border border-accent-red/20 px-3 py-2 text-sm text-accent-red">
                 {generateError}

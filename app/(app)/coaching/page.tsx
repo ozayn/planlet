@@ -20,12 +20,14 @@ export default async function CoachingPage() {
   );
 
   return (
-    <section className="ui-page-stack mx-auto max-w-xl space-y-8">
+    <section className="ui-page-stack space-y-6">
       <PageHeader
         title="Coaching"
         subtitle="Thoughtful feedback on your recent plans and reflections."
       />
-      <CoachingPageContent initialPreferences={preferences} />
+      <div className="mx-auto w-full max-w-xl">
+        <CoachingPageContent initialPreferences={preferences} />
+      </div>
     </section>
   );
 }

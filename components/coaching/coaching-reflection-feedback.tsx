@@ -18,54 +18,50 @@ export function CoachingReflectionFeedback({
   onRegenerate,
 }: CoachingReflectionFeedbackProps) {
   return (
-    <section className="space-y-4" aria-live="polite">
-      <article className="space-y-6 rounded-xl border border-border-soft bg-surface px-5 py-6 sm:px-6">
-        <header className="border-b border-border-soft pb-4">
-          <p className="text-sm text-muted">
-            Reflection from your selected perspectives
-          </p>
-        </header>
+    <section className="space-y-5" aria-live="polite">
+      <div className="space-y-5 border-s-2 border-border-soft ps-5">
+        <p className="text-sm font-medium text-foreground">Teacher feedback</p>
 
-        <div className="space-y-6">
+        <section className="space-y-2">
+          <h3 className="text-xs font-medium uppercase tracking-wide text-muted-light">
+            Reflection
+          </h3>
+          <p
+            className="text-[0.9375rem] leading-[1.75] text-foreground"
+            dir="auto"
+          >
+            {reflection}
+          </p>
+        </section>
+
+        {question ? (
           <section className="space-y-2">
-            <h3 className="text-sm font-medium text-foreground">Reflection</h3>
+            <h3 className="text-xs font-medium uppercase tracking-wide text-muted-light">
+              Question for you
+            </h3>
             <p
-              className="text-[0.9375rem] leading-[1.7] text-foreground"
+              className="text-[0.9375rem] leading-[1.75] text-foreground"
               dir="auto"
             >
-              {reflection}
+              {question}
             </p>
           </section>
+        ) : null}
 
-          {question ? (
-            <section className="space-y-2 border-t border-border-soft pt-6">
-              <h3 className="text-sm font-medium text-foreground">
-                Question for you
-              </h3>
-              <p
-                className="text-[0.9375rem] leading-[1.7] text-foreground"
-                dir="auto"
-              >
-                {question}
-              </p>
-            </section>
-          ) : null}
-
-          {experiment ? (
-            <section className="space-y-2 border-t border-border-soft pt-6">
-              <h3 className="text-sm font-medium text-foreground">
-                Suggested experiment or next step
-              </h3>
-              <p
-                className="text-[0.9375rem] leading-[1.7] text-foreground"
-                dir="auto"
-              >
-                {experiment}
-              </p>
-            </section>
-          ) : null}
-        </div>
-      </article>
+        {experiment ? (
+          <section className="space-y-2">
+            <h3 className="text-xs font-medium uppercase tracking-wide text-muted-light">
+              Small experiment
+            </h3>
+            <p
+              className="text-[0.9375rem] leading-[1.75] text-foreground"
+              dir="auto"
+            >
+              {experiment}
+            </p>
+          </section>
+        ) : null}
+      </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <button
@@ -74,7 +70,7 @@ export function CoachingReflectionFeedback({
           disabled={!hasInfluences || isGenerating}
           className="ui-btn-secondary ui-btn-compact min-h-10 w-fit px-4"
         >
-          {isGenerating ? "Generating…" : "Regenerate reflection"}
+          {isGenerating ? "Generating…" : "Regenerate feedback"}
         </button>
         <p className="text-xs leading-relaxed text-muted-light">
           AI-generated reflection. Not therapy, coaching, or medical advice.

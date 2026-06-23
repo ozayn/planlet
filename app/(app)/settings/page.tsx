@@ -11,7 +11,6 @@ import { SettingsSection } from "@/components/settings/settings-section";
 import { TaskOrganizationDisplaySettings } from "@/components/settings/task-organization-display-settings";
 import { SettingsTechnicalInfo } from "@/components/settings/settings-technical-info";
 import { SettingsTimezone } from "@/components/settings/settings-timezone";
-import { ThemeToggle } from "@/components/theme-toggle";
 import { PRODUCT } from "@/config/product";
 import { APP_TIMEZONE } from "@/config/time";
 import {
@@ -53,14 +52,6 @@ export default async function SettingsPage() {
         email={session?.user?.email}
         image={session?.user?.image}
       />
-
-      <SettingsSection title="Appearance">
-        <ThemeToggle variant="full" />
-        <p className="text-xs text-muted-light">
-          On desktop, theme is also in the header. On mobile, use the profile
-          menu.
-        </p>
-      </SettingsSection>
 
       <SettingsSection title="Planning" className="space-y-5">
         <PlanItemViewSettings value={planningPreferences.planItemView} />

@@ -19,6 +19,8 @@ const sizeClasses = {
   lg: "h-12 w-12 text-base",
 } as const;
 
+type ImageLoadState = "idle" | "loaded" | "failed";
+
 function isValidImageUrl(image?: string | null): boolean {
   const trimmed = image?.trim();
   if (!trimmed) {
@@ -39,36 +41,45 @@ export function UserAvatar({
   size = "md",
   className = "",
 }: UserAvatarProps) {
-  const [imageFailed, setImageFailed] = useState(false);
+  const [imageState, setImageState] = useState<ImageLoadState>("idle");
   const initials = getUserInitials(name, email);
   const sizeClass = sizeClasses[size];
   const imageUrl = image?.trim() ?? "";
-  const shouldShowImage = isValidImageUrl(imageUrl) && !imageFailed;
+  const canLoadImage = isValidImageUrl(imageUrl);
+  const showPhoto = canLoadImage && imageState === "loaded";
 
   useEffect(() => {
-    setImageFailed(false);
+    setImageState("idle");
   }, [imageUrl]);
 
   return (
     <span
       className={`${sizeClass} relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-border-soft bg-accent-cream ${className}`.trim()}
     >
-      {shouldShowImage ? (
+      <span
+        aria-hidden={showPhoto ? true : undefined}
+        className={`flex h-full w-full items-center justify-center font-medium text-muted ${
+          showPhoto ? "invisible" : ""
+        }`}
+      >
+        {initials}
+      </span>
+      {canLoadImage && imageState !== "failed" ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={imageUrl}
           alt=""
-          className="h-full w-full object-cover"
-          onError={() => setImageFailed(true)}
+          referrerPolicy="no-referrer"
+          decoding="async"
+          className={
+            showPhoto
+              ? "absolute inset-0 h-full w-full object-cover"
+              : "absolute h-0 w-0 opacity-0"
+          }
+          onLoad={() => setImageState("loaded")}
+          onError={() => setImageState("failed")}
         />
-      ) : (
-        <span
-          aria-hidden="true"
-          className="flex h-full w-full items-center justify-center font-medium text-muted"
-        >
-          {initials}
-        </span>
-      )}
+      ) : null}
     </span>
   );
 }

@@ -30,7 +30,7 @@ export default async function AppLayout({
   const serializedNotifications = notifications.map(serializeNotification);
 
   return (
-    <div className="flex min-h-full flex-1 flex-col">
+    <div className="flex min-h-full flex-1 flex-col overflow-x-clip">
       {session?.user?.timezoneMode === "AUTOMATIC" ? (
         <BrowserTimezoneDetector enabled />
       ) : null}
@@ -60,7 +60,7 @@ export default async function AppLayout({
         unreadNotificationCount={unreadNotificationCount}
         notifications={serializedNotifications}
       />
-      <main className="ui-app-main mx-auto w-full max-w-2xl flex-1 px-5 pb-safe-nav pt-5 md:max-w-3xl md:px-8 md:pb-10 md:pt-8">
+      <main className="ui-app-main relative z-0 mx-auto w-full max-w-2xl flex-1 px-5 pb-safe-nav pt-5 md:max-w-3xl md:px-8 md:pb-10 md:pt-8">
         {children}
       </main>
       <BottomNav />
