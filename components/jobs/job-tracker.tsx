@@ -191,10 +191,12 @@ export function JobTracker({ initialJobs }: JobTrackerProps) {
       <article className="ui-card-padded space-y-4 border border-border-soft">
         <h2 className="text-sm font-medium text-foreground">Add job</h2>
         <form className="space-y-3" onSubmit={handleAddJob}>
-          <label className="block space-y-1.5">
+          <label className="block space-y-1.5" htmlFor="job-add-url">
             <span className="text-xs text-muted">URL</span>
             <div className="flex flex-col gap-2 sm:flex-row">
               <input
+                id="job-add-url"
+                name="job-add-url"
                 type="url"
                 value={form.url}
                 onChange={(event) => setForm({ ...form, url: event.target.value })}
@@ -227,9 +229,11 @@ export function JobTracker({ initialJobs }: JobTrackerProps) {
           </label>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block space-y-1.5">
+            <label className="block space-y-1.5" htmlFor="job-add-title">
               <span className="text-xs text-muted">Title</span>
               <input
+                id="job-add-title"
+                name="job-add-title"
                 type="text"
                 required
                 value={form.title}
@@ -241,9 +245,11 @@ export function JobTracker({ initialJobs }: JobTrackerProps) {
                 {...passwordManagerSafeControlProps}
               />
             </label>
-            <label className="block space-y-1.5">
+            <label className="block space-y-1.5" htmlFor="job-add-company">
               <span className="text-xs text-muted">Company</span>
               <input
+                id="job-add-company"
+                name="job-add-company"
                 type="text"
                 required
                 value={form.company}
@@ -258,9 +264,11 @@ export function JobTracker({ initialJobs }: JobTrackerProps) {
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <label className="block space-y-1.5">
+            <label className="block space-y-1.5" htmlFor="job-add-applied-date">
               <span className="text-xs text-muted">Applied date</span>
               <input
+                id="job-add-applied-date"
+                name="job-add-applied-date"
                 type="date"
                 value={form.appliedDate}
                 onChange={(event) =>
@@ -271,9 +279,11 @@ export function JobTracker({ initialJobs }: JobTrackerProps) {
                 {...passwordManagerSafeControlProps}
               />
             </label>
-            <label className="block space-y-1.5">
+            <label className="block space-y-1.5" htmlFor="job-add-status">
               <span className="text-xs text-muted">Status</span>
               <select
+                id="job-add-status"
+                name="job-add-status"
                 value={form.status}
                 onChange={(event) =>
                   setForm({
@@ -296,9 +306,11 @@ export function JobTracker({ initialJobs }: JobTrackerProps) {
             </label>
           </div>
 
-          <label className="block space-y-1.5">
+          <label className="block space-y-1.5" htmlFor="job-add-notes">
             <span className="text-xs text-muted">Notes</span>
             <textarea
+              id="job-add-notes"
+              name="job-add-notes"
               value={form.notes}
               onChange={(event) => setForm({ ...form, notes: event.target.value })}
               disabled={isPending}

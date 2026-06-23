@@ -110,6 +110,8 @@ export function AdminFeedbackList({ items }: AdminFeedbackListProps) {
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <select
+                  id={`admin-feedback-status-${item.id}`}
+                  name={`admin-feedback-status-${item.id}`}
                   value={item.status}
                   disabled={isPending}
                   onChange={(event) =>
@@ -129,6 +131,8 @@ export function AdminFeedbackList({ items }: AdminFeedbackListProps) {
                   ))}
                 </select>
                 <select
+                  id={`admin-feedback-priority-${item.id}`}
+                  name={`admin-feedback-priority-${item.id}`}
                   value={item.priority}
                   disabled={isPending}
                   onChange={(event) =>

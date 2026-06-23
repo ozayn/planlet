@@ -240,6 +240,23 @@ export function ChevronDownIcon({ className }: IconProps) {
   );
 }
 
+/** Lucide-equivalent: Info */
+export function InfoIcon({ className }: IconProps) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth={1.75}
+      stroke="currentColor"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path strokeLinecap="round" d="M12 10v6M12 7h.01" />
+    </svg>
+  );
+}
+
 /** Lucide-equivalent: Calendar */
 export function CalendarIcon({ className }: IconProps) {
   return (

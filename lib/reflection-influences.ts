@@ -3,7 +3,9 @@ import { z } from "zod";
 export const REFLECTION_INFLUENCE_CATEGORIES = [
   { id: "presence", label: "Presence" },
   { id: "compassion", label: "Compassion" },
+  { id: "compassion_trauma", label: "Compassion / Trauma" },
   { id: "meaning", label: "Meaning" },
+  { id: "meaning_psychology", label: "Meaning / Psychology" },
   { id: "everyday_philosophy", label: "Everyday Philosophy" },
   { id: "practical", label: "Practical" },
   { id: "decision_making", label: "Decision Making" },
@@ -22,7 +24,10 @@ export const REFLECTION_INFLUENCE_IDS = [
   "gabor_mate",
   "tara_brach",
   "kristin_neff",
+  "bessel_van_der_kolk",
   "viktor_frankl",
+  "alfred_adler",
+  "kishimi_koga",
   "alain_de_botton",
   "james_clear",
   "bj_fogg",
@@ -42,6 +47,8 @@ export type ReflectionInfluence = {
   id: ReflectionInfluenceId;
   label: string;
   category: ReflectionInfluenceCategoryId;
+  /** Short UI description for coaching lens tooltips. */
+  shortDescription: string;
   themes: string;
   /** Optional extra guidance for AI prompting when this lens is selected. */
   promptNotes?: string;
@@ -55,6 +62,7 @@ export const REFLECTION_INFLUENCES: Record<
     id: "alan_watts",
     label: "Alan Watts",
     category: "presence",
+    shortDescription: "Zen-inspired philosophy • Presence & perspective",
     themes:
       "acceptance, playfulness, non-control, uncertainty, flow",
   },
@@ -62,6 +70,7 @@ export const REFLECTION_INFLUENCES: Record<
     id: "eckhart_tolle",
     label: "Eckhart Tolle",
     category: "presence",
+    shortDescription: "Present-moment awareness • Observing the mind",
     themes:
       "presence, awareness, observing thoughts, reducing identification with mental stories",
   },
@@ -69,12 +78,14 @@ export const REFLECTION_INFLUENCES: Record<
     id: "ram_dass",
     label: "Ram Dass",
     category: "presence",
+    shortDescription: "Spiritual compassion • Service and awareness",
     themes: "compassion, service, awareness, spiritual growth",
   },
   buddhism: {
     id: "buddhism",
     label: "Buddhism",
     category: "presence",
+    shortDescription: "Buddhist teachings • Impermanence and mindfulness",
     themes:
       "impermanence, non-attachment, mindfulness, suffering and its causes",
   },
@@ -82,12 +93,14 @@ export const REFLECTION_INFLUENCES: Record<
     id: "vipassana",
     label: "Vipassana",
     category: "presence",
+    shortDescription: "Insight meditation • Equanimity and observation",
     themes: "observation, equanimity, impermanence, direct experience",
   },
   gabor_mate: {
     id: "gabor_mate",
     label: "Gabor Maté",
     category: "compassion",
+    shortDescription: "Compassionate inquiry • Trauma and unmet needs",
     themes:
       "compassion, trauma awareness, unmet needs, mind-body connection, stress",
   },
@@ -95,24 +108,58 @@ export const REFLECTION_INFLUENCES: Record<
     id: "tara_brach",
     label: "Tara Brach",
     category: "compassion",
+    shortDescription: "Radical acceptance • Emotional awareness",
     themes: "radical acceptance, self-compassion, emotional awareness",
   },
   kristin_neff: {
     id: "kristin_neff",
     label: "Kristin Neff",
     category: "compassion",
+    shortDescription: "Self-compassion • Resilience under pressure",
     themes: "self-compassion, resilience, reducing self-criticism",
+  },
+  bessel_van_der_kolk: {
+    id: "bessel_van_der_kolk",
+    label: "Bessel van der Kolk",
+    category: "compassion_trauma",
+    shortDescription: "Trauma and the body • Nervous system awareness",
+    themes:
+      "trauma awareness, body memory, nervous system regulation, safety, embodiment, stress responses, self-compassion",
+    promptNotes:
+      "Focus gently on trauma awareness, body memory, nervous system regulation, safety, embodiment, and self-compassion. Avoid clinical advice or diagnosis. Do not refer to any author by name.",
   },
   viktor_frankl: {
     id: "viktor_frankl",
     label: "Viktor Frankl",
     category: "meaning",
+    shortDescription: "Meaning and purpose • Values amid difficulty",
     themes: "meaning, purpose, responsibility, values",
+  },
+  alfred_adler: {
+    id: "alfred_adler",
+    label: "Alfred Adler",
+    category: "meaning_psychology",
+    shortDescription: "Adlerian psychology • Courage, belonging & responsibility",
+    themes:
+      "belonging, courage, social interest, responsibility, inferiority and striving, choice and agency, encouragement",
+    promptNotes:
+      "Focus on belonging, courage, social interest, responsibility, encouragement, and personal agency. Do not refer to any author by name.",
+  },
+  kishimi_koga: {
+    id: "kishimi_koga",
+    label: "Ichiro Kishimi & Fumitake Koga",
+    category: "meaning_psychology",
+    shortDescription: "The Courage to Be Disliked • Adlerian life philosophy",
+    themes:
+      "courage, separation of tasks, freedom from approval-seeking, interpersonal relationships, self-acceptance, contribution, living from choice",
+    promptNotes:
+      "Focus on courage, separation of tasks, freedom from approval-seeking, self-acceptance, contribution, and living from choice. Do not refer to any author by name.",
   },
   alain_de_botton: {
     id: "alain_de_botton",
     label: "Alain de Botton",
     category: "everyday_philosophy",
+    shortDescription: "Everyday philosophy • Relationships and modern life",
     themes:
       "emotional maturity, self-understanding, relationships, realistic expectations, work and meaning, loneliness, friendship, identity, modern life, status and success, psychological insight",
     promptNotes:
@@ -122,6 +169,7 @@ export const REFLECTION_INFLUENCES: Record<
     id: "james_clear",
     label: "James Clear",
     category: "practical",
+    shortDescription: "Habit formation • Systems thinking",
     themes:
       "identity-based habits, systems over goals, reducing friction, supportive environments, small consistent actions",
     promptNotes:
@@ -131,18 +179,21 @@ export const REFLECTION_INFLUENCES: Record<
     id: "bj_fogg",
     label: "BJ Fogg",
     category: "practical",
+    shortDescription: "Behavior design • Tiny habits and friction",
     themes: "tiny habits, reducing friction, making change easier",
   },
   greg_mckeown: {
     id: "greg_mckeown",
     label: "Greg McKeown",
     category: "practical",
+    shortDescription: "Essentialism • Less but better",
     themes: "essentialism, saying no, less but better, focus",
   },
   oliver_burkeman: {
     id: "oliver_burkeman",
     label: "Oliver Burkeman",
     category: "practical",
+    shortDescription: "Time realism • Choosing what matters",
     themes:
       "finite time, choosing what matters, realistic prioritization, acceptance of limits",
   },
@@ -150,12 +201,14 @@ export const REFLECTION_INFLUENCES: Record<
     id: "cal_newport",
     label: "Cal Newport",
     category: "practical",
+    shortDescription: "Deep work • Focus and distraction",
     themes: "deep work, concentration, meaningful effort, reducing distraction",
   },
   annie_duke: {
     id: "annie_duke",
     label: "Annie Duke",
     category: "decision_making",
+    shortDescription: "Decision-making • Uncertainty and bets",
     themes:
       "decision quality, uncertainty, probabilities, thinking in bets",
   },
@@ -163,12 +216,14 @@ export const REFLECTION_INFLUENCES: Record<
     id: "shane_parrish",
     label: "Shane Parrish",
     category: "decision_making",
+    shortDescription: "Mental models • Clear long-term thinking",
     themes: "mental models, clear thinking, long-term reasoning",
   },
   esther_perel: {
     id: "esther_perel",
     label: "Esther Perel",
     category: "relationships",
+    shortDescription: "Relational intelligence • Connection and boundaries",
     themes: "relationships, connection, boundaries, communication",
   },
 };

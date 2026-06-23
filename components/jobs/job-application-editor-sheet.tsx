@@ -85,6 +85,7 @@ export function JobApplicationEditorSheet({
   }
 
   const jobId = job.id;
+  const fieldId = (name: string) => `job-edit-${jobId}-${name}`;
   const pending = isPending || isSaving;
 
   function handleSave() {
@@ -174,10 +175,12 @@ export function JobApplicationEditorSheet({
       }
     >
       <div className="space-y-3 overflow-y-auto px-5 py-4">
-        <label className="block space-y-1.5">
+        <label className="block space-y-1.5" htmlFor={fieldId("url")}>
           <span className="text-xs text-muted">URL</span>
           <div className="flex flex-col gap-2 sm:flex-row">
             <input
+              id={fieldId("url")}
+              name={fieldId("url")}
               type="url"
               value={form.url}
               onChange={(event) => setForm({ ...form, url: event.target.value })}
@@ -209,9 +212,11 @@ export function JobApplicationEditorSheet({
         </label>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className="block space-y-1.5">
+          <label className="block space-y-1.5" htmlFor={fieldId("title")}>
             <span className="text-xs text-muted">Title</span>
             <input
+              id={fieldId("title")}
+              name={fieldId("title")}
               type="text"
               value={form.title}
               onChange={(event) => setForm({ ...form, title: event.target.value })}
@@ -220,9 +225,11 @@ export function JobApplicationEditorSheet({
               {...passwordManagerSafeControlProps}
             />
           </label>
-          <label className="block space-y-1.5">
+          <label className="block space-y-1.5" htmlFor={fieldId("company")}>
             <span className="text-xs text-muted">Company</span>
             <input
+              id={fieldId("company")}
+              name={fieldId("company")}
               type="text"
               value={form.company}
               onChange={(event) =>
@@ -236,9 +243,11 @@ export function JobApplicationEditorSheet({
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className="block space-y-1.5">
+          <label className="block space-y-1.5" htmlFor={fieldId("applied-date")}>
             <span className="text-xs text-muted">Applied date</span>
             <input
+              id={fieldId("applied-date")}
+              name={fieldId("applied-date")}
               type="date"
               value={form.appliedDate}
               onChange={(event) =>
@@ -249,9 +258,11 @@ export function JobApplicationEditorSheet({
               {...passwordManagerSafeControlProps}
             />
           </label>
-          <label className="block space-y-1.5">
+          <label className="block space-y-1.5" htmlFor={fieldId("status")}>
             <span className="text-xs text-muted">Status</span>
             <select
+              id={fieldId("status")}
+              name={fieldId("status")}
               value={form.status}
               onChange={(event) =>
                 setForm({
@@ -273,9 +284,11 @@ export function JobApplicationEditorSheet({
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className="block space-y-1.5">
+          <label className="block space-y-1.5" htmlFor={fieldId("source")}>
             <span className="text-xs text-muted">Source</span>
             <input
+              id={fieldId("source")}
+              name={fieldId("source")}
               type="text"
               value={form.source}
               onChange={(event) => setForm({ ...form, source: event.target.value })}
@@ -284,9 +297,11 @@ export function JobApplicationEditorSheet({
               {...passwordManagerSafeControlProps}
             />
           </label>
-          <label className="block space-y-1.5">
+          <label className="block space-y-1.5" htmlFor={fieldId("referrer")}>
             <span className="text-xs text-muted">Referrer</span>
             <input
+              id={fieldId("referrer")}
+              name={fieldId("referrer")}
               type="text"
               value={form.referrer}
               onChange={(event) =>
@@ -300,9 +315,11 @@ export function JobApplicationEditorSheet({
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className="block space-y-1.5">
+          <label className="block space-y-1.5" htmlFor={fieldId("location")}>
             <span className="text-xs text-muted">Location</span>
             <input
+              id={fieldId("location")}
+              name={fieldId("location")}
               type="text"
               value={form.location}
               onChange={(event) =>
@@ -313,9 +330,11 @@ export function JobApplicationEditorSheet({
               {...passwordManagerSafeControlProps}
             />
           </label>
-          <label className="block space-y-1.5">
+          <label className="block space-y-1.5" htmlFor={fieldId("salary")}>
             <span className="text-xs text-muted">Salary</span>
             <input
+              id={fieldId("salary")}
+              name={fieldId("salary")}
               type="text"
               value={form.salary}
               onChange={(event) => setForm({ ...form, salary: event.target.value })}
@@ -326,9 +345,11 @@ export function JobApplicationEditorSheet({
           </label>
         </div>
 
-        <label className="block space-y-1.5">
+        <label className="block space-y-1.5" htmlFor={fieldId("summary")}>
           <span className="text-xs text-muted">Summary</span>
           <textarea
+            id={fieldId("summary")}
+            name={fieldId("summary")}
             value={form.summary}
             onChange={(event) => setForm({ ...form, summary: event.target.value })}
             disabled={pending}
@@ -338,9 +359,11 @@ export function JobApplicationEditorSheet({
           />
         </label>
 
-        <label className="block space-y-1.5">
+        <label className="block space-y-1.5" htmlFor={fieldId("description")}>
           <span className="text-xs text-muted">Description</span>
           <textarea
+            id={fieldId("description")}
+            name={fieldId("description")}
             value={form.description}
             onChange={(event) =>
               setForm({ ...form, description: event.target.value })
@@ -352,9 +375,11 @@ export function JobApplicationEditorSheet({
           />
         </label>
 
-        <label className="block space-y-1.5">
+        <label className="block space-y-1.5" htmlFor={fieldId("notes")}>
           <span className="text-xs text-muted">Notes</span>
           <textarea
+            id={fieldId("notes")}
+            name={fieldId("notes")}
             value={form.notes}
             onChange={(event) => setForm({ ...form, notes: event.target.value })}
             disabled={pending}

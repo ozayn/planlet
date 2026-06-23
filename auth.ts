@@ -44,6 +44,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         } else if (user.id) {
           token.id = user.id;
         }
+
+        if (user.image) {
+          token.picture = user.image;
+        }
       }
 
       return token;
@@ -63,6 +67,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           canUseJobTrackerFeatures: true,
           timezone: true,
           timezoneMode: true,
+          image: true,
         },
       });
 
@@ -78,6 +83,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       session.user.canUseJobTrackerFeatures = dbUser.canUseJobTrackerFeatures;
       session.user.timezone = dbUser.timezone ?? FALLBACK_TIMEZONE;
       session.user.timezoneMode = dbUser.timezoneMode;
+      session.user.image = dbUser.image ?? session.user.image ?? null;
 
       return session;
     },

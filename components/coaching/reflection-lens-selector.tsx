@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 
+import { InfluenceNameTooltip } from "@/components/coaching/influence-name-tooltip";
 import { ChevronDownIcon } from "@/components/ui/action-icons";
 import {
   formatReflectionInfluenceLabels,
@@ -207,10 +208,11 @@ export function ReflectionLensSelector({
                   </button>
 
                   {isExpanded ? (
-                    <div id={categoryPanelId} className="space-y-0.5 px-2 pb-2">
+                    <div id={categoryPanelId} className="space-y-0.5 overflow-visible px-2 pb-2">
                       <ul className="space-y-0.5">
                         {influences.map((influence) => {
                           const inputId = `coaching-influence-${influence.id}`;
+                          const descriptionId = `${inputId}-description`;
                           const isSelected = selected.has(influence.id);
                           const isPrimary = primary.has(influence.id);
                           const primaryDisabled =
@@ -221,11 +223,11 @@ export function ReflectionLensSelector({
                           return (
                             <li
                               key={influence.id}
-                              className="flex min-h-10 items-center justify-between gap-3 rounded-lg px-1"
+                              className="flex items-start justify-between gap-2 rounded-lg px-1 py-0.5"
                             >
                               <label
                                 htmlFor={inputId}
-                                className="flex min-h-10 flex-1 cursor-pointer items-center gap-3 text-sm text-foreground"
+                                className="flex min-h-10 min-w-0 flex-1 cursor-pointer items-start gap-3 py-1.5 text-sm text-foreground"
                               >
                                 <input
                                   id={inputId}
@@ -233,22 +235,29 @@ export function ReflectionLensSelector({
                                   type="checkbox"
                                   checked={isSelected}
                                   disabled={isSaving}
+                                  aria-describedby={descriptionId}
                                   onChange={(event) =>
                                     toggleInfluence(
                                       influence.id,
                                       event.target.checked,
                                     )
                                   }
-                                  className="h-4 w-4 rounded border-border text-foreground"
+                                  className="mt-0.5 h-4 w-4 shrink-0 rounded border-border text-foreground"
                                 />
-                                <span>{influence.label}</span>
+                                <InfluenceNameTooltip
+                                  label={influence.label}
+                                  description={influence.shortDescription}
+                                />
+                                <span id={descriptionId} className="sr-only">
+                                  {influence.shortDescription}
+                                </span>
                               </label>
                               <button
                                 type="button"
                                 onClick={() => togglePrimary(influence.id)}
                                 disabled={isSaving || primaryDisabled}
                                 aria-pressed={isPrimary}
-                                className={`shrink-0 rounded-md border px-2 py-0.5 text-xs transition-colors ${
+                                className={`mt-1.5 shrink-0 rounded-md border px-2 py-0.5 text-xs transition-colors ${
                                   isPrimary
                                     ? "border-foreground bg-foreground text-background"
                                     : "border-border-soft text-muted hover:border-border hover:text-foreground disabled:opacity-40"

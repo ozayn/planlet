@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { getUserInitials } from "@/lib/user-display";
 
@@ -18,8 +18,6 @@ const sizeClasses = {
   md: "h-10 w-10 text-sm",
   lg: "h-12 w-12 text-base",
 } as const;
-
-type ImageLoadState = "idle" | "loaded" | "failed";
 
 function isValidImageUrl(image?: string | null): boolean {
   const trimmed = image?.trim();
@@ -41,43 +39,51 @@ export function UserAvatar({
   size = "md",
   className = "",
 }: UserAvatarProps) {
-  const [imageState, setImageState] = useState<ImageLoadState>("idle");
+  const [imageFailed, setImageFailed] = useState(false);
+  const imageRef = useRef<HTMLImageElement>(null);
   const initials = getUserInitials(name, email);
   const sizeClass = sizeClasses[size];
   const imageUrl = image?.trim() ?? "";
   const canLoadImage = isValidImageUrl(imageUrl);
-  const showPhoto = canLoadImage && imageState === "loaded";
+  const showPhoto = canLoadImage && !imageFailed;
 
   useEffect(() => {
-    setImageState("idle");
-  }, [imageUrl]);
+    setImageFailed(false);
+
+    const img = imageRef.current;
+    if (!img || !canLoadImage) {
+      return;
+    }
+
+    if (img.complete && img.naturalWidth === 0) {
+      setImageFailed(true);
+    }
+  }, [imageUrl, canLoadImage]);
 
   return (
     <span
       className={`${sizeClass} relative inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full border border-border-soft bg-accent-cream ${className}`.trim()}
     >
-      <span
-        aria-hidden={showPhoto ? true : undefined}
-        className={`flex h-full w-full items-center justify-center font-medium text-muted ${
-          showPhoto ? "invisible" : ""
-        }`}
-      >
-        {initials}
-      </span>
-      {canLoadImage && imageState !== "failed" ? (
+      {showPhoto ? null : (
+        <span className="flex h-full w-full items-center justify-center font-medium text-muted">
+          {initials}
+        </span>
+      )}
+      {canLoadImage ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
+          ref={imageRef}
           src={imageUrl}
           alt=""
           referrerPolicy="no-referrer"
           decoding="async"
           className={
             showPhoto
-              ? "absolute inset-0 h-full w-full object-cover"
+              ? "h-full w-full object-cover"
               : "absolute h-0 w-0 opacity-0"
           }
-          onLoad={() => setImageState("loaded")}
-          onError={() => setImageState("failed")}
+          onLoad={() => setImageFailed(false)}
+          onError={() => setImageFailed(true)}
         />
       ) : null}
     </span>

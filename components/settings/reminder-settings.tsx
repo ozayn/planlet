@@ -107,16 +107,18 @@ export function ReminderSettings({
           <span>Morning reminder</span>
           <span className="flex items-center gap-2">
             <input
+              id="reminder-morning-enabled"
+              name="reminder-morning-enabled"
               type="checkbox"
-              checked={morningEnabled}
               disabled={isSaving}
               onChange={(event) => handleMorningToggle(event.target.checked)}
               className="h-4 w-4 rounded border-border-soft"
               aria-label="Enable morning reminder"
             />
             <input
+              id="reminder-morning-time"
+              name="reminder-morning-time"
               type="time"
-              value={morningTime}
               disabled={!morningEnabled || isSaving}
               onChange={(event) => handleMorningTimeChange(event.target.value)}
               {...passwordManagerSafeControlProps}
@@ -130,16 +132,18 @@ export function ReminderSettings({
           <span>Evening reminder</span>
           <span className="flex items-center gap-2">
             <input
+              id="reminder-evening-enabled"
+              name="reminder-evening-enabled"
               type="checkbox"
-              checked={eveningEnabled}
               disabled={isSaving}
               onChange={(event) => handleEveningToggle(event.target.checked)}
               className="h-4 w-4 rounded border-border-soft"
               aria-label="Enable evening reminder"
             />
             <input
+              id="reminder-evening-time"
+              name="reminder-evening-time"
               type="time"
-              value={eveningTime}
               disabled={!eveningEnabled || isSaving}
               onChange={(event) => handleEveningTimeChange(event.target.value)}
               {...passwordManagerSafeControlProps}

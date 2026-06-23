@@ -94,9 +94,14 @@ export function ItemThemeProjectPicker({
   }
 
   return (
-    <label className={`inline-flex items-center gap-1 ${compact ? "max-w-[9rem]" : "w-full max-w-xs"}`}>
+    <label
+      htmlFor={`item-theme-project-${item.id}`}
+      className={`inline-flex items-center gap-1 ${compact ? "max-w-[9rem]" : "w-full max-w-xs"}`}
+    >
       <span className="sr-only">Theme or project for {item.title}</span>
       <select
+        id={`item-theme-project-${item.id}`}
+        name={`item-theme-project-${item.id}`}
         value={value}
         disabled={isPending}
         onChange={(event) => handleChange(event.target.value)}

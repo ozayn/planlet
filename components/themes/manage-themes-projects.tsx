@@ -100,6 +100,7 @@ export function ManageThemesProjects({ catalog }: ManageThemesProjectsProps) {
         >
           <input
             id="new-theme-name"
+            name="new-theme-name"
             type="text"
             value={newThemeName}
             onChange={(event) => setNewThemeName(event.target.value)}
@@ -171,6 +172,8 @@ export function ManageThemesProjects({ catalog }: ManageThemesProjectsProps) {
         >
           <div className="flex flex-col gap-2 sm:flex-row">
             <input
+              id="new-project-name"
+              name="new-project-name"
               type="text"
               value={newProjectName}
               onChange={(event) => setNewProjectName(event.target.value)}
@@ -180,6 +183,8 @@ export function ManageThemesProjects({ catalog }: ManageThemesProjectsProps) {
               {...passwordManagerSafeControlProps}
             />
             <select
+              id="new-project-theme"
+              name="new-project-theme"
               value={newProjectThemeId}
               onChange={(event) => setNewProjectThemeId(event.target.value)}
               disabled={isPending}
