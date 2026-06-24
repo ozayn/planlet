@@ -1,19 +1,29 @@
 import { auth } from "@/auth";
 import { GoogleSignInButton } from "@/components/google-sign-in-button";
+import { MobileProductTour } from "@/components/marketing/mobile-product-tour";
 import { PlanletLogo } from "@/components/planlet-logo";
 import { PRODUCT } from "@/config/product";
 
 type HomePageProps = {
-  searchParams: Promise<{ callbackUrl?: string }>;
+  searchParams: Promise<{ callbackUrl?: string; demo?: string }>;
 };
 
 export default async function HomePage({ searchParams }: HomePageProps) {
   const session = await auth();
-  const { callbackUrl } = await searchParams;
+  const { callbackUrl, demo } = await searchParams;
+  const recordingMode = demo === "recording";
 
   if (session?.user) {
     const { redirect } = await import("next/navigation");
     redirect(callbackUrl ?? "/today");
+  }
+
+  if (recordingMode) {
+    return (
+      <div className="flex min-h-full flex-1 flex-col items-center justify-center bg-background px-4 py-10">
+        <MobileProductTour recordingMode />
+      </div>
+    );
   }
 
   return (
@@ -63,6 +73,22 @@ export default async function HomePage({ searchParams }: HomePageProps) {
           </p>
         </div>
       </main>
+
+      <section className="border-t border-border-soft bg-surface/40 py-16 sm:py-20">
+        <div className="mx-auto mb-10 max-w-5xl px-6 text-center lg:text-left">
+          <p className="text-xs font-semibold tracking-[0.18em] text-muted uppercase">
+            Product tour
+          </p>
+          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
+            See how Planlet supports your day
+          </h2>
+          <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-muted lg:mx-0">
+            A calm walkthrough of capture, structure, insights, coaching, and
+            career — enough to feel the product, never overwhelming.
+          </p>
+        </div>
+        <MobileProductTour />
+      </section>
 
       <footer className="flex items-center justify-center gap-2 px-6 py-8 text-xs text-muted-light">
         <span className="h-1.5 w-4 rounded-sm bg-accent-red" aria-hidden="true" />
