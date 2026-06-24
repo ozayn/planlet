@@ -59,11 +59,11 @@ export function MoveUnderTaskDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
+    <div className="ui-dialog-overlay">
       <button
         type="button"
         aria-label="Close"
-        className="absolute inset-0 bg-foreground/20"
+        className="absolute inset-0 bg-[var(--overlay)]"
         onClick={() => {
           if (!isPending) {
             onClose();
@@ -75,37 +75,37 @@ export function MoveUnderTaskDialog({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
-        className="ui-shadow-elevated relative z-10 w-full max-w-sm rounded-xl border border-border-soft bg-surface p-4"
+        className="ui-dialog-panel"
       >
-        <h2 id={titleId} className="text-base font-semibold text-foreground">
-          Move under another task
-        </h2>
-        <p id={descriptionId} className="mt-1 text-sm text-muted">
-          Choose a parent task for &ldquo;{itemTitle}&rdquo;.
-        </p>
-
-        <ul className="mt-3 max-h-56 space-y-1 overflow-y-auto">
-          {candidates.map((candidate) => (
-            <li key={candidate.id}>
-              <button
-                type="button"
-                disabled={isPending}
-                onClick={() => onSelect(candidate.id)}
-                className="flex min-h-10 w-full items-center rounded-lg px-3 text-left text-sm text-foreground transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                {candidate.title}
-              </button>
-            </li>
-          ))}
-        </ul>
-
-        {error ? (
-          <div className="mt-3">
-            <ActionErrorBanner message={error} />
+        <div className="ui-dialog-body space-y-3">
+          <div>
+            <h2 id={titleId} className="text-base font-semibold text-foreground">
+              Move under another task
+            </h2>
+            <p id={descriptionId} className="mt-1 text-sm text-muted">
+              Choose a parent task for &ldquo;{itemTitle}&rdquo;.
+            </p>
           </div>
-        ) : null}
 
-        <div className="mt-4 flex justify-end">
+          <ul className="max-h-[min(14rem,32dvh)] space-y-1 overflow-y-auto overscroll-contain">
+            {candidates.map((candidate) => (
+              <li key={candidate.id}>
+                <button
+                  type="button"
+                  disabled={isPending}
+                  onClick={() => onSelect(candidate.id)}
+                  className="flex min-h-10 w-full items-center rounded-lg px-3 text-left text-sm text-foreground transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {candidate.title}
+                </button>
+              </li>
+            ))}
+          </ul>
+
+          {error ? <ActionErrorBanner message={error} /> : null}
+        </div>
+
+        <div className="ui-dialog-footer flex justify-end">
           <button
             ref={cancelRef}
             type="button"

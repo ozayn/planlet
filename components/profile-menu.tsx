@@ -15,6 +15,7 @@ import {
   canShowJobTrackerInProfileMenu,
   canShowTherapyReviewInProfileMenu,
 } from "@/lib/profile-menu";
+import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 
 type ProfileMenuProps = {
   name?: string | null;
@@ -56,6 +57,32 @@ function ProfileMenuSection({ title, items }: ProfileMenuSectionConfig) {
       <p className="ui-profile-menu-section-label">{title}</p>
       <div className="space-y-0.5">{visibleItems}</div>
     </section>
+  );
+}
+
+function ProfileMenuIdentity({
+  name,
+  email,
+  image,
+}: {
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+}) {
+  return (
+    <div className="flex items-center gap-3">
+      <UserAvatar name={name} email={email} image={image} size="md" />
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium text-foreground" dir="auto">
+          {name?.trim() || "Signed in"}
+        </p>
+        {email ? (
+          <p className="truncate text-xs text-muted" dir="auto">
+            {email}
+          </p>
+        ) : null}
+      </div>
+    </div>
   );
 }
 
@@ -138,6 +165,22 @@ export function ProfileMenu({
     return () => {
       document.removeEventListener("mousedown", handlePointerDown);
       window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const isMobile = window.matchMedia("(max-width: 767px)").matches;
+    if (!isMobile) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
     };
   }, [open]);
 
@@ -298,20 +341,29 @@ export function ProfileMenu({
       ]
     : [];
 
-  const accountItems: ReactNode[] = [
-    <div key="sign-out" role="menuitem" className="px-0.5 pt-0.5">
-      <div className="[&_button]:ui-profile-menu-sign-out [&_form]:w-full">
-        {signOutButton}
-      </div>
-    </div>,
-  ];
+  const signOutItem = (
+    <div className="[&_button]:ui-profile-menu-sign-out [&_form]:w-full">
+      {signOutButton}
+    </div>
+  );
 
-  const sections: ProfileMenuSectionConfig[] = [
+  const scrollSections: ProfileMenuSectionConfig[] = [
     { title: "Planning", items: planningItems },
     { title: "Reflection", items: reflectionItems },
     { title: "App", items: appItems },
     { title: "Support", items: supportItems },
-    { title: "Account", items: accountItems },
+  ];
+
+  const desktopSections: ProfileMenuSectionConfig[] = [
+    ...scrollSections,
+    {
+      title: "Account",
+      items: [
+        <div key="sign-out" role="menuitem" className="px-0.5 pt-0.5">
+          {signOutItem}
+        </div>,
+      ],
+    },
   ];
 
   return (
@@ -343,37 +395,69 @@ export function ProfileMenu({
       </button>
 
       {open ? (
-        <div
-          id={menuId}
-          role="menu"
-          className="absolute end-0 z-[70] mt-2 w-64 max-w-[calc(100vw-2.5rem)] rounded-2xl border border-border-soft bg-surface p-2 ui-shadow-elevated"
-        >
-          <div className="border-b border-border-soft px-3 py-3">
-            <div className="flex items-center gap-3">
-              <UserAvatar name={name} email={email} image={image} size="md" />
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium text-foreground" dir="auto">
-                  {name?.trim() || "Signed in"}
-                </p>
-                {email ? (
-                  <p className="truncate text-xs text-muted" dir="auto">
-                    {email}
-                  </p>
-                ) : null}
+        <>
+          <div className="ui-mobile-overlay md:hidden" role="presentation">
+            <button
+              type="button"
+              aria-label="Close profile menu"
+              className="ui-mobile-overlay-backdrop"
+              onClick={closeMenu}
+            />
+            <div
+              id={menuId}
+              role="menu"
+              aria-label="Profile menu"
+              className="ui-mobile-overlay-panel ui-mobile-overlay-panel-wide"
+            >
+              <div className="ui-mobile-overlay-header flex items-center justify-between gap-3 px-4 py-3">
+                <ProfileMenuIdentity name={name} email={email} image={image} />
+                <button
+                  type="button"
+                  onClick={closeMenu}
+                  {...passwordManagerSafeControlProps}
+                  className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-accent-cream hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+                  aria-label="Close"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="ui-mobile-overlay-body p-2">
+                {scrollSections.map((section) => (
+                  <ProfileMenuSection
+                    key={section.title}
+                    title={section.title}
+                    items={section.items}
+                  />
+                ))}
+              </div>
+
+              <div className="ui-mobile-overlay-footer px-3 pt-3">
+                {signOutItem}
               </div>
             </div>
           </div>
 
-          <div className="p-1">
-            {sections.map((section) => (
-              <ProfileMenuSection
-                key={section.title}
-                title={section.title}
-                items={section.items}
-              />
-            ))}
+          <div
+            id={`${menuId}-desktop`}
+            role="menu"
+            className="ui-desktop-dropdown-panel hidden p-2 md:block"
+          >
+            <div className="border-b border-border-soft px-3 py-3">
+              <ProfileMenuIdentity name={name} email={email} image={image} />
+            </div>
+
+            <div className="p-1">
+              {desktopSections.map((section) => (
+                <ProfileMenuSection
+                  key={section.title}
+                  title={section.title}
+                  items={section.items}
+                />
+              ))}
+            </div>
           </div>
-        </div>
+        </>
       ) : null}
     </div>
   );

@@ -40,7 +40,7 @@ export function SimpleSheet({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center md:items-center md:p-4">
+    <div className="ui-simple-sheet-overlay">
       <button
         type="button"
         aria-label="Close"
@@ -51,9 +51,9 @@ export function SimpleSheet({
         role="dialog"
         aria-modal="true"
         aria-labelledby="sheet-title"
-        className="relative z-10 flex max-h-[min(90dvh,calc(100dvh-env(safe-area-inset-bottom,0px)-0.5rem))] w-full max-w-lg flex-col overflow-hidden rounded-t-2xl bg-surface ui-shadow-sheet md:max-h-[min(85dvh,90vh)] md:rounded-2xl"
+        className="ui-simple-sheet-panel"
       >
-        <div className="flex shrink-0 items-center justify-between border-b border-border-soft px-5 py-3.5">
+        <div className="ui-simple-sheet-header flex items-center justify-between px-5 py-3.5">
           <h2
             id="sheet-title"
             className="text-base font-semibold text-foreground"
@@ -71,13 +71,9 @@ export function SimpleSheet({
             ✕
           </button>
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 py-4">
-          {children}
-        </div>
+        <div className="ui-simple-sheet-body px-5 py-4">{children}</div>
         {footer ? (
-          <div className="shrink-0 border-t border-border-soft bg-surface px-5 py-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
-            {footer}
-          </div>
+          <div className="ui-simple-sheet-footer px-5 pt-4">{footer}</div>
         ) : null}
       </div>
     </div>

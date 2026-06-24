@@ -94,7 +94,7 @@ export function PrivateEntryActionsMenu({
           id={menuId}
           role="menu"
           aria-label={more.ariaLabel}
-          className="absolute end-0 z-50 mt-1 min-w-36 overflow-y-auto rounded-xl border border-border-soft bg-surface py-1 ui-shadow-elevated"
+          className="ui-floating-menu-panel absolute end-0 z-50 mt-1 min-w-36 rounded-xl border border-border-soft bg-surface py-1 ui-shadow-elevated"
         >
           <button
             type="button"

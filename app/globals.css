@@ -26,6 +26,10 @@
   --shadow-elevated: 0 8px 24px rgb(20 18 16 / 0.1);
   --shadow-sheet: 0 -8px 32px rgb(20 18 16 / 0.12);
   --overlay: rgb(20 18 16 / 0.4);
+  --ui-overlay-max-height: calc(
+    100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 24px
+  );
+  --ui-overlay-nav-padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 72px);
 }
 
 .dark {
@@ -1232,6 +1236,241 @@ body {
     flex-direction: column;
     gap: 0.75rem;
     padding-bottom: 0.25rem;
+  }
+
+  .ui-simple-sheet-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+
+  @media (min-width: 768px) {
+    .ui-simple-sheet-overlay {
+      align-items: center;
+      padding: 1rem;
+    }
+  }
+
+  .ui-simple-sheet-panel {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    width: 100%;
+    max-width: 32rem;
+    max-height: var(--ui-overlay-max-height);
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 1rem 1rem 0 0;
+    background: var(--surface);
+    box-shadow: var(--shadow-sheet);
+  }
+
+  @media (min-width: 768px) {
+    .ui-simple-sheet-panel {
+      max-height: min(85dvh, 90vh);
+      border-radius: 1rem;
+    }
+  }
+
+  .ui-simple-sheet-header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border-soft);
+    background: var(--surface);
+  }
+
+  .ui-simple-sheet-body {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ui-simple-sheet-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    flex-shrink: 0;
+    border-top: 1px solid var(--border-soft);
+    background: var(--surface);
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  .ui-share-preview-textarea {
+    max-height: 32dvh;
+    overflow-y: auto;
+    resize: none;
+  }
+
+  @media (min-width: 640px) {
+    .ui-share-preview-textarea {
+      max-height: 16rem;
+      resize: vertical;
+    }
+  }
+
+  .ui-mobile-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+
+  .ui-mobile-overlay-backdrop {
+    position: absolute;
+    inset: 0;
+    border: none;
+    background: var(--overlay);
+  }
+
+  .ui-mobile-overlay-panel {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    width: 100%;
+    max-width: 24rem;
+    max-height: var(--ui-overlay-max-height);
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 1rem 1rem 0 0;
+    background: var(--surface);
+    box-shadow: var(--shadow-sheet);
+  }
+
+  .ui-mobile-overlay-panel-wide {
+    max-width: min(100%, 24rem);
+  }
+
+  .ui-mobile-overlay-header {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border-soft);
+    background: var(--surface);
+  }
+
+  .ui-mobile-overlay-body {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .ui-mobile-overlay-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    flex-shrink: 0;
+    border-top: 1px solid var(--border-soft);
+    background: var(--surface);
+    padding-bottom: var(--ui-overlay-nav-padding-bottom);
+  }
+
+  .ui-desktop-dropdown-panel {
+    position: absolute;
+    inset-inline-end: 0;
+    z-index: 70;
+    margin-top: 0.5rem;
+    width: 16rem;
+    max-width: calc(100vw - 2.5rem);
+    max-height: min(24rem, var(--ui-overlay-max-height));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 1rem;
+    border: 1px solid var(--border-soft);
+    background: var(--surface);
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .ui-dialog-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+
+  @media (min-width: 640px) {
+    .ui-dialog-overlay {
+      align-items: center;
+      padding: 1rem;
+      padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+    }
+  }
+
+  .ui-dialog-panel {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    width: 100%;
+    max-width: 28rem;
+    max-height: var(--ui-overlay-max-height);
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 1rem 1rem 0 0;
+    border: 1px solid var(--border-soft);
+    background: var(--surface);
+    box-shadow: var(--shadow-sheet);
+  }
+
+  @media (min-width: 640px) {
+    .ui-dialog-panel {
+      max-height: min(85dvh, 90vh);
+      border-radius: 1rem;
+    }
+  }
+
+  .ui-dialog-body {
+    min-height: 0;
+    flex: 1 1 auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding: 1rem;
+  }
+
+  @media (min-width: 640px) {
+    .ui-dialog-body {
+      padding: 1.25rem;
+    }
+  }
+
+  .ui-dialog-footer {
+    position: sticky;
+    bottom: 0;
+    z-index: 2;
+    flex-shrink: 0;
+    border-top: 1px solid var(--border-soft);
+    background: var(--surface);
+    padding: 1rem;
+    padding-bottom: var(--ui-overlay-nav-padding-bottom);
+  }
+
+  @media (min-width: 640px) {
+    .ui-dialog-footer {
+      border-top: none;
+      padding: 0 1.25rem 1.25rem;
+      padding-bottom: 1.25rem;
+    }
+  }
+
+  .ui-floating-menu-panel {
+    max-height: min(20rem, var(--ui-overlay-max-height));
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
   }
 
   .ui-day-plan-toolbar {

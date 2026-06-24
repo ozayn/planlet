@@ -180,8 +180,8 @@ export function SharePlanPanel({ plan }: SharePlanPanelProps) {
               readOnly
               dir="auto"
               value={previewText}
-              rows={8}
-              className="ui-textarea max-h-48 bg-accent-cream/50 font-mono text-xs sm:max-h-64"
+              rows={5}
+              className="ui-textarea ui-share-preview-textarea bg-accent-cream/50 font-mono text-xs"
             />
           </label>
         </div>

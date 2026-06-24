@@ -191,7 +191,7 @@ export function ItemPriorityButton({
             id={menuId}
             role="menu"
             aria-label={ACTION_LABELS.importanceUrgency.ariaLabel}
-            className="ui-priority-menu ui-shadow-elevated fixed z-[70] max-h-[min(70dvh,24rem)] overflow-y-auto rounded-xl border border-border bg-surface py-1"
+            className="ui-floating-menu-panel ui-priority-menu ui-shadow-elevated fixed z-[70] rounded-xl border border-border bg-surface py-1"
             style={{
               top: menuPosition.top,
               bottom: menuPosition.bottom,

@@ -34,12 +34,20 @@ export function DemoPeriodNav({ label }: { label: string }) {
       className="ui-plan-date-nav mb-2 shrink-0"
       aria-label="Period navigation"
     >
-      <div className="ui-plan-date-nav-controls scale-[0.92] origin-left">
-        <span className="ui-plan-date-nav-btn ui-plan-date-nav-btn-icon text-muted-light">
+      <div className="ui-plan-date-nav-controls">
+        <span
+          className="ui-plan-date-nav-btn ui-plan-date-nav-btn-icon text-muted-light"
+          aria-hidden="true"
+        >
           ‹
         </span>
-        <span className="ui-plan-date-nav-date text-[10px]">{label}</span>
-        <span className="ui-plan-date-nav-btn ui-plan-date-nav-btn-icon text-muted-light">
+        <span className="ui-plan-date-nav-btn ui-plan-date-nav-btn-today ui-plan-date-nav-btn-active flex min-w-[7.5rem] flex-1 items-center justify-center text-center text-sm font-medium">
+          {label}
+        </span>
+        <span
+          className="ui-plan-date-nav-btn ui-plan-date-nav-btn-icon text-muted-light"
+          aria-hidden="true"
+        >
           ›
         </span>
       </div>

@@ -34,6 +34,69 @@ function formatUnreadBadge(count: number): string {
   return String(count);
 }
 
+function NotificationList({
+  notifications,
+  isPending,
+  onNotificationClick,
+}: {
+  notifications: SerializedNotification[];
+  isPending: boolean;
+  onNotificationClick: (notification: SerializedNotification) => void;
+}) {
+  if (notifications.length === 0) {
+    return (
+      <p className="px-4 py-8 text-center text-sm text-muted">
+        No notifications yet.
+      </p>
+    );
+  }
+
+  return (
+    <ul className="space-y-0.5 p-2">
+      {notifications.map((notification) => {
+        const isUnread = !notification.readAt;
+
+        return (
+          <li key={notification.id}>
+            <button
+              type="button"
+              role="menuitem"
+              disabled={isPending}
+              onClick={() => onNotificationClick(notification)}
+              className={`flex w-full gap-3 rounded-xl px-3 py-3 text-start transition-colors hover:bg-accent-cream disabled:opacity-60 ${
+                isUnread ? "bg-accent-cream/35" : ""
+              }`}
+            >
+              <span
+                className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
+                  isUnread ? "bg-accent-blue" : "bg-transparent"
+                }`}
+                aria-hidden="true"
+              />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-medium text-foreground">
+                  {notification.title}
+                </span>
+                {notification.body ? (
+                  <span
+                    className="mt-0.5 block text-sm text-muted"
+                    dir="auto"
+                  >
+                    {notification.body}
+                  </span>
+                ) : null}
+                <span className="mt-1 block text-xs text-muted-light">
+                  {formatNotificationTime(notification.createdAt)}
+                </span>
+              </span>
+            </button>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 export function NotificationBell({
   unreadCount,
   notifications,
@@ -71,6 +134,22 @@ export function NotificationBell({
     };
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    const isMobile = window.matchMedia("(max-width: 767px)").matches;
+    if (!isMobile) {
+      return;
+    }
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open]);
+
   function handleNotificationClick(notification: SerializedNotification) {
     startTransition(async () => {
       if (!notification.readAt) {
@@ -90,6 +169,26 @@ export function NotificationBell({
       await markAllNotificationsReadAction();
     });
   }
+
+  function closeMenu() {
+    setOpen(false);
+  }
+
+  const header = (
+    <div className="flex items-center justify-between gap-3 px-4 py-3">
+      <h2 className="text-sm font-semibold text-foreground">Notifications</h2>
+      {unreadCount > 0 ? (
+        <button
+          type="button"
+          disabled={isPending}
+          onClick={handleMarkAllRead}
+          className="text-xs font-medium text-muted transition-colors hover:text-foreground disabled:opacity-50"
+        >
+          Mark all read
+        </button>
+      ) : null}
+    </div>
+  );
 
   return (
     <div ref={containerRef} className="relative">
@@ -116,77 +215,45 @@ export function NotificationBell({
       </button>
 
       {open ? (
-        <div
-          id={menuId}
-          role="menu"
-          aria-label={ACTION_LABELS.notifications.ariaLabel}
-          className="absolute end-0 z-[70] mt-2 w-80 max-w-[calc(100vw-2.5rem)] rounded-2xl border border-border-soft bg-surface ui-shadow-elevated"
-        >
-          <div className="flex items-center justify-between gap-3 border-b border-border-soft px-4 py-3">
-            <h2 className="text-sm font-semibold text-foreground">
-              Notifications
-            </h2>
-            {unreadCount > 0 ? (
-              <button
-                type="button"
-                disabled={isPending}
-                onClick={handleMarkAllRead}
-                className="text-xs font-medium text-muted transition-colors hover:text-foreground disabled:opacity-50"
-              >
-                Mark all read
-              </button>
-            ) : null}
+        <>
+          <div className="ui-mobile-overlay md:hidden" role="presentation">
+            <button
+              type="button"
+              aria-label="Close notifications"
+              className="ui-mobile-overlay-backdrop"
+              onClick={closeMenu}
+            />
+            <div
+              id={menuId}
+              role="menu"
+              aria-label={ACTION_LABELS.notifications.ariaLabel}
+              className="ui-mobile-overlay-panel ui-mobile-overlay-panel-wide !max-w-none"
+            >
+              <div className="ui-mobile-overlay-header">{header}</div>
+              <div className="ui-mobile-overlay-body">
+                <NotificationList
+                  notifications={notifications}
+                  isPending={isPending}
+                  onNotificationClick={handleNotificationClick}
+                />
+              </div>
+            </div>
           </div>
 
-          {notifications.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-muted">
-              No notifications yet.
-            </p>
-          ) : (
-            <ul className="max-h-[min(20rem,calc(100dvh-10rem))] overflow-y-auto p-2">
-              {notifications.map((notification) => {
-                const isUnread = !notification.readAt;
-
-                return (
-                  <li key={notification.id}>
-                    <button
-                      type="button"
-                      role="menuitem"
-                      disabled={isPending}
-                      onClick={() => handleNotificationClick(notification)}
-                      className={`flex w-full gap-3 rounded-xl px-3 py-3 text-start transition-colors hover:bg-accent-cream disabled:opacity-60 ${
-                        isUnread ? "bg-accent-cream/35" : ""
-                      }`}
-                    >
-                      <span
-                        className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${
-                          isUnread ? "bg-accent-blue" : "bg-transparent"
-                        }`}
-                        aria-hidden="true"
-                      />
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-sm font-medium text-foreground">
-                          {notification.title}
-                        </span>
-                        {notification.body ? (
-                          <span
-                            className="mt-0.5 block text-sm text-muted"
-                            dir="auto"
-                          >
-                            {notification.body}
-                          </span>
-                        ) : null}
-                        <span className="mt-1 block text-xs text-muted-light">
-                          {formatNotificationTime(notification.createdAt)}
-                        </span>
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
+          <div
+            id={`${menuId}-desktop`}
+            role="menu"
+            aria-label={ACTION_LABELS.notifications.ariaLabel}
+            className="ui-desktop-dropdown-panel !w-80 hidden md:block"
+          >
+            <div className="border-b border-border-soft">{header}</div>
+            <NotificationList
+              notifications={notifications}
+              isPending={isPending}
+              onNotificationClick={handleNotificationClick}
+            />
+          </div>
+        </>
       ) : null}
     </div>
   );

@@ -176,7 +176,7 @@ export function StatusButton({
             id={menuId}
             role="menu"
             aria-label={ACTION_LABELS.itemStatus.ariaLabel}
-            className="ui-status-menu ui-shadow-elevated fixed z-[70] max-h-[min(70dvh,20rem)] overflow-y-auto rounded-xl border border-border bg-surface py-1"
+            className="ui-floating-menu-panel ui-status-menu ui-shadow-elevated fixed z-[70] rounded-xl border border-border bg-surface py-1"
             style={{
               top: menuPosition.top,
               bottom: menuPosition.bottom,

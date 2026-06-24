@@ -125,7 +125,7 @@ export function PlanMoreMenu({
             id={menuId}
             role="menu"
             aria-label={ACTION_LABELS.planActions.ariaLabel}
-            className="ui-shadow-elevated fixed z-[70] max-h-[min(20rem,calc(100dvh-1rem))] overflow-y-auto rounded-xl border border-border-soft bg-surface py-1"
+            className="ui-floating-menu-panel ui-shadow-elevated fixed z-[70] rounded-xl border border-border-soft bg-surface py-1"
             style={{
               top: menuPosition.top,
               left: menuPosition.left,

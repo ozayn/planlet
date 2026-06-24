@@ -54,7 +54,7 @@ export function ConfirmDialog({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 pb-[calc(1rem+env(safe-area-inset-bottom,0px))]">
+    <div className="ui-dialog-overlay">
       <button
         type="button"
         aria-label="Close"
@@ -67,21 +67,20 @@ export function ConfirmDialog({
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={descriptionId}
-        className="relative z-10 w-full max-w-md rounded-2xl border border-border-soft bg-surface p-5 ui-shadow-sheet"
+        className="ui-dialog-panel"
       >
-        <h2
-          id={titleId}
-          className="text-base font-semibold text-foreground"
-        >
-          {title}
-        </h2>
-        <div
-          id={descriptionId}
-          className="mt-2 text-sm leading-relaxed text-muted"
-        >
-          {children}
+        <div className="ui-dialog-body space-y-2">
+          <h2 id={titleId} className="text-base font-semibold text-foreground">
+            {title}
+          </h2>
+          <div
+            id={descriptionId}
+            className="text-sm leading-relaxed text-muted"
+          >
+            {children}
+          </div>
         </div>
-        <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <div className="ui-dialog-footer flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
           <button
             ref={cancelRef}
             type="button"

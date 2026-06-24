@@ -174,7 +174,7 @@ export function JobApplicationEditorSheet({
         </div>
       }
     >
-      <div className="space-y-3 overflow-y-auto px-5 py-4">
+      <div className="space-y-3">
         <label className="block space-y-1.5" htmlFor={fieldId("url")}>
           <span className="text-xs text-muted">URL</span>
           <div className="flex flex-col gap-2 sm:flex-row">
