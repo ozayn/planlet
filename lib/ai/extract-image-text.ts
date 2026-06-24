@@ -9,6 +9,7 @@ import {
 } from "@/lib/ai/openai-client";
 import { salvageTextFromModelResponse } from "@/lib/ai/salvage-model-text";
 import { structureExtractedPlainText } from "@/lib/ai/structure-extracted-plain-text";
+import { AI_USAGE_FEATURES, logAiUsage } from "@/lib/ai/usage";
 import { EXTRACTION_TIMEOUT_MS } from "@/lib/image/constants";
 
 const PLAIN_TEXT_EXTRACTION_PROMPT = `You are reading a handwritten planning note from a notebook photo.
@@ -34,6 +35,7 @@ export type { ExtractImageTextInput, ExtractImageTextResult, ImageDateHint } fro
 
 export type ExtractImageTextOptions = {
   timeoutMs?: number;
+  userId?: string;
 };
 
 function withTimeout<T>(
@@ -87,6 +89,7 @@ function normalizePlainTextResponse(content: string): {
 
 async function fetchPlainTextFromVision(
   input: ExtractImageTextInput,
+  userId?: string,
 ): Promise<string> {
   const openai = getOpenAIClient();
   const base64 = input.buffer.toString("base64");
@@ -110,6 +113,15 @@ async function fetchPlainTextFromVision(
     max_tokens: 2048,
   });
 
+  if (userId) {
+    void logAiUsage({
+      userId,
+      feature: AI_USAGE_FEATURES.IMAGE_IMPORT,
+      model: response.model ?? DEFAULT_VISION_MODEL,
+      usage: response.usage,
+    });
+  }
+
   const content = response.choices[0]?.message?.content?.trim();
 
   if (!content) {
@@ -129,7 +141,7 @@ export async function extractImageText(
 
   try {
     rawContent = await withTimeout(
-      fetchPlainTextFromVision(input),
+      fetchPlainTextFromVision(input, options.userId),
       timeoutMs,
       () => new ExtractionTimeoutError(),
     );

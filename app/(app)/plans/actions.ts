@@ -11,6 +11,7 @@ import { redirect } from "next/navigation";
 
 import { requireUserId } from "@/lib/require-auth";
 import { parsePlanFromText } from "@/lib/ai/parse-plan";
+import { AI_USAGE_FEATURES } from "@/lib/ai/usage";
 import {
   messyPlanDraftToParsedPlan,
   parseMessyPlanText,
@@ -639,7 +640,7 @@ export async function parsePlanTextAction(
   rawText: string,
   fallbackDate?: string,
 ): Promise<ParsePlanTextResult> {
-  await requireUserId();
+  const userId = await requireUserId();
 
   const trimmed = rawText.trim();
 
@@ -658,7 +659,13 @@ export async function parsePlanTextAction(
   }
 
   try {
-    const draft = await parsePlanFromText({ text: trimmed });
+    const draft = await parsePlanFromText({
+      text: trimmed,
+      usageContext: {
+        userId,
+        feature: AI_USAGE_FEATURES.PLAN_PARSING,
+      },
+    });
     return { success: true, draft };
   } catch (error) {
     const message =

@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
 
 import { auth } from "@/auth";
 import { JobTracker } from "@/components/jobs/job-tracker";
@@ -22,7 +23,17 @@ export default async function JobsPage() {
         title="Job tracker"
         subtitle="A private record of your applications."
       />
-      <JobTracker initialJobs={jobs} />
+      <Suspense
+        fallback={
+          <div className="space-y-6">
+            <div className="ui-card-padded border border-border-soft">
+              <p className="text-sm text-muted">Loading job tracker…</p>
+            </div>
+          </div>
+        }
+      >
+        <JobTracker initialJobs={jobs} />
+      </Suspense>
     </section>
   );
 }

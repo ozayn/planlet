@@ -126,8 +126,10 @@ export async function deleteJobApplicationAction(
 export async function extractJobFromUrlAction(
   url: string,
 ): Promise<JobTrackerExtractResult> {
+  let userId: string;
+
   try {
-    await requireJobTrackerSession();
+    userId = await requireJobTrackerSession();
   } catch {
     return {
       ok: false,
@@ -135,7 +137,7 @@ export async function extractJobFromUrlAction(
     };
   }
 
-  return extractJobFromUrlSafe(url);
+  return extractJobFromUrlSafe(url, userId);
 }
 
 export type { JobApplicationInput, SerializedJobApplication } from "@/lib/job-applications";

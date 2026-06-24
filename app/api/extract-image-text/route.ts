@@ -96,10 +96,13 @@ export async function POST(request: Request) {
   try {
     const buffer = Buffer.from(await image.arrayBuffer());
 
-    const result = await extractImageText({
-      buffer,
-      mimeType,
-    });
+    const result = await extractImageText(
+      {
+        buffer,
+        mimeType,
+      },
+      { userId: session.user.id },
+    );
 
     return NextResponse.json({
       text: result.text,

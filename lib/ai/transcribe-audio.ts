@@ -4,11 +4,13 @@ import {
   DEFAULT_TRANSCRIBE_MODEL,
   getOpenAIClient,
 } from "@/lib/ai/openai-client";
+import { AI_USAGE_FEATURES, logAiUsage } from "@/lib/ai/usage";
 
 export type TranscribeAudioInput = {
   buffer: Buffer;
   filename: string;
   mimeType: string;
+  userId?: string;
 };
 
 export type TranscribeAudioResult = {
@@ -29,6 +31,15 @@ export async function transcribeAudio(
     file,
     model: DEFAULT_TRANSCRIBE_MODEL,
   });
+
+  if (input.userId) {
+    void logAiUsage({
+      userId: input.userId,
+      feature: AI_USAGE_FEATURES.AUDIO_TRANSCRIPTION,
+      model: DEFAULT_TRANSCRIBE_MODEL,
+      usage: null,
+    });
+  }
 
   const transcript = response.text?.trim();
 

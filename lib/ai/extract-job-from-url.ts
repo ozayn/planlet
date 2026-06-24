@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { DEFAULT_PARSE_MODEL, getOpenAIClient } from "@/lib/ai/openai-client";
+import { AI_USAGE_FEATURES, logAiUsage } from "@/lib/ai/usage";
 import { isOpenAIConfigured } from "@/lib/env";
 
 const MAX_FETCH_BYTES = 500_000;
@@ -157,6 +158,7 @@ async function fetchPageText(url: URL): Promise<string> {
 async function extractDetailsWithAi(
   pageUrl: string,
   pageText: string,
+  userId?: string,
 ): Promise<ExtractedJobDetails> {
   if (!isOpenAIConfigured()) {
     throw new Error("ai not configured");
@@ -184,6 +186,15 @@ async function extractDetailsWithAi(
     AI_TIMEOUT_MS,
   );
 
+  if (userId) {
+    void logAiUsage({
+      userId,
+      feature: AI_USAGE_FEATURES.JOB_URL_EXTRACTION,
+      model: response.model ?? DEFAULT_PARSE_MODEL,
+      usage: response.usage,
+    });
+  }
+
   const content = response.choices[0]?.message?.content?.trim();
   if (!content) {
     throw new Error("empty ai response");
@@ -204,14 +215,18 @@ async function extractDetailsWithAi(
   return parsed.data;
 }
 
-async function extractJobFromUrlInternal(url: string): Promise<ExtractedJobDetails> {
+async function extractJobFromUrlInternal(
+  url: string,
+  userId?: string,
+): Promise<ExtractedJobDetails> {
   const parsedUrl = validateFetchUrl(url);
   const pageText = await fetchPageText(parsedUrl);
-  return extractDetailsWithAi(parsedUrl.toString(), pageText);
+  return extractDetailsWithAi(parsedUrl.toString(), pageText, userId);
 }
 
 export async function extractJobFromUrlSafe(
   url: string,
+  userId?: string,
 ): Promise<ExtractJobFromUrlResult> {
   const trimmed = url.trim();
   if (!trimmed) {
@@ -220,7 +235,7 @@ export async function extractJobFromUrlSafe(
 
   try {
     const details = await withTimeout(
-      extractJobFromUrlInternal(trimmed),
+      extractJobFromUrlInternal(trimmed, userId),
       EXTRACT_TIMEOUT_MS,
     );
 

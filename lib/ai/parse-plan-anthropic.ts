@@ -5,10 +5,13 @@ import {
   validateParsedPlan,
   type ParsedPlan,
 } from "@/lib/ai/plan-parser-schema";
+import { logAiUsage } from "@/lib/ai/usage";
+import type { AiUsageContext } from "@/lib/ai/usage";
 import { getAnthropicModel } from "@/lib/env";
 
 export type ParsePlanFromTextInput = {
   text: string;
+  usageContext?: AiUsageContext;
 };
 
 export async function parsePlanFromTextAnthropic(
@@ -21,9 +24,10 @@ export async function parsePlanFromTextAnthropic(
   }
 
   const anthropic = getAnthropicClient();
+  const model = getAnthropicModel();
 
   const response = await anthropic.messages.create({
-    model: getAnthropicModel(),
+    model,
     max_tokens: 4096,
     temperature: 0.2,
     system: PLAN_PARSE_SYSTEM_PROMPT,
@@ -34,6 +38,15 @@ export async function parsePlanFromTextAnthropic(
       },
     ],
   });
+
+  if (input.usageContext) {
+    void logAiUsage({
+      userId: input.usageContext.userId,
+      feature: input.usageContext.feature,
+      model: response.model ?? model,
+      usage: response.usage,
+    });
+  }
 
   const textBlock = response.content.find((block) => block.type === "text");
 

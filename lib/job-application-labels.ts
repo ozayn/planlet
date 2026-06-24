@@ -34,3 +34,26 @@ export function formatJobListMeta(
 
   return statusLabel;
 }
+
+const updatedFormatter = new Intl.DateTimeFormat("en", {
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  timeZone: APP_TIMEZONE,
+});
+
+export function formatJobUpdatedLabel(updatedAt: string): string {
+  const date = new Date(updatedAt);
+
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+
+  return updatedFormatter.format(date);
+}
+
+export function formatJobTableAppliedDate(
+  appliedDate: string | null,
+): string {
+  return formatJobAppliedDateLabel(appliedDate) ?? "—";
+}

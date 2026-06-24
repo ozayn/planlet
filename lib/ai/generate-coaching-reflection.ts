@@ -7,6 +7,11 @@ import {
 import { DEFAULT_PARSE_MODEL, getOpenAIClient } from "@/lib/ai/openai-client";
 import { parseModelJsonResponse } from "@/lib/ai/parse-model-json";
 import {
+  AI_USAGE_FEATURES,
+  logAiUsage,
+  type AiUsageContext,
+} from "@/lib/ai/usage";
+import {
   buildReflectionInfluencePromptSection,
   getAllSelectedInfluenceIds,
   type ReflectionInfluencePreferences,
@@ -16,6 +21,7 @@ import { getPlanletAiProvider, getAnthropicModel } from "@/lib/env";
 type GenerateCoachingReflectionInput = {
   context: string;
   preferences: ReflectionInfluencePreferences;
+  usageContext?: AiUsageContext;
 };
 
 function buildUserPrompt(input: GenerateCoachingReflectionInput): string {
@@ -48,6 +54,16 @@ async function generateWithOpenAI(
     ],
   });
 
+  if (input.usageContext) {
+    void logAiUsage({
+      userId: input.usageContext.userId,
+      feature:
+        input.usageContext.feature ?? AI_USAGE_FEATURES.COACHING_REFLECTION,
+      model: response.model ?? DEFAULT_PARSE_MODEL,
+      usage: response.usage,
+    });
+  }
+
   const content = response.choices[0]?.message?.content;
   if (!content) {
     throw new Error("No reflection was generated.");
@@ -60,13 +76,24 @@ async function generateWithAnthropic(
   input: GenerateCoachingReflectionInput,
 ): Promise<CoachingReflection> {
   const anthropic = getAnthropicClient();
+  const model = getAnthropicModel();
   const response = await anthropic.messages.create({
-    model: getAnthropicModel(),
+    model,
     max_tokens: 2048,
     temperature: 0.5,
     system: COACHING_REFLECTION_SYSTEM_PROMPT,
     messages: [{ role: "user", content: buildUserPrompt(input) }],
   });
+
+  if (input.usageContext) {
+    void logAiUsage({
+      userId: input.usageContext.userId,
+      feature:
+        input.usageContext.feature ?? AI_USAGE_FEATURES.COACHING_REFLECTION,
+      model: response.model ?? model,
+      usage: response.usage,
+    });
+  }
 
   const textBlock = response.content.find((block) => block.type === "text");
   if (!textBlock || textBlock.type !== "text" || !textBlock.text.trim()) {

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { buildCoachingReflectionContext } from "@/lib/coaching-reflection-context";
 import { generateCoachingReflection } from "@/lib/ai/generate-coaching-reflection";
+import { AI_USAGE_FEATURES } from "@/lib/ai/usage";
 import { isTextParserConfigured } from "@/lib/env";
 import {
   getReflectionInfluencePreferencesForUser,
@@ -98,6 +99,10 @@ export async function generateCoachingReflectionAction(): Promise<GenerateCoachi
     const result = await generateCoachingReflection({
       context,
       preferences,
+      usageContext: {
+        userId: session.user.id,
+        feature: AI_USAGE_FEATURES.COACHING_REFLECTION,
+      },
     });
 
     return {

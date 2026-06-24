@@ -220,8 +220,24 @@ model User {
   loginEvents   LoginEvent[]
   reflectionInfluencePreference ReflectionInfluencePreference?
   jobApplications               JobApplication[]
+  aiUsageLogs                   AiUsageLog[]
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
+}
+
+model AiUsageLog {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feature          String
+  model            String?
+  promptTokens     Int      @default(0)
+  completionTokens Int      @default(0)
+  totalTokens      Int      @default(0)
+  createdAt        DateTime @default(now())
+
+  @@index([userId, createdAt])
+  @@index([userId, feature])
 }
 
 model PushSubscription {

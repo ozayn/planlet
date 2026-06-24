@@ -1,7 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useMemo, useState, useTransition } from "react";
 
 import {
   archiveJobApplicationAction,
@@ -9,10 +9,13 @@ import {
   deleteJobApplicationAction,
   extractJobFromUrlAction,
   listJobApplicationsAction,
-  updateJobApplicationAction,
   type SerializedJobApplication,
 } from "@/app/(app)/jobs/actions";
 import { JobApplicationEditorSheet } from "@/components/jobs/job-application-editor-sheet";
+import { JobTrackerCardList } from "@/components/jobs/job-tracker-card-list";
+import { JobTrackerEmptyState } from "@/components/jobs/job-tracker-empty-state";
+import { JobTrackerTable } from "@/components/jobs/job-tracker-table";
+import { JobTrackerViewToggle } from "@/components/jobs/job-tracker-view-toggle";
 import {
   JOB_APPLICATION_FILTERS,
   JOB_APPLICATION_STATUSES,
@@ -20,11 +23,15 @@ import {
 } from "@/lib/job-application-constants";
 import { applyExtractedJobToAddForm } from "@/lib/apply-extracted-job-details";
 import {
-  formatJobListMeta,
   getJobApplicationStatusLabel,
 } from "@/lib/job-application-labels";
 import { formatDateString } from "@/lib/dates";
-import { ExternalLinkIcon } from "@/components/ui/action-icons";
+import { jobMatchesSearch } from "@/lib/job-application-search";
+import {
+  readStoredJobTrackerView,
+  storeJobTrackerView,
+  type JobTrackerView,
+} from "@/lib/job-tracker-view";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 import type { JobApplicationStatusValue } from "@/lib/job-application-status";
 
@@ -52,8 +59,13 @@ const emptyForm = (): AddJobFormState => ({
 
 export function JobTracker({ initialJobs }: JobTrackerProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const [jobs, setJobs] = useState(initialJobs);
   const [filter, setFilter] = useState<JobApplicationFilter>("ALL");
+  const [searchQuery, setSearchQuery] = useState(
+    () => searchParams.get("q")?.trim() ?? "",
+  );
   const [form, setForm] = useState<AddJobFormState>(emptyForm);
   const [error, setError] = useState<string | null>(null);
   const [duplicateWarning, setDuplicateWarning] = useState(false);
@@ -65,15 +77,50 @@ export function JobTracker({ initialJobs }: JobTrackerProps) {
   const [selectedJob, setSelectedJob] = useState<SerializedJobApplication | null>(
     null,
   );
+  const [view, setView] = useState<JobTrackerView>("cards");
   const [isPending, startTransition] = useTransition();
 
+  useEffect(() => {
+    setSearchQuery(searchParams.get("q")?.trim() ?? "");
+  }, [searchParams]);
+
+  useEffect(() => {
+    const stored = readStoredJobTrackerView();
+    if (stored) {
+      setView(stored);
+    }
+  }, []);
+
+  const trimmedSearch = searchQuery.trim();
+
   const filteredJobs = useMemo(() => {
-    if (filter === "ALL") {
+    if (!trimmedSearch) {
       return jobs;
     }
 
-    return jobs.filter((job) => job.status === filter);
-  }, [filter, jobs]);
+    return jobs.filter((job) => jobMatchesSearch(job, trimmedSearch));
+  }, [jobs, trimmedSearch]);
+
+  function updateSearchQuery(nextQuery: string) {
+    setSearchQuery(nextQuery);
+
+    const params = new URLSearchParams(searchParams.toString());
+    const trimmed = nextQuery.trim();
+
+    if (trimmed) {
+      params.set("q", trimmed);
+    } else {
+      params.delete("q");
+    }
+
+    const query = params.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
+  }
+
+  function handleViewChange(nextView: JobTrackerView) {
+    setView(nextView);
+    storeJobTrackerView(nextView);
+  }
 
   function refreshJobs(nextFilter: JobApplicationFilter) {
     startTransition(async () => {
@@ -342,69 +389,74 @@ export function JobTracker({ initialJobs }: JobTrackerProps) {
       </article>
 
       <section className="space-y-3">
-        <div className="flex flex-wrap gap-1.5">
-          {JOB_APPLICATION_FILTERS.map((entry) => (
+        <div className="relative">
+          <label htmlFor="job-search" className="sr-only">
+            Search jobs
+          </label>
+          <input
+            id="job-search"
+            name="job-search"
+            type="search"
+            value={searchQuery}
+            onChange={(event) => updateSearchQuery(event.target.value)}
+            placeholder="Search jobs, companies, notes…"
+            disabled={isPending}
+            aria-label="Search jobs"
+            className="ui-input min-h-10 w-full px-3 pe-9 text-sm"
+            {...passwordManagerSafeControlProps}
+          />
+          {trimmedSearch ? (
             <button
-              key={entry.value}
               type="button"
-              disabled={isPending}
-              onClick={() => handleFilterChange(entry.value)}
-              className={`min-h-9 rounded-lg px-3 text-sm transition-colors ${
-                filter === entry.value ? "ui-segment-active" : "ui-segment"
-              }`}
+              onClick={() => updateSearchQuery("")}
+              aria-label="Clear search"
+              className="absolute end-1 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-muted transition-colors hover:bg-accent-cream/60 hover:text-foreground"
             >
-              {entry.label}
+              <span aria-hidden="true">×</span>
             </button>
-          ))}
+          ) : null}
+        </div>
+
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-wrap gap-1.5">
+            {JOB_APPLICATION_FILTERS.map((entry) => (
+              <button
+                key={entry.value}
+                type="button"
+                disabled={isPending}
+                onClick={() => handleFilterChange(entry.value)}
+                className={`min-h-9 rounded-lg px-3 text-sm transition-colors ${
+                  filter === entry.value ? "ui-segment-active" : "ui-segment"
+                }`}
+              >
+                {entry.label}
+              </button>
+            ))}
+          </div>
+
+          <JobTrackerViewToggle
+            view={view}
+            disabled={isPending}
+            onChange={handleViewChange}
+          />
         </div>
 
         {filteredJobs.length === 0 ? (
-          <div className="ui-empty-state">
-            <p className="text-sm text-muted">No jobs in this view yet.</p>
-          </div>
+          <JobTrackerEmptyState
+            hasJobs={jobs.length > 0}
+            searchQuery={trimmedSearch}
+            onClearSearch={() => updateSearchQuery("")}
+          />
+        ) : view === "table" ? (
+          <JobTrackerTable
+            jobs={filteredJobs}
+            onSelectJob={setSelectedJob}
+          />
         ) : (
-          <ul className="space-y-2">
-            {filteredJobs.map((job) => (
-              <li key={job.id}>
-                <button
-                  type="button"
-                  onClick={() => setSelectedJob(job)}
-                  className="ui-card-padded w-full border border-border-soft text-start transition-colors hover:bg-accent-cream/30"
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0 flex-1">
-                      <p
-                        className="truncate text-sm font-medium text-foreground"
-                        dir="auto"
-                      >
-                        {job.company} — {job.title}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-light">
-                        {formatJobListMeta(job.appliedDate, job.status)}
-                      </p>
-                      {job.notes?.trim() ? (
-                        <p className="mt-2 line-clamp-2 text-sm text-muted" dir="auto">
-                          {job.notes.trim()}
-                        </p>
-                      ) : null}
-                    </div>
-                    {job.url ? (
-                      <a
-                        href={job.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(event) => event.stopPropagation()}
-                        className="inline-flex min-h-9 min-w-9 shrink-0 items-center justify-center rounded-lg text-muted hover:bg-accent-cream hover:text-foreground"
-                        aria-label="Open job URL"
-                      >
-                        <ExternalLinkIcon className="h-4 w-4" />
-                      </a>
-                    ) : null}
-                  </div>
-                </button>
-              </li>
-            ))}
-          </ul>
+          <JobTrackerCardList
+            jobs={filteredJobs}
+            onSelectJob={setSelectedJob}
+          />
         )}
       </section>
 

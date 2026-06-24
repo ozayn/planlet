@@ -4,9 +4,12 @@ import {
   validateParsedPlan,
   type ParsedPlan,
 } from "@/lib/ai/plan-parser-schema";
+import { logAiUsage } from "@/lib/ai/usage";
+import type { AiUsageContext } from "@/lib/ai/usage";
 
 export type ParsePlanFromTextInput = {
   text: string;
+  usageContext?: AiUsageContext;
 };
 
 export async function parsePlanFromTextOpenAI(
@@ -32,6 +35,15 @@ export async function parsePlanFromTextOpenAI(
       },
     ],
   });
+
+  if (input.usageContext) {
+    void logAiUsage({
+      userId: input.usageContext.userId,
+      feature: input.usageContext.feature,
+      model: response.model ?? DEFAULT_PARSE_MODEL,
+      usage: response.usage,
+    });
+  }
 
   const content = response.choices[0]?.message?.content;
 
