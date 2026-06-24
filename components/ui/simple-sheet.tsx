@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 
@@ -19,6 +20,12 @@ export function SimpleSheet({
   children,
   footer,
 }: SimpleSheetProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     if (!open) return;
 
@@ -37,9 +44,9 @@ export function SimpleSheet({
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
-  return (
+  return createPortal(
     <div className="ui-simple-sheet-overlay">
       <button
         type="button"
@@ -76,6 +83,7 @@ export function SimpleSheet({
           <div className="ui-simple-sheet-footer px-5 pt-4">{footer}</div>
         ) : null}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

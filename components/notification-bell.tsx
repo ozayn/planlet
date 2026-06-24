@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 
 import {
   markAllNotificationsReadAction,
@@ -106,17 +107,25 @@ export function NotificationBell({
   const [isPending, startTransition] = useTransition();
   const menuId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
+  const mobileOverlayRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
 
     function handlePointerDown(event: MouseEvent) {
+      const target = event.target as Node;
       if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
+        (containerRef.current && containerRef.current.contains(target)) ||
+        (mobileOverlayRef.current && mobileOverlayRef.current.contains(target))
       ) {
-        setOpen(false);
+        return;
       }
+      setOpen(false);
     }
 
     function handleKeyDown(event: KeyboardEvent) {
@@ -190,6 +199,37 @@ export function NotificationBell({
     </div>
   );
 
+  const mobileOverlay =
+    open && mounted ? (
+      <div
+        ref={mobileOverlayRef}
+        className="ui-mobile-overlay md:hidden"
+        role="presentation"
+      >
+        <button
+          type="button"
+          aria-label="Close notifications"
+          className="ui-mobile-overlay-backdrop"
+          onClick={closeMenu}
+        />
+        <div
+          id={menuId}
+          role="menu"
+          aria-label={ACTION_LABELS.notifications.ariaLabel}
+          className="ui-mobile-overlay-panel ui-mobile-overlay-panel-wide !max-w-none"
+        >
+          <div className="ui-mobile-overlay-header">{header}</div>
+          <div className="ui-mobile-overlay-body">
+            <NotificationList
+              notifications={notifications}
+              isPending={isPending}
+              onNotificationClick={handleNotificationClick}
+            />
+          </div>
+        </div>
+      </div>
+    ) : null;
+
   return (
     <div ref={containerRef} className="relative">
       <button
@@ -216,29 +256,7 @@ export function NotificationBell({
 
       {open ? (
         <>
-          <div className="ui-mobile-overlay md:hidden" role="presentation">
-            <button
-              type="button"
-              aria-label="Close notifications"
-              className="ui-mobile-overlay-backdrop"
-              onClick={closeMenu}
-            />
-            <div
-              id={menuId}
-              role="menu"
-              aria-label={ACTION_LABELS.notifications.ariaLabel}
-              className="ui-mobile-overlay-panel ui-mobile-overlay-panel-wide !max-w-none"
-            >
-              <div className="ui-mobile-overlay-header">{header}</div>
-              <div className="ui-mobile-overlay-body">
-                <NotificationList
-                  notifications={notifications}
-                  isPending={isPending}
-                  onNotificationClick={handleNotificationClick}
-                />
-              </div>
-            </div>
-          </div>
+          {mobileOverlay ? createPortal(mobileOverlay, document.body) : null}
 
           <div
             id={`${menuId}-desktop`}

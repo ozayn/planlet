@@ -110,6 +110,11 @@ export function SharePlanPanel({ plan }: SharePlanPanelProps) {
                 Clipboard unavailable — select the text above and copy manually.
               </p>
             ) : null}
+            {copied ? (
+              <p className="text-sm text-muted" role="status" aria-live="polite">
+                Copied to clipboard{isSaving ? "…" : ""}
+              </p>
+            ) : null}
             {saveWarning ? (
               <p className="text-sm text-muted">
                 Copied, but export history was not saved.
@@ -122,7 +127,7 @@ export function SharePlanPanel({ plan }: SharePlanPanelProps) {
               {...passwordManagerSafeControlProps}
               className="ui-btn-primary w-full"
             >
-              {copied ? "Copied" : "Copy to clipboard"}
+              {copied ? "Copied" : "Copy text"}
             </button>
           </div>
         }
@@ -180,7 +185,7 @@ export function SharePlanPanel({ plan }: SharePlanPanelProps) {
               readOnly
               dir="auto"
               value={previewText}
-              rows={5}
+              rows={8}
               className="ui-textarea ui-share-preview-textarea bg-accent-cream/50 font-mono text-xs"
             />
           </label>

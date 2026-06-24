@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { ActionErrorBanner } from "@/components/ui/action-error-banner";
 
@@ -31,6 +32,11 @@ export function MoveUnderTaskDialog({
   const titleId = useId();
   const descriptionId = useId();
   const cancelRef = useRef<HTMLButtonElement>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -54,11 +60,11 @@ export function MoveUnderTaskDialog({
     };
   }, [open, onClose, isPending]);
 
-  if (!open) {
+  if (!open || !mounted) {
     return null;
   }
 
-  return (
+  return createPortal(
     <div className="ui-dialog-overlay">
       <button
         type="button"
@@ -117,6 +123,7 @@ export function MoveUnderTaskDialog({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

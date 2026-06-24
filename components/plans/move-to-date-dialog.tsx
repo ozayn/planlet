@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { ActionErrorBanner } from "@/components/ui/action-error-banner";
 import { shiftDateString } from "@/lib/dates";
@@ -55,10 +56,15 @@ export function MoveToDateDialog({
   const dateInputId = useId();
   const keepCopyId = useId();
   const cancelRef = useRef<HTMLButtonElement>(null);
+  const [mounted, setMounted] = useState(false);
   const [targetDate, setTargetDate] = useState(() =>
     defaultTargetDate(sourcePlanDate),
   );
   const [keepCopy, setKeepCopy] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!open) {
@@ -91,14 +97,14 @@ export function MoveToDateDialog({
     };
   }, [open, onClose, isPending]);
 
-  if (!open) {
+  if (!open || !mounted) {
     return null;
   }
 
   const noMovableSubtasks = hasSubtasks && movableSubtaskCount === 0;
   const canMove = Boolean(targetDate) && !noMovableSubtasks;
 
-  return (
+  return createPortal(
     <div className="ui-dialog-overlay">
       <button
         type="button"
@@ -225,6 +231,7 @@ export function MoveToDateDialog({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

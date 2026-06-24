@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 
 import { ThemeToggle } from "@/components/theme-toggle";
 import { ExternalLinkIcon, HeartIcon } from "@/components/ui/action-icons";
@@ -104,6 +105,12 @@ export function ProfileMenu({
   const [open, setOpen] = useState(false);
   const menuId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
+  const mobileOverlayRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const onSettings = pathname === "/settings" || pathname.startsWith("/settings/");
   const onPlans =
     pathname === "/plans" ||
@@ -145,12 +152,14 @@ export function ProfileMenu({
     if (!open) return;
 
     function handlePointerDown(event: MouseEvent) {
+      const target = event.target as Node;
       if (
-        containerRef.current &&
-        !containerRef.current.contains(event.target as Node)
+        (containerRef.current && containerRef.current.contains(target)) ||
+        (mobileOverlayRef.current && mobileOverlayRef.current.contains(target))
       ) {
-        setOpen(false);
+        return;
       }
+      setOpen(false);
     }
 
     function handleKeyDown(event: KeyboardEvent) {
@@ -366,6 +375,55 @@ export function ProfileMenu({
     },
   ];
 
+  const mobileOverlay =
+    open && mounted ? (
+      <div
+        ref={mobileOverlayRef}
+        className="ui-mobile-overlay md:hidden"
+        role="presentation"
+      >
+        <button
+          type="button"
+          aria-label="Close profile menu"
+          className="ui-mobile-overlay-backdrop"
+          onClick={closeMenu}
+        />
+        <div
+          id={menuId}
+          role="menu"
+          aria-label="Profile menu"
+          className="ui-mobile-overlay-panel ui-mobile-overlay-panel-wide"
+        >
+          <div className="ui-mobile-overlay-header flex items-center justify-between gap-3 px-4 py-3">
+            <ProfileMenuIdentity name={name} email={email} image={image} />
+            <button
+              type="button"
+              onClick={closeMenu}
+              {...passwordManagerSafeControlProps}
+              className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-accent-cream hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+              aria-label="Close"
+            >
+              ✕
+            </button>
+          </div>
+
+          <div className="ui-mobile-overlay-body p-2">
+            {scrollSections.map((section) => (
+              <ProfileMenuSection
+                key={section.title}
+                title={section.title}
+                items={section.items}
+              />
+            ))}
+          </div>
+
+          <div className="ui-mobile-overlay-footer px-3 pt-3">
+            {signOutItem}
+          </div>
+        </div>
+      </div>
+    ) : null;
+
   return (
     <div ref={containerRef} className="relative">
       <button
@@ -396,47 +454,7 @@ export function ProfileMenu({
 
       {open ? (
         <>
-          <div className="ui-mobile-overlay md:hidden" role="presentation">
-            <button
-              type="button"
-              aria-label="Close profile menu"
-              className="ui-mobile-overlay-backdrop"
-              onClick={closeMenu}
-            />
-            <div
-              id={menuId}
-              role="menu"
-              aria-label="Profile menu"
-              className="ui-mobile-overlay-panel ui-mobile-overlay-panel-wide"
-            >
-              <div className="ui-mobile-overlay-header flex items-center justify-between gap-3 px-4 py-3">
-                <ProfileMenuIdentity name={name} email={email} image={image} />
-                <button
-                  type="button"
-                  onClick={closeMenu}
-                  {...passwordManagerSafeControlProps}
-                  className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-accent-cream hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
-                  aria-label="Close"
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="ui-mobile-overlay-body p-2">
-                {scrollSections.map((section) => (
-                  <ProfileMenuSection
-                    key={section.title}
-                    title={section.title}
-                    items={section.items}
-                  />
-                ))}
-              </div>
-
-              <div className="ui-mobile-overlay-footer px-3 pt-3">
-                {signOutItem}
-              </div>
-            </div>
-          </div>
+          {mobileOverlay ? createPortal(mobileOverlay, document.body) : null}
 
           <div
             id={`${menuId}-desktop`}
