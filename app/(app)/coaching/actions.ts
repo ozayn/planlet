@@ -5,6 +5,10 @@ import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { buildCoachingReflectionContext } from "@/lib/coaching-reflection-context";
 import { generateCoachingReflection } from "@/lib/ai/generate-coaching-reflection";
+import {
+  assertCanGenerateCoachingReflection,
+  CoachingReflectionLimitError,
+} from "@/lib/ai/reflection-limits";
 import { AI_USAGE_FEATURES } from "@/lib/ai/usage";
 import { isTextParserConfigured } from "@/lib/env";
 import {
@@ -16,6 +20,7 @@ import {
   getAllSelectedInfluenceIds,
   type ReflectionInfluencePreferences,
 } from "@/lib/reflection-influences";
+import { isAdminRole } from "@/lib/auth-roles";
 import { canUseCoachingFeatures } from "@/lib/roles";
 
 export type CoachingActionResult =
@@ -92,6 +97,11 @@ export async function generateCoachingReflectionAction(): Promise<GenerateCoachi
       };
     }
 
+    await assertCanGenerateCoachingReflection(session.user.id, {
+      isAdmin: isAdminRole(session.user.role),
+      timezone: session.user.timezone,
+    });
+
     const context = await buildCoachingReflectionContext(
       session.user.id,
       session.user,
@@ -112,6 +122,10 @@ export async function generateCoachingReflectionAction(): Promise<GenerateCoachi
       experiment: result.experiment.trim(),
     };
   } catch (error) {
+    if (error instanceof CoachingReflectionLimitError) {
+      return { success: false, error: error.message };
+    }
+
     return {
       success: false,
       error:

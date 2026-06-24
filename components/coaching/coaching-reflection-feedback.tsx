@@ -6,6 +6,8 @@ type CoachingReflectionFeedbackProps = {
   experiment: string | null;
   isGenerating: boolean;
   hasInfluences: boolean;
+  canGenerate: boolean;
+  remainingLabel: string;
   onRegenerate: () => void;
 };
 
@@ -15,6 +17,8 @@ export function CoachingReflectionFeedback({
   experiment,
   isGenerating,
   hasInfluences,
+  canGenerate,
+  remainingLabel,
   onRegenerate,
 }: CoachingReflectionFeedbackProps) {
   return (
@@ -64,14 +68,17 @@ export function CoachingReflectionFeedback({
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <button
-          type="button"
-          onClick={onRegenerate}
-          disabled={!hasInfluences || isGenerating}
-          className="ui-btn-secondary ui-btn-compact min-h-10 w-fit px-4"
-        >
-          {isGenerating ? "Generating…" : "Regenerate feedback"}
-        </button>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+          <button
+            type="button"
+            onClick={onRegenerate}
+            disabled={!hasInfluences || !canGenerate || isGenerating}
+            className="ui-btn-secondary ui-btn-compact min-h-10 w-fit px-4"
+          >
+            {isGenerating ? "Generating…" : "Regenerate feedback"}
+          </button>
+          <p className="text-xs text-muted">{remainingLabel}</p>
+        </div>
         <p className="text-xs leading-relaxed text-muted-light">
           AI-generated reflection. Not therapy, coaching, or medical advice.
         </p>

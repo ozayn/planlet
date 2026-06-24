@@ -15,6 +15,7 @@ type MobileAppBarProps = {
   canGiveFeedback?: boolean;
   canUseTherapyThoughts?: boolean;
   canUseJobTrackerFeatures?: boolean;
+  canUseCareerJourneyFeatures?: boolean;
   canUseCoachingFeatures?: boolean;
   signOutButton: React.ReactNode;
   unreadNotificationCount?: number;
@@ -29,6 +30,7 @@ export function MobileAppBar({
   canGiveFeedback = false,
   canUseTherapyThoughts = false,
   canUseJobTrackerFeatures = false,
+  canUseCareerJourneyFeatures = false,
   canUseCoachingFeatures = false,
   signOutButton,
   unreadNotificationCount = 0,
@@ -58,6 +60,7 @@ export function MobileAppBar({
             canGiveFeedback={canGiveFeedback}
             canUseTherapyThoughts={canUseTherapyThoughts}
             canUseJobTrackerFeatures={canUseJobTrackerFeatures}
+            canUseCareerJourneyFeatures={canUseCareerJourneyFeatures}
             canUseCoachingFeatures={canUseCoachingFeatures}
             signOutButton={signOutButton}
             compact

@@ -9,19 +9,30 @@ import {
 import { CoachingReflectionFeedback } from "@/components/coaching/coaching-reflection-feedback";
 import { ReflectionLensSelector } from "@/components/coaching/reflection-lens-selector";
 import {
+  canGenerateCoachingReflection,
+  formatCoachingReflectionRemainingLabel,
+  type CoachingReflectionLimitStatusView,
+} from "@/lib/coaching/reflection-limit-ui";
+import {
   getAllSelectedInfluenceIds,
   type ReflectionInfluencePreferences,
 } from "@/lib/reflection-influences";
 
+export type SerializedCoachingReflectionLimitStatus =
+  CoachingReflectionLimitStatusView;
+
 type CoachingPageContentProps = {
   initialPreferences: ReflectionInfluencePreferences;
+  initialLimitStatus: SerializedCoachingReflectionLimitStatus;
 };
 
 export function CoachingPageContent({
   initialPreferences,
+  initialLimitStatus,
 }: CoachingPageContentProps) {
   const [preferences, setPreferences] =
     useState<ReflectionInfluencePreferences>(initialPreferences);
+  const [limitStatus, setLimitStatus] = useState(initialLimitStatus);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [generateError, setGenerateError] = useState<string | null>(null);
   const [reflection, setReflection] = useState<string | null>(null);
@@ -34,11 +45,17 @@ export function CoachingPageContent({
     setPreferences(initialPreferences);
   }, [initialPreferences]);
 
+  useEffect(() => {
+    setLimitStatus(initialLimitStatus);
+  }, [initialLimitStatus]);
+
   const selectedCount = useMemo(
     () => getAllSelectedInfluenceIds(preferences).length,
     [preferences],
   );
   const hasInfluences = selectedCount > 0;
+  const canGenerate = canGenerateCoachingReflection(limitStatus);
+  const remainingLabel = formatCoachingReflectionRemainingLabel(limitStatus);
 
   function save(next: ReflectionInfluencePreferences) {
     setSaveError(null);
@@ -71,6 +88,15 @@ export function CoachingPageContent({
       setReflection(result.reflection);
       setQuestion(result.question);
       setExperiment(result.experiment);
+      setLimitStatus((current) =>
+        current.isUnlimited
+          ? current
+          : {
+              ...current,
+              used: current.used + 1,
+              remaining: Math.max(0, current.remaining - 1),
+            },
+      );
     });
   }
 
@@ -91,14 +117,17 @@ export function CoachingPageContent({
               and selected perspectives.
             </p>
             <div className="space-y-3">
-              <button
-                type="button"
-                onClick={handleGenerate}
-                disabled={!hasInfluences || isGenerating}
-                className="ui-btn-secondary ui-btn-compact min-h-10 w-full px-4 sm:w-fit"
-              >
-                {isGenerating ? "Generating…" : "Generate feedback"}
-              </button>
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+                <button
+                  type="button"
+                  onClick={handleGenerate}
+                  disabled={!hasInfluences || !canGenerate || isGenerating}
+                  className="ui-btn-secondary ui-btn-compact min-h-10 w-full px-4 sm:w-fit"
+                >
+                  {isGenerating ? "Generating…" : "Generate feedback"}
+                </button>
+                <p className="text-xs text-muted">{remainingLabel}</p>
+              </div>
               {generateError ? (
                 <p className="rounded-lg border border-accent-red/20 px-3 py-2 text-sm text-accent-red">
                   {generateError}
@@ -119,6 +148,8 @@ export function CoachingPageContent({
               experiment={experiment}
               isGenerating={isGenerating}
               hasInfluences={hasInfluences}
+              canGenerate={canGenerate}
+              remainingLabel={remainingLabel}
               onRegenerate={handleGenerate}
             />
           </>

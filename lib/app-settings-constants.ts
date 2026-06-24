@@ -1,0 +1,7 @@
+export const COACHING_REFLECTION_WEEKLY_LIMIT_KEY =
+  "coaching_reflection_weekly_limit";
+
+export const DEFAULT_COACHING_REFLECTION_WEEKLY_LIMIT = 3;
+
+export const MIN_COACHING_REFLECTION_WEEKLY_LIMIT = 0;
+export const MAX_COACHING_REFLECTION_WEEKLY_LIMIT = 100;

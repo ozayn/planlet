@@ -65,6 +65,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           canUseReflectionFeatures: true,
           canUseCoachingFeatures: true,
           canUseJobTrackerFeatures: true,
+          canUseCareerJourneyFeatures: true,
           timezone: true,
           timezoneMode: true,
           image: true,
@@ -81,6 +82,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       session.user.canUseReflectionFeatures = dbUser.canUseReflectionFeatures;
       session.user.canUseCoachingFeatures = dbUser.canUseCoachingFeatures;
       session.user.canUseJobTrackerFeatures = dbUser.canUseJobTrackerFeatures;
+      session.user.canUseCareerJourneyFeatures =
+        dbUser.canUseCareerJourneyFeatures;
       session.user.timezone = dbUser.timezone ?? FALLBACK_TIMEZONE;
       session.user.timezoneMode = dbUser.timezoneMode;
       session.user.image = dbUser.image ?? session.user.image ?? null;

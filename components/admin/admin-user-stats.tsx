@@ -2,6 +2,10 @@ import type { AdminAiFeatureUsage, AdminUserStatRow } from "@/lib/admin-stats";
 import { UserAvatar } from "@/components/user-avatar";
 import { formatAdminRoleCapabilities } from "@/lib/admin-user-labels";
 import {
+  formatCompactNumber,
+  formatExactNumber,
+} from "@/lib/number-format";
+import {
   formatLastLoginLabel,
   formatRecentlySeenLabel,
 } from "@/lib/user-seen";
@@ -10,8 +14,21 @@ type AdminUserStatsProps = {
   users: AdminUserStatRow[];
 };
 
-function formatCount(value: number): string {
-  return value.toLocaleString("en-US");
+function AdminCompactCount({
+  value,
+  unit,
+}: {
+  value: number;
+  unit: string;
+}) {
+  return (
+    <span
+      title={`${formatExactNumber(value)} ${unit}`}
+      className="tabular-nums"
+    >
+      {formatCompactNumber(value)}
+    </span>
+  );
 }
 
 function AdminUserIdentity({ user }: { user: AdminUserStatRow }) {
@@ -73,15 +90,20 @@ function AdminAiFeatureBreakdown({
             <tr key={row.feature} className="text-foreground">
               <td className="py-1 pr-3">{row.label}</td>
               <td className="py-1 pr-3 tabular-nums">
-                {formatCount(row.tokensThisMonth)}
+                <AdminCompactCount
+                  value={row.tokensThisMonth}
+                  unit="tokens"
+                />
               </td>
               <td className="py-1 pr-3 tabular-nums">
-                {formatCount(row.tokensTotal)}
+                <AdminCompactCount value={row.tokensTotal} unit="tokens" />
               </td>
               <td className="py-1 pr-3 tabular-nums">
-                {formatCount(row.callsThisMonth)}
+                <AdminCompactCount value={row.callsThisMonth} unit="calls" />
               </td>
-              <td className="py-1 tabular-nums">{formatCount(row.callsTotal)}</td>
+              <td className="py-1 tabular-nums">
+                <AdminCompactCount value={row.callsTotal} unit="calls" />
+              </td>
             </tr>
           ))}
         </tbody>
@@ -161,16 +183,25 @@ export function AdminUserStats({ users }: AdminUserStatsProps) {
                   {user.planCount}
                 </td>
                 <td className="px-2 py-2.5 align-top text-foreground tabular-nums">
-                  {formatCount(user.aiTokensThisMonth)}
+                  <AdminCompactCount
+                    value={user.aiTokensThisMonth}
+                    unit="tokens"
+                  />
                 </td>
                 <td className="px-2 py-2.5 align-top text-foreground tabular-nums">
-                  {formatCount(user.aiTokensTotal)}
+                  <AdminCompactCount
+                    value={user.aiTokensTotal}
+                    unit="tokens"
+                  />
                 </td>
                 <td className="px-2 py-2.5 align-top text-foreground tabular-nums">
-                  {formatCount(user.aiCallsThisMonth)}
+                  <AdminCompactCount
+                    value={user.aiCallsThisMonth}
+                    unit="calls"
+                  />
                 </td>
                 <td className="px-2 py-2.5 align-top text-foreground tabular-nums">
-                  {formatCount(user.aiCallsTotal)}
+                  <AdminCompactCount value={user.aiCallsTotal} unit="calls" />
                 </td>
                 <td className="px-2 py-2.5 align-top text-xs text-muted">
                   <RecentlySeenValue user={user} />
@@ -197,11 +228,20 @@ export function AdminUserStats({ users }: AdminUserStatsProps) {
               </p>
               <p className="mt-1 text-xs text-muted">
                 Plans {user.planCount} · AI tokens (month){" "}
-                {formatCount(user.aiTokensThisMonth)} · AI tokens (total){" "}
-                {formatCount(user.aiTokensTotal)} · AI calls (month){" "}
-                {formatCount(user.aiCallsThisMonth)} · AI calls (total){" "}
-                {formatCount(user.aiCallsTotal)} · Last seen {seen.label} · Last
-                login {login.label}
+                <AdminCompactCount
+                  value={user.aiTokensThisMonth}
+                  unit="tokens"
+                />{" "}
+                · AI tokens (total){" "}
+                <AdminCompactCount value={user.aiTokensTotal} unit="tokens" />{" "}
+                · AI calls (month){" "}
+                <AdminCompactCount
+                  value={user.aiCallsThisMonth}
+                  unit="calls"
+                />{" "}
+                · AI calls (total){" "}
+                <AdminCompactCount value={user.aiCallsTotal} unit="calls" /> ·
+                Last seen {seen.label} · Last login {login.label}
               </p>
               {user.aiUsageByFeature.length > 0 && (
                 <div className="mt-2">

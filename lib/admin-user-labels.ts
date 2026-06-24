@@ -29,5 +29,9 @@ export function formatAdminRoleCapabilities(user: AdminUserStatRow): string {
     parts.push("Job tracker");
   }
 
+  if (user.canUseCareerJourneyFeatures) {
+    parts.push("Career");
+  }
+
   return parts.join(" · ");
 }

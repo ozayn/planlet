@@ -39,6 +39,10 @@ export function getJobTrackerEmails(): string[] {
   return parseEmailList(process.env.PLANLET_JOB_TRACKER_EMAILS);
 }
 
+export function getCareerJourneyEmails(): string[] {
+  return parseEmailList(process.env.PLANLET_CAREER_JOURNEY_EMAILS);
+}
+
 export function isAdminEmail(email?: string | null): boolean {
   if (!email?.trim()) {
     return false;
@@ -77,6 +81,14 @@ export function isJobTrackerEmail(email?: string | null): boolean {
   }
 
   return getJobTrackerEmails().includes(email.trim().toLowerCase());
+}
+
+export function isCareerJourneyEmail(email?: string | null): boolean {
+  if (!email?.trim()) {
+    return false;
+  }
+
+  return getCareerJourneyEmails().includes(email.trim().toLowerCase());
 }
 
 export function isEmailAllowed(email?: string | null): boolean {

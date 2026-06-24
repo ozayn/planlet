@@ -8,6 +8,7 @@ export type ProfileMenuAccess = {
   canGiveFeedback?: boolean;
   canUseTherapyThoughts?: boolean;
   canUseJobTrackerFeatures?: boolean;
+  canUseCareerJourneyFeatures?: boolean;
   canUseCoachingFeatures?: boolean;
   isAdmin?: boolean;
 };
@@ -36,6 +37,12 @@ export function canShowJobTrackerInProfileMenu(
   access: ProfileMenuAccess,
 ): boolean {
   return Boolean(access.canUseJobTrackerFeatures || access.isAdmin);
+}
+
+export function canShowCareerJourneyInProfileMenu(
+  access: ProfileMenuAccess,
+): boolean {
+  return Boolean(access.canUseCareerJourneyFeatures || access.isAdmin);
 }
 
 export function canShowCoachingInProfileMenu(

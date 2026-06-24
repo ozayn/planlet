@@ -4,6 +4,7 @@ export const AI_USAGE_FEATURES = {
   PLAN_PARSING: "plan_parsing",
   IMAGE_IMPORT: "image_import",
   COACHING_REFLECTION: "coaching_reflection",
+  CAREER_REFLECTION: "career_reflection",
   JOB_URL_EXTRACTION: "job_url_extraction",
   AUDIO_TRANSCRIPTION: "audio_transcription",
 } as const;
@@ -28,6 +29,7 @@ const AI_USAGE_FEATURE_LABELS: Record<string, string> = {
   [AI_USAGE_FEATURES.PLAN_PARSING]: "Plan parsing",
   [AI_USAGE_FEATURES.IMAGE_IMPORT]: "Import",
   [AI_USAGE_FEATURES.COACHING_REFLECTION]: "Coaching",
+  [AI_USAGE_FEATURES.CAREER_REFLECTION]: "Career reflection",
   [AI_USAGE_FEATURES.JOB_URL_EXTRACTION]: "Job tracker",
   [AI_USAGE_FEATURES.AUDIO_TRANSCRIPTION]: "Audio transcription",
 };

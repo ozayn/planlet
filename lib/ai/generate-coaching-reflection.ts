@@ -54,6 +54,13 @@ async function generateWithOpenAI(
     ],
   });
 
+  const content = response.choices[0]?.message?.content;
+  if (!content) {
+    throw new Error("No reflection was generated.");
+  }
+
+  const reflection = validateCoachingReflection(JSON.parse(content));
+
   if (input.usageContext) {
     void logAiUsage({
       userId: input.usageContext.userId,
@@ -64,12 +71,7 @@ async function generateWithOpenAI(
     });
   }
 
-  const content = response.choices[0]?.message?.content;
-  if (!content) {
-    throw new Error("No reflection was generated.");
-  }
-
-  return validateCoachingReflection(JSON.parse(content));
+  return reflection;
 }
 
 async function generateWithAnthropic(
@@ -85,6 +87,18 @@ async function generateWithAnthropic(
     messages: [{ role: "user", content: buildUserPrompt(input) }],
   });
 
+  const textBlock = response.content.find((block) => block.type === "text");
+  if (!textBlock || textBlock.type !== "text" || !textBlock.text.trim()) {
+    throw new Error("No reflection was generated.");
+  }
+
+  const reflection = validateCoachingReflection(
+    parseModelJsonResponse(
+      textBlock.text,
+      "Reflection response was invalid JSON.",
+    ),
+  );
+
   if (input.usageContext) {
     void logAiUsage({
       userId: input.usageContext.userId,
@@ -95,17 +109,7 @@ async function generateWithAnthropic(
     });
   }
 
-  const textBlock = response.content.find((block) => block.type === "text");
-  if (!textBlock || textBlock.type !== "text" || !textBlock.text.trim()) {
-    throw new Error("No reflection was generated.");
-  }
-
-  return validateCoachingReflection(
-    parseModelJsonResponse(
-      textBlock.text,
-      "Reflection response was invalid JSON.",
-    ),
-  );
+  return reflection;
 }
 
 export async function generateCoachingReflection(

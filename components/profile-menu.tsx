@@ -9,6 +9,7 @@ import { ExternalLinkIcon, HeartIcon } from "@/components/ui/action-icons";
 import { UserAvatar } from "@/components/user-avatar";
 import {
   canShowCoachingInProfileMenu,
+  canShowCareerJourneyInProfileMenu,
   canShowFeedbackInProfileMenu,
   canShowInsightsInProfileMenu,
   canShowJobTrackerInProfileMenu,
@@ -23,6 +24,7 @@ type ProfileMenuProps = {
   canGiveFeedback?: boolean;
   canUseTherapyThoughts?: boolean;
   canUseJobTrackerFeatures?: boolean;
+  canUseCareerJourneyFeatures?: boolean;
   canUseCoachingFeatures?: boolean;
   signOutButton: React.ReactNode;
   compact?: boolean;
@@ -65,6 +67,7 @@ export function ProfileMenu({
   canGiveFeedback = false,
   canUseTherapyThoughts = false,
   canUseJobTrackerFeatures = false,
+  canUseCareerJourneyFeatures = false,
   canUseCoachingFeatures = false,
   signOutButton,
   compact = false,
@@ -88,6 +91,8 @@ export function ProfileMenu({
   const onThemes = pathname === "/themes" || pathname.startsWith("/themes/");
   const onFeedback = pathname === "/feedback" || pathname.startsWith("/feedback/");
   const onJobs = pathname === "/jobs" || pathname.startsWith("/jobs/");
+  const onCareer =
+    pathname === "/career" || pathname.startsWith("/career/");
   const onCoaching =
     pathname === "/coaching" || pathname.startsWith("/coaching/");
   const onAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
@@ -104,6 +109,7 @@ export function ProfileMenu({
     canGiveFeedback,
     canUseTherapyThoughts,
     canUseJobTrackerFeatures,
+    canUseCareerJourneyFeatures,
     canUseCoachingFeatures,
     isAdmin,
   };
@@ -246,6 +252,18 @@ export function ProfileMenu({
         className={menuItemClass(onJobs)}
       >
         Job tracker
+      </Link>
+    ) : null,
+    canShowCareerJourneyInProfileMenu(access) ? (
+      <Link
+        key="career"
+        href="/career"
+        role="menuitem"
+        aria-current={onCareer ? "page" : undefined}
+        onClick={closeMenu}
+        className={menuItemClass(onCareer)}
+      >
+        Career journey
       </Link>
     ) : null,
     isAdmin ? (

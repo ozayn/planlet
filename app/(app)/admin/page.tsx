@@ -1,3 +1,4 @@
+import { AdminCoachingReflectionLimitSetting } from "@/components/admin/admin-coaching-reflection-limit-setting";
 import { AdminFeedbackSummary } from "@/components/admin/admin-feedback-summary";
 import { AdminRecentLogins } from "@/components/admin/admin-recent-logins";
 import { AdminSummaryLine } from "@/components/admin/admin-summary-line";
@@ -19,6 +20,7 @@ import {
   isWebPushConfigured,
 } from "@/lib/env";
 import { getAdminFeedbackCounts } from "@/lib/feedback";
+import { getCoachingReflectionWeeklyLimit } from "@/lib/app-settings";
 
 export default async function AdminPage() {
   const [
@@ -28,6 +30,7 @@ export default async function AdminPage() {
     reflectorEmails,
     feedbackEmails,
     feedbackCounts,
+    coachingReflectionWeeklyLimit,
   ] = await Promise.all([
     getAdminUserStats(),
     Promise.resolve(getAllowedEmails()),
@@ -35,6 +38,7 @@ export default async function AdminPage() {
     Promise.resolve(getReflectorEmails()),
     Promise.resolve(getFeedbackEmails()),
     getAdminFeedbackCounts(),
+    getCoachingReflectionWeeklyLimit(),
   ]);
 
   const textParserConfigured = isTextParserConfigured();
@@ -58,6 +62,13 @@ export default async function AdminPage() {
       <section>
         <h2 className="ui-label mb-3">Users</h2>
         <AdminUserStats users={users} />
+      </section>
+
+      <section>
+        <h2 className="ui-label mb-3">AI / Usage</h2>
+        <AdminCoachingReflectionLimitSetting
+          initialLimit={coachingReflectionWeeklyLimit}
+        />
       </section>
 
       <div className="space-y-3 border-t border-border-soft pt-4">
