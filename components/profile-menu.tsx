@@ -38,6 +38,17 @@ type ProfileMenuSectionConfig = {
   items: ReactNode[];
 };
 
+type ProfileMenuContentProps = {
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+  scrollSections: ProfileMenuSectionConfig[];
+  desktopSections: ProfileMenuSectionConfig[];
+  signOutItem: ReactNode;
+};
+
+const MOBILE_PROFILE_MENU_QUERY = "(max-width: 767px)";
+
 function menuItemClass(active: boolean): string {
   return `flex min-h-10 items-center rounded-xl px-3 text-sm transition-colors hover:bg-accent-cream ${
     active
@@ -87,6 +98,117 @@ function ProfileMenuIdentity({
   );
 }
 
+function DesktopProfileMenuDropdown({
+  menuId,
+  content,
+}: {
+  menuId: string;
+  content: ProfileMenuContentProps;
+}) {
+  const { name, email, image, desktopSections } = content;
+
+  return (
+    <div
+      id={menuId}
+      role="menu"
+      aria-label="Profile menu"
+      className="ui-profile-menu-desktop-dropdown p-2"
+    >
+      <div className="border-b border-border-soft px-3 py-3">
+        <ProfileMenuIdentity name={name} email={email} image={image} />
+      </div>
+
+      <div className="p-1">
+        {desktopSections.map((section) => (
+          <ProfileMenuSection
+            key={section.title}
+            title={section.title}
+            items={section.items}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MobileProfileMenuSheet({
+  menuId,
+  content,
+  overlayRef,
+  onClose,
+}: {
+  menuId: string;
+  content: ProfileMenuContentProps;
+  overlayRef: React.RefObject<HTMLDivElement | null>;
+  onClose: () => void;
+}) {
+  const { name, email, image, scrollSections, signOutItem } = content;
+
+  return (
+    <div
+      ref={overlayRef}
+      className="ui-profile-menu-mobile-overlay"
+      role="presentation"
+    >
+      <button
+        type="button"
+        aria-label="Close profile menu"
+        className="ui-profile-menu-mobile-backdrop"
+        onClick={onClose}
+      />
+      <div
+        id={menuId}
+        role="menu"
+        aria-label="Profile menu"
+        className="ui-profile-menu-mobile-panel"
+      >
+        <div className="ui-profile-menu-mobile-header flex items-center justify-between gap-3 px-4 py-3">
+          <ProfileMenuIdentity name={name} email={email} image={image} />
+          <button
+            type="button"
+            onClick={onClose}
+            {...passwordManagerSafeControlProps}
+            className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-accent-cream hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+            aria-label="Close"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="ui-profile-menu-mobile-body p-2">
+          {scrollSections.map((section) => (
+            <ProfileMenuSection
+              key={section.title}
+              title={section.title}
+              items={section.items}
+            />
+          ))}
+        </div>
+
+        <div className="ui-profile-menu-mobile-footer px-3 pt-3">
+          {signOutItem}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function useMobileProfileMenuLayout() {
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(MOBILE_PROFILE_MENU_QUERY);
+    const syncLayout = () => setIsMobile(mediaQuery.matches);
+
+    syncLayout();
+    mediaQuery.addEventListener("change", syncLayout);
+
+    return () => mediaQuery.removeEventListener("change", syncLayout);
+  }, []);
+
+  return isMobile;
+}
+
 export function ProfileMenu({
   name,
   email,
@@ -107,10 +229,12 @@ export function ProfileMenu({
   const containerRef = useRef<HTMLDivElement>(null);
   const mobileOverlayRef = useRef<HTMLDivElement>(null);
   const [mounted, setMounted] = useState(false);
+  const isMobileLayout = useMobileProfileMenuLayout();
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
   const onSettings = pathname === "/settings" || pathname.startsWith("/settings/");
   const onPlans =
     pathname === "/plans" ||
@@ -178,12 +302,7 @@ export function ProfileMenu({
   }, [open]);
 
   useEffect(() => {
-    if (!open) return;
-
-    const isMobile = window.matchMedia("(max-width: 767px)").matches;
-    if (!isMobile) {
-      return;
-    }
+    if (!open || !isMobileLayout) return;
 
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -191,7 +310,7 @@ export function ProfileMenu({
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [open]);
+  }, [open, isMobileLayout]);
 
   const displayName = name?.trim() || email?.trim() || "Account";
 
@@ -375,53 +494,23 @@ export function ProfileMenu({
     },
   ];
 
-  const mobileOverlay =
-    open && mounted ? (
-      <div
-        ref={mobileOverlayRef}
-        className="ui-mobile-overlay md:hidden"
-        role="presentation"
-      >
-        <button
-          type="button"
-          aria-label="Close profile menu"
-          className="ui-mobile-overlay-backdrop"
-          onClick={closeMenu}
-        />
-        <div
-          id={menuId}
-          role="menu"
-          aria-label="Profile menu"
-          className="ui-mobile-overlay-panel ui-mobile-overlay-panel-wide"
-        >
-          <div className="ui-mobile-overlay-header flex items-center justify-between gap-3 px-4 py-3">
-            <ProfileMenuIdentity name={name} email={email} image={image} />
-            <button
-              type="button"
-              onClick={closeMenu}
-              {...passwordManagerSafeControlProps}
-              className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-accent-cream hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
-              aria-label="Close"
-            >
-              ✕
-            </button>
-          </div>
+  const menuContent: ProfileMenuContentProps = {
+    name,
+    email,
+    image,
+    scrollSections,
+    desktopSections,
+    signOutItem,
+  };
 
-          <div className="ui-mobile-overlay-body p-2">
-            {scrollSections.map((section) => (
-              <ProfileMenuSection
-                key={section.title}
-                title={section.title}
-                items={section.items}
-              />
-            ))}
-          </div>
-
-          <div className="ui-mobile-overlay-footer px-3 pt-3">
-            {signOutItem}
-          </div>
-        </div>
-      </div>
+  const mobileSheet =
+    open && mounted && isMobileLayout ? (
+      <MobileProfileMenuSheet
+        menuId={menuId}
+        content={menuContent}
+        overlayRef={mobileOverlayRef}
+        onClose={closeMenu}
+      />
     ) : null;
 
   return (
@@ -430,7 +519,7 @@ export function ProfileMenu({
         type="button"
         aria-expanded={open}
         aria-haspopup="menu"
-        aria-controls={menuId}
+        aria-controls={open ? menuId : undefined}
         onClick={() => setOpen((current) => !current)}
         className={`flex items-center rounded-full border border-border bg-surface text-sm transition-colors hover:bg-accent-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] ${
           compact
@@ -452,31 +541,11 @@ export function ProfileMenu({
         )}
       </button>
 
-      {open ? (
-        <>
-          {mobileOverlay ? createPortal(mobileOverlay, document.body) : null}
-
-          <div
-            id={`${menuId}-desktop`}
-            role="menu"
-            className="ui-desktop-dropdown-panel hidden p-2 md:block"
-          >
-            <div className="border-b border-border-soft px-3 py-3">
-              <ProfileMenuIdentity name={name} email={email} image={image} />
-            </div>
-
-            <div className="p-1">
-              {desktopSections.map((section) => (
-                <ProfileMenuSection
-                  key={section.title}
-                  title={section.title}
-                  items={section.items}
-                />
-              ))}
-            </div>
-          </div>
-        </>
+      {open && !isMobileLayout ? (
+        <DesktopProfileMenuDropdown menuId={menuId} content={menuContent} />
       ) : null}
+
+      {mobileSheet ? createPortal(mobileSheet, document.body) : null}
     </div>
   );
 }

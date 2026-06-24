@@ -1398,6 +1398,82 @@ body {
     box-shadow: var(--shadow-elevated);
   }
 
+  .ui-profile-menu-desktop-dropdown {
+    position: absolute;
+    inset-inline-end: 0;
+    z-index: 70;
+    margin-top: 0.5rem;
+    width: 16rem;
+    max-width: calc(100vw - 2.5rem);
+    border-radius: 1rem;
+    border: 1px solid var(--border-soft);
+    background: var(--surface);
+    box-shadow: var(--shadow-elevated);
+  }
+
+  @media (min-width: 768px) {
+    .ui-profile-menu-desktop-dropdown {
+      max-height: min(70vh, 36rem);
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+  }
+
+  .ui-profile-menu-mobile-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+
+  .ui-profile-menu-mobile-backdrop {
+    position: absolute;
+    inset: 0;
+    border: none;
+    background: var(--overlay);
+  }
+
+  .ui-profile-menu-mobile-panel {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    width: 100%;
+    max-width: 24rem;
+    max-height: calc(
+      100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 24px
+    );
+    min-height: 0;
+    flex-direction: column;
+    overflow: hidden;
+    border-radius: 1rem 1rem 0 0;
+    background: var(--surface);
+    box-shadow: var(--shadow-sheet);
+  }
+
+  .ui-profile-menu-mobile-header {
+    flex-shrink: 0;
+    border-bottom: 1px solid var(--border-soft);
+    background: var(--surface);
+  }
+
+  .ui-profile-menu-mobile-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 88px);
+  }
+
+  .ui-profile-menu-mobile-footer {
+    flex-shrink: 0;
+    border-top: 1px solid var(--border-soft);
+    background: var(--background);
+    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+  }
+
   .ui-dialog-overlay {
     position: fixed;
     inset: 0;
