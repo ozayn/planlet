@@ -53,6 +53,23 @@ export const TINY_STEP_PRESETS: Record<CareerPracticeType, TinyStepPreset[]> = {
     { id: "rec-journal", title: "Journal for 5 minutes", type: "RECOVERY" },
     { id: "rec-stop", title: "Stop before overwhelm", type: "RECOVERY" },
   ],
+  INTERVIEW_PREP: [
+    {
+      id: "iq-behavioral",
+      title: "Practice one behavioral answer",
+      type: "INTERVIEW_PREP",
+    },
+    {
+      id: "iq-hard-gentle",
+      title: "Review one hard question gently",
+      type: "INTERVIEW_PREP",
+    },
+    {
+      id: "iq-write",
+      title: "Write one answer without judging it",
+      type: "INTERVIEW_PREP",
+    },
+  ],
   COURSE: [
     { id: "course-10", title: "Watch 10 minutes of a course", type: "COURSE" },
     { id: "course-notes", title: "Take notes on one lesson", type: "COURSE" },

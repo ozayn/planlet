@@ -225,6 +225,7 @@ model User {
   careerPillars                 CareerPillar[]
   careerCheckIns                CareerCheckIn[]
   careerPracticeSessions        CareerPracticeSession[]
+  careerWeeklyReviews           CareerWeeklyReview[]
   aiUsageLogs                   AiUsageLog[]
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -602,6 +603,7 @@ model JobApplication {
 enum CareerPracticeType {
   LEETCODE
   ML_REVIEW
+  INTERVIEW_PREP
   COURSE
   SYSTEM_DESIGN
   PROJECT
@@ -681,6 +683,22 @@ model CareerPracticeSession {
 
   @@index([userId, date])
   @@index([userId, status])
+}
+
+model CareerWeeklyReview {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weekStart     String
+  gaveEnergy    String?  @db.Text
+  drainedEnergy String?  @db.Text
+  roleFeltAlive String?  @db.Text
+  nextStep      String?  @db.Text
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([userId, weekStart])
+  @@index([userId, weekStart])
 }
 
 model AppSetting {

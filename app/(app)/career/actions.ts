@@ -16,6 +16,8 @@ import {
   CareerJourneyError,
   createCareerCheckIn,
   createCareerPracticeSession,
+  pauseCareerPillarForWeek,
+  saveCareerWeeklyReview,
   updateCareerCurrentFocus,
   updateCareerPillarTarget,
   updateCareerTargetRoles,
@@ -112,10 +114,57 @@ export async function createCareerSessionAction(input: {
   title: string;
   date?: string;
   notes?: string | null;
+}): Promise<CareerActionResult & { sessionId?: string }> {
+  try {
+    const session = await requireCareerJourneySession();
+    const created = await createCareerPracticeSession(session.user.id, input);
+    revalidateCareerPaths();
+    return { success: true, sessionId: created.id };
+  } catch (error) {
+    return mapCareerError(error);
+  }
+}
+
+export async function createCareerSessionAndAddToTodayAction(input: {
+  type: CareerPracticeType;
+  mode: CareerPracticeMode;
+  title: string;
+  date?: string;
 }): Promise<CareerActionResult> {
   try {
     const session = await requireCareerJourneySession();
-    await createCareerPracticeSession(session.user.id, input);
+    const created = await createCareerPracticeSession(session.user.id, input);
+    await addCareerSessionToTodayPlan(session.user.id, created.id);
+    revalidateCareerAndToday();
+    return { success: true };
+  } catch (error) {
+    return mapCareerError(error);
+  }
+}
+
+export async function pauseCareerPillarAction(
+  pillarName: string,
+): Promise<CareerActionResult> {
+  try {
+    const session = await requireCareerJourneySession();
+    await pauseCareerPillarForWeek(session.user.id, pillarName);
+    revalidateCareerPaths();
+    return { success: true };
+  } catch (error) {
+    return mapCareerError(error);
+  }
+}
+
+export async function saveCareerWeeklyReviewAction(input: {
+  weekStart: string;
+  gaveEnergy?: string;
+  drainedEnergy?: string;
+  roleFeltAlive?: string;
+  nextStep?: string;
+}): Promise<CareerActionResult> {
+  try {
+    const session = await requireCareerJourneySession();
+    await saveCareerWeeklyReview(session.user.id, input);
     revalidateCareerPaths();
     return { success: true };
   } catch (error) {

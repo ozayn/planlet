@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition, type ReactNode } from "react";
+import { useCallback, useState, useTransition, type ReactNode } from "react";
 
 import {
   addCareerSessionToTodayAction,
@@ -13,17 +13,24 @@ import {
   updateCareerSessionStatusAction,
   updateCareerTargetRolesAction,
 } from "@/app/(app)/career/actions";
-import type {
-  CareerJourneyPageData,
-  SerializedCareerSession,
-} from "@/lib/career-journey/career-journey";
+import { CareerCapacityPanel } from "@/components/career/career-capacity-panel";
+import { CareerStuckSupport } from "@/components/career/career-stuck-support";
+import { CareerTrackSuggestions } from "@/components/career/career-track-suggestions";
+import { CareerWeeklyBalance } from "@/components/career/career-weekly-balance";
+import { CareerWeeklyReview } from "@/components/career/career-weekly-review";
+import type { CareerJourneyPageData } from "@/lib/career-journey/career-journey";
 import type { CareerJobSummary } from "@/lib/career-journey/job-summary";
 import {
-  GENTLE_DAILY_OPTIONS,
+  loadTodayCapacity,
+  saveTodayCapacity,
+  type TodayCapacityState,
+} from "@/lib/career-journey/capacity";
+import {
   PRACTICE_MODE_LABELS,
   PRACTICE_STATUS_LABELS,
   PRACTICE_TYPE_LABELS,
 } from "@/lib/career-journey/constants";
+import { CAREER_MODE_META } from "@/lib/career-journey/modes";
 import { getAllTinyStepPresets } from "@/lib/career-journey/tiny-steps";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 
@@ -56,45 +63,16 @@ function SectionCard({
   );
 }
 
-function PillarProgressBar({
-  done,
-  target,
-  name,
-}: {
-  done: number;
-  target: number;
-  name: string;
-}) {
-  const ratio = target > 0 ? Math.min(done / target, 1) : 0;
-
-  return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between gap-3 text-sm">
-        <span className="text-foreground">{name}</span>
-        <span className="tabular-nums text-muted">
-          {done} / {target}
-        </span>
-      </div>
-      <div
-        className="h-2 overflow-hidden rounded-full bg-surface-muted"
-        aria-hidden="true"
-      >
-        <div
-          className="h-full rounded-full bg-accent/70 transition-all"
-          style={{ width: `${Math.round(ratio * 100)}%` }}
-        />
-      </div>
-    </div>
-  );
-}
-
 export function CareerJourneyPage({
   initialData,
   jobSummary,
   canUseCoaching,
   canUseJobTracker,
 }: CareerJourneyPageProps) {
-  const [data, setData] = useState(initialData);
+  const [data] = useState(initialData);
+  const [capacityState, setCapacityState] = useState<TodayCapacityState>(() =>
+    loadTodayCapacity(initialData.todayDate),
+  );
   const [roleInput, setRoleInput] = useState("");
   const [focusInput, setFocusInput] = useState(
     initialData.profile.currentFocus ?? "",
@@ -110,6 +88,18 @@ export function CareerJourneyPage({
   const [nextKindAction, setNextKindAction] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  const handleCapacityChange = useCallback(
+    (next: TodayCapacityState) => {
+      setCapacityState(next);
+      saveTodayCapacity(data.todayDate, next);
+    },
+    [data.todayDate],
+  );
+
+  const refreshPage = useCallback(() => {
+    window.location.reload();
+  }, []);
 
   function runAction(action: () => Promise<{ success: boolean; error?: string }>) {
     setError(null);
@@ -129,11 +119,8 @@ export function CareerJourneyPage({
     runAction(async () => {
       const result = await updateCareerTargetRolesAction(nextRoles);
       if (result.success) {
-        setData((current) => ({
-          ...current,
-          profile: { ...current.profile, targetRoles: nextRoles },
-        }));
         setRoleInput("");
+        refreshPage();
       }
       return result;
     });
@@ -149,19 +136,14 @@ export function CareerJourneyPage({
     runAction(async () => {
       const result = await updateCareerTargetRolesAction(nextRoles);
       if (result.success) {
-        setData((current) => ({
-          ...current,
-          profile: { ...current.profile, targetRoles: nextRoles },
-        }));
+        refreshPage();
       }
       return result;
     });
   }
 
   function handleSaveFocus() {
-    runAction(async () =>
-      updateCareerCurrentFocusAction(focusInput),
-    );
+    runAction(async () => updateCareerCurrentFocusAction(focusInput));
   }
 
   function handlePillarTargetChange(pillarId: string, value: string) {
@@ -174,20 +156,15 @@ export function CareerJourneyPage({
         weeklyTarget,
       );
       if (result.success) {
-        setData((current) => ({
-          ...current,
-          pillars: current.pillars.map((pillar) =>
-            pillar.id === pillarId ? { ...pillar, weeklyTarget } : pillar,
-          ),
-        }));
+        refreshPage();
       }
       return result;
     });
   }
 
   function handleCreateSession(input: {
-    type: SerializedCareerSession["type"];
-    mode: SerializedCareerSession["mode"];
+    type: (typeof data.todaySessions)[number]["type"];
+    mode: (typeof data.todaySessions)[number]["mode"];
     title: string;
   }) {
     runAction(async () => {
@@ -196,7 +173,7 @@ export function CareerJourneyPage({
         date: data.todayDate,
       });
       if (result.success) {
-        window.location.reload();
+        refreshPage();
       }
       return result;
     });
@@ -204,27 +181,12 @@ export function CareerJourneyPage({
 
   function handleSessionStatus(
     sessionId: string,
-    status: SerializedCareerSession["status"],
+    status: (typeof data.todaySessions)[number]["status"],
   ) {
     runAction(async () => {
       const result = await updateCareerSessionStatusAction(sessionId, status);
       if (result.success) {
-        setData((current) => ({
-          ...current,
-          todaySessions: current.todaySessions.map((session) =>
-            session.id === sessionId ? { ...session, status } : session,
-          ),
-          pillars: current.pillars.map((pillar) => {
-            const session = current.todaySessions.find(
-              (entry) => entry.id === sessionId,
-            );
-            if (!session || status !== "DONE") {
-              return pillar;
-            }
-            return pillar;
-          }),
-        }));
-        window.location.reload();
+        refreshPage();
       }
       return result;
     });
@@ -273,6 +235,33 @@ export function CareerJourneyPage({
         </p>
       ) : null}
 
+      <CareerCapacityPanel
+        state={capacityState}
+        onChange={handleCapacityChange}
+      />
+
+      <CareerTrackSuggestions
+        todayDate={data.todayDate}
+        capacityState={capacityState}
+        isPending={isPending}
+        onError={setError}
+        onSuccess={refreshPage}
+      />
+
+      <CareerWeeklyBalance weekSessions={data.weekSessions} />
+
+      <CareerStuckSupport
+        todayDate={data.todayDate}
+        recentSessions={data.recentSessions}
+        isPending={isPending}
+        onError={setError}
+        onSuccess={refreshPage}
+        onReflection={(text, next) => {
+          setReflection(text);
+          setNextKindAction(next);
+        }}
+      />
+
       <SectionCard
         title="Role focus"
         description="What you're moving toward — without pressure to pick just one path."
@@ -307,7 +296,7 @@ export function CareerJourneyPage({
           />
           <button
             type="button"
-            className="ui-button-secondary shrink-0"
+            className="ui-btn-secondary shrink-0"
             onClick={handleAddRole}
             disabled={isPending}
           >
@@ -328,7 +317,7 @@ export function CareerJourneyPage({
         </label>
         <button
           type="button"
-          className="ui-button-secondary"
+          className="ui-btn-secondary"
           onClick={handleSaveFocus}
           disabled={isPending}
         >
@@ -337,21 +326,21 @@ export function CareerJourneyPage({
       </SectionCard>
 
       <SectionCard
-        title="This week"
-        description="Gentle progress — enough counts."
+        title="Weekly targets"
+        description="Optional targets — enough counts, no streaks."
       >
         <div className="space-y-4">
           {data.pillars
             .filter((pillar) => pillar.isActive)
             .map((pillar) => (
-              <div key={pillar.id} className="space-y-2">
-                <PillarProgressBar
-                  name={pillar.name}
-                  done={pillar.doneThisWeek}
-                  target={pillar.weeklyTarget}
-                />
-                <label className="flex items-center gap-2 text-xs text-muted">
-                  <span>Weekly target</span>
+              <label
+                key={pillar.id}
+                className="flex items-center justify-between gap-3 text-sm"
+              >
+                <span className="text-foreground">{pillar.name}</span>
+                <span className="flex items-center gap-2 text-muted">
+                  <span className="tabular-nums">{pillar.doneThisWeek} done</span>
+                  <span>target</span>
                   <input
                     id={`career-pillar-target-${pillar.id}`}
                     name={`careerPillarTarget-${pillar.id}`}
@@ -364,8 +353,8 @@ export function CareerJourneyPage({
                     }
                     className="ui-input w-16 px-2 py-1 text-sm"
                   />
-                </label>
-              </div>
+                </span>
+              </label>
             ))}
         </div>
       </SectionCard>
@@ -407,36 +396,11 @@ export function CareerJourneyPage({
               </dd>
             </div>
           </dl>
-          <Link href="/jobs" className="ui-button-secondary inline-flex">
+          <Link href="/jobs" className="ui-btn-secondary inline-flex">
             Open job tracker
           </Link>
         </SectionCard>
       ) : null}
-
-      <SectionCard
-        title="Today's gentle options"
-        description="Pick one tiny step — or skip without guilt."
-      >
-        <div className="flex flex-wrap gap-2">
-          {GENTLE_DAILY_OPTIONS.map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              className="rounded-full border border-border-soft px-3 py-1.5 text-sm text-foreground transition-colors hover:bg-accent-cream/60"
-              disabled={isPending}
-              onClick={() =>
-                handleCreateSession({
-                  type: option.type,
-                  mode: option.mode,
-                  title: option.title,
-                })
-              }
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-      </SectionCard>
 
       <SectionCard title="Today's sessions">
         {data.todaySessions.length === 0 ? (
@@ -457,7 +421,8 @@ export function CareerJourneyPage({
                     </p>
                     <p className="mt-0.5 text-xs text-muted">
                       {PRACTICE_TYPE_LABELS[session.type]} ·{" "}
-                      {PRACTICE_MODE_LABELS[session.mode]} ·{" "}
+                      {PRACTICE_MODE_LABELS[session.mode]} (
+                      {CAREER_MODE_META[session.mode].minutes}) ·{" "}
                       {PRACTICE_STATUS_LABELS[session.status]}
                     </p>
                   </div>
@@ -465,7 +430,7 @@ export function CareerJourneyPage({
                     {session.status !== "DONE" ? (
                       <button
                         type="button"
-                        className="ui-button-secondary px-2 py-1 text-xs"
+                        className="ui-btn-secondary ui-btn-compact"
                         disabled={isPending}
                         onClick={() =>
                           handleSessionStatus(session.id, "DONE")
@@ -474,9 +439,33 @@ export function CareerJourneyPage({
                         Done
                       </button>
                     ) : null}
+                    {session.status === "PLANNED" ? (
+                      <>
+                        <button
+                          type="button"
+                          className="ui-btn-secondary ui-btn-compact"
+                          disabled={isPending}
+                          onClick={() =>
+                            handleSessionStatus(session.id, "SKIPPED")
+                          }
+                        >
+                          Skip
+                        </button>
+                        <button
+                          type="button"
+                          className="ui-btn-secondary ui-btn-compact"
+                          disabled={isPending}
+                          onClick={() =>
+                            handleSessionStatus(session.id, "MOVED")
+                          }
+                        >
+                          Move
+                        </button>
+                      </>
+                    ) : null}
                     <button
                       type="button"
-                      className="ui-button-secondary px-2 py-1 text-xs"
+                      className="ui-btn-secondary ui-btn-compact"
                       disabled={isPending}
                       onClick={() => handleAddToToday(session.id)}
                     >
@@ -492,21 +481,21 @@ export function CareerJourneyPage({
         <div className="flex flex-wrap gap-2 pt-1">
           <button
             type="button"
-            className="ui-button-secondary"
+            className="ui-btn-secondary"
             onClick={() => setShowAddSession((value) => !value)}
           >
             Add session
           </button>
           <button
             type="button"
-            className="ui-button-secondary"
+            className="ui-btn-secondary"
             onClick={() => setShowTinySteps((value) => !value)}
           >
             Tiny step
           </button>
           <button
             type="button"
-            className="ui-button-secondary"
+            className="ui-btn-secondary"
             onClick={() => setShowReflect((value) => !value)}
           >
             Reflect
@@ -525,7 +514,7 @@ export function CareerJourneyPage({
             />
             <button
               type="button"
-              className="ui-button-primary"
+              className="ui-btn-primary"
               disabled={isPending || !sessionTitle.trim()}
               onClick={() => {
                 handleCreateSession({
@@ -620,7 +609,7 @@ export function CareerJourneyPage({
             />
             <button
               type="button"
-              className="ui-button-primary"
+              className="ui-btn-primary"
               disabled={isPending}
               onClick={handleCheckIn}
             >
@@ -630,6 +619,14 @@ export function CareerJourneyPage({
         ) : null}
       </SectionCard>
 
+      <CareerWeeklyReview
+        weekStart={data.weekStart}
+        todayDate={data.todayDate}
+        initialReview={data.weeklyReview}
+        isPending={isPending}
+        onError={setError}
+      />
+
       {canUseCoaching ? (
         <SectionCard
           title="Career reflection"
@@ -637,7 +634,7 @@ export function CareerJourneyPage({
         >
           <button
             type="button"
-            className="ui-button-primary"
+            className="ui-btn-primary"
             disabled={isPending}
             onClick={handleGenerateReflection}
           >

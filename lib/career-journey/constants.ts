@@ -28,15 +28,20 @@ export const PRACTICE_TYPE_TO_PILLAR: Record<CareerPracticeType, string> = {
   NETWORKING: "Networking",
   LEETCODE: "Technical prep",
   ML_REVIEW: "Technical prep",
+  INTERVIEW_PREP: "Technical prep",
   SYSTEM_DESIGN: "Technical prep",
   COURSE: "Learning",
   PROJECT: "Portfolio/projects",
   RECOVERY: "Recovery/reflection",
 };
 
+/** Alias for balance/stuck helpers */
+export const PRACTICE_TYPE_TO_PILLAR_NAME = PRACTICE_TYPE_TO_PILLAR;
+
 export const PRACTICE_TYPE_LABELS: Record<CareerPracticeType, string> = {
   LEETCODE: "LeetCode",
   ML_REVIEW: "ML review",
+  INTERVIEW_PREP: "Interview prep",
   COURSE: "Course",
   SYSTEM_DESIGN: "System design",
   PROJECT: "Project",

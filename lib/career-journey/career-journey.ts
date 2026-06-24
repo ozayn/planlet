@@ -49,7 +49,17 @@ export type CareerJourneyPageData = {
   pillars: SerializedCareerPillar[];
   todaySessions: SerializedCareerSession[];
   weekSessions: SerializedCareerSession[];
+  recentSessions: SerializedCareerSession[];
   todayDate: string;
+  weekStart: string;
+  weeklyReview: SerializedWeeklyReview | null;
+};
+
+export type SerializedWeeklyReview = {
+  gaveEnergy: string | null;
+  drainedEnergy: string | null;
+  roleFeltAlive: string | null;
+  nextStep: string | null;
 };
 
 function parseTargetRoles(value: unknown): string[] {
@@ -138,8 +148,12 @@ export async function getCareerJourneyPageData(
   const weekRange = getWeekRange(now);
   const weekStart = formatDateString(weekRange.start);
   const weekEnd = formatDateString(weekRange.end);
+  const recentCutoff = new Date(now);
+  recentCutoff.setDate(recentCutoff.getDate() - 14);
+  const recentStart = formatDateString(recentCutoff);
 
-  const [profile, pillars, weekSessions] = await Promise.all([
+  const [profile, pillars, weekSessions, recentSessions, weeklyReview] =
+    await Promise.all([
     prisma.careerProfile.findUnique({ where: { userId } }),
     prisma.careerPillar.findMany({
       where: { userId },
@@ -151,6 +165,16 @@ export async function getCareerJourneyPageData(
         date: { gte: weekStart, lte: weekEnd },
       },
       orderBy: [{ date: "desc" }, { updatedAt: "desc" }],
+    }),
+    prisma.careerPracticeSession.findMany({
+      where: {
+        userId,
+        date: { gte: recentStart, lte: weekEnd },
+      },
+      orderBy: [{ date: "desc" }, { updatedAt: "desc" }],
+    }),
+    prisma.careerWeeklyReview.findUnique({
+      where: { userId_weekStart: { userId, weekStart } },
     }),
   ]);
 
@@ -177,7 +201,17 @@ export async function getCareerJourneyPageData(
       .filter((session) => session.date === todayDate)
       .map(serializeSession),
     weekSessions: weekSessions.map(serializeSession),
+    recentSessions: recentSessions.map(serializeSession),
     todayDate,
+    weekStart,
+    weeklyReview: weeklyReview
+      ? {
+          gaveEnergy: weeklyReview.gaveEnergy,
+          drainedEnergy: weeklyReview.drainedEnergy,
+          roleFeltAlive: weeklyReview.roleFeltAlive,
+          nextStep: weeklyReview.nextStep,
+        }
+      : null,
   };
 }
 
@@ -364,4 +398,66 @@ export async function createCareerCheckIn(
       note: input.note?.trim() || null,
     },
   });
+}
+
+export async function pauseCareerPillarForWeek(
+  userId: string,
+  pillarName: string,
+): Promise<void> {
+  const pillar = await prisma.careerPillar.findFirst({
+    where: { userId, name: pillarName },
+  });
+
+  if (!pillar) {
+    throw new CareerJourneyError("Pillar not found.");
+  }
+
+  await prisma.careerPillar.update({
+    where: { id: pillar.id },
+    data: { isActive: false },
+  });
+}
+
+export type SaveWeeklyReviewInput = {
+  weekStart: string;
+  gaveEnergy?: string | null;
+  drainedEnergy?: string | null;
+  roleFeltAlive?: string | null;
+  nextStep?: string | null;
+};
+
+export async function saveCareerWeeklyReview(
+  userId: string,
+  input: SaveWeeklyReviewInput,
+): Promise<SerializedWeeklyReview> {
+  if (!isValidDateString(input.weekStart)) {
+    throw new CareerJourneyError("Invalid week start.");
+  }
+
+  const review = await prisma.careerWeeklyReview.upsert({
+    where: {
+      userId_weekStart: { userId, weekStart: input.weekStart },
+    },
+    create: {
+      userId,
+      weekStart: input.weekStart,
+      gaveEnergy: input.gaveEnergy?.trim() || null,
+      drainedEnergy: input.drainedEnergy?.trim() || null,
+      roleFeltAlive: input.roleFeltAlive?.trim() || null,
+      nextStep: input.nextStep?.trim() || null,
+    },
+    update: {
+      gaveEnergy: input.gaveEnergy?.trim() || null,
+      drainedEnergy: input.drainedEnergy?.trim() || null,
+      roleFeltAlive: input.roleFeltAlive?.trim() || null,
+      nextStep: input.nextStep?.trim() || null,
+    },
+  });
+
+  return {
+    gaveEnergy: review.gaveEnergy,
+    drainedEnergy: review.drainedEnergy,
+    roleFeltAlive: review.roleFeltAlive,
+    nextStep: review.nextStep,
+  };
 }
