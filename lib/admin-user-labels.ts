@@ -37,5 +37,9 @@ export function formatAdminRoleCapabilities(user: AdminUserStatRow): string {
     parts.push("Body journey");
   }
 
+  if (user.canUseLearningJourneyFeatures) {
+    parts.push("Learning");
+  }
+
   return parts.join(" · ");
 }

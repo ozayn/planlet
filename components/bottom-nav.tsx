@@ -165,6 +165,20 @@ function NavIcon({
           <path d="M12 14v3M9 20h6" />
         </svg>
       );
+    case "learning-journey":
+      return (
+        <svg
+          className={className}
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth={1.75}
+          aria-hidden="true"
+        >
+          <path d="M9 18h6" />
+          <path d="M10 22h4" />
+          <path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2Z" />
+        </svg>
+      );
     case "body-journey":
       return (
         <svg

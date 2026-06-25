@@ -25,6 +25,7 @@ import {
   canUseCareerJourneyFeatures,
   canUseCoachingFeatures,
   canUseJobTrackerFeatures,
+  canUseLearningJourneyFeatures,
   canUseReflectionFeatures,
   canUseTherapyThoughts,
 } from "@/lib/roles";
@@ -40,6 +41,9 @@ export default async function SettingsPage() {
     isAdmin,
     canUseCoachingFeatures: canUseCoachingFeatures(session?.user ?? {}),
     canUseBodyJourneyFeatures: canUseBodyJourneyFeatures(session?.user ?? {}),
+    canUseLearningJourneyFeatures: canUseLearningJourneyFeatures(
+      session?.user ?? {},
+    ),
     canUseJobTrackerFeatures: canUseJobTrackerFeatures(session?.user ?? {}),
     canUseCareerJourneyFeatures: canUseCareerJourneyFeatures(
       session?.user ?? {},

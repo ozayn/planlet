@@ -11,6 +11,7 @@ export type ProfileMenuAccess = {
   canUseCareerJourneyFeatures?: boolean;
   canUseBodyJourneyFeatures?: boolean;
   canUseCoachingFeatures?: boolean;
+  canUseLearningJourneyFeatures?: boolean;
   isAdmin?: boolean;
 };
 
@@ -56,4 +57,10 @@ export function canShowCoachingInProfileMenu(
   access: ProfileMenuAccess,
 ): boolean {
   return Boolean(access.canUseCoachingFeatures || access.isAdmin);
+}
+
+export function canShowLearningJourneyInProfileMenu(
+  access: ProfileMenuAccess,
+): boolean {
+  return Boolean(access.canUseLearningJourneyFeatures || access.isAdmin);
 }

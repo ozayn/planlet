@@ -124,6 +124,18 @@ export const ACTION_LABELS = {
     title: "Delete",
     ariaLabel: "Delete therapy thought",
   },
+  moreLearningEntry: {
+    title: "More",
+    ariaLabel: "Open learning entry actions",
+  },
+  editLearningEntry: {
+    title: "Edit",
+    ariaLabel: "Edit learning entry",
+  },
+  deleteLearningEntry: {
+    title: "Delete",
+    ariaLabel: "Delete learning entry",
+  },
   notifications: {
     title: "Notifications",
     ariaLabel: "Notifications",

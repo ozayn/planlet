@@ -9,6 +9,7 @@ import {
   canUseCareerJourneyFeatures,
   canUseCoachingFeatures,
   canUseJobTrackerFeatures,
+  canUseLearningJourneyFeatures,
 } from "@/lib/roles";
 import { serializeNotification } from "@/lib/notification-serialize";
 import {
@@ -43,6 +44,9 @@ export default async function AppLayout({
     isAdmin,
     canUseCoachingFeatures: canUseCoachingFeatures(session?.user ?? {}),
     canUseBodyJourneyFeatures: canUseBodyJourneyFeatures(session?.user ?? {}),
+    canUseLearningJourneyFeatures: canUseLearningJourneyFeatures(
+      session?.user ?? {},
+    ),
     canUseJobTrackerFeatures: canUseJobTrackerFeatures(session?.user ?? {}),
     canUseCareerJourneyFeatures: canUseCareerJourneyFeatures(
       session?.user ?? {},

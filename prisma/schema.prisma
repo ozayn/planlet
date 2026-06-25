@@ -195,6 +195,46 @@ enum BodySymptomType {
   OTHER
 }
 
+enum LearningSourceType {
+  MUSEUM
+  BOOK
+  ARTICLE
+  PODCAST
+  YOUTUBE
+  COURSE
+  FRIEND
+  CONVERSATION
+  THERAPY
+  IMPROV
+  WORK
+  PROJECT
+  TRAVEL
+  LIFE
+  OTHER
+}
+
+enum LearningCategory {
+  ART
+  HISTORY
+  PHILOSOPHY
+  PSYCHOLOGY
+  MACHINE_LEARNING
+  DATA_ENGINEERING
+  CAREER
+  RELATIONSHIPS
+  BODY
+  CREATIVITY
+  IMPROV
+  MEDITATION
+  POLITICS
+  CULTURE
+  SCIENCE
+  TECHNOLOGY
+  LANGUAGE
+  SELF_UNDERSTANDING
+  OTHER
+}
+
 model User {
   id            String      @id @default(cuid())
   name          String?
@@ -208,6 +248,7 @@ model User {
   canUseJobTrackerFeatures  Boolean     @default(false)
   canUseCareerJourneyFeatures Boolean   @default(false)
   canUseBodyJourneyFeatures   Boolean   @default(false)
+  canUseLearningJourneyFeatures Boolean @default(false)
   planItemView              PlanItemView @default(CHECKLIST)
   taskOrganizationDisplay   TaskOrganizationDisplay @default(ASSIGNED_ONLY)
   mobileNavItems            String[]    @default([])
@@ -244,6 +285,7 @@ model User {
   careerPracticeSessions        CareerPracticeSession[]
   careerWeeklyReviews           CareerWeeklyReview[]
   bodyEntries                   BodyEntry[]
+  learningEntries               LearningEntry[]
   aiUsageLogs                   AiUsageLog[]
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -738,6 +780,25 @@ model BodyEntry {
 
   @@index([userId, entryDate])
   @@index([userId, symptomType])
+}
+
+model LearningEntry {
+  id         String              @id @default(cuid())
+  userId     String
+  user       User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title      String
+  summary    String              @db.Text
+  sourceType LearningSourceType?
+  sourceName String?
+  category   LearningCategory?
+  learnedAt  DateTime
+  notes      String?             @db.Text
+  importance Int                 @default(3)
+  tags       String[]
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+
+  @@index([userId, learnedAt])
 }
 
 model AppSetting {

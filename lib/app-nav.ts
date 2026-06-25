@@ -4,6 +4,7 @@ import {
   canShowCareerJourneyInProfileMenu,
   canShowCoachingInProfileMenu,
   canShowJobTrackerInProfileMenu,
+  canShowLearningJourneyInProfileMenu,
   type ProfileMenuAccess,
 } from "@/lib/profile-menu";
 
@@ -15,6 +16,7 @@ export type AppNavItemKey =
   | "insights"
   | "themes"
   | "coaching"
+  | "learning-journey"
   | "body-journey"
   | "jobs"
   | "career"
@@ -51,6 +53,14 @@ function reflectionItems(access: AppNavAccess): AppNavItem[] {
 
   if (canShowCoachingInProfileMenu(access)) {
     items.push({ key: "coaching", label: "Coaching", href: "/coaching" });
+  }
+
+  if (canShowLearningJourneyInProfileMenu(access)) {
+    items.push({
+      key: "learning-journey",
+      label: "Learning Journey",
+      href: "/learning",
+    });
   }
 
   if (canShowBodyJourneyInProfileMenu(access)) {
@@ -99,6 +109,7 @@ export const ALL_APP_NAV_ITEM_KEYS: AppNavItemKey[] = [
   "insights",
   "themes",
   "coaching",
+  "learning-journey",
   "body-journey",
   "jobs",
   "career",
@@ -124,6 +135,8 @@ export function canAccessAppNavItem(
       return true;
     case "coaching":
       return canShowCoachingInProfileMenu(access);
+    case "learning-journey":
+      return canShowLearningJourneyInProfileMenu(access);
     case "body-journey":
       return canShowBodyJourneyInProfileMenu(access);
     case "jobs":
@@ -198,6 +211,10 @@ export function isAppNavItemActive(
 
   if (key === "coaching") {
     return pathname === "/coaching" || pathname.startsWith("/coaching/");
+  }
+
+  if (key === "learning-journey") {
+    return pathname === "/learning" || pathname.startsWith("/learning/");
   }
 
   if (key === "body-journey") {

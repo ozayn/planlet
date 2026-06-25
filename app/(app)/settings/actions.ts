@@ -59,6 +59,7 @@ function getAppNavAccessFromSession(session: Session): AppNavAccess {
     isAdmin: isAdminRole(session.user.role),
     canUseCoachingFeatures: session.user.canUseCoachingFeatures,
     canUseBodyJourneyFeatures: session.user.canUseBodyJourneyFeatures,
+    canUseLearningJourneyFeatures: session.user.canUseLearningJourneyFeatures,
     canUseJobTrackerFeatures: session.user.canUseJobTrackerFeatures,
     canUseCareerJourneyFeatures: session.user.canUseCareerJourneyFeatures,
   };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useTheme } from "next-themes";
+import { useTheme } from "@/components/theme-provider";
 import { useEffect } from "react";
 
 const DAY_THEME_COLOR = "#faf9f7";

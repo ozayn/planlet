@@ -47,6 +47,10 @@ export function getBodyJourneyEmails(): string[] {
   return parseEmailList(process.env.BODY_JOURNEY_EMAILS);
 }
 
+export function getLearningJourneyEmails(): string[] {
+  return parseEmailList(process.env.LEARNING_JOURNEY_EMAILS);
+}
+
 export function isAdminEmail(email?: string | null): boolean {
   if (!email?.trim()) {
     return false;
@@ -101,6 +105,14 @@ export function isBodyJourneyEmail(email?: string | null): boolean {
   }
 
   return getBodyJourneyEmails().includes(email.trim().toLowerCase());
+}
+
+export function isLearningJourneyEmail(email?: string | null): boolean {
+  if (!email?.trim()) {
+    return false;
+  }
+
+  return getLearningJourneyEmails().includes(email.trim().toLowerCase());
 }
 
 export function isEmailAllowed(email?: string | null): boolean {

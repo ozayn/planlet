@@ -11,6 +11,10 @@ const protectedPrefixes = [
   "/coaching",
   "/therapy-thoughts",
   "/admin",
+  "/body",
+  "/career",
+  "/jobs",
+  "/learning",
 ];
 
 export const proxy = auth((req) => {
@@ -38,5 +42,9 @@ export const config = {
     "/coaching/:path*",
     "/therapy-thoughts/:path*",
     "/admin/:path*",
+    "/body/:path*",
+    "/career/:path*",
+    "/jobs/:path*",
+    "/learning/:path*",
   ],
 };

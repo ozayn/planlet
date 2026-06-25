@@ -15,6 +15,7 @@ declare module "next-auth" {
       canUseJobTrackerFeatures: boolean;
       canUseCareerJourneyFeatures: boolean;
       canUseBodyJourneyFeatures: boolean;
+      canUseLearningJourneyFeatures: boolean;
       timezone: string;
       timezoneMode: TimezoneMode;
     };

@@ -6,6 +6,7 @@ import {
   isCoachEmail,
   isFeedbackEmail,
   isJobTrackerEmail,
+  isLearningJourneyEmail,
   isReflectorEmail,
 } from "@/lib/auth-allowlist";
 import { isAdmin } from "@/lib/roles";
@@ -19,6 +20,7 @@ export type ResolvedUserAccess = {
   canUseJobTrackerFeatures: boolean;
   canUseCareerJourneyFeatures: boolean;
   canUseBodyJourneyFeatures: boolean;
+  canUseLearningJourneyFeatures: boolean;
 };
 
 type ExistingUserAccess = {
@@ -29,6 +31,7 @@ type ExistingUserAccess = {
   canUseJobTrackerFeatures?: boolean;
   canUseCareerJourneyFeatures?: boolean;
   canUseBodyJourneyFeatures?: boolean;
+  canUseLearningJourneyFeatures?: boolean;
 };
 
 export function resolveUserAccessFromEmail(
@@ -44,6 +47,7 @@ export function resolveUserAccessFromEmail(
       canUseJobTrackerFeatures: true,
       canUseCareerJourneyFeatures: true,
       canUseBodyJourneyFeatures: true,
+      canUseLearningJourneyFeatures: true,
     };
   }
 
@@ -53,6 +57,7 @@ export function resolveUserAccessFromEmail(
   const canUseJobTrackerFeatures = isJobTrackerEmail(email);
   const canUseCareerJourneyFeatures = isCareerJourneyEmail(email);
   const canUseBodyJourneyFeatures = isBodyJourneyEmail(email);
+  const canUseLearningJourneyFeatures = isLearningJourneyEmail(email);
 
   let role: UserRole = "USER";
   if (canUseReflectionFeatures) {
@@ -67,6 +72,7 @@ export function resolveUserAccessFromEmail(
     canUseJobTrackerFeatures,
     canUseCareerJourneyFeatures,
     canUseBodyJourneyFeatures,
+    canUseLearningJourneyFeatures,
   };
 }
 
@@ -93,6 +99,7 @@ export async function syncUserAccessOnSignIn(
       canUseJobTrackerFeatures: true,
       canUseCareerJourneyFeatures: true,
       canUseBodyJourneyFeatures: true,
+      canUseLearningJourneyFeatures: true,
     },
   });
 
@@ -105,7 +112,8 @@ export async function syncUserAccessOnSignIn(
     existing?.canUseCoachingFeatures !== access.canUseCoachingFeatures ||
     existing?.canUseJobTrackerFeatures !== access.canUseJobTrackerFeatures ||
     existing?.canUseCareerJourneyFeatures !== access.canUseCareerJourneyFeatures ||
-    existing?.canUseBodyJourneyFeatures !== access.canUseBodyJourneyFeatures
+    existing?.canUseBodyJourneyFeatures !== access.canUseBodyJourneyFeatures ||
+    existing?.canUseLearningJourneyFeatures !== access.canUseLearningJourneyFeatures
   ) {
     await prisma.user.update({
       where: { id: userId },

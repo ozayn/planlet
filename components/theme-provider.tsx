@@ -1,28 +1,92 @@
 "use client";
 
-import { ThemeProvider as NextThemesProvider } from "next-themes";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 
-type ThemeProviderProps = {
-  children: React.ReactNode;
+import {
+  THEME_STORAGE_KEY,
+  applyResolvedTheme,
+  resolveThemeFromSetting,
+  resolveThemeSetting,
+  type ResolvedTheme,
+  type ThemeSetting,
+} from "@/lib/theme";
+
+type ThemeContextValue = {
+  theme: ThemeSetting;
+  resolvedTheme: ResolvedTheme;
+  setTheme: (theme: ThemeSetting) => void;
 };
 
-/**
- * next-themes injects an inline <script> to prevent theme flash before hydration.
- * React 19 logs a dev-only warning ("Encountered a script tag while rendering
- * React component"). Setup matches the recommended pattern; the script still runs
- * correctly during SSR. Safe to ignore in development until next-themes updates.
- */
+const ThemeContext = createContext<ThemeContextValue | null>(null);
+
+export function useTheme(): ThemeContextValue {
+  const context = useContext(ThemeContext);
+
+  if (!context) {
+    throw new Error("useTheme must be used within ThemeProvider.");
+  }
+
+  return context;
+}
+
+type ThemeProviderProps = {
+  children: ReactNode;
+};
+
 export function ThemeProvider({ children }: ThemeProviderProps) {
+  const [theme, setThemeState] = useState<ThemeSetting>("system");
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>("light");
+
+  useEffect(() => {
+    const stored = resolveThemeSetting(localStorage.getItem(THEME_STORAGE_KEY));
+    setThemeState(stored);
+    const resolved = resolveThemeFromSetting(stored);
+    setResolvedTheme(resolved);
+    applyResolvedTheme(resolved);
+  }, []);
+
+  useEffect(() => {
+    if (theme !== "system") {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+    function syncSystemTheme() {
+      const resolved = resolveThemeFromSetting("system");
+      setResolvedTheme(resolved);
+      applyResolvedTheme(resolved);
+    }
+
+    syncSystemTheme();
+    mediaQuery.addEventListener("change", syncSystemTheme);
+
+    return () => mediaQuery.removeEventListener("change", syncSystemTheme);
+  }, [theme]);
+
+  const value = useMemo<ThemeContextValue>(
+    () => ({
+      theme,
+      resolvedTheme,
+      setTheme(nextTheme) {
+        setThemeState(nextTheme);
+        localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
+        const resolved = resolveThemeFromSetting(nextTheme);
+        setResolvedTheme(resolved);
+        applyResolvedTheme(resolved);
+      },
+    }),
+    [theme, resolvedTheme],
+  );
+
   return (
-    <NextThemesProvider
-      attribute="class"
-      defaultTheme="system"
-      enableSystem
-      disableTransitionOnChange
-      storageKey="planlet-theme"
-      themes={["light", "dark", "system"]}
-    >
-      {children}
-    </NextThemesProvider>
+    <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
   );
 }
