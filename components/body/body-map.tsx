@@ -156,7 +156,7 @@ function OrientationLabels({ side }: { side: BodySideValue }) {
   const isFront = side === "FRONT";
 
   return (
-    <g aria-hidden="true" className="fill-muted">
+    <g aria-hidden="true" className="body-map-orientation-label">
       <text x={isFront ? 32 : 32} y={92} textAnchor="middle" fontSize="9" fontWeight="500">
         {isFront ? "R" : "L"}
       </text>
@@ -169,132 +169,49 @@ function OrientationLabels({ side }: { side: BodySideValue }) {
 
 function FrontSilhouette() {
   return (
-    <g
-      className="text-border"
-      fill="currentColor"
-      fillOpacity={0.12}
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinejoin="round"
-    >
-      <ellipse cx="100" cy="50" rx="24" ry="28" />
-      <circle cx="92" cy="47" r="1.5" fill="currentColor" fillOpacity={0.35} stroke="none" />
-      <circle cx="108" cy="47" r="1.5" fill="currentColor" fillOpacity={0.35} stroke="none" />
-      <path
-        d="M94 58 Q100 62 106 58"
-        fill="none"
-        stroke="currentColor"
-        strokeOpacity={0.4}
-        strokeWidth="1"
-      />
-      <path d="M88 78 Q100 74 112 78 L110 94 Q100 96 90 94 Z" />
-      <path d="M72 94 Q100 88 128 94 L124 188 Q100 194 76 188 Z" />
-      <path
-        d="M78 98 Q88 124 98 116"
-        fill="none"
-        stroke="currentColor"
-        strokeOpacity={0.5}
-        strokeWidth="1.25"
-      />
-      <path
-        d="M122 98 Q112 124 102 116"
-        fill="none"
-        stroke="currentColor"
-        strokeOpacity={0.5}
-        strokeWidth="1.25"
-      />
-      <path d="M72 94 Q54 100 48 126 L44 154 L42 172 Q40 184 48 192 Q58 198 66 188 L70 158 L74 132 Q76 112 72 94 Z" />
-      <path d="M128 94 Q146 100 152 126 L156 154 L158 172 Q160 184 152 192 Q142 198 134 188 L130 158 L126 132 Q124 112 128 94 Z" />
-      <ellipse cx="52" cy="188" rx="13" ry="10" />
-      <ellipse cx="148" cy="188" rx="13" ry="10" />
-      <path d="M84 188 L78 302 L74 318 Q70 336 82 346 Q94 352 104 340 L106 328 L100 188 Z" />
-      <path d="M116 188 L122 302 L126 318 Q130 336 118 346 Q106 352 96 340 L94 328 L100 188 Z" />
-      <path
-        d="M74 318 Q82 350 104 344 Q110 334 106 318"
-        fill="currentColor"
-        fillOpacity={0.14}
-        stroke="currentColor"
-        strokeWidth="1.5"
-      />
-      <path
-        d="M126 318 Q118 350 96 344 Q90 334 94 318"
-        fill="currentColor"
-        fillOpacity={0.14}
-        stroke="currentColor"
-        strokeWidth="1.5"
-      />
+    <g aria-hidden="true">
+      <g className="body-map-silhouette">
+        <ellipse cx="100" cy="50" rx="24" ry="28" />
+        <path d="M88 78 Q100 74 112 78 L110 94 Q100 96 90 94 Z" />
+        <path d="M72 94 Q100 88 128 94 L124 188 Q100 194 76 188 Z" />
+        <path d="M72 94 Q54 100 48 126 L44 154 L42 172 Q40 184 48 192 Q58 198 66 188 L70 158 L74 132 Q76 112 72 94 Z" />
+        <path d="M128 94 Q146 100 152 126 L156 154 L158 172 Q160 184 152 192 Q142 198 134 188 L130 158 L126 132 Q124 112 128 94 Z" />
+        <ellipse cx="52" cy="188" rx="13" ry="10" />
+        <ellipse cx="148" cy="188" rx="13" ry="10" />
+        <path d="M84 188 L78 302 L74 318 Q70 336 82 346 Q94 352 104 340 L106 328 L100 188 Z" />
+        <path d="M116 188 L122 302 L126 318 Q130 336 118 346 Q106 352 96 340 L94 328 L100 188 Z" />
+        <path d="M74 318 Q82 350 104 344 Q110 334 106 318" />
+        <path d="M126 318 Q118 350 96 344 Q90 334 94 318" />
+      </g>
+      <circle cx="92" cy="47" r="1.5" className="body-map-silhouette-feature" />
+      <circle cx="108" cy="47" r="1.5" className="body-map-silhouette-feature" />
+      <path d="M94 58 Q100 62 106 58" className="body-map-silhouette-detail" />
+      <path d="M78 98 Q88 124 98 116" className="body-map-silhouette-detail" />
+      <path d="M122 98 Q112 124 102 116" className="body-map-silhouette-detail" />
     </g>
   );
 }
 
 function BackSilhouette() {
   return (
-    <g
-      className="text-border"
-      fill="currentColor"
-      fillOpacity={0.12}
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinejoin="round"
-    >
-      <path d="M76 64 Q76 26 100 22 Q124 26 124 64 Q118 74 100 76 Q82 74 76 64 Z" />
-      <path d="M90 74 L110 74 L108 92 L92 92 Z" />
-      <path
-        d="M64 92 Q100 86 136 92"
-        fill="none"
-        stroke="currentColor"
-        strokeOpacity={0.55}
-      />
-      <path d="M70 92 L130 92 L126 188 Q100 196 74 188 Z" />
-      <ellipse
-        cx="84"
-        cy="118"
-        rx="10"
-        ry="14"
-        fill="currentColor"
-        fillOpacity={0.06}
-        stroke="currentColor"
-        strokeOpacity={0.25}
-        strokeWidth="1"
-      />
-      <ellipse
-        cx="116"
-        cy="118"
-        rx="10"
-        ry="14"
-        fill="currentColor"
-        fillOpacity={0.06}
-        stroke="currentColor"
-        strokeOpacity={0.25}
-        strokeWidth="1"
-      />
-      <path
-        d="M100 94 L100 182"
-        fill="none"
-        stroke="currentColor"
-        strokeOpacity={0.35}
-        strokeWidth="1"
-      />
-      <path d="M70 94 Q50 100 44 132 L40 160 L38 172 Q36 184 44 192 Q54 198 62 188 L66 158 L70 132 Z" />
-      <path d="M130 94 Q150 100 156 132 L160 160 L162 172 Q164 184 156 192 Q146 198 138 188 L134 158 L130 132 Z" />
-      <ellipse cx="52" cy="188" rx="13" ry="10" />
-      <ellipse cx="148" cy="188" rx="13" ry="10" />
-      <path d="M82 188 L76 302 L72 318 Q68 336 80 346 Q92 352 102 340 L104 328 L98 188 Z" />
-      <path d="M118 188 L124 302 L128 318 Q132 336 120 346 Q108 352 98 340 L96 328 L102 188 Z" />
-      <path
-        d="M72 318 Q80 350 102 344 Q108 334 104 318"
-        fill="currentColor"
-        fillOpacity={0.14}
-        stroke="currentColor"
-        strokeWidth="1.5"
-      />
-      <path
-        d="M128 318 Q120 350 98 344 Q92 334 96 318"
-        fill="currentColor"
-        fillOpacity={0.14}
-        stroke="currentColor"
-        strokeWidth="1.5"
-      />
+    <g aria-hidden="true">
+      <g className="body-map-silhouette">
+        <path d="M76 64 Q76 26 100 22 Q124 26 124 64 Q118 74 100 76 Q82 74 76 64 Z" />
+        <path d="M90 74 L110 74 L108 92 L92 92 Z" />
+        <path d="M70 92 L130 92 L126 188 Q100 196 74 188 Z" />
+        <path d="M70 94 Q50 100 44 132 L40 160 L38 172 Q36 184 44 192 Q54 198 62 188 L66 158 L70 132 Z" />
+        <path d="M130 94 Q150 100 156 132 L160 160 L162 172 Q164 184 156 192 Q146 198 138 188 L134 158 L130 132 Z" />
+        <ellipse cx="52" cy="188" rx="13" ry="10" />
+        <ellipse cx="148" cy="188" rx="13" ry="10" />
+        <path d="M82 188 L76 302 L72 318 Q68 336 80 346 Q92 352 102 340 L104 328 L98 188 Z" />
+        <path d="M118 188 L124 302 L128 318 Q132 336 120 346 Q108 352 98 340 L96 328 L102 188 Z" />
+        <path d="M72 318 Q80 350 102 344 Q108 334 104 318" />
+        <path d="M128 318 Q120 350 98 344 Q92 334 96 318" />
+      </g>
+      <path d="M64 92 Q100 86 136 92" className="body-map-silhouette-detail" />
+      <ellipse cx="84" cy="118" rx="10" ry="14" className="body-map-silhouette-soft" />
+      <ellipse cx="116" cy="118" rx="10" ry="14" className="body-map-silhouette-soft" />
+      <path d="M100 94 L100 182" className="body-map-silhouette-detail" />
     </g>
   );
 }
@@ -308,7 +225,7 @@ function BodyRegionLabels({
   activeRegion: string | null;
   showFaintLabels: boolean;
 }) {
-  const labelClass = "pointer-events-none select-none fill-muted";
+  const labelClass = "body-map-region-label pointer-events-none select-none";
 
   return (
     <g aria-hidden="true">
@@ -378,9 +295,9 @@ function BodyGuides({ side }: { side: BodySideValue }) {
         y1={0}
         x2={x}
         y2={VIEWBOX.height}
-        stroke="currentColor"
-        strokeOpacity={0.12}
+        className="body-map-guide"
         strokeWidth="0.5"
+        strokeOpacity={0.12}
       />,
     );
   }
@@ -393,25 +310,24 @@ function BodyGuides({ side }: { side: BodySideValue }) {
         y1={y}
         x2={VIEWBOX.width}
         y2={y}
-        stroke="currentColor"
-        strokeOpacity={0.12}
+        className="body-map-guide"
         strokeWidth="0.5"
+        strokeOpacity={0.12}
       />,
     );
   }
 
   return (
-    <g className="text-border pointer-events-none" aria-hidden="true">
+    <g className="pointer-events-none" aria-hidden="true">
       {gridLines}
       {HIT_AREAS.filter((area) => area.sides.includes(side)).map((area) => (
         <path
           key={`guide-${area.id}`}
           d={area.d}
-          fill="currentColor"
+          className="body-map-guide"
           fillOpacity={0.04}
-          stroke="currentColor"
-          strokeOpacity={0.2}
           strokeWidth="0.75"
+          strokeOpacity={0.2}
           strokeDasharray="3 3"
         />
       ))}
@@ -430,9 +346,9 @@ function EntryMarker({ entry }: { entry: SerializedBodyEntry }) {
       <circle
         r="7"
         fill={meta.color}
-        fillOpacity={0.85}
+        fillOpacity={0.9}
         stroke="var(--surface)"
-        strokeWidth="1.5"
+        strokeWidth="2"
       />
       <title>{`${meta.label} · ${entry.intensity}/10`}</title>
     </g>

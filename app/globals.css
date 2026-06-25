@@ -33,6 +33,14 @@
     100dvh - env(safe-area-inset-top, 0px) - 16px
   );
   --ui-overlay-nav-padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 72px);
+  --body-map-stroke: var(--border);
+  --body-map-secondary-stroke: color-mix(in srgb, var(--border) 52%, transparent);
+  --body-map-label: var(--muted);
+  --body-map-fill-opacity: 0.12;
+  --body-map-feature-fill-opacity: 0.35;
+  --body-map-soft-fill-opacity: 0.06;
+  --body-map-stroke-width: 1.5;
+  --body-map-detail-stroke-width: 1.25;
 }
 
 .dark {
@@ -59,6 +67,14 @@
   --shadow-elevated: 0 8px 24px rgb(0 0 0 / 0.38);
   --shadow-sheet: 0 -8px 32px rgb(0 0 0 / 0.42);
   --overlay: rgb(0 0 0 / 0.55);
+  --body-map-stroke: color-mix(in srgb, var(--foreground) 38%, transparent);
+  --body-map-secondary-stroke: color-mix(in srgb, var(--foreground) 32%, transparent);
+  --body-map-label: color-mix(in srgb, var(--foreground) 62%, transparent);
+  --body-map-fill-opacity: 0.14;
+  --body-map-feature-fill-opacity: 0.42;
+  --body-map-soft-fill-opacity: 0.1;
+  --body-map-stroke-width: 1.65;
+  --body-map-detail-stroke-width: 1.35;
 }
 
 @theme inline {
@@ -1968,4 +1984,41 @@ body {
       height: 2.25rem;
     }
   }
+}
+
+.body-map-silhouette {
+  fill: var(--body-map-stroke);
+  fill-opacity: var(--body-map-fill-opacity);
+  stroke: var(--body-map-stroke);
+  stroke-width: var(--body-map-stroke-width);
+  stroke-linejoin: round;
+}
+
+.body-map-silhouette-detail {
+  fill: none;
+  stroke: var(--body-map-secondary-stroke);
+  stroke-width: var(--body-map-detail-stroke-width);
+}
+
+.body-map-silhouette-feature {
+  fill: var(--body-map-secondary-stroke);
+  fill-opacity: var(--body-map-feature-fill-opacity);
+  stroke: none;
+}
+
+.body-map-silhouette-soft {
+  fill: var(--body-map-secondary-stroke);
+  fill-opacity: var(--body-map-soft-fill-opacity);
+  stroke: var(--body-map-secondary-stroke);
+  stroke-width: 1;
+}
+
+.body-map-orientation-label,
+.body-map-region-label {
+  fill: var(--body-map-label);
+}
+
+.body-map-guide {
+  stroke: var(--body-map-secondary-stroke);
+  fill: var(--body-map-secondary-stroke);
 }
