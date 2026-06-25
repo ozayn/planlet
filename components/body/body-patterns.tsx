@@ -1,11 +1,7 @@
 "use client";
 
-import type { BodySymptomType } from "@/app/generated/prisma/client";
-
-import {
-  BODY_SYMPTOM_META,
-  type BodyJourneyPatterns,
-} from "@/lib/body-journey/constants";
+import type { BodyJourneyPatterns } from "@/lib/body-journey/constants";
+import { BODY_SYMPTOM_META } from "@/lib/body-journey-types";
 
 type BodyPatternsProps = {
   patterns: BodyJourneyPatterns;
@@ -30,7 +26,7 @@ function StatRow({
 
 export function BodyPatterns({ patterns }: BodyPatternsProps) {
   const mostCommonLabel = patterns.mostCommonSymptom
-    ? BODY_SYMPTOM_META[patterns.mostCommonSymptom as BodySymptomType].label
+    ? BODY_SYMPTOM_META[patterns.mostCommonSymptom].label
     : "—";
 
   const averageLabel =
@@ -59,7 +55,7 @@ export function BodyPatterns({ patterns }: BodyPatternsProps) {
       {patterns.symptomCounts.length > 0 ? (
         <ul className="space-y-3 border-t border-border-soft pt-4">
           {patterns.symptomCounts.map((item) => {
-            const meta = BODY_SYMPTOM_META[item.type as BodySymptomType];
+            const meta = BODY_SYMPTOM_META[item.type];
 
             return (
               <li key={item.type}>

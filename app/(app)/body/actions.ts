@@ -1,6 +1,5 @@
 "use server";
 
-import type { BodySide, BodySymptomType } from "@/app/generated/prisma/client";
 import { revalidatePath } from "next/cache";
 
 import { auth } from "@/auth";
@@ -10,8 +9,13 @@ import {
   deleteBodyEntry,
   parseBodyEntryTags,
   updateBodyEntry,
-  type BodyJourneyPeriod,
 } from "@/lib/body-journey";
+import {
+  isBodySide,
+  isBodySymptomType,
+  type BodySideValue,
+  type BodySymptomTypeValue,
+} from "@/lib/body-journey-types";
 import { canUseBodyJourneyFeatures } from "@/lib/roles";
 
 export type BodyActionResult =
@@ -40,16 +44,24 @@ function revalidateBodyPath() {
 }
 
 type BodyEntryPayload = {
-  bodySide: BodySide;
+  bodySide: BodySideValue;
   markerX: number;
   markerY: number;
-  symptomType: BodySymptomType;
+  symptomType: BodySymptomTypeValue;
   intensity: number;
   notes?: string | null;
   tagsRaw?: string;
 };
 
 function buildEntryInput(payload: BodyEntryPayload) {
+  if (!isBodySide(payload.bodySide)) {
+    throw new BodyJourneyError("Invalid body side.");
+  }
+
+  if (!isBodySymptomType(payload.symptomType)) {
+    throw new BodyJourneyError("Invalid symptom type.");
+  }
+
   return {
     bodySide: payload.bodySide,
     markerX: payload.markerX,
@@ -100,5 +112,3 @@ export async function deleteBodyEntryAction(
     return mapBodyError(error);
   }
 }
-
-export type { BodyJourneyPeriod };

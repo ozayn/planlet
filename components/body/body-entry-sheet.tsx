@@ -1,6 +1,5 @@
 "use client";
 
-import type { BodySide, BodySymptomType } from "@/app/generated/prisma/client";
 import { useEffect, useId, useState, useTransition } from "react";
 
 import {
@@ -8,18 +7,22 @@ import {
   updateBodyEntryAction,
 } from "@/app/(app)/body/actions";
 import { SimpleSheet } from "@/components/ui/simple-sheet";
+import type { SerializedBodyEntry } from "@/lib/body-journey/constants";
+import {
+  formatBodyEntryTags,
+} from "@/lib/body-journey/constants";
 import {
   BODY_SYMPTOM_META,
   BODY_SYMPTOM_TYPES,
-  formatBodyEntryTags,
-  type SerializedBodyEntry,
-} from "@/lib/body-journey/constants";
+  type BodySideValue,
+  type BodySymptomTypeValue,
+} from "@/lib/body-journey-types";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 
 type BodyEntrySheetProps = {
   open: boolean;
   onClose: () => void;
-  side: BodySide;
+  side: BodySideValue;
   point: { x: number; y: number } | null;
   entry: SerializedBodyEntry | null;
 };
@@ -31,7 +34,7 @@ export function BodyEntrySheet({
   point,
   entry,
 }: BodyEntrySheetProps) {
-  const [symptomType, setSymptomType] = useState<BodySymptomType>("PAIN");
+  const [symptomType, setSymptomType] = useState<BodySymptomTypeValue>("PAIN");
   const [intensity, setIntensity] = useState(5);
   const [notes, setNotes] = useState("");
   const [tagsRaw, setTagsRaw] = useState("");

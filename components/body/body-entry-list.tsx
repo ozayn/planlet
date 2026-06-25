@@ -1,14 +1,11 @@
 "use client";
 
-import type { BodySymptomType } from "@/app/generated/prisma/client";
 import { useTransition } from "react";
 
 import { deleteBodyEntryAction } from "@/app/(app)/body/actions";
 import { PencilIcon, Trash2Icon } from "@/components/ui/action-icons";
-import {
-  BODY_SYMPTOM_META,
-  type SerializedBodyEntry,
-} from "@/lib/body-journey/constants";
+import type { SerializedBodyEntry } from "@/lib/body-journey/constants";
+import { BODY_SYMPTOM_META } from "@/lib/body-journey-types";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 
 type BodyEntryListProps = {
@@ -48,7 +45,7 @@ export function BodyEntryList({ entries, onEdit }: BodyEntryListProps) {
       <h2 className="text-sm font-semibold text-foreground">Recent observations</h2>
       <ul className="space-y-2">
         {entries.map((entry) => {
-          const meta = BODY_SYMPTOM_META[entry.symptomType as BodySymptomType];
+          const meta = BODY_SYMPTOM_META[entry.symptomType];
           const notePreview = previewNotes(entry.notes);
 
           return (

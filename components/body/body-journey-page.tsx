@@ -1,6 +1,5 @@
 "use client";
 
-import type { BodySide } from "@/app/generated/prisma/client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -9,30 +8,38 @@ import { BodyEntryList } from "@/components/body/body-entry-list";
 import { BodyEntrySheet } from "@/components/body/body-entry-sheet";
 import { BodyMap } from "@/components/body/body-map";
 import { BodyPatterns } from "@/components/body/body-patterns";
-import {
-  type BodyJourneyPageData,
-  type BodyJourneyPeriod,
-  type SerializedBodyEntry,
+import type {
+  BodyJourneyPageData,
+  SerializedBodyEntry,
 } from "@/lib/body-journey/constants";
+import {
+  BODY_JOURNEY_PERIOD_LABELS,
+  BODY_JOURNEY_PERIODS,
+  type BodyJourneyPeriodValue,
+} from "@/lib/body-journey-period";
+import {
+  BODY_SIDES,
+  BODY_SIDE_LABELS,
+  type BodySideValue,
+} from "@/lib/body-journey-types";
 
 type BodyJourneyPageProps = {
   data: BodyJourneyPageData;
 };
 
-const PERIOD_OPTIONS: Array<{ value: BodyJourneyPeriod; label: string }> = [
-  { value: "today", label: "Today" },
-  { value: "week", label: "Week" },
-  { value: "month", label: "Month" },
-];
+const PERIOD_OPTIONS = BODY_JOURNEY_PERIODS.map((value) => ({
+  value,
+  label: BODY_JOURNEY_PERIOD_LABELS[value],
+}));
 
-const SIDE_OPTIONS: Array<{ value: BodySide; label: string }> = [
-  { value: "FRONT", label: "Front" },
-  { value: "BACK", label: "Back" },
-];
+const SIDE_OPTIONS = BODY_SIDES.map((value) => ({
+  value,
+  label: BODY_SIDE_LABELS[value],
+}));
 
-function buildBodyHref(period: BodyJourneyPeriod, side: BodySide): string {
+function buildBodyHref(period: BodyJourneyPeriodValue, side: BodySideValue): string {
   const params = new URLSearchParams();
-  if (period !== "today") {
+  if (period !== "TODAY") {
     params.set("period", period);
   }
   if (side !== "FRONT") {

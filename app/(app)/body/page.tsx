@@ -1,13 +1,11 @@
-import type { BodySide } from "@/app/generated/prisma/client";
 import { notFound } from "next/navigation";
 
 import { auth } from "@/auth";
 import { BodyJourneyPage } from "@/components/body/body-journey-page";
 import { PageHeader } from "@/components/page-header";
-import {
-  getBodyJourneyPageData,
-  type BodyJourneyPeriod,
-} from "@/lib/body-journey";
+import { getBodyJourneyPageData } from "@/lib/body-journey";
+import { parseBodyJourneyPeriod } from "@/lib/body-journey-period";
+import { parseBodySide } from "@/lib/body-journey-types";
 import { canUseBodyJourneyFeatures } from "@/lib/roles";
 
 type BodyPageProps = {
@@ -16,22 +14,6 @@ type BodyPageProps = {
     side?: string;
   }>;
 };
-
-function parsePeriod(value: string | undefined): BodyJourneyPeriod {
-  if (value === "week" || value === "month") {
-    return value;
-  }
-
-  return "today";
-}
-
-function parseSide(value: string | undefined): BodySide {
-  if (value === "BACK") {
-    return "BACK";
-  }
-
-  return "FRONT";
-}
 
 export default async function BodyPage({ searchParams }: BodyPageProps) {
   const session = await auth();
@@ -42,8 +24,8 @@ export default async function BodyPage({ searchParams }: BodyPageProps) {
     notFound();
   }
 
-  const period = parsePeriod(params.period);
-  const side = parseSide(params.side);
+  const period = parseBodyJourneyPeriod(params.period);
+  const side = parseBodySide(params.side);
   const data = await getBodyJourneyPageData(userId, period, side);
 
   return (

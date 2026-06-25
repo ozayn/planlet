@@ -4,11 +4,15 @@ import type {
   BodySymptomType,
 } from "@/app/generated/prisma/client";
 import { APP_TIMEZONE } from "@/config/time";
+import type { BodyJourneyPeriodValue } from "@/lib/body-journey-period";
 import {
   BODY_SYMPTOM_TYPES,
+  type BodySideValue,
+  type BodySymptomTypeValue,
+} from "@/lib/body-journey-types";
+import {
   type BodyJourneyPageData,
   type BodyJourneyPatterns,
-  type BodyJourneyPeriod,
   type SerializedBodyEntry,
 } from "@/lib/body-journey/constants";
 import {
@@ -23,17 +27,38 @@ import { canUseBodyJourneyFeatures, type UserAccess } from "@/lib/roles";
 export type {
   BodyJourneyPageData,
   BodyJourneyPatterns,
-  BodyJourneyPeriod,
-  BodySymptomMeta,
   SerializedBodyEntry,
 } from "@/lib/body-journey/constants";
 
+export type { BodyJourneyPeriodValue } from "@/lib/body-journey-period";
+
+export type {
+  BodySideValue,
+  BodySymptomMeta,
+  BodySymptomTypeValue,
+} from "@/lib/body-journey-types";
+
 export {
-  BODY_SYMPTOM_META,
-  BODY_SYMPTOM_TYPES,
   formatBodyEntryTags,
   parseBodyEntryTags,
 } from "@/lib/body-journey/constants";
+
+export {
+  BODY_JOURNEY_PERIOD_LABELS,
+  BODY_JOURNEY_PERIODS,
+  isBodyJourneyPeriod,
+  parseBodyJourneyPeriod,
+} from "@/lib/body-journey-period";
+
+export {
+  BODY_SIDE_LABELS,
+  BODY_SIDES,
+  BODY_SYMPTOM_META,
+  BODY_SYMPTOM_TYPES,
+  isBodySide,
+  isBodySymptomType,
+  parseBodySide,
+} from "@/lib/body-journey-types";
 
 export class BodyJourneyError extends Error {
   constructor(message: string) {
@@ -56,10 +81,10 @@ function serializeBodyEntry(entry: BodyEntry): SerializedBodyEntry {
     id: entry.id,
     entryDate: entry.entryDate.toISOString(),
     entryDateLabel: formatEntryDateLabel(entry.entryDate),
-    bodySide: entry.bodySide,
+    bodySide: entry.bodySide as BodySideValue,
     markerX: entry.markerX,
     markerY: entry.markerY,
-    symptomType: entry.symptomType,
+    symptomType: entry.symptomType as BodySymptomTypeValue,
     intensity: entry.intensity,
     notes: entry.notes,
     tags: entry.tags,
@@ -68,11 +93,11 @@ function serializeBodyEntry(entry: BodyEntry): SerializedBodyEntry {
   };
 }
 
-function getPeriodRange(period: BodyJourneyPeriod, now = new Date()) {
+function getPeriodRange(period: BodyJourneyPeriodValue, now = new Date()) {
   switch (period) {
-    case "week":
+    case "WEEK":
       return getWeekRange(now);
-    case "month":
+    case "MONTH":
       return getMonthRange(now);
     default:
       return getTodayRange(now);
@@ -130,8 +155,8 @@ export function requireBodyJourneyUser(access: UserAccess): void {
 
 export async function getBodyJourneyPageData(
   userId: string,
-  period: BodyJourneyPeriod,
-  side: BodySide,
+  period: BodyJourneyPeriodValue,
+  side: BodySideValue,
 ): Promise<BodyJourneyPageData> {
   const range = getPeriodRange(period);
 
@@ -139,7 +164,7 @@ export async function getBodyJourneyPageData(
     prisma.bodyEntry.findMany({
       where: {
         userId,
-        bodySide: side,
+        bodySide: side as BodySide,
         entryDate: {
           gte: range.start,
           lte: range.end,
@@ -183,10 +208,10 @@ export async function getBodyEntryForUser(
 
 export type BodyEntryInput = {
   entryDate?: Date;
-  bodySide: BodySide;
+  bodySide: BodySideValue;
   markerX: number;
   markerY: number;
-  symptomType: BodySymptomType;
+  symptomType: BodySymptomTypeValue;
   intensity: number;
   notes?: string | null;
   tags?: string[];
@@ -200,10 +225,10 @@ export async function createBodyEntry(
     data: {
       userId,
       entryDate: input.entryDate ?? getTodayRange().start,
-      bodySide: input.bodySide,
+      bodySide: input.bodySide as BodySide,
       markerX: clampMarkerCoordinate(input.markerX),
       markerY: clampMarkerCoordinate(input.markerY),
-      symptomType: input.symptomType,
+      symptomType: input.symptomType as BodySymptomType,
       intensity: clampIntensity(input.intensity),
       notes: input.notes?.trim() || null,
       tags: input.tags ?? [],
@@ -228,10 +253,10 @@ export async function updateBodyEntry(
     where: { id: entryId },
     data: {
       entryDate: input.entryDate ?? existing.entryDate,
-      bodySide: input.bodySide,
+      bodySide: input.bodySide as BodySide,
       markerX: clampMarkerCoordinate(input.markerX),
       markerY: clampMarkerCoordinate(input.markerY),
-      symptomType: input.symptomType,
+      symptomType: input.symptomType as BodySymptomType,
       intensity: clampIntensity(input.intensity),
       notes: input.notes?.trim() || null,
       tags: input.tags ?? [],
