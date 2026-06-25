@@ -767,7 +767,7 @@ model BodyEntry {
   id          String           @id @default(cuid())
   userId      String
   user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  entryDate   DateTime
+  observedAt  DateTime
   bodySide    BodySide
   markerX     Float
   markerY     Float
@@ -778,7 +778,7 @@ model BodyEntry {
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
 
-  @@index([userId, entryDate])
+  @@index([userId, observedAt])
   @@index([userId, symptomType])
 }
 

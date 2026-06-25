@@ -56,7 +56,7 @@ export function BodyEntryList({ entries, onEdit }: BodyEntryListProps) {
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0 space-y-1">
                   <div className="flex flex-wrap items-center gap-2 text-sm">
-                    <span className="text-muted">{entry.entryDateLabel}</span>
+                    <span className="text-muted">{entry.observedAtLabel}</span>
                     <span className="text-foreground">{meta.label}</span>
                     <span className="tabular-nums text-muted">
                       {entry.intensity}/10

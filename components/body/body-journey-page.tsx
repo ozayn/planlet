@@ -151,6 +151,7 @@ export function BodyJourneyPage({ data }: BodyJourneyPageProps) {
         side={editingEntry?.bodySide ?? data.side}
         point={selectedPoint}
         entry={editingEntry}
+        defaultObservedDate={data.defaultObservedDate}
       />
     </div>
   );

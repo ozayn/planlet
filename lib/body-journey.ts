@@ -18,11 +18,13 @@ import {
 import {
   formatDateString,
   getMonthRange,
+  getTodayDateString,
   getTodayRange,
   getWeekRange,
 } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
 import { canUseBodyJourneyFeatures, type UserAccess } from "@/lib/roles";
+import { getUserTimezone } from "@/lib/user-timezone";
 
 export type {
   BodyJourneyPageData,
@@ -67,7 +69,7 @@ export class BodyJourneyError extends Error {
   }
 }
 
-function formatEntryDateLabel(date: Date): string {
+function formatObservedAtLabel(date: Date): string {
   return new Intl.DateTimeFormat("en", {
     month: "short",
     day: "numeric",
@@ -79,8 +81,8 @@ function formatEntryDateLabel(date: Date): string {
 function serializeBodyEntry(entry: BodyEntry): SerializedBodyEntry {
   return {
     id: entry.id,
-    entryDate: entry.entryDate.toISOString(),
-    entryDateLabel: formatEntryDateLabel(entry.entryDate),
+    observedAt: entry.observedAt.toISOString(),
+    observedAtLabel: formatObservedAtLabel(entry.observedAt),
     bodySide: entry.bodySide as BodySideValue,
     markerX: entry.markerX,
     markerY: entry.markerY,
@@ -116,7 +118,7 @@ function computePatterns(entries: BodyEntry[]): BodyJourneyPatterns {
   const monthRange = getMonthRange(new Date());
   const monthEntries = entries.filter(
     (entry) =>
-      entry.entryDate >= monthRange.start && entry.entryDate <= monthRange.end,
+      entry.observedAt >= monthRange.start && entry.observedAt <= monthRange.end,
   );
 
   const symptomCounts = BODY_SYMPTOM_TYPES.map((type) => ({
@@ -136,7 +138,7 @@ function computePatterns(entries: BodyEntry[]): BodyJourneyPatterns {
       : null;
 
   const trackedDays = new Set(
-    monthEntries.map((entry) => formatDateString(entry.entryDate)),
+    monthEntries.map((entry) => formatDateString(entry.observedAt)),
   );
 
   return {
@@ -158,6 +160,7 @@ export async function getBodyJourneyPageData(
   period: BodyJourneyPeriodValue,
   side: BodySideValue,
 ): Promise<BodyJourneyPageData> {
+  const timezone = await getUserTimezone(userId);
   const range = getPeriodRange(period);
 
   const [mapEntries, recentEntries, patternEntries] = await Promise.all([
@@ -165,22 +168,22 @@ export async function getBodyJourneyPageData(
       where: {
         userId,
         bodySide: side as BodySide,
-        entryDate: {
+        observedAt: {
           gte: range.start,
           lte: range.end,
         },
       },
-      orderBy: [{ entryDate: "desc" }, { createdAt: "desc" }],
+      orderBy: [{ observedAt: "desc" }, { createdAt: "desc" }],
     }),
     prisma.bodyEntry.findMany({
       where: { userId },
-      orderBy: [{ entryDate: "desc" }, { createdAt: "desc" }],
+      orderBy: [{ observedAt: "desc" }, { createdAt: "desc" }],
       take: 20,
     }),
     prisma.bodyEntry.findMany({
       where: {
         userId,
-        entryDate: {
+        observedAt: {
           gte: getMonthRange(new Date()).start,
           lte: getMonthRange(new Date()).end,
         },
@@ -191,6 +194,7 @@ export async function getBodyJourneyPageData(
   return {
     period,
     side,
+    defaultObservedDate: getTodayDateString(timezone),
     mapEntries: mapEntries.map(serializeBodyEntry),
     recentEntries: recentEntries.map(serializeBodyEntry),
     patterns: computePatterns(patternEntries),
@@ -207,7 +211,7 @@ export async function getBodyEntryForUser(
 }
 
 export type BodyEntryInput = {
-  entryDate?: Date;
+  observedAt: Date;
   bodySide: BodySideValue;
   markerX: number;
   markerY: number;
@@ -224,7 +228,7 @@ export async function createBodyEntry(
   const entry = await prisma.bodyEntry.create({
     data: {
       userId,
-      entryDate: input.entryDate ?? getTodayRange().start,
+      observedAt: input.observedAt,
       bodySide: input.bodySide as BodySide,
       markerX: clampMarkerCoordinate(input.markerX),
       markerY: clampMarkerCoordinate(input.markerY),
@@ -252,7 +256,7 @@ export async function updateBodyEntry(
   const entry = await prisma.bodyEntry.update({
     where: { id: entryId },
     data: {
-      entryDate: input.entryDate ?? existing.entryDate,
+      observedAt: input.observedAt,
       bodySide: input.bodySide as BodySide,
       markerX: clampMarkerCoordinate(input.markerX),
       markerY: clampMarkerCoordinate(input.markerY),

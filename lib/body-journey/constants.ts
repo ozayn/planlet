@@ -6,8 +6,8 @@ import type {
 
 export type SerializedBodyEntry = {
   id: string;
-  entryDate: string;
-  entryDateLabel: string;
+  observedAt: string;
+  observedAtLabel: string;
   bodySide: BodySideValue;
   markerX: number;
   markerY: number;
@@ -29,6 +29,7 @@ export type BodyJourneyPatterns = {
 export type BodyJourneyPageData = {
   period: BodyJourneyPeriodValue;
   side: BodySideValue;
+  defaultObservedDate: string;
   mapEntries: SerializedBodyEntry[];
   recentEntries: SerializedBodyEntry[];
   patterns: BodyJourneyPatterns;

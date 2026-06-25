@@ -16,6 +16,7 @@ import {
   type BodySideValue,
   type BodySymptomTypeValue,
 } from "@/lib/body-journey-types";
+import { isValidDateString, parseDateString } from "@/lib/dates";
 import { canUseBodyJourneyFeatures } from "@/lib/roles";
 
 export type BodyActionResult =
@@ -44,6 +45,7 @@ function revalidateBodyPath() {
 }
 
 type BodyEntryPayload = {
+  observedAt: string;
   bodySide: BodySideValue;
   markerX: number;
   markerY: number;
@@ -52,6 +54,20 @@ type BodyEntryPayload = {
   notes?: string | null;
   tagsRaw?: string;
 };
+
+function parseObservedAt(value: string | undefined): Date {
+  const dateString = value?.trim();
+
+  if (!dateString) {
+    throw new BodyJourneyError("Observed date is required.");
+  }
+
+  if (!isValidDateString(dateString)) {
+    throw new BodyJourneyError("Invalid observed date.");
+  }
+
+  return parseDateString(dateString);
+}
 
 function buildEntryInput(payload: BodyEntryPayload) {
   if (!isBodySide(payload.bodySide)) {
@@ -63,6 +79,7 @@ function buildEntryInput(payload: BodyEntryPayload) {
   }
 
   return {
+    observedAt: parseObservedAt(payload.observedAt),
     bodySide: payload.bodySide,
     markerX: payload.markerX,
     markerY: payload.markerY,
