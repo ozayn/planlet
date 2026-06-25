@@ -794,7 +794,7 @@ model LearningEntry {
   learnedAt  DateTime
   notes      String?             @db.Text
   importance Int                 @default(3)
-  tags       String[]
+  themes     String[]
   createdAt  DateTime            @default(now())
   updatedAt  DateTime            @updatedAt
 

@@ -3,13 +3,13 @@
 import { useEffect, useId, useState, useTransition } from "react";
 
 import { updateLearningEntryAction } from "@/app/(app)/learning/actions";
+import { LearningThemesField } from "@/components/learning/learning-themes-field";
 import { SimpleSheet } from "@/components/ui/simple-sheet";
 import {
   LEARNING_CATEGORIES,
   LEARNING_CATEGORY_LABELS,
   LEARNING_SOURCE_TYPE_LABELS,
   LEARNING_SOURCE_TYPES,
-  formatLearningEntryTags,
   type LearningCategoryValue,
   type LearningSourceTypeValue,
   type SerializedLearningEntry,
@@ -35,7 +35,7 @@ export function LearningEntryEditSheet({
   const [category, setCategory] = useState<LearningCategoryValue | "">("");
   const [learnedAt, setLearnedAt] = useState("");
   const [importance, setImportance] = useState("3");
-  const [tags, setTags] = useState("");
+  const [themes, setThemes] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -55,7 +55,7 @@ export function LearningEntryEditSheet({
     setCategory(entry.category ?? "");
     setLearnedAt(entry.learnedAt);
     setImportance(String(entry.importance));
-    setTags(formatLearningEntryTags(entry.tags));
+    setThemes(entry.themes);
     setNotes(entry.notes ?? "");
     setError(null);
   }, [open, entry]);
@@ -75,7 +75,7 @@ export function LearningEntryEditSheet({
       category: category || null,
       learnedAt,
       importance: Number(importance),
-      tags,
+      themes,
       notes: notes.trim() || null,
     };
 
@@ -232,19 +232,11 @@ export function LearningEntryEditSheet({
           </select>
         </label>
 
-        <label className="block space-y-1.5">
-          <span className="text-xs font-medium text-muted">Tags</span>
-          <input
-            type="text"
-            value={tags}
-            onChange={(event) => setTags(event.target.value)}
-            disabled={isPending}
-            placeholder="museum, improv, career"
-            className="ui-input w-full"
-            dir="auto"
-            {...passwordManagerSafeControlProps}
-          />
-        </label>
+        <LearningThemesField
+          themes={themes}
+          onThemesChange={setThemes}
+          disabled={isPending}
+        />
 
         <label htmlFor={notesId} className="block space-y-1.5">
           <span className="text-xs font-medium text-muted">Notes</span>

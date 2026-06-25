@@ -2,6 +2,7 @@
 
 import { useId, useState } from "react";
 
+import { LearningThemesField } from "@/components/learning/learning-themes-field";
 import {
   LEARNING_CATEGORIES,
   LEARNING_CATEGORY_LABELS,
@@ -32,7 +33,7 @@ export function LearningCaptureForm({
   const [category, setCategory] = useState<LearningCategoryValue | "">("");
   const [learnedAt, setLearnedAt] = useState(defaultLearnedAt);
   const [importance, setImportance] = useState("3");
-  const [tags, setTags] = useState("");
+  const [themes, setThemes] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
   const summaryId = useId();
 
@@ -44,7 +45,7 @@ export function LearningCaptureForm({
     setCategory("");
     setLearnedAt(defaultLearnedAt);
     setImportance("3");
-    setTags("");
+    setThemes([]);
     setNotes("");
     setShowDetails(false);
   }
@@ -60,7 +61,7 @@ export function LearningCaptureForm({
       category: category || null,
       learnedAt,
       importance: Number(importance),
-      tags,
+      themes,
       notes: notes.trim() || null,
     });
 
@@ -198,18 +199,11 @@ export function LearningCaptureForm({
             </label>
           </div>
 
-          <label className="block space-y-1.5">
-            <span className="text-xs font-medium text-muted">Tags</span>
-            <input
-              type="text"
-              value={tags}
-              onChange={(event) => setTags(event.target.value)}
-              disabled={disabled}
-              placeholder="museum, improv, career"
-              className="ui-input w-full"
-              dir="auto"
-            />
-          </label>
+          <LearningThemesField
+            themes={themes}
+            onThemesChange={setThemes}
+            disabled={disabled}
+          />
 
           <label className="block space-y-1.5">
             <span className="text-xs font-medium text-muted">Notes</span>

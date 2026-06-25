@@ -37,6 +37,14 @@ export function LearningEntryCard({
   ].filter(Boolean);
   const summaryPreview = previewText(entry.summary);
   const notesPreview = previewText(entry.notes);
+  const metadataParts = [
+    entry.categoryLabel,
+    ...entry.themes,
+  ].filter(Boolean);
+  const secondaryParts = [
+    sourceParts.length > 0 ? sourceParts.join(" · ") : null,
+    formatLearningImportanceLabel(entry.importance),
+  ].filter(Boolean);
 
   return (
     <article className="group rounded-2xl border border-border-soft bg-surface p-4 shadow-sm">
@@ -61,6 +69,10 @@ export function LearningEntryCard({
         </div>
       </div>
 
+      {metadataParts.length > 0 ? (
+        <p className="mt-2 text-xs text-muted">{metadataParts.join(" · ")}</p>
+      ) : null}
+
       {summaryPreview ? (
         <p
           className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-foreground"
@@ -76,29 +88,9 @@ export function LearningEntryCard({
         </p>
       ) : null}
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        {entry.categoryLabel ? (
-          <span className="rounded-full border border-border-soft px-2.5 py-1 text-xs text-foreground">
-            {entry.categoryLabel}
-          </span>
-        ) : null}
-        {sourceParts.length > 0 ? (
-          <span className="rounded-full border border-border-soft px-2.5 py-1 text-xs text-muted">
-            {sourceParts.join(" · ")}
-          </span>
-        ) : null}
-        <span className="rounded-full border border-border-soft px-2.5 py-1 text-xs text-muted">
-          {formatLearningImportanceLabel(entry.importance)}
-        </span>
-        {entry.tags.map((tag) => (
-          <span
-            key={tag}
-            className="rounded-full bg-accent-cream/60 px-2.5 py-1 text-xs text-foreground"
-          >
-            {tag}
-          </span>
-        ))}
-      </div>
+      {secondaryParts.length > 0 ? (
+        <p className="mt-3 text-xs text-muted-light">{secondaryParts.join(" · ")}</p>
+      ) : null}
     </article>
   );
 }

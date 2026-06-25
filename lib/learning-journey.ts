@@ -16,7 +16,7 @@ import {
   type UpdateLearningEntryInput,
   isLearningCategory,
   isLearningSourceType,
-  parseLearningEntryTags,
+  normalizeLearningThemes,
 } from "@/lib/learning-journey/constants";
 import { prisma } from "@/lib/prisma";
 import { canUseLearningJourneyFeatures, type UserAccess } from "@/lib/roles";
@@ -34,13 +34,15 @@ export type {
 export {
   LEARNING_CATEGORIES,
   LEARNING_CATEGORY_LABELS,
+  LEARNING_DEFAULT_THEMES,
   LEARNING_SOURCE_TYPE_LABELS,
   LEARNING_SOURCE_TYPES,
-  formatLearningEntryTags,
   formatLearningImportanceLabel,
+  getCustomLearningThemes,
   isLearningCategory,
   isLearningSourceType,
-  parseLearningEntryTags,
+  normalizeLearningThemes,
+  toggleLearningTheme,
 } from "@/lib/learning-journey/constants";
 
 export class LearningJourneyError extends Error {
@@ -133,7 +135,7 @@ function parseLearningEntryFields(
     learnedAt?: string | null;
     notes?: string | null;
     importance?: number | null;
-    tags?: string | null;
+    themes?: string[];
   },
   timezone: string,
   options: { requireAnyContent: boolean },
@@ -184,7 +186,7 @@ function parseLearningEntryFields(
     learnedAt: parseDateString(learnedAtString),
     notes,
     importance,
-    tags: parseLearningEntryTags(input.tags),
+    themes: normalizeLearningThemes(input.themes),
   };
 }
 
@@ -219,7 +221,7 @@ function serializeLearningEntry(
     learnedAtLabel: formatLearnedAtLabel(entry.learnedAt, timezone),
     notes: entry.notes,
     importance: entry.importance,
-    tags: entry.tags,
+    themes: entry.themes,
     createdAt: entry.createdAt.toISOString(),
   };
 }
@@ -236,7 +238,7 @@ export function validateCreateLearningEntryInput(
   learnedAt: Date;
   notes: string | null;
   importance: number;
-  tags: string[];
+  themes: string[];
 } {
   const summary = input.summary?.trim();
 
@@ -267,7 +269,7 @@ export function validateUpdateLearningEntryInput(
   learnedAt: Date;
   notes: string | null;
   importance: number;
-  tags: string[];
+  themes: string[];
 } {
   return parseLearningEntryFields(input, timezone, { requireAnyContent: true });
 }

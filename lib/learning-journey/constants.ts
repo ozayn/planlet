@@ -89,6 +89,13 @@ export const LEARNING_CATEGORY_LABELS: Record<LearningCategoryValue, string> = {
   OTHER: "Other",
 };
 
+export const MAX_LEARNING_THEMES = 12;
+export const MAX_LEARNING_THEME_LENGTH = 40;
+
+export const LEARNING_DEFAULT_THEMES = LEARNING_CATEGORIES.filter(
+  (category) => category !== "OTHER",
+).map((category) => LEARNING_CATEGORY_LABELS[category]);
+
 export type SerializedLearningEntry = {
   id: string;
   title: string;
@@ -102,7 +109,7 @@ export type SerializedLearningEntry = {
   learnedAtLabel: string;
   notes: string | null;
   importance: number;
-  tags: string[];
+  themes: string[];
   createdAt: string;
 };
 
@@ -121,7 +128,7 @@ export type CreateLearningEntryInput = {
   learnedAt?: string | null;
   notes?: string | null;
   importance?: number | null;
-  tags?: string | null;
+  themes?: string[];
 };
 
 export type UpdateLearningEntryInput = {
@@ -133,7 +140,7 @@ export type UpdateLearningEntryInput = {
   learnedAt?: string | null;
   notes?: string | null;
   importance?: number | null;
-  tags?: string | null;
+  themes?: string[];
 };
 
 export function isLearningSourceType(
@@ -153,41 +160,99 @@ export function isLearningCategory(
   );
 }
 
-export function parseLearningEntryTags(raw: string | null | undefined): string[] {
-  const MAX_TAG_LENGTH = 40;
-  const MAX_TAGS = 12;
+export function normalizeLearningThemeKey(theme: string): string {
+  return theme.trim().toLowerCase();
+}
 
-  if (!raw?.trim()) {
+export function normalizeLearningTheme(theme: string): string | null {
+  const trimmed = theme.trim().slice(0, MAX_LEARNING_THEME_LENGTH);
+  if (!trimmed) {
+    return null;
+  }
+
+  const defaultMatch = LEARNING_DEFAULT_THEMES.find(
+    (label) => normalizeLearningThemeKey(label) === normalizeLearningThemeKey(trimmed),
+  );
+
+  return defaultMatch ?? trimmed;
+}
+
+export function normalizeLearningThemes(
+  themes: string[] | null | undefined,
+): string[] {
+  if (!themes?.length) {
     return [];
   }
 
   const seen = new Set<string>();
-  const tags: string[] = [];
+  const normalizedThemes: string[] = [];
 
-  for (const part of raw.split(",")) {
-    const tag = part.trim().slice(0, MAX_TAG_LENGTH);
-    if (!tag) {
+  for (const rawTheme of themes) {
+    const theme = normalizeLearningTheme(rawTheme);
+    if (!theme) {
       continue;
     }
 
-    const key = tag.toLowerCase();
+    const key = normalizeLearningThemeKey(theme);
     if (seen.has(key)) {
       continue;
     }
 
     seen.add(key);
-    tags.push(tag);
+    normalizedThemes.push(theme);
 
-    if (tags.length >= MAX_TAGS) {
+    if (normalizedThemes.length >= MAX_LEARNING_THEMES) {
       break;
     }
   }
 
-  return tags;
+  return normalizedThemes;
 }
 
-export function formatLearningEntryTags(tags: string[]): string {
-  return tags.join(", ");
+export function toggleLearningTheme(themes: string[], theme: string): string[] {
+  const normalized = normalizeLearningTheme(theme);
+  if (!normalized) {
+    return themes;
+  }
+
+  const key = normalizeLearningThemeKey(normalized);
+  if (themes.some((item) => normalizeLearningThemeKey(item) === key)) {
+    return themes.filter((item) => normalizeLearningThemeKey(item) !== key);
+  }
+
+  if (themes.length >= MAX_LEARNING_THEMES) {
+    return themes;
+  }
+
+  return [...themes, normalized];
+}
+
+export function addLearningTheme(themes: string[], theme: string): string[] {
+  const normalized = normalizeLearningTheme(theme);
+  if (!normalized) {
+    return themes;
+  }
+
+  const key = normalizeLearningThemeKey(normalized);
+  if (themes.some((item) => normalizeLearningThemeKey(item) === key)) {
+    return themes;
+  }
+
+  if (themes.length >= MAX_LEARNING_THEMES) {
+    return themes;
+  }
+
+  return [...themes, normalized];
+}
+
+export function getCustomLearningThemes(themes: string[]): string[] {
+  const defaultKeys = new Set(
+    LEARNING_DEFAULT_THEMES.map((theme) => normalizeLearningThemeKey(theme)),
+  );
+
+  return themes.filter(
+    (theme) => !defaultKeys.has(normalizeLearningThemeKey(theme)),
+  );
 }
 
 export function formatLearningImportanceLabel(importance: number): string {
