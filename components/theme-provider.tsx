@@ -12,8 +12,8 @@ import {
 import {
   THEME_STORAGE_KEY,
   applyResolvedTheme,
+  readStoredThemeSetting,
   resolveThemeFromSetting,
-  resolveThemeSetting,
   type ResolvedTheme,
   type ThemeSetting,
 } from "@/lib/theme";
@@ -41,19 +41,16 @@ type ThemeProviderProps = {
 };
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
-  const [theme, setThemeState] = useState<ThemeSetting>("system");
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>("light");
-
-  useEffect(() => {
-    const stored = resolveThemeSetting(localStorage.getItem(THEME_STORAGE_KEY));
-    setThemeState(stored);
-    const resolved = resolveThemeFromSetting(stored);
-    setResolvedTheme(resolved);
-    applyResolvedTheme(resolved);
-  }, []);
+  const [theme, setThemeState] = useState<ThemeSetting>(() => readStoredThemeSetting());
+  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(() =>
+    resolveThemeFromSetting(readStoredThemeSetting()),
+  );
 
   useEffect(() => {
     if (theme !== "system") {
+      const resolved = resolveThemeFromSetting(theme);
+      setResolvedTheme(resolved);
+      applyResolvedTheme(resolved);
       return;
     }
 
