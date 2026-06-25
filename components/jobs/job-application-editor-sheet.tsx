@@ -3,10 +3,10 @@
 import { useEffect, useState, useTransition } from "react";
 
 import {
-  extractJobFromUrlAction,
   updateJobApplicationAction,
   type SerializedJobApplication,
 } from "@/app/(app)/jobs/actions";
+import { JobUrlExtractControls } from "@/components/jobs/job-url-extract-controls";
 import { SimpleSheet } from "@/components/ui/simple-sheet";
 import { JOB_APPLICATION_STATUSES } from "@/lib/job-application-constants";
 import { applyExtractedJobToEditForm } from "@/lib/apply-extracted-job-details";
@@ -22,6 +22,8 @@ type JobApplicationEditorSheetProps = {
   onArchive: (jobId: string) => void;
   onDelete: (jobId: string) => void;
   isPending?: boolean;
+  jobs?: SerializedJobApplication[];
+  onOpenJob?: (job: SerializedJobApplication) => void;
 };
 
 export function JobApplicationEditorSheet({
@@ -32,15 +34,13 @@ export function JobApplicationEditorSheet({
   onArchive,
   onDelete,
   isPending = false,
+  jobs = [],
+  onOpenJob,
 }: JobApplicationEditorSheetProps) {
   const [isSaving, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [duplicateWarning, setDuplicateWarning] = useState(false);
-  const [fetchNotice, setFetchNotice] = useState<{
-    tone: "error" | "success";
-    message: string;
-  } | null>(null);
-  const [isFetching, setIsFetching] = useState(false);
+  const [duplicateJobId, setDuplicateJobId] = useState<string | null>(null);
   const [form, setForm] = useState({
     url: "",
     title: "",
@@ -77,7 +77,7 @@ export function JobApplicationEditorSheet({
     });
     setError(null);
     setDuplicateWarning(false);
-    setFetchNotice(null);
+    setDuplicateJobId(null);
   }, [job]);
 
   if (!job) {
@@ -95,6 +95,7 @@ export function JobApplicationEditorSheet({
 
     setError(null);
     setDuplicateWarning(false);
+    setDuplicateJobId(null);
 
     startTransition(async () => {
       const result = await updateJobApplicationAction({
@@ -105,6 +106,7 @@ export function JobApplicationEditorSheet({
       if (!result.success) {
         setError(result.error);
         setDuplicateWarning(Boolean(result.duplicate));
+        setDuplicateJobId(result.duplicateJobId ?? null);
         return;
       }
 
@@ -112,37 +114,36 @@ export function JobApplicationEditorSheet({
     });
   }
 
-  async function handleFetchDetails() {
-    const url = form.url.trim();
-    if (!url || pending || isFetching) {
-      return;
+  function openDuplicateJob(existingJobId: string) {
+    const existing = jobs.find((entry) => entry.id === existingJobId);
+    if (existing && onOpenJob) {
+      onOpenJob(existing);
+      setError(null);
+      setDuplicateWarning(false);
+      setDuplicateJobId(null);
     }
+  }
 
-    setFetchNotice(null);
-    setIsFetching(true);
+  const sheetTitle =
+    job.company.trim() && job.title.trim()
+      ? `${job.company} — ${job.title}`
+      : job.title.trim() || job.company.trim() || "Job application";
 
-    try {
-      const result = await extractJobFromUrlAction(url);
-      if (!result.ok) {
-        setFetchNotice({ tone: "error", message: result.message });
-        return;
-      }
-
-      setForm((current) => applyExtractedJobToEditForm(current, result.details));
-      setFetchNotice({
-        tone: "success",
-        message: "Details filled in. Review before saving.",
-      });
-    } finally {
-      setIsFetching(false);
-    }
+  function handleExtracted(
+    details: Parameters<typeof applyExtractedJobToEditForm>[1],
+    canonicalUrl?: string,
+  ) {
+    setForm((current) => {
+      const next = applyExtractedJobToEditForm(current, details);
+      return canonicalUrl ? { ...next, url: canonicalUrl } : next;
+    });
   }
 
   return (
     <SimpleSheet
       open={open}
       onClose={onClose}
-      title={`${job.company} — ${job.title}`}
+      title={sheetTitle}
       footer={
         <div className="flex flex-wrap gap-2">
           <button
@@ -175,40 +176,21 @@ export function JobApplicationEditorSheet({
       }
     >
       <div className="space-y-3">
+        <p className="text-xs text-muted">
+          You can save a job now and complete the details later.
+        </p>
+
         <label className="block space-y-1.5" htmlFor={fieldId("url")}>
           <span className="text-xs text-muted">URL</span>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <input
-              id={fieldId("url")}
-              name={fieldId("url")}
-              type="url"
-              value={form.url}
-              onChange={(event) => setForm({ ...form, url: event.target.value })}
-              disabled={pending}
-              className="ui-input min-h-10 flex-1 px-3 text-sm"
-              {...passwordManagerSafeControlProps}
-            />
-            <button
-              type="button"
-              disabled={pending || isFetching || !form.url.trim()}
-              onClick={handleFetchDetails}
-              className="ui-btn-secondary min-h-10 px-3 text-sm"
-            >
-              {isFetching ? "Fetching…" : "Fetch details"}
-            </button>
-          </div>
-          {fetchNotice ? (
-            <p
-              className={`text-sm ${
-                fetchNotice.tone === "error"
-                  ? "text-accent-yellow"
-                  : "text-muted"
-              }`}
-              role={fetchNotice.tone === "error" ? "alert" : "status"}
-            >
-              {fetchNotice.message}
-            </p>
-          ) : null}
+          <JobUrlExtractControls
+            url={form.url}
+            onUrlChange={(nextUrl) => setForm({ ...form, url: nextUrl })}
+            onExtracted={handleExtracted}
+            disabled={pending}
+            urlInputId={fieldId("url")}
+            urlInputName={fieldId("url")}
+            pasteInputId={fieldId("paste")}
+          />
         </label>
 
         <div className="grid gap-3 sm:grid-cols-2">
@@ -389,12 +371,23 @@ export function JobApplicationEditorSheet({
           />
         </label>
 
-        {duplicateWarning ? (
-          <p className="text-sm text-accent-yellow" role="alert">
-            You already saved this job.
-          </p>
+        {duplicateWarning && error ? (
+          <div className="space-y-2">
+            <p className="text-sm text-accent-yellow" role="alert">
+              {error}
+            </p>
+            {duplicateJobId ? (
+              <button
+                type="button"
+                onClick={() => openDuplicateJob(duplicateJobId)}
+                className="ui-btn-secondary min-h-9 px-3 text-sm"
+              >
+                Open existing job
+              </button>
+            ) : null}
+          </div>
         ) : null}
-        {error ? (
+        {error && !duplicateWarning ? (
           <p className="text-sm text-accent-red" role="alert">
             {error}
           </p>

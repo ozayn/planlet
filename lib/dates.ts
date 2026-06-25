@@ -83,6 +83,17 @@ export function formatDateString(date: Date): string {
   return formatInTimeZone(date, APP_TIMEZONE, "yyyy-MM-dd");
 }
 
+export function formatDateStringInTimezone(date: Date, timezone: string): string {
+  return formatInTimeZone(date, timezone, "yyyy-MM-dd");
+}
+
+export function getTodayDateString(
+  timezone: string,
+  now = new Date(),
+): string {
+  return formatDateStringInTimezone(now, timezone);
+}
+
 export function shiftDateString(dateString: string, days: number): string {
   const [year, month, day] = dateString.split("-").map(Number);
   const shifted = addDays(new Date(year, month - 1, day), days);

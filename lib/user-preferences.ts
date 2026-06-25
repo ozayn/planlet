@@ -55,3 +55,22 @@ export async function updateTaskOrganizationDisplay(
     data: { taskOrganizationDisplay },
   });
 }
+
+export async function getMobileNavItemsForUser(userId: string): Promise<string[]> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { mobileNavItems: true },
+  });
+
+  return user?.mobileNavItems ?? [];
+}
+
+export async function updateMobileNavItems(
+  userId: string,
+  mobileNavItems: string[],
+): Promise<void> {
+  await prisma.user.update({
+    where: { id: userId },
+    data: { mobileNavItems },
+  });
+}

@@ -4,6 +4,7 @@ import { auth } from "@/auth";
 import { PageHeader } from "@/components/page-header";
 import { SettingsAppNotifications } from "@/components/settings/settings-app-notifications";
 import { getNotificationPreferencesForUser } from "@/lib/notification-preferences";
+import { MobileNavSettings } from "@/components/settings/mobile-nav-settings";
 import { PlanItemViewSettings } from "@/components/settings/plan-item-view-settings";
 import { SettingsInstallPlanlet } from "@/components/settings/settings-install-planlet";
 import { SettingsProfile } from "@/components/settings/settings-profile";
@@ -20,15 +21,30 @@ import {
   isTextParserConfigured,
 } from "@/lib/env";
 import {
+  canUseBodyJourneyFeatures,
+  canUseCareerJourneyFeatures,
   canUseCoachingFeatures,
+  canUseJobTrackerFeatures,
   canUseReflectionFeatures,
   canUseTherapyThoughts,
 } from "@/lib/roles";
-import { getPlanningPreferencesForUser } from "@/lib/user-preferences";
+import { getPlanningPreferencesForUser, getMobileNavItemsForUser } from "@/lib/user-preferences";
+import { resolveMobileNavItems } from "@/lib/mobile-nav";
 import { getUserTimezone } from "@/lib/user-timezone";
+import { isAdminRole } from "@/lib/auth-roles";
 
 export default async function SettingsPage() {
   const session = await auth();
+  const isAdmin = isAdminRole(session?.user?.role);
+  const access = {
+    isAdmin,
+    canUseCoachingFeatures: canUseCoachingFeatures(session?.user ?? {}),
+    canUseBodyJourneyFeatures: canUseBodyJourneyFeatures(session?.user ?? {}),
+    canUseJobTrackerFeatures: canUseJobTrackerFeatures(session?.user ?? {}),
+    canUseCareerJourneyFeatures: canUseCareerJourneyFeatures(
+      session?.user ?? {},
+    ),
+  };
   const textParserConfigured = isTextParserConfigured();
   const openaiConfigured = isOpenAIConfigured();
   const imageExtractionConfigured = isImageExtractionConfigured();
@@ -42,6 +58,12 @@ export default async function SettingsPage() {
   const notificationPreferences = session?.user?.id
     ? await getNotificationPreferencesForUser(session.user.id)
     : null;
+  const mobileNavItems = session?.user?.id
+    ? resolveMobileNavItems(
+        await getMobileNavItemsForUser(session.user.id),
+        access,
+      )
+    : resolveMobileNavItems([], access);
   const user = session?.user ?? {};
   const showReflectionCoaching =
     canUseCoachingFeatures(user) ||
@@ -69,6 +91,10 @@ export default async function SettingsPage() {
           </Link>
         </p>
       </SettingsSection>
+
+      {session?.user?.id ? (
+        <MobileNavSettings value={mobileNavItems} access={access} />
+      ) : null}
 
       {session?.user?.id ? (
         <SettingsTimezone timezone={userTimezone} timezoneMode={timezoneMode} />

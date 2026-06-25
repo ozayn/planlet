@@ -5,8 +5,9 @@ import { revalidatePath } from "next/cache";
 import {
   extractJobFromUrlSafe,
   JOB_URL_EXTRACT_FAILURE_MESSAGE,
-  type ExtractedJobDetails,
+  type ExtractJobResult,
 } from "@/lib/ai/extract-job-from-url";
+import { extractJobFromTextSafe } from "@/lib/ai/extract-job-from-text";
 import type { JobApplicationFilter } from "@/lib/job-application-constants";
 import {
   DuplicateJobApplicationError,
@@ -23,15 +24,23 @@ import { auth } from "@/auth";
 
 export type JobTrackerActionResult =
   | { success: true }
-  | { success: false; error: string; duplicate?: boolean };
+  | {
+      success: false;
+      error: string;
+      duplicate?: boolean;
+      duplicateJobId?: string;
+    };
 
 export type JobTrackerCreateResult =
   | { success: true; job: SerializedJobApplication }
-  | { success: false; error: string; duplicate?: boolean };
+  | {
+      success: false;
+      error: string;
+      duplicate?: boolean;
+      duplicateJobId?: string;
+    };
 
-export type JobTrackerExtractResult =
-  | { ok: true; details: ExtractedJobDetails }
-  | { ok: false; message: string };
+export type JobTrackerExtractResult = ExtractJobResult;
 
 async function requireJobTrackerSession() {
   const session = await auth();
@@ -54,6 +63,7 @@ function mapJobError(error: unknown): JobTrackerActionResult {
       success: false,
       error: error.message,
       duplicate: true,
+      duplicateJobId: error.duplicateJobId,
     };
   }
 
@@ -138,6 +148,24 @@ export async function extractJobFromUrlAction(
   }
 
   return extractJobFromUrlSafe(url, userId);
+}
+
+export async function extractJobFromTextAction(
+  text: string,
+  url?: string,
+): Promise<JobTrackerExtractResult> {
+  let userId: string;
+
+  try {
+    userId = await requireJobTrackerSession();
+  } catch {
+    return {
+      ok: false,
+      message: JOB_URL_EXTRACT_FAILURE_MESSAGE,
+    };
+  }
+
+  return extractJobFromTextSafe(text, url, userId);
 }
 
 export type { JobApplicationInput, SerializedJobApplication } from "@/lib/job-applications";

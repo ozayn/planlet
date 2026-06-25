@@ -7,6 +7,7 @@ import { updatePlanItemAction } from "@/app/(app)/plans/actions";
 import { EditItemIcon } from "@/components/plans/item-action-icons";
 import { getItemActionLabels } from "@/components/plans/item-action-labels";
 import { InlineItemTitle } from "@/components/plans/inline-item-title";
+import { InlineTaskNoteSection } from "@/components/plans/inline-task-note-section";
 import { ItemCommentsButton } from "@/components/plans/item-comments-button";
 import { ItemActionsMenu } from "@/components/plans/item-actions-menu";
 import { ItemDetailsSheet } from "@/components/plans/item-details-sheet";
@@ -35,6 +36,7 @@ export function IntentionItemCard({
   const [editingTitle, setEditingTitle] = useState(false);
   const [title, setTitle] = useState(item.title);
   const [detailsOpen, setDetailsOpen] = useState(false);
+  const [noteEditorOpen, setNoteEditorOpen] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const visibleActionsAreShown = useMediaQuery("(min-width: 768px)");
   const actionLabels = getItemActionLabels(item.type);
@@ -88,6 +90,10 @@ export function IntentionItemCard({
   }
 
   const mobileSubmetaLine = mobileMetaParts.join(" · ");
+
+  function handleTaskNoteClick() {
+    setNoteEditorOpen((current) => !current);
+  }
 
   return (
     <>
@@ -156,7 +162,7 @@ export function IntentionItemCard({
                     canMoveDown={canMoveDown}
                     commentCount={item.commentCount}
                     onEdit={() => setDetailsOpen(true)}
-                    onTaskNote={() => setDetailsOpen(true)}
+                    onTaskNote={canEdit ? handleTaskNoteClick : undefined}
                     onComments={() => setCommentsOpen(true)}
                   />
                 </>
@@ -179,6 +185,17 @@ export function IntentionItemCard({
           ) : null}
         </div>
       </article>
+
+      {canEdit ? (
+        <InlineTaskNoteSection
+          planId={planId}
+          itemId={item.id}
+          savedComment={item.comment}
+          open={noteEditorOpen}
+          onOpenChange={setNoteEditorOpen}
+          disabled={isPending}
+        />
+      ) : null}
 
       {canEdit ? (
         <ItemDetailsSheet

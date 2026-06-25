@@ -210,6 +210,7 @@ model User {
   canUseBodyJourneyFeatures   Boolean   @default(false)
   planItemView              PlanItemView @default(CHECKLIST)
   taskOrganizationDisplay   TaskOrganizationDisplay @default(ASSIGNED_ONLY)
+  mobileNavItems            String[]    @default([])
   timezone                  String?
   timezoneMode              TimezoneMode @default(AUTOMATIC)
   lastSeenAt    DateTime?
@@ -601,6 +602,7 @@ model JobApplication {
   title       String
   company     String
   url         String?
+  normalizedUrl String?
   description String?              @db.Text
   summary     String?              @db.Text
   source      String?
@@ -615,6 +617,7 @@ model JobApplication {
 
   @@index([userId, status])
   @@index([userId, updatedAt])
+  @@index([userId, normalizedUrl])
 }
 
 enum CareerPracticeType {

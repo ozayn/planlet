@@ -6,6 +6,7 @@ import { JobTracker } from "@/components/jobs/job-tracker";
 import { PageHeader } from "@/components/page-header";
 import { listJobApplications } from "@/lib/job-applications";
 import { canUseJobTrackerFeatures } from "@/lib/roles";
+import { getUserTimezone } from "@/lib/user-timezone";
 
 export default async function JobsPage() {
   const session = await auth();
@@ -16,6 +17,7 @@ export default async function JobsPage() {
   }
 
   const jobs = await listJobApplications(userId, "ALL");
+  const userTimezone = await getUserTimezone(userId);
 
   return (
     <section className="ui-page-stack space-y-6">
@@ -32,7 +34,7 @@ export default async function JobsPage() {
           </div>
         }
       >
-        <JobTracker initialJobs={jobs} />
+        <JobTracker initialJobs={jobs} userTimezone={userTimezone} />
       </Suspense>
     </section>
   );

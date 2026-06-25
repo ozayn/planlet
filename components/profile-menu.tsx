@@ -8,15 +8,7 @@ import { createPortal } from "react-dom";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { ExternalLinkIcon, HeartIcon } from "@/components/ui/action-icons";
 import { UserAvatar } from "@/components/user-avatar";
-import {
-  canShowBodyJourneyInProfileMenu,
-  canShowCoachingInProfileMenu,
-  canShowCareerJourneyInProfileMenu,
-  canShowFeedbackInProfileMenu,
-  canShowInsightsInProfileMenu,
-  canShowJobTrackerInProfileMenu,
-  canShowTherapyReviewInProfileMenu,
-} from "@/lib/profile-menu";
+import { canShowFeedbackInProfileMenu } from "@/lib/profile-menu";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 
 type ProfileMenuProps = {
@@ -25,11 +17,6 @@ type ProfileMenuProps = {
   image?: string | null;
   isAdmin?: boolean;
   canGiveFeedback?: boolean;
-  canUseTherapyThoughts?: boolean;
-  canUseJobTrackerFeatures?: boolean;
-  canUseCareerJourneyFeatures?: boolean;
-  canUseBodyJourneyFeatures?: boolean;
-  canUseCoachingFeatures?: boolean;
   signOutButton: React.ReactNode;
   compact?: boolean;
   showThemeInMenu?: boolean;
@@ -217,11 +204,6 @@ export function ProfileMenu({
   image,
   isAdmin = false,
   canGiveFeedback = false,
-  canUseTherapyThoughts = false,
-  canUseJobTrackerFeatures = false,
-  canUseCareerJourneyFeatures = false,
-  canUseBodyJourneyFeatures = false,
-  canUseCoachingFeatures = false,
   signOutButton,
   compact = false,
   showThemeInMenu = false,
@@ -239,28 +221,7 @@ export function ProfileMenu({
   }, []);
 
   const onSettings = pathname === "/settings" || pathname.startsWith("/settings/");
-  const onPlans =
-    pathname === "/plans" ||
-    pathname.startsWith("/plans/new") ||
-    (pathname.startsWith("/plans/") &&
-      !pathname.startsWith("/plans/day/") &&
-      !pathname.startsWith("/plans/week/") &&
-      !pathname.startsWith("/plans/month/") &&
-      !pathname.startsWith("/plans/year/"));
-  const onInsights =
-    pathname === "/insights" || pathname.startsWith("/insights/");
-  const onThemes = pathname === "/themes" || pathname.startsWith("/themes/");
   const onFeedback = pathname === "/feedback" || pathname.startsWith("/feedback/");
-  const onJobs = pathname === "/jobs" || pathname.startsWith("/jobs/");
-  const onCareer =
-    pathname === "/career" || pathname.startsWith("/career/");
-  const onBody = pathname === "/body" || pathname.startsWith("/body/");
-  const onCoaching =
-    pathname === "/coaching" || pathname.startsWith("/coaching/");
-  const onAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
-  const onTherapyReview =
-    pathname === "/therapy-review" ||
-    pathname.startsWith("/therapy-review/");
   const feedbackHref =
     pathname && pathname !== "/feedback"
       ? `/feedback?from=${encodeURIComponent(pathname)}`
@@ -269,11 +230,6 @@ export function ProfileMenu({
 
   const access = {
     canGiveFeedback,
-    canUseTherapyThoughts,
-    canUseJobTrackerFeatures,
-    canUseCareerJourneyFeatures,
-    canUseBodyJourneyFeatures,
-    canUseCoachingFeatures,
     isAdmin,
   };
 
@@ -323,81 +279,7 @@ export function ProfileMenu({
     setOpen(false);
   }
 
-  const planningItems: ReactNode[] = [
-    <Link
-      key="plans"
-      href="/plans"
-      role="menuitem"
-      aria-current={onPlans ? "page" : undefined}
-      onClick={closeMenu}
-      className={menuItemClass(onPlans)}
-    >
-      Plans
-    </Link>,
-    canShowInsightsInProfileMenu() ? (
-      <Link
-        key="insights"
-        href="/insights"
-        role="menuitem"
-        aria-current={onInsights ? "page" : undefined}
-        onClick={closeMenu}
-        className={menuItemClass(onInsights)}
-      >
-        Insights
-      </Link>
-    ) : null,
-    <Link
-      key="themes"
-      href="/themes"
-      role="menuitem"
-      aria-current={onThemes ? "page" : undefined}
-      onClick={closeMenu}
-      className={menuItemClass(onThemes)}
-    >
-      Themes & projects
-    </Link>,
-  ];
-
-  const reflectionItems: ReactNode[] = [
-    canShowCoachingInProfileMenu(access) ? (
-      <Link
-        key="coaching"
-        href="/coaching"
-        role="menuitem"
-        aria-current={onCoaching ? "page" : undefined}
-        onClick={closeMenu}
-        className={menuItemClass(onCoaching)}
-      >
-        Coaching
-      </Link>
-    ) : null,
-    canShowTherapyReviewInProfileMenu(access) ? (
-      <Link
-        key="therapy-review"
-        href="/therapy-review"
-        role="menuitem"
-        aria-current={onTherapyReview ? "page" : undefined}
-        onClick={closeMenu}
-        className={menuItemClass(onTherapyReview)}
-      >
-        Therapy review
-      </Link>
-    ) : null,
-    canShowBodyJourneyInProfileMenu(access) ? (
-      <Link
-        key="body"
-        href="/body"
-        role="menuitem"
-        aria-current={onBody ? "page" : undefined}
-        onClick={closeMenu}
-        className={menuItemClass(onBody)}
-      >
-        Body Journey
-      </Link>
-    ) : null,
-  ];
-
-  const appItems: ReactNode[] = [
+  const accountItems: ReactNode[] = [
     showThemeInMenu ? (
       <div
         key="appearance"
@@ -430,42 +312,6 @@ export function ProfileMenu({
         Feedback
       </Link>
     ) : null,
-    canShowJobTrackerInProfileMenu(access) ? (
-      <Link
-        key="jobs"
-        href="/jobs"
-        role="menuitem"
-        aria-current={onJobs ? "page" : undefined}
-        onClick={closeMenu}
-        className={menuItemClass(onJobs)}
-      >
-        Job tracker
-      </Link>
-    ) : null,
-    canShowCareerJourneyInProfileMenu(access) ? (
-      <Link
-        key="career"
-        href="/career"
-        role="menuitem"
-        aria-current={onCareer ? "page" : undefined}
-        onClick={closeMenu}
-        className={menuItemClass(onCareer)}
-      >
-        Career journey
-      </Link>
-    ) : null,
-    isAdmin ? (
-      <Link
-        key="admin"
-        href="/admin"
-        role="menuitem"
-        aria-current={onAdmin ? "page" : undefined}
-        onClick={closeMenu}
-        className={menuItemClass(onAdmin)}
-      >
-        Admin
-      </Link>
-    ) : null,
   ];
 
   const supportItems: ReactNode[] = supportUrl
@@ -493,16 +339,14 @@ export function ProfileMenu({
   );
 
   const scrollSections: ProfileMenuSectionConfig[] = [
-    { title: "Planning", items: planningItems },
-    { title: "Reflection", items: reflectionItems },
-    { title: "App", items: appItems },
+    { title: "Account", items: accountItems },
     { title: "Support", items: supportItems },
   ];
 
   const desktopSections: ProfileMenuSectionConfig[] = [
     ...scrollSections,
     {
-      title: "Account",
+      title: "Session",
       items: [
         <div key="sign-out" role="menuitem" className="px-0.5 pt-0.5">
           {signOutItem}

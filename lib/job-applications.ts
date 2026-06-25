@@ -1,6 +1,11 @@
 import type { JobApplicationStatus } from "@/app/generated/prisma/client";
 
 import {
+  defaultJobCompany,
+  defaultJobTitle,
+  formatDuplicateJobSavedDate,
+} from "@/lib/job-application-defaults";
+import {
   isJobApplicationStatus,
   type JobApplicationStatusValue,
 } from "@/lib/job-application-status";
@@ -17,8 +22,13 @@ import {
   MAX_JOB_URL_LENGTH,
   type JobApplicationFilter,
 } from "@/lib/job-application-constants";
-import { isValidDateString } from "@/lib/dates";
+import { isValidDateString, getTodayDateString } from "@/lib/dates";
+import {
+  normalizeJobUrl,
+  normalizeJobUrlForStorage,
+} from "@/lib/job-url-normalization";
 import { canUseJobTrackerFeatures } from "@/lib/roles";
+import { getUserTimezone } from "@/lib/user-timezone";
 import { prisma } from "@/lib/prisma";
 
 export class JobApplicationError extends Error {
@@ -29,9 +39,14 @@ export class JobApplicationError extends Error {
 }
 
 export class DuplicateJobApplicationError extends JobApplicationError {
-  constructor(message = "You already saved this job.") {
-    super(message);
+  readonly duplicateJobId: string;
+  readonly duplicateSavedAt: Date;
+
+  constructor(duplicate: { id: string; createdAt: Date }) {
+    super(`You already saved this job on ${formatDuplicateJobSavedDate(duplicate.createdAt)}.`);
     this.name = "DuplicateJobApplicationError";
+    this.duplicateJobId = duplicate.id;
+    this.duplicateSavedAt = duplicate.createdAt;
   }
 }
 
@@ -54,8 +69,8 @@ export type SerializedJobApplication = {
 };
 
 export type JobApplicationInput = {
-  title: string;
-  company: string;
+  title?: string;
+  company?: string;
   url?: string | null;
   description?: string | null;
   summary?: string | null;
@@ -117,61 +132,34 @@ function trimOptional(value: string | null | undefined, maxLength: number) {
   return trimmed.slice(0, maxLength);
 }
 
-function trimRequired(value: string, maxLength: number, label: string) {
-  const trimmed = value.trim();
-  if (!trimmed) {
-    throw new JobApplicationError(`${label} is required.`);
+function trimOptionalField(value: string | null | undefined, maxLength: number) {
+  if (value == null) {
+    return "";
   }
 
-  return trimmed.slice(0, maxLength);
+  return value.trim().slice(0, maxLength);
 }
 
-function normalizeJobUrl(url: string): string {
-  try {
-    const parsed = new URL(url.trim());
-    if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-      return url.trim().toLowerCase();
-    }
-
-    parsed.hash = "";
-    let normalized = `${parsed.origin}${parsed.pathname}`;
-    if (normalized.endsWith("/") && normalized.length > 1) {
-      normalized = normalized.slice(0, -1);
-    }
-
-    return normalized.toLowerCase();
-  } catch {
-    return url.trim().toLowerCase();
-  }
+function hasMinimumJobContent(input: JobApplicationInput): boolean {
+  return Boolean(
+    input.title?.trim() || input.url?.trim() || input.description?.trim(),
+  );
 }
 
-function normalizeComparableTitle(title: string): string {
-  return title.trim().toLowerCase().replace(/\s+/g, " ");
-}
-
-function isSimilarJobTitle(a: string, b: string): boolean {
-  const left = normalizeComparableTitle(a);
-  const right = normalizeComparableTitle(b);
-
-  if (left === right) {
-    return true;
+function sanitizeJobInput(
+  input: JobApplicationInput,
+  options?: { defaultAppliedDate?: string },
+) {
+  if (!hasMinimumJobContent(input)) {
+    throw new JobApplicationError(
+      "Add at least a job URL, title, or description before saving.",
+    );
   }
 
-  if (left.length >= 8 && right.length >= 8) {
-    return left.includes(right) || right.includes(left);
-  }
-
-  return false;
-}
-
-function sanitizeJobInput(input: JobApplicationInput) {
-  const title = trimRequired(input.title, MAX_JOB_TITLE_LENGTH, "Title");
-  const company = trimRequired(input.company, MAX_JOB_COMPANY_LENGTH, "Company");
-  const url = trimOptional(input.url, MAX_JOB_URL_LENGTH);
-
-  if (url) {
+  const rawUrl = trimOptional(input.url, MAX_JOB_URL_LENGTH);
+  if (rawUrl) {
     try {
-      const parsed = new URL(url);
+      const parsed = new URL(rawUrl);
       if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
         throw new JobApplicationError("Job URL must start with http:// or https://.");
       }
@@ -184,7 +172,18 @@ function sanitizeJobInput(input: JobApplicationInput) {
     }
   }
 
-  const appliedDate = trimOptional(input.appliedDate, 10);
+  const storedUrl = rawUrl ? normalizeJobUrlForStorage(rawUrl) : null;
+  const normalizedUrl = storedUrl ? normalizeJobUrl(storedUrl) : null;
+
+  const title = trimOptionalField(input.title, MAX_JOB_TITLE_LENGTH);
+  const company = trimOptionalField(input.company, MAX_JOB_COMPANY_LENGTH);
+
+  const appliedDateInput = input.appliedDate;
+  let appliedDate =
+    appliedDateInput === null ? null : trimOptional(appliedDateInput, 10);
+  if (!appliedDate && appliedDateInput !== null && options?.defaultAppliedDate) {
+    appliedDate = options.defaultAppliedDate;
+  }
   if (appliedDate && !isValidDateString(appliedDate)) {
     throw new JobApplicationError("Applied date must be YYYY-MM-DD.");
   }
@@ -195,9 +194,10 @@ function sanitizeJobInput(input: JobApplicationInput) {
   }
 
   return {
-    title,
-    company,
-    url,
+    title: title || defaultJobTitle(),
+    company: company || defaultJobCompany(),
+    url: storedUrl,
+    normalizedUrl,
     description: trimOptional(input.description, MAX_JOB_DESCRIPTION_LENGTH),
     summary: trimOptional(input.summary, MAX_JOB_SUMMARY_LENGTH),
     source: trimOptional(input.source, MAX_JOB_SOURCE_LENGTH),
@@ -227,43 +227,26 @@ async function requireJobTrackerUser(userId: string) {
   return user;
 }
 
-async function findDuplicateJobApplication(
+async function findDuplicateJobApplicationByUrl(
   userId: string,
-  input: { url: string | null; company: string; title: string },
+  normalizedUrl: string | null,
   excludeId?: string,
 ) {
-  const jobs = await prisma.jobApplication.findMany({
+  if (!normalizedUrl) {
+    return null;
+  }
+
+  return prisma.jobApplication.findFirst({
     where: {
       userId,
+      normalizedUrl,
       ...(excludeId ? { id: { not: excludeId } } : {}),
     },
     select: {
       id: true,
-      url: true,
-      company: true,
-      title: true,
+      createdAt: true,
     },
   });
-
-  if (input.url) {
-    const normalizedUrl = normalizeJobUrl(input.url);
-    const duplicate = jobs.find(
-      (job) => job.url && normalizeJobUrl(job.url) === normalizedUrl,
-    );
-
-    if (duplicate) {
-      return duplicate;
-    }
-  }
-
-  const companyKey = input.company.trim().toLowerCase();
-  return (
-    jobs.find(
-      (job) =>
-        job.company.trim().toLowerCase() === companyKey &&
-        isSimilarJobTitle(job.title, input.title),
-    ) ?? null
-  );
 }
 
 function buildFilterWhere(
@@ -315,11 +298,17 @@ export async function createJobApplication(
   input: JobApplicationInput,
 ): Promise<SerializedJobApplication> {
   await requireJobTrackerUser(userId);
-  const data = sanitizeJobInput(input);
+  const userTimezone = await getUserTimezone(userId);
+  const data = sanitizeJobInput(input, {
+    defaultAppliedDate: getTodayDateString(userTimezone),
+  });
 
-  const duplicate = await findDuplicateJobApplication(userId, data);
+  const duplicate = await findDuplicateJobApplicationByUrl(
+    userId,
+    data.normalizedUrl,
+  );
   if (duplicate) {
-    throw new DuplicateJobApplicationError();
+    throw new DuplicateJobApplicationError(duplicate);
   }
 
   const job = await prisma.jobApplication.create({
@@ -347,9 +336,13 @@ export async function updateJobApplication(
   }
 
   const data = sanitizeJobInput(input);
-  const duplicate = await findDuplicateJobApplication(userId, data, jobId);
+  const duplicate = await findDuplicateJobApplicationByUrl(
+    userId,
+    data.normalizedUrl,
+    jobId,
+  );
   if (duplicate) {
-    throw new DuplicateJobApplicationError();
+    throw new DuplicateJobApplicationError(duplicate);
   }
 
   const job = await prisma.jobApplication.update({
@@ -400,4 +393,37 @@ export async function deleteJobApplication(
   await prisma.jobApplication.delete({
     where: { id: jobId },
   });
+}
+
+export async function backfillJobApplicationNormalizedUrls(): Promise<number> {
+  const jobs = await prisma.jobApplication.findMany({
+    where: {
+      url: { not: null },
+      OR: [{ normalizedUrl: null }, { normalizedUrl: "" }],
+    },
+    select: {
+      id: true,
+      url: true,
+    },
+  });
+
+  let updated = 0;
+
+  for (const job of jobs) {
+    if (!job.url) {
+      continue;
+    }
+
+    const normalizedUrl = normalizeJobUrl(job.url);
+    await prisma.jobApplication.update({
+      where: { id: job.id },
+      data: {
+        url: normalizeJobUrlForStorage(job.url),
+        normalizedUrl: normalizedUrl || null,
+      },
+    });
+    updated += 1;
+  }
+
+  return updated;
 }

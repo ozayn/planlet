@@ -1,4 +1,4 @@
-import type { ExtractedJobDetails } from "@/lib/ai/extract-job-from-url";
+import type { ExtractedJobDetails } from "@/lib/ai/extracted-job-details";
 
 export function mergeExtractedJobNotes(
   currentNotes: string,
@@ -7,6 +7,7 @@ export function mergeExtractedJobNotes(
   const merged = [
     currentNotes.trim(),
     details.summary?.trim(),
+    details.location?.trim() ? `Location: ${details.location.trim()}` : "",
     details.likelySkills?.length
       ? `Skills: ${details.likelySkills.join(", ")}`
       : "",
@@ -25,12 +26,14 @@ export function applyExtractedJobToAddForm<
     title: string;
     company: string;
     notes: string;
+    description?: string;
   },
 >(current: T, details: ExtractedJobDetails): T {
   return {
     ...current,
     title: details.title?.trim() || current.title,
     company: details.company?.trim() || current.company,
+    description: details.description?.trim() || current.description,
     notes: mergeExtractedJobNotes(current.notes, details),
   };
 }

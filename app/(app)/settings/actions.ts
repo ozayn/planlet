@@ -13,8 +13,15 @@ import { isWebPushConfigured } from "@/lib/env";
 import {
   updatePlanItemView,
   updateTaskOrganizationDisplay,
+  updateMobileNavItems,
 } from "@/lib/user-preferences";
 import { TASK_ORGANIZATION_DISPLAY_MODES } from "@/lib/task-organization-display";
+import { isAdminRole } from "@/lib/auth-roles";
+import type { AppNavAccess } from "@/lib/app-nav";
+import {
+  DEFAULT_MOBILE_NAV_ITEMS,
+  sanitizeMobileNavItems,
+} from "@/lib/mobile-nav";
 import {
   normalizeTimezone,
   syncAutomaticBrowserTimezone,
@@ -22,6 +29,8 @@ import {
   updateUserTimezoneMode,
   type TimezoneModeValue,
 } from "@/lib/user-timezone";
+
+import type { Session } from "next-auth";
 
 const PLAN_ITEM_VIEWS = new Set<PlanItemView>(["MINIMAL", "CHECKLIST"]);
 
@@ -38,6 +47,21 @@ function revalidatePlanSurfaces() {
   revalidatePath("/today");
   revalidatePath("/plans", "layout");
   revalidatePath("/dashboard");
+}
+
+function revalidateAppNavigation() {
+  revalidatePath("/settings");
+  revalidatePath("/today", "layout");
+}
+
+function getAppNavAccessFromSession(session: Session): AppNavAccess {
+  return {
+    isAdmin: isAdminRole(session.user.role),
+    canUseCoachingFeatures: session.user.canUseCoachingFeatures,
+    canUseBodyJourneyFeatures: session.user.canUseBodyJourneyFeatures,
+    canUseJobTrackerFeatures: session.user.canUseJobTrackerFeatures,
+    canUseCareerJourneyFeatures: session.user.canUseCareerJourneyFeatures,
+  };
 }
 
 export type SettingsActionResult =
@@ -199,4 +223,34 @@ export async function updateTaskOrganizationDisplayAction(
           : "Failed to update task organization display.",
     };
   }
+}
+
+export async function updateMobileNavItemsAction(
+  items: string[],
+): Promise<SettingsActionResult> {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      throw new Error("Unauthorized");
+    }
+
+    const access = getAppNavAccessFromSession(session);
+    const sanitized = sanitizeMobileNavItems(items, access);
+
+    await updateMobileNavItems(session.user.id, sanitized);
+    revalidateAppNavigation();
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to update quick access tabs.",
+    };
+  }
+}
+
+export async function resetMobileNavItemsAction(): Promise<SettingsActionResult> {
+  return updateMobileNavItemsAction([...DEFAULT_MOBILE_NAV_ITEMS]);
 }

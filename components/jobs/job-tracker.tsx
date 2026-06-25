@@ -7,11 +7,11 @@ import {
   archiveJobApplicationAction,
   createJobApplicationAction,
   deleteJobApplicationAction,
-  extractJobFromUrlAction,
   listJobApplicationsAction,
   type SerializedJobApplication,
 } from "@/app/(app)/jobs/actions";
 import { JobApplicationEditorSheet } from "@/components/jobs/job-application-editor-sheet";
+import { JobUrlExtractControls } from "@/components/jobs/job-url-extract-controls";
 import { JobTrackerCardList } from "@/components/jobs/job-tracker-card-list";
 import { JobTrackerEmptyState } from "@/components/jobs/job-tracker-empty-state";
 import { JobTrackerTable } from "@/components/jobs/job-tracker-table";
@@ -22,10 +22,8 @@ import {
   type JobApplicationFilter,
 } from "@/lib/job-application-constants";
 import { applyExtractedJobToAddForm } from "@/lib/apply-extracted-job-details";
-import {
-  getJobApplicationStatusLabel,
-} from "@/lib/job-application-labels";
-import { formatDateString } from "@/lib/dates";
+import { getJobApplicationStatusLabel } from "@/lib/job-application-labels";
+import { getTodayDateString } from "@/lib/dates";
 import { jobMatchesSearch } from "@/lib/job-application-search";
 import {
   readStoredJobTrackerView,
@@ -37,27 +35,30 @@ import type { JobApplicationStatusValue } from "@/lib/job-application-status";
 
 type JobTrackerProps = {
   initialJobs: SerializedJobApplication[];
+  userTimezone: string;
 };
 
 type AddJobFormState = {
   url: string;
   title: string;
   company: string;
+  description: string;
   appliedDate: string;
   status: JobApplicationStatusValue;
   notes: string;
 };
 
-const emptyForm = (): AddJobFormState => ({
+const emptyForm = (userTimezone: string): AddJobFormState => ({
   url: "",
   title: "",
   company: "",
-  appliedDate: formatDateString(new Date()),
-  status: "APPLIED",
+  description: "",
+  appliedDate: getTodayDateString(userTimezone),
+  status: "SAVED",
   notes: "",
 });
 
-export function JobTracker({ initialJobs }: JobTrackerProps) {
+export function JobTracker({ initialJobs, userTimezone }: JobTrackerProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -66,14 +67,10 @@ export function JobTracker({ initialJobs }: JobTrackerProps) {
   const [searchQuery, setSearchQuery] = useState(
     () => searchParams.get("q")?.trim() ?? "",
   );
-  const [form, setForm] = useState<AddJobFormState>(emptyForm);
+  const [form, setForm] = useState<AddJobFormState>(() => emptyForm(userTimezone));
   const [error, setError] = useState<string | null>(null);
   const [duplicateWarning, setDuplicateWarning] = useState(false);
-  const [fetchNotice, setFetchNotice] = useState<{
-    tone: "error" | "success";
-    message: string;
-  } | null>(null);
-  const [isFetching, setIsFetching] = useState(false);
+  const [duplicateJobId, setDuplicateJobId] = useState<string | null>(null);
   const [selectedJob, setSelectedJob] = useState<SerializedJobApplication | null>(
     null,
   );
@@ -135,29 +132,30 @@ export function JobTracker({ initialJobs }: JobTrackerProps) {
     refreshJobs(nextFilter);
   }
 
-  async function handleFetchDetails() {
-    const url = form.url.trim();
-    if (!url || isFetching) {
-      return;
-    }
+  function clearFormErrors() {
+    setError(null);
+    setDuplicateWarning(false);
+    setDuplicateJobId(null);
+  }
 
-    setFetchNotice(null);
-    setIsFetching(true);
+  async function handleExtracted(
+    details: Parameters<typeof applyExtractedJobToAddForm>[1],
+    canonicalUrl?: string,
+  ) {
+    setForm((current) => {
+      const next = applyExtractedJobToAddForm(current, details);
+      return canonicalUrl ? { ...next, url: canonicalUrl } : next;
+    });
+  }
 
-    try {
-      const result = await extractJobFromUrlAction(url);
-      if (!result.ok) {
-        setFetchNotice({ tone: "error", message: result.message });
-        return;
-      }
+  function openDuplicateJob(jobId: string) {
+    const existing =
+      jobs.find((job) => job.id === jobId) ??
+      initialJobs.find((job) => job.id === jobId);
 
-      setForm((current) => applyExtractedJobToAddForm(current, result.details));
-      setFetchNotice({
-        tone: "success",
-        message: "Details filled in. Review before saving.",
-      });
-    } finally {
-      setIsFetching(false);
+    if (existing) {
+      setSelectedJob(existing);
+      clearFormErrors();
     }
   }
 
@@ -167,15 +165,15 @@ export function JobTracker({ initialJobs }: JobTrackerProps) {
       return;
     }
 
-    setError(null);
-    setDuplicateWarning(false);
+    clearFormErrors();
 
     startTransition(async () => {
       const result = await createJobApplicationAction({
         url: form.url,
         title: form.title,
         company: form.company,
-        appliedDate: form.appliedDate,
+        description: form.description,
+        appliedDate: form.appliedDate.trim() || null,
         status: form.status,
         notes: form.notes,
       });
@@ -183,11 +181,11 @@ export function JobTracker({ initialJobs }: JobTrackerProps) {
       if (!result.success) {
         setError(result.error);
         setDuplicateWarning(Boolean(result.duplicate));
+        setDuplicateJobId(result.duplicateJobId ?? null);
         return;
       }
 
-      setForm(emptyForm());
-      setFetchNotice(null);
+      setForm(emptyForm(userTimezone));
       refreshJobs(filter);
     });
   }
@@ -236,43 +234,24 @@ export function JobTracker({ initialJobs }: JobTrackerProps) {
   return (
     <div className="space-y-6">
       <article className="ui-card-padded space-y-4 border border-border-soft">
-        <h2 className="text-sm font-medium text-foreground">Add job</h2>
+        <div className="space-y-1">
+          <h2 className="text-sm font-medium text-foreground">Add job</h2>
+          <p className="text-xs text-muted">
+            You can save a job now and complete the details later.
+          </p>
+        </div>
         <form className="space-y-3" onSubmit={handleAddJob}>
           <label className="block space-y-1.5" htmlFor="job-add-url">
             <span className="text-xs text-muted">URL</span>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <input
-                id="job-add-url"
-                name="job-add-url"
-                type="url"
-                value={form.url}
-                onChange={(event) => setForm({ ...form, url: event.target.value })}
-                placeholder="https://..."
-                disabled={isPending}
-                className="ui-input min-h-10 flex-1 px-3 text-sm"
-                {...passwordManagerSafeControlProps}
-              />
-              <button
-                type="button"
-                disabled={isFetching || !form.url.trim()}
-                onClick={handleFetchDetails}
-                className="ui-btn-secondary min-h-10 px-3 text-sm"
-              >
-                {isFetching ? "Fetching…" : "Fetch details"}
-              </button>
-            </div>
-            {fetchNotice ? (
-              <p
-                className={`text-sm ${
-                  fetchNotice.tone === "error"
-                    ? "text-accent-yellow"
-                    : "text-muted"
-                }`}
-                role={fetchNotice.tone === "error" ? "alert" : "status"}
-              >
-                {fetchNotice.message}
-              </p>
-            ) : null}
+            <JobUrlExtractControls
+              url={form.url}
+              onUrlChange={(nextUrl) => setForm({ ...form, url: nextUrl })}
+              onExtracted={handleExtracted}
+              disabled={isPending}
+              urlInputId="job-add-url"
+              urlInputName="job-add-url"
+              pasteInputId="job-add-paste"
+            />
           </label>
 
           <div className="grid gap-3 sm:grid-cols-2">
@@ -282,12 +261,12 @@ export function JobTracker({ initialJobs }: JobTrackerProps) {
                 id="job-add-title"
                 name="job-add-title"
                 type="text"
-                required
                 value={form.title}
                 onChange={(event) =>
                   setForm({ ...form, title: event.target.value })
                 }
                 disabled={isPending}
+                placeholder="Software Engineer"
                 className="ui-input min-h-10 w-full px-3 text-sm"
                 {...passwordManagerSafeControlProps}
               />
@@ -298,17 +277,34 @@ export function JobTracker({ initialJobs }: JobTrackerProps) {
                 id="job-add-company"
                 name="job-add-company"
                 type="text"
-                required
                 value={form.company}
                 onChange={(event) =>
                   setForm({ ...form, company: event.target.value })
                 }
                 disabled={isPending}
+                placeholder="Acme Inc."
                 className="ui-input min-h-10 w-full px-3 text-sm"
                 {...passwordManagerSafeControlProps}
               />
             </label>
           </div>
+
+          <label className="block space-y-1.5" htmlFor="job-add-description">
+            <span className="text-xs text-muted">Description</span>
+            <textarea
+              id="job-add-description"
+              name="job-add-description"
+              value={form.description}
+              onChange={(event) =>
+                setForm({ ...form, description: event.target.value })
+              }
+              disabled={isPending}
+              rows={3}
+              placeholder="Paste or write a job description…"
+              className="ui-input w-full px-3 py-2 text-sm"
+              {...passwordManagerSafeControlProps}
+            />
+          </label>
 
           <div className="grid gap-3 sm:grid-cols-2">
             <label className="block space-y-1.5" htmlFor="job-add-applied-date">
@@ -367,12 +363,23 @@ export function JobTracker({ initialJobs }: JobTrackerProps) {
             />
           </label>
 
-          {duplicateWarning ? (
-            <p className="text-sm text-accent-yellow" role="alert">
-              You already saved this job.
-            </p>
+          {duplicateWarning && error ? (
+            <div className="space-y-2">
+              <p className="text-sm text-accent-yellow" role="alert">
+                {error}
+              </p>
+              {duplicateJobId ? (
+                <button
+                  type="button"
+                  onClick={() => openDuplicateJob(duplicateJobId)}
+                  className="ui-btn-secondary min-h-9 px-3 text-sm"
+                >
+                  Open existing job
+                </button>
+              ) : null}
+            </div>
           ) : null}
-          {error ? (
+          {error && !duplicateWarning ? (
             <p className="text-sm text-accent-red" role="alert">
               {error}
             </p>
@@ -468,6 +475,11 @@ export function JobTracker({ initialJobs }: JobTrackerProps) {
         onArchive={handleArchive}
         onDelete={handleDelete}
         isPending={isPending}
+        jobs={jobs}
+        onOpenJob={(job) => {
+          setSelectedJob(job);
+          clearFormErrors();
+        }}
       />
     </div>
   );

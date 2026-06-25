@@ -17,6 +17,7 @@ import {
 } from "@/components/plans/item-action-icons";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { getItemActionLabels } from "@/components/plans/item-action-labels";
+import { InlineTaskNoteSection } from "@/components/plans/inline-task-note-section";
 import { ItemCommentsButton } from "@/components/plans/item-comments-button";
 import { ItemActionsMenu } from "@/components/plans/item-actions-menu";
 import { ItemDetailsSheet } from "@/components/plans/item-details-sheet";
@@ -88,9 +89,7 @@ export function PlanItemCard({
   const [title, setTitle] = useState(item.title);
   const [showSubtaskForm, setShowSubtaskForm] = useState(false);
   const [detailsOpen, setDetailsOpen] = useState(false);
-  const [detailsFocusField, setDetailsFocusField] = useState<
-    "comment" | null
-  >(null);
+  const [noteEditorOpen, setNoteEditorOpen] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const visibleActionsAreShown = useMediaQuery("(min-width: 768px)");
 
@@ -172,6 +171,10 @@ export function PlanItemCard({
         }),
       )
     : undefined;
+
+  function handleTaskNoteClick() {
+    setNoteEditorOpen((current) => !current);
+  }
 
   return (
     <article className={isNested ? "ms-3 border-s border-border-soft ps-2" : ""}>
@@ -273,7 +276,6 @@ export function PlanItemCard({
                   <button
                     type="button"
                     onClick={() => {
-                      setDetailsFocusField(null);
                       setDetailsOpen(true);
                     }}
                     {...passwordManagerSafeControlProps}
@@ -307,13 +309,13 @@ export function PlanItemCard({
                   ) : null}
                   <button
                     type="button"
-                    onClick={() => {
-                      setDetailsFocusField("comment");
-                      setDetailsOpen(true);
-                    }}
+                    onClick={handleTaskNoteClick}
                     {...passwordManagerSafeControlProps}
-                    className="ui-plan-item-desktop-action hidden md:inline-flex ui-icon-action-quiet"
+                    className={`ui-plan-item-desktop-action hidden md:inline-flex ui-icon-action-quiet${
+                      noteEditorOpen ? " ui-icon-action-quiet-active" : ""
+                    }`}
                     aria-label={ACTION_LABELS.taskNote.ariaLabel}
+                    aria-expanded={noteEditorOpen}
                     title={ACTION_LABELS.taskNote.title}
                   >
                     <StickyNoteIcon className="h-4 w-4" />
@@ -346,13 +348,15 @@ export function PlanItemCard({
                 hasSubtasks={!isNested && subtaskCount > 0}
                 movableSubtaskCount={!isNested ? movableSubtaskCount : 0}
                 commentCount={item.commentCount}
-                onEdit={() => setDetailsOpen(true)}
+                onEdit={() => {
+                  setDetailsOpen(true);
+                }}
                 onAddSubtask={
                   !isNested
                     ? () => setShowSubtaskForm((current) => !current)
                     : undefined
                 }
-                onTaskNote={canEdit ? () => setDetailsOpen(true) : undefined}
+                onTaskNote={canEdit ? handleTaskNoteClick : undefined}
                 onComments={() => setCommentsOpen(true)}
               />
             </div>
@@ -365,6 +369,17 @@ export function PlanItemCard({
           ) : null}
         </div>
       </div>
+
+      {canEdit ? (
+        <InlineTaskNoteSection
+          planId={planId}
+          itemId={item.id}
+          savedComment={item.comment}
+          open={noteEditorOpen}
+          onOpenChange={setNoteEditorOpen}
+          disabled={isPending}
+        />
+      ) : null}
 
       {showSubtaskForm ? (
         <div className="mt-1.5 ms-11 border-s border-border-soft/70 ps-2.5 md:ms-9 md:ps-3">
@@ -406,9 +421,7 @@ export function PlanItemCard({
           open={detailsOpen}
           onClose={() => {
             setDetailsOpen(false);
-            setDetailsFocusField(null);
           }}
-          focusField={detailsFocusField}
           isSubtask={isNested}
           themeProjectCatalog={themeProjectCatalog}
         />
