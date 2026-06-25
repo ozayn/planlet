@@ -9,6 +9,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { ExternalLinkIcon, HeartIcon } from "@/components/ui/action-icons";
 import { UserAvatar } from "@/components/user-avatar";
 import {
+  canShowBodyJourneyInProfileMenu,
   canShowCoachingInProfileMenu,
   canShowCareerJourneyInProfileMenu,
   canShowFeedbackInProfileMenu,
@@ -27,6 +28,7 @@ type ProfileMenuProps = {
   canUseTherapyThoughts?: boolean;
   canUseJobTrackerFeatures?: boolean;
   canUseCareerJourneyFeatures?: boolean;
+  canUseBodyJourneyFeatures?: boolean;
   canUseCoachingFeatures?: boolean;
   signOutButton: React.ReactNode;
   compact?: boolean;
@@ -218,6 +220,7 @@ export function ProfileMenu({
   canUseTherapyThoughts = false,
   canUseJobTrackerFeatures = false,
   canUseCareerJourneyFeatures = false,
+  canUseBodyJourneyFeatures = false,
   canUseCoachingFeatures = false,
   signOutButton,
   compact = false,
@@ -251,6 +254,7 @@ export function ProfileMenu({
   const onJobs = pathname === "/jobs" || pathname.startsWith("/jobs/");
   const onCareer =
     pathname === "/career" || pathname.startsWith("/career/");
+  const onBody = pathname === "/body" || pathname.startsWith("/body/");
   const onCoaching =
     pathname === "/coaching" || pathname.startsWith("/coaching/");
   const onAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
@@ -268,6 +272,7 @@ export function ProfileMenu({
     canUseTherapyThoughts,
     canUseJobTrackerFeatures,
     canUseCareerJourneyFeatures,
+    canUseBodyJourneyFeatures,
     canUseCoachingFeatures,
     isAdmin,
   };
@@ -376,6 +381,18 @@ export function ProfileMenu({
         className={menuItemClass(onTherapyReview)}
       >
         Therapy review
+      </Link>
+    ) : null,
+    canShowBodyJourneyInProfileMenu(access) ? (
+      <Link
+        key="body"
+        href="/body"
+        role="menuitem"
+        aria-current={onBody ? "page" : undefined}
+        onClick={closeMenu}
+        className={menuItemClass(onBody)}
+      >
+        Body Journey
       </Link>
     ) : null,
   ];

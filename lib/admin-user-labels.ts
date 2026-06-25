@@ -33,5 +33,9 @@ export function formatAdminRoleCapabilities(user: AdminUserStatRow): string {
     parts.push("Career");
   }
 
+  if (user.canUseBodyJourneyFeatures) {
+    parts.push("Body journey");
+  }
+
   return parts.join(" · ");
 }

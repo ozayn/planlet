@@ -1,6 +1,7 @@
 import type { UserRole } from "@/app/generated/prisma/client";
 import {
   isAdminEmail,
+  isBodyJourneyEmail,
   isCareerJourneyEmail,
   isCoachEmail,
   isFeedbackEmail,
@@ -17,6 +18,7 @@ export type ResolvedUserAccess = {
   canUseCoachingFeatures: boolean;
   canUseJobTrackerFeatures: boolean;
   canUseCareerJourneyFeatures: boolean;
+  canUseBodyJourneyFeatures: boolean;
 };
 
 type ExistingUserAccess = {
@@ -26,6 +28,7 @@ type ExistingUserAccess = {
   canUseCoachingFeatures?: boolean;
   canUseJobTrackerFeatures?: boolean;
   canUseCareerJourneyFeatures?: boolean;
+  canUseBodyJourneyFeatures?: boolean;
 };
 
 export function resolveUserAccessFromEmail(
@@ -40,6 +43,7 @@ export function resolveUserAccessFromEmail(
       canUseCoachingFeatures: true,
       canUseJobTrackerFeatures: true,
       canUseCareerJourneyFeatures: true,
+      canUseBodyJourneyFeatures: true,
     };
   }
 
@@ -48,6 +52,7 @@ export function resolveUserAccessFromEmail(
   const canUseCoachingFeatures = isCoachEmail(email);
   const canUseJobTrackerFeatures = isJobTrackerEmail(email);
   const canUseCareerJourneyFeatures = isCareerJourneyEmail(email);
+  const canUseBodyJourneyFeatures = isBodyJourneyEmail(email);
 
   let role: UserRole = "USER";
   if (canUseReflectionFeatures) {
@@ -61,6 +66,7 @@ export function resolveUserAccessFromEmail(
     canUseCoachingFeatures,
     canUseJobTrackerFeatures,
     canUseCareerJourneyFeatures,
+    canUseBodyJourneyFeatures,
   };
 }
 
@@ -86,6 +92,7 @@ export async function syncUserAccessOnSignIn(
       canUseCoachingFeatures: true,
       canUseJobTrackerFeatures: true,
       canUseCareerJourneyFeatures: true,
+      canUseBodyJourneyFeatures: true,
     },
   });
 
@@ -97,7 +104,8 @@ export async function syncUserAccessOnSignIn(
     existing?.canUseReflectionFeatures !== access.canUseReflectionFeatures ||
     existing?.canUseCoachingFeatures !== access.canUseCoachingFeatures ||
     existing?.canUseJobTrackerFeatures !== access.canUseJobTrackerFeatures ||
-    existing?.canUseCareerJourneyFeatures !== access.canUseCareerJourneyFeatures
+    existing?.canUseCareerJourneyFeatures !== access.canUseCareerJourneyFeatures ||
+    existing?.canUseBodyJourneyFeatures !== access.canUseBodyJourneyFeatures
   ) {
     await prisma.user.update({
       where: { id: userId },

@@ -7,6 +7,7 @@ export type UserAccess = {
   canUseCoachingFeatures?: boolean | null;
   canUseJobTrackerFeatures?: boolean | null;
   canUseCareerJourneyFeatures?: boolean | null;
+  canUseBodyJourneyFeatures?: boolean | null;
 };
 
 type RoleInput = UserRole | string | null | undefined;
@@ -59,6 +60,14 @@ export function canUseCareerJourneyFeatures(user: UserAccess): boolean {
   }
 
   return user.canUseCareerJourneyFeatures === true;
+}
+
+export function canUseBodyJourneyFeatures(user: UserAccess): boolean {
+  if (isAdmin(user)) {
+    return true;
+  }
+
+  return user.canUseBodyJourneyFeatures === true;
 }
 
 export function canUseTherapyThoughts(user: UserAccess | RoleInput): boolean {

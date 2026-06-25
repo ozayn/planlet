@@ -180,6 +180,21 @@ enum JobApplicationStatus {
   ARCHIVED
 }
 
+enum BodySide {
+  FRONT
+  BACK
+}
+
+enum BodySymptomType {
+  PAIN
+  TENSION
+  NUMBNESS
+  TINGLING
+  BURNING
+  FATIGUE
+  OTHER
+}
+
 model User {
   id            String      @id @default(cuid())
   name          String?
@@ -192,6 +207,7 @@ model User {
   canUseCoachingFeatures    Boolean     @default(false)
   canUseJobTrackerFeatures  Boolean     @default(false)
   canUseCareerJourneyFeatures Boolean   @default(false)
+  canUseBodyJourneyFeatures   Boolean   @default(false)
   planItemView              PlanItemView @default(CHECKLIST)
   taskOrganizationDisplay   TaskOrganizationDisplay @default(ASSIGNED_ONLY)
   timezone                  String?
@@ -226,6 +242,7 @@ model User {
   careerCheckIns                CareerCheckIn[]
   careerPracticeSessions        CareerPracticeSession[]
   careerWeeklyReviews           CareerWeeklyReview[]
+  bodyEntries                   BodyEntry[]
   aiUsageLogs                   AiUsageLog[]
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -699,6 +716,25 @@ model CareerWeeklyReview {
 
   @@unique([userId, weekStart])
   @@index([userId, weekStart])
+}
+
+model BodyEntry {
+  id          String           @id @default(cuid())
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entryDate   DateTime
+  bodySide    BodySide
+  markerX     Float
+  markerY     Float
+  symptomType BodySymptomType
+  intensity   Int
+  notes       String?          @db.Text
+  tags        String[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([userId, entryDate])
+  @@index([userId, symptomType])
 }
 
 model AppSetting {
