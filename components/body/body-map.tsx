@@ -1,9 +1,10 @@
 "use client";
 
+import { useEffect, useId, useState } from "react";
+
 import {
   BODY_SYMPTOM_META,
   type BodySideValue,
-  type BodySymptomTypeValue,
 } from "@/lib/body-journey-types";
 import type { SerializedBodyEntry } from "@/lib/body-journey/constants";
 
@@ -14,6 +15,106 @@ type BodyMapProps = {
 };
 
 const VIEWBOX = { width: 200, height: 360 };
+
+const SHOW_BODY_GUIDES = process.env.NEXT_PUBLIC_SHOW_BODY_GUIDES === "true";
+
+type BodyRegion = {
+  id: string;
+  label: string;
+  x: number;
+  y: number;
+  sides: BodySideValue[];
+};
+
+const BODY_REGIONS: BodyRegion[] = [
+  { id: "head", label: "Head", x: 100, y: 48, sides: ["FRONT", "BACK"] },
+  { id: "chest", label: "Chest", x: 100, y: 114, sides: ["FRONT"] },
+  { id: "upper-back", label: "Upper back", x: 100, y: 118, sides: ["BACK"] },
+  { id: "abdomen", label: "Abdomen", x: 100, y: 152, sides: ["FRONT", "BACK"] },
+  { id: "pelvis", label: "Pelvis", x: 100, y: 178, sides: ["FRONT", "BACK"] },
+  { id: "left-hand", label: "Left hand", x: 148, y: 186, sides: ["FRONT"] },
+  { id: "right-hand", label: "Right hand", x: 52, y: 186, sides: ["FRONT"] },
+  { id: "left-hand-back", label: "Left hand", x: 52, y: 186, sides: ["BACK"] },
+  { id: "right-hand-back", label: "Right hand", x: 148, y: 186, sides: ["BACK"] },
+  { id: "left-foot", label: "Left foot", x: 136, y: 334, sides: ["FRONT"] },
+  { id: "right-foot", label: "Right foot", x: 64, y: 334, sides: ["FRONT"] },
+  { id: "left-foot-back", label: "Left foot", x: 64, y: 334, sides: ["BACK"] },
+  { id: "right-foot-back", label: "Right foot", x: 136, y: 334, sides: ["BACK"] },
+];
+
+type HitArea = {
+  id: string;
+  regionId: string;
+  label: string;
+  sides: BodySideValue[];
+  d: string;
+};
+
+const HIT_AREAS: HitArea[] = [
+  {
+    id: "chest-hit",
+    regionId: "chest",
+    label: "Chest",
+    sides: ["FRONT"],
+    d: "M62 92 Q100 82 138 92 L132 138 Q100 146 68 138 Z",
+  },
+  {
+    id: "right-hand-hit-front",
+    regionId: "right-hand",
+    label: "Right hand",
+    sides: ["FRONT"],
+    d: "M34 118 Q24 150 30 188 Q38 206 58 198 Q66 182 64 148 Q62 124 72 100 Z",
+  },
+  {
+    id: "left-hand-hit-front",
+    regionId: "left-hand",
+    label: "Left hand",
+    sides: ["FRONT"],
+    d: "M166 118 Q176 150 170 188 Q162 206 142 198 Q134 182 136 148 Q138 124 128 100 Z",
+  },
+  {
+    id: "right-foot-hit-front",
+    regionId: "right-foot",
+    label: "Right foot",
+    sides: ["FRONT"],
+    d: "M48 300 Q38 330 52 348 Q72 354 84 336 Q88 318 82 296 Z",
+  },
+  {
+    id: "left-foot-hit-front",
+    regionId: "left-foot",
+    label: "Left foot",
+    sides: ["FRONT"],
+    d: "M152 300 Q162 330 148 348 Q128 354 116 336 Q112 318 118 296 Z",
+  },
+  {
+    id: "left-hand-hit-back",
+    regionId: "left-hand-back",
+    label: "Left hand",
+    sides: ["BACK"],
+    d: "M34 118 Q24 150 30 188 Q38 206 58 198 Q66 182 64 148 Q62 124 72 100 Z",
+  },
+  {
+    id: "right-hand-hit-back",
+    regionId: "right-hand-back",
+    label: "Right hand",
+    sides: ["BACK"],
+    d: "M166 118 Q176 150 170 188 Q162 206 142 198 Q134 182 136 148 Q138 124 128 100 Z",
+  },
+  {
+    id: "left-foot-hit-back",
+    regionId: "left-foot-back",
+    label: "Left foot",
+    sides: ["BACK"],
+    d: "M48 300 Q38 330 52 348 Q72 354 84 336 Q88 318 82 296 Z",
+  },
+  {
+    id: "right-foot-hit-back",
+    regionId: "right-foot-back",
+    label: "Right foot",
+    sides: ["BACK"],
+    d: "M152 300 Q162 330 148 348 Q128 354 116 336 Q112 318 118 296 Z",
+  },
+];
 
 function handleMapClick(
   event: React.MouseEvent<SVGSVGElement>,
@@ -33,6 +134,37 @@ function handleMapClick(
   }
 
   onSelectPoint({ x, y });
+}
+
+function usePrefersCoarsePointer() {
+  const [coarse, setCoarse] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(pointer: coarse)");
+    const sync = () => setCoarse(mediaQuery.matches);
+
+    sync();
+    mediaQuery.addEventListener("change", sync);
+
+    return () => mediaQuery.removeEventListener("change", sync);
+  }, []);
+
+  return coarse;
+}
+
+function OrientationLabels({ side }: { side: BodySideValue }) {
+  const isFront = side === "FRONT";
+
+  return (
+    <g aria-hidden="true" className="fill-muted">
+      <text x={isFront ? 32 : 32} y={92} textAnchor="middle" fontSize="9" fontWeight="500">
+        {isFront ? "R" : "L"}
+      </text>
+      <text x={isFront ? 168 : 168} y={92} textAnchor="middle" fontSize="9" fontWeight="500">
+        {isFront ? "L" : "R"}
+      </text>
+    </g>
+  );
 }
 
 function FrontSilhouette() {
@@ -57,10 +189,40 @@ function FrontSilhouette() {
       />
       <path d="M88 78 Q100 74 112 78 L110 94 Q100 96 90 94 Z" />
       <path d="M72 94 Q100 88 128 94 L124 188 Q100 194 76 188 Z" />
-      <path d="M72 96 Q52 104 46 134 L40 172 Q54 168 62 138 Z" />
-      <path d="M128 96 Q148 104 154 134 L160 172 Q146 168 138 138 Z" />
-      <path d="M84 188 L78 328 Q92 334 98 328 L100 188 Z" />
-      <path d="M116 188 L122 328 Q108 334 102 328 L100 188 Z" />
+      <path
+        d="M78 98 Q88 124 98 116"
+        fill="none"
+        stroke="currentColor"
+        strokeOpacity={0.5}
+        strokeWidth="1.25"
+      />
+      <path
+        d="M122 98 Q112 124 102 116"
+        fill="none"
+        stroke="currentColor"
+        strokeOpacity={0.5}
+        strokeWidth="1.25"
+      />
+      <path d="M72 94 Q54 100 48 126 L44 154 L42 172 Q40 184 48 192 Q58 198 66 188 L70 158 L74 132 Q76 112 72 94 Z" />
+      <path d="M128 94 Q146 100 152 126 L156 154 L158 172 Q160 184 152 192 Q142 198 134 188 L130 158 L126 132 Q124 112 128 94 Z" />
+      <ellipse cx="52" cy="188" rx="13" ry="10" />
+      <ellipse cx="148" cy="188" rx="13" ry="10" />
+      <path d="M84 188 L78 302 L74 318 Q70 336 82 346 Q94 352 104 340 L106 328 L100 188 Z" />
+      <path d="M116 188 L122 302 L126 318 Q130 336 118 346 Q106 352 96 340 L94 328 L100 188 Z" />
+      <path
+        d="M74 318 Q82 350 104 344 Q110 334 106 318"
+        fill="currentColor"
+        fillOpacity={0.14}
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M126 318 Q118 350 96 344 Q90 334 94 318"
+        fill="currentColor"
+        fillOpacity={0.14}
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
     </g>
   );
 }
@@ -113,10 +275,146 @@ function BackSilhouette() {
         strokeOpacity={0.35}
         strokeWidth="1"
       />
-      <path d="M70 94 Q50 100 44 132 L38 170 Q52 166 60 136 Z" />
-      <path d="M130 94 Q150 100 156 132 L162 170 Q148 166 140 136 Z" />
-      <path d="M82 188 L76 328 Q90 334 96 328 L98 188 Z" />
-      <path d="M118 188 L124 328 Q110 334 104 328 L102 188 Z" />
+      <path d="M70 94 Q50 100 44 132 L40 160 L38 172 Q36 184 44 192 Q54 198 62 188 L66 158 L70 132 Z" />
+      <path d="M130 94 Q150 100 156 132 L160 160 L162 172 Q164 184 156 192 Q146 198 138 188 L134 158 L130 132 Z" />
+      <ellipse cx="52" cy="188" rx="13" ry="10" />
+      <ellipse cx="148" cy="188" rx="13" ry="10" />
+      <path d="M82 188 L76 302 L72 318 Q68 336 80 346 Q92 352 102 340 L104 328 L98 188 Z" />
+      <path d="M118 188 L124 302 L128 318 Q132 336 120 346 Q108 352 98 340 L96 328 L102 188 Z" />
+      <path
+        d="M72 318 Q80 350 102 344 Q108 334 104 318"
+        fill="currentColor"
+        fillOpacity={0.14}
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+      <path
+        d="M128 318 Q120 350 98 344 Q92 334 96 318"
+        fill="currentColor"
+        fillOpacity={0.14}
+        stroke="currentColor"
+        strokeWidth="1.5"
+      />
+    </g>
+  );
+}
+
+function BodyRegionLabels({
+  side,
+  activeRegion,
+  showFaintLabels,
+}: {
+  side: BodySideValue;
+  activeRegion: string | null;
+  showFaintLabels: boolean;
+}) {
+  const labelClass = "pointer-events-none select-none fill-muted";
+
+  return (
+    <g aria-hidden="true">
+      {BODY_REGIONS.filter((region) => region.sides.includes(side)).map((region) => {
+        const isActive = activeRegion === region.id;
+        const opacity = isActive ? 0.85 : showFaintLabels ? 0.38 : 0;
+
+        if (opacity === 0) {
+          return null;
+        }
+
+        return (
+          <text
+            key={region.id}
+            x={region.x}
+            y={region.y}
+            textAnchor="middle"
+            fontSize="8"
+            fontWeight="500"
+            className={labelClass}
+            fillOpacity={opacity}
+          >
+            {region.label}
+          </text>
+        );
+      })}
+    </g>
+  );
+}
+
+function BodyHitAreas({
+  side,
+  onRegionHover,
+}: {
+  side: BodySideValue;
+  onRegionHover: (regionId: string | null) => void;
+}) {
+  return (
+    <g aria-hidden="true">
+      {HIT_AREAS.filter((area) => area.sides.includes(side)).map((area) => (
+        <path
+          key={area.id}
+          d={area.d}
+          fill="transparent"
+          stroke="none"
+          pointerEvents="all"
+          onMouseEnter={() => onRegionHover(area.regionId)}
+          onMouseLeave={() => onRegionHover(null)}
+          onFocus={() => onRegionHover(area.regionId)}
+          onBlur={() => onRegionHover(null)}
+        >
+          <title>{area.label}</title>
+        </path>
+      ))}
+    </g>
+  );
+}
+
+function BodyGuides({ side }: { side: BodySideValue }) {
+  const gridLines = [];
+
+  for (let x = 0; x <= VIEWBOX.width; x += 20) {
+    gridLines.push(
+      <line
+        key={`v-${x}`}
+        x1={x}
+        y1={0}
+        x2={x}
+        y2={VIEWBOX.height}
+        stroke="currentColor"
+        strokeOpacity={0.12}
+        strokeWidth="0.5"
+      />,
+    );
+  }
+
+  for (let y = 0; y <= VIEWBOX.height; y += 20) {
+    gridLines.push(
+      <line
+        key={`h-${y}`}
+        x1={0}
+        y1={y}
+        x2={VIEWBOX.width}
+        y2={y}
+        stroke="currentColor"
+        strokeOpacity={0.12}
+        strokeWidth="0.5"
+      />,
+    );
+  }
+
+  return (
+    <g className="text-border pointer-events-none" aria-hidden="true">
+      {gridLines}
+      {HIT_AREAS.filter((area) => area.sides.includes(side)).map((area) => (
+        <path
+          key={`guide-${area.id}`}
+          d={area.d}
+          fill="currentColor"
+          fillOpacity={0.04}
+          stroke="currentColor"
+          strokeOpacity={0.2}
+          strokeWidth="0.75"
+          strokeDasharray="3 3"
+        />
+      ))}
     </g>
   );
 }
@@ -136,21 +434,23 @@ function EntryMarker({ entry }: { entry: SerializedBodyEntry }) {
         stroke="var(--surface)"
         strokeWidth="1.5"
       />
-      <title>
-        {meta.label} · {entry.intensity}/10
-      </title>
+      <title>{`${meta.label} · ${entry.intensity}/10`}</title>
     </g>
   );
 }
 
 export function BodyMap({ side, entries, onSelectPoint }: BodyMapProps) {
   const visibleEntries = entries.filter((entry) => entry.bodySide === side);
+  const [activeRegion, setActiveRegion] = useState<string | null>(null);
+  const prefersCoarsePointer = usePrefersCoarsePointer();
+  const mapDescriptionId = useId();
 
   return (
     <div className="mx-auto w-full max-w-xs">
       <svg
         viewBox={`0 0 ${VIEWBOX.width} ${VIEWBOX.height}`}
         role="img"
+        aria-describedby={mapDescriptionId}
         aria-label={
           side === "FRONT"
             ? "Front body diagram. Tap to record a sensation."
@@ -166,11 +466,24 @@ export function BodyMap({ side, entries, onSelectPoint }: BodyMapProps) {
           height={VIEWBOX.height}
           fill="transparent"
         />
+        {SHOW_BODY_GUIDES ? <BodyGuides side={side} /> : null}
         {side === "FRONT" ? <FrontSilhouette /> : <BackSilhouette />}
+        <OrientationLabels side={side} />
+        <BodyRegionLabels
+          side={side}
+          activeRegion={activeRegion}
+          showFaintLabels={prefersCoarsePointer}
+        />
+        <BodyHitAreas side={side} onRegionHover={setActiveRegion} />
         {visibleEntries.map((entry) => (
           <EntryMarker key={entry.id} entry={entry} />
         ))}
       </svg>
+      <p id={mapDescriptionId} className="sr-only">
+        {side === "FRONT"
+          ? "Facing you. R marks the figure's right side on your left; L marks the figure's left side on your right."
+          : "Back view. L marks the figure's left side on your left; R marks the figure's right side on your right."}
+      </p>
     </div>
   );
 }
