@@ -10,6 +10,7 @@ import { formatPlanActivityLabel } from "@/lib/plan-activity";
 import { getPlanItemTypeLabel } from "@/lib/plan-labels";
 import { isExpressiveItemView } from "@/lib/plan-item-view";
 import { partitionPlanItems } from "@/lib/plan-item-sections";
+import { orderPlanItemsForDisplay } from "@/lib/plan-item-display-order";
 import { getStatusLabel, STATUS_STYLES } from "@/lib/plan-status";
 import type { SerializedPlan, SerializedPlanItem } from "@/lib/plan-serialize";
 import { hasThemeProjectAssignment } from "@/lib/theme-project-types";
@@ -205,7 +206,7 @@ export function PlanReadOnly({
               <div className="space-y-2">
                 <SectionLabel>Tasks</SectionLabel>
                 <div className="space-y-1.5">
-                  {tasks.map((item) => (
+                  {orderPlanItemsForDisplay(tasks).map((item) => (
                     <ReadOnlyTaskItem
                       key={item.id}
                       item={item}

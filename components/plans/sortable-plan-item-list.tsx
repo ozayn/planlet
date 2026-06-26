@@ -22,7 +22,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useRef, useState, useTransition } from "react";
+import { useEffect, useId, useMemo, useRef, useState, useTransition } from "react";
 
 import type { PlanItemView, TaskOrganizationDisplay } from "@/app/generated/prisma/client";
 
@@ -46,6 +46,7 @@ import {
   isPromotionDragOffset,
 } from "@/lib/plan-drag-nesting";
 import type { PlanItemSectionGroup } from "@/lib/plan-item-sections";
+import { orderPlanItemsForDisplay } from "@/lib/plan-item-display-order";
 import { useMediaQuery } from "@/lib/use-media-query";
 import type { SerializedPlanItem } from "@/lib/plan-serialize";
 import type { ThemeProjectCatalog } from "@/lib/theme-project-types";
@@ -63,6 +64,7 @@ type SortablePlanItemListProps = {
   sourcePlanDate?: string;
   themeProjectCatalog?: ThemeProjectCatalog;
   taskOrganizationDisplay?: TaskOrganizationDisplay;
+  moveCompletedToTop?: boolean;
 };
 
 type DragState = {
@@ -377,9 +379,18 @@ export function SortablePlanItemList({
   sourcePlanDate,
   themeProjectCatalog = EMPTY_THEME_PROJECT_CATALOG,
   taskOrganizationDisplay = "ASSIGNED_ONLY",
+  moveCompletedToTop = true,
 }: SortablePlanItemListProps) {
   const router = useRouter();
   const [items, setItems] = useState(initialItems);
+  const shouldPartitionCompleted = parentItemId === null && moveCompletedToTop;
+  const displayItems = useMemo(
+    () =>
+      shouldPartitionCompleted
+        ? orderPlanItemsForDisplay(items, { moveCompletedToTop: true })
+        : items,
+    [items, shouldPartitionCompleted],
+  );
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [mounted, setMounted] = useState(false);
@@ -442,7 +453,7 @@ export function SortablePlanItemList({
   function handleDragStart(event: DragStartEvent) {
     const activeId = String(event.active.id);
     dragOffsetXRef.current = 0;
-    setActiveDragItem(items.find((item) => item.id === activeId) ?? null);
+    setActiveDragItem(displayItems.find((item) => item.id === activeId) ?? null);
     setDragPreviewWidth(event.active.rect.current.initial?.width ?? undefined);
     setDragState({
       activeId,
@@ -556,23 +567,23 @@ export function SortablePlanItemList({
       return;
     }
 
-    const oldIndex = items.findIndex((item) => item.id === active.id);
-    const newIndex = items.findIndex((item) => item.id === over.id);
+    const oldIndex = displayItems.findIndex((item) => item.id === active.id);
+    const newIndex = displayItems.findIndex((item) => item.id === over.id);
 
     if (oldIndex < 0 || newIndex < 0) {
       return;
     }
 
     const previousItems = items;
-    const nextItems = arrayMove(items, oldIndex, newIndex);
-    setItems(nextItems);
+    const nextDisplayOrder = arrayMove(displayItems, oldIndex, newIndex);
+    setItems(nextDisplayOrder);
     setError(null);
 
     startTransition(async () => {
       const invoked = await invokeServerAction(() =>
         reorderPlanItemsAction({
           planId,
-          orderedItemIds: nextItems.map((item) => item.id),
+          orderedItemIds: nextDisplayOrder.map((item) => item.id),
           parentItemId,
           sectionGroup,
         }),
@@ -598,7 +609,7 @@ export function SortablePlanItemList({
       {mounted && canEdit ? (
         <SortablePlanItemRows
           planId={planId}
-          items={items}
+          items={displayItems}
           itemView={itemView}
           itemDepth={itemDepth}
           canEdit={canEdit}
@@ -621,7 +632,7 @@ export function SortablePlanItemList({
       ) : (
         <StaticPlanItemList
           planId={planId}
-          items={items}
+          items={displayItems}
           itemView={itemView}
           canEdit={canEdit}
           itemDepth={itemDepth}

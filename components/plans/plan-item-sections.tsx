@@ -18,6 +18,7 @@ type PlanItemSectionsProps = {
   sourcePlanDate?: string;
   themeProjectCatalog?: ThemeProjectCatalog;
   taskOrganizationDisplay?: TaskOrganizationDisplay;
+  moveCompletedToTop?: boolean;
 };
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -36,6 +37,7 @@ export function PlanItemSections({
   sourcePlanDate,
   themeProjectCatalog = EMPTY_THEME_PROJECT_CATALOG,
   taskOrganizationDisplay = "ASSIGNED_ONLY",
+  moveCompletedToTop = true,
 }: PlanItemSectionsProps) {
   const { tasks, intentions, notes } = partitionPlanItems(items);
   if (tasks.length === 0 && intentions.length === 0 && notes.length === 0) {
@@ -56,6 +58,7 @@ export function PlanItemSections({
             sourcePlanDate={sourcePlanDate}
             themeProjectCatalog={themeProjectCatalog}
             taskOrganizationDisplay={taskOrganizationDisplay}
+            moveCompletedToTop={moveCompletedToTop}
           />
         </section>
       ) : null}
