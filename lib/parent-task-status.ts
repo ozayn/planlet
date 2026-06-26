@@ -6,10 +6,6 @@ const PRESERVED_PARENT_STATUSES = new Set<PlanItemStatus>([
   "RELEASED",
 ]);
 
-function countsTowardProgress(status: PlanItemStatus): boolean {
-  return status === "DONE" || status === "PARTIAL";
-}
-
 export function deriveParentStatusFromSubtasks(
   subtaskStatuses: readonly PlanItemStatus[],
   currentParentStatus: PlanItemStatus,
@@ -53,4 +49,11 @@ export function deriveParentStatusFromSubtasks(
   }
 
   return currentParentStatus === "PARTIAL" ? "OPEN" : currentParentStatus;
+}
+
+export function shouldCascadeDoneToSubtasks(
+  newStatus: PlanItemStatus,
+  subtaskCount: number,
+): boolean {
+  return newStatus === "DONE" && subtaskCount > 0;
 }

@@ -8,6 +8,7 @@ import type {
   PriorityLevel,
   SatisfactionLevel,
   TimeHint,
+  Prisma,
 } from "@/app/generated/prisma/client";
 import { PlanType as PlanTypeEnum } from "@/app/generated/prisma/client";
 
@@ -23,7 +24,7 @@ import {
   parseDateString,
 } from "@/lib/dates";
 import { canEditPlan, canViewPlan } from "@/lib/plan-sharing";
-import { deriveParentStatusFromSubtasks } from "@/lib/parent-task-status";
+import { deriveParentStatusFromSubtasks, shouldCascadeDoneToSubtasks } from "@/lib/parent-task-status";
 import { normalizeProgressForStatus } from "@/lib/plan-status";
 import {
   getPlanItemSectionGroup,
@@ -75,6 +76,41 @@ class PlanAccessError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "PlanAccessError";
+  }
+}
+
+type PlanItemDbClient = Prisma.TransactionClient | typeof prisma;
+
+async function cascadeDoneStatusToSubtasks(
+  tx: PlanItemDbClient,
+  parentItemId: string,
+) {
+  await tx.planItem.updateMany({
+    where: { parentItemId },
+    data: {
+      status: "DONE",
+      progressLevel: normalizeProgressForStatus("DONE"),
+    },
+  });
+}
+
+async function applyItemStatusUpdate(
+  tx: PlanItemDbClient,
+  itemId: string,
+  status: PlanItemStatus,
+  progressLevel: number,
+) {
+  await tx.planItem.update({
+    where: { id: itemId },
+    data: { status, progressLevel },
+  });
+
+  const subtaskCount = await tx.planItem.count({
+    where: { parentItemId: itemId },
+  });
+
+  if (shouldCascadeDoneToSubtasks(status, subtaskCount)) {
+    await cascadeDoneStatusToSubtasks(tx, itemId);
   }
 }
 
@@ -515,36 +551,40 @@ export async function createPlanItem(input: CreatePlanItemInput) {
     input.projectId,
   );
 
-  const item = await prisma.planItem.create({
-    data: {
-      planId: input.planId,
-      parentItemId: input.parentItemId,
-      title: input.title,
-      description: input.description,
-      type: input.type,
-      status,
-      progressLevel,
-      satisfactionLevel: input.satisfactionLevel,
-      confidenceLevel: input.confidenceLevel,
-      excitementLevel: input.excitementLevel,
-      importance: input.importance,
-      urgency: input.urgency,
-      timeHint: input.timeHint,
-      startTime: input.startTime,
-      endTime: input.endTime,
-      durationMinutes: input.durationMinutes,
-      comment: input.comment,
-      shareable: input.shareable,
-      sortOrder,
-      themeId: assignment.themeId,
-      projectId: assignment.projectId,
-    },
-    include: planItemInclude,
-  });
+  const item = await prisma.$transaction(async (tx) => {
+    const created = await tx.planItem.create({
+      data: {
+        planId: input.planId,
+        parentItemId: input.parentItemId,
+        title: input.title,
+        description: input.description,
+        type: input.type,
+        status,
+        progressLevel,
+        satisfactionLevel: input.satisfactionLevel,
+        confidenceLevel: input.confidenceLevel,
+        excitementLevel: input.excitementLevel,
+        importance: input.importance,
+        urgency: input.urgency,
+        timeHint: input.timeHint,
+        startTime: input.startTime,
+        endTime: input.endTime,
+        durationMinutes: input.durationMinutes,
+        comment: input.comment,
+        shareable: input.shareable,
+        sortOrder,
+        themeId: assignment.themeId,
+        projectId: assignment.projectId,
+      },
+      include: planItemInclude,
+    });
 
-  if (input.parentItemId) {
-    await syncParentStatusFromSubtasks(input.parentItemId, input.userId);
-  }
+    if (input.parentItemId) {
+      await syncParentStatusFromSubtasks(input.parentItemId, input.userId, tx);
+    }
+
+    return created;
+  });
 
   await touchPlan(input.planId);
   await touchUserSeen(input.userId);
@@ -562,8 +602,9 @@ export type UpdatePlanItemStatusInput = {
 async function syncParentStatusFromSubtasks(
   parentItemId: string,
   userId: string,
+  tx: PlanItemDbClient = prisma,
 ) {
-  const parent = await prisma.planItem.findFirst({
+  const parent = await tx.planItem.findFirst({
     where: { id: parentItemId, plan: { userId } },
     select: { id: true, status: true, progressLevel: true },
   });
@@ -572,7 +613,7 @@ async function syncParentStatusFromSubtasks(
     return;
   }
 
-  const subtasks = await prisma.planItem.findMany({
+  const subtasks = await tx.planItem.findMany({
     where: { parentItemId },
     select: { status: true },
     orderBy: itemOrderBy,
@@ -587,7 +628,7 @@ async function syncParentStatusFromSubtasks(
     return;
   }
 
-  await prisma.planItem.update({
+  await tx.planItem.update({
     where: { id: parentItemId },
     data: {
       status: derivedStatus,
@@ -606,13 +647,13 @@ export async function updatePlanItemStatus(input: UpdatePlanItemStatusInput) {
     input.progressLevel ??
     normalizeProgressForStatus(input.status, item.progressLevel);
 
-  const updated = await prisma.planItem.update({
-    where: { id: input.itemId },
-    data: {
-      status: input.status,
-      progressLevel,
-    },
-    include: planItemInclude,
+  const updated = await prisma.$transaction(async (tx) => {
+    await applyItemStatusUpdate(tx, input.itemId, input.status, progressLevel);
+
+    return tx.planItem.findUniqueOrThrow({
+      where: { id: input.itemId },
+      include: planItemInclude,
+    });
   });
 
   if (item.parentItemId) {
@@ -677,20 +718,34 @@ export async function updatePlanItem(input: UpdatePlanItemInput) {
     );
   }
 
-  const updated = await prisma.planItem.update({
-    where: { id: itemId },
-    data: {
-      ...fields,
-      ...(status ? { status: nextStatus } : {}),
-      ...(nextProgress !== undefined ? { progressLevel: nextProgress } : {}),
-      ...(assignment
-        ? {
-            themeId: assignment.themeId,
-            projectId: assignment.projectId,
-          }
-        : {}),
-    },
-    include: planItemInclude,
+  const updated = await prisma.$transaction(async (tx) => {
+    const nextItem = await tx.planItem.update({
+      where: { id: itemId },
+      data: {
+        ...fields,
+        ...(status ? { status: nextStatus } : {}),
+        ...(nextProgress !== undefined ? { progressLevel: nextProgress } : {}),
+        ...(assignment
+          ? {
+              themeId: assignment.themeId,
+              projectId: assignment.projectId,
+            }
+          : {}),
+      },
+      include: planItemInclude,
+    });
+
+    if (status === "DONE") {
+      const subtaskCount = await tx.planItem.count({
+        where: { parentItemId: itemId },
+      });
+
+      if (shouldCascadeDoneToSubtasks(nextStatus, subtaskCount)) {
+        await cascadeDoneStatusToSubtasks(tx, itemId);
+      }
+    }
+
+    return nextItem;
   });
 
   if (status !== undefined && item.parentItemId) {
