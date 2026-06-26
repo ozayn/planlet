@@ -222,6 +222,7 @@ export function ProfileMenu({
 
   const onSettings = pathname === "/settings" || pathname.startsWith("/settings/");
   const onFeedback = pathname === "/feedback" || pathname.startsWith("/feedback/");
+  const onPoke = pathname === "/poke" || pathname.startsWith("/poke/");
   const feedbackHref =
     pathname && pathname !== "/feedback"
       ? `/feedback?from=${encodeURIComponent(pathname)}`
@@ -299,6 +300,16 @@ export function ProfileMenu({
       className={menuItemClass(onSettings)}
     >
       Settings
+    </Link>,
+    <Link
+      key="poke"
+      href="/poke"
+      role="menuitem"
+      aria-current={onPoke ? "page" : undefined}
+      onClick={closeMenu}
+      className={menuItemClass(onPoke)}
+    >
+      Poke
     </Link>,
     canShowFeedbackInProfileMenu(access) ? (
       <Link

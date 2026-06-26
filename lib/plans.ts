@@ -25,6 +25,7 @@ import {
 } from "@/lib/dates";
 import { canEditPlan, canViewPlan } from "@/lib/plan-sharing";
 import { deriveParentStatusFromSubtasks, shouldCascadeDoneToSubtasks } from "@/lib/parent-task-status";
+import { resolveCompletedAt } from "@/lib/plan-item-completed-at";
 import { normalizeProgressForStatus } from "@/lib/plan-status";
 import {
   getPlanItemSectionGroup,
@@ -84,12 +85,17 @@ type PlanItemDbClient = Prisma.TransactionClient | typeof prisma;
 async function cascadeDoneStatusToSubtasks(
   tx: PlanItemDbClient,
   parentItemId: string,
+  completedAt: Date,
 ) {
   await tx.planItem.updateMany({
-    where: { parentItemId },
+    where: {
+      parentItemId,
+      status: { not: "DONE" },
+    },
     data: {
       status: "DONE",
       progressLevel: normalizeProgressForStatus("DONE"),
+      completedAt,
     },
   });
 }
@@ -100,9 +106,26 @@ async function applyItemStatusUpdate(
   status: PlanItemStatus,
   progressLevel: number,
 ) {
+  const existing = await tx.planItem.findUnique({
+    where: { id: itemId },
+    select: { status: true, completedAt: true },
+  });
+
+  if (!existing) {
+    throw new PlanAccessError("Plan item not found");
+  }
+
+  const now = new Date();
+  const completedAt = resolveCompletedAt(
+    existing.status,
+    status,
+    existing.completedAt,
+    now,
+  );
+
   await tx.planItem.update({
     where: { id: itemId },
-    data: { status, progressLevel },
+    data: { status, progressLevel, completedAt },
   });
 
   const subtaskCount = await tx.planItem.count({
@@ -110,7 +133,7 @@ async function applyItemStatusUpdate(
   });
 
   if (shouldCascadeDoneToSubtasks(status, subtaskCount)) {
-    await cascadeDoneStatusToSubtasks(tx, itemId);
+    await cascadeDoneStatusToSubtasks(tx, itemId, now);
   }
 }
 
@@ -606,7 +629,7 @@ async function syncParentStatusFromSubtasks(
 ) {
   const parent = await tx.planItem.findFirst({
     where: { id: parentItemId, plan: { userId } },
-    select: { id: true, status: true, progressLevel: true },
+    select: { id: true, status: true, progressLevel: true, completedAt: true },
   });
 
   if (!parent) {
@@ -628,6 +651,14 @@ async function syncParentStatusFromSubtasks(
     return;
   }
 
+  const now = new Date();
+  const completedAt = resolveCompletedAt(
+    parent.status,
+    derivedStatus,
+    parent.completedAt,
+    now,
+  );
+
   await tx.planItem.update({
     where: { id: parentItemId },
     data: {
@@ -636,6 +667,7 @@ async function syncParentStatusFromSubtasks(
         derivedStatus,
         parent.progressLevel,
       ),
+      completedAt,
     },
   });
 }
@@ -719,11 +751,18 @@ export async function updatePlanItem(input: UpdatePlanItemInput) {
   }
 
   const updated = await prisma.$transaction(async (tx) => {
+    const now = new Date();
+    const completedAt = status
+      ? resolveCompletedAt(item.status, nextStatus, item.completedAt, now)
+      : undefined;
+
     const nextItem = await tx.planItem.update({
       where: { id: itemId },
       data: {
         ...fields,
-        ...(status ? { status: nextStatus } : {}),
+        ...(status
+          ? { status: nextStatus, completedAt }
+          : {}),
         ...(nextProgress !== undefined ? { progressLevel: nextProgress } : {}),
         ...(assignment
           ? {
@@ -741,7 +780,7 @@ export async function updatePlanItem(input: UpdatePlanItemInput) {
       });
 
       if (shouldCascadeDoneToSubtasks(nextStatus, subtaskCount)) {
-        await cascadeDoneStatusToSubtasks(tx, itemId);
+        await cascadeDoneStatusToSubtasks(tx, itemId, now);
       }
     }
 

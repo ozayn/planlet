@@ -187,3 +187,28 @@ export async function createAppFeedbackNotification(input: {
     ),
   );
 }
+
+export async function createUserPokeNotification(input: {
+  recipientUserId: string;
+  pokeId: string;
+  title: string;
+  body: string;
+}) {
+  const href = `/poke?nudge=${input.pokeId}`;
+
+  const notification = await createNotification({
+    userId: input.recipientUserId,
+    type: "USER_POKE",
+    title: input.title,
+    body: input.body,
+    href,
+  });
+
+  void sendPushToUser(input.recipientUserId, {
+    title: input.title,
+    body: input.body,
+    url: href,
+  });
+
+  return notification;
+}

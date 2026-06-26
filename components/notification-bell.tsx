@@ -12,10 +12,14 @@ import { BellIcon } from "@/components/ui/action-icons";
 import { APP_TIMEZONE } from "@/config/time";
 import { ACTION_LABELS } from "@/lib/action-labels";
 import type { SerializedNotification } from "@/lib/notification-serialize";
+import type { SerializedPoke } from "@/lib/poke";
+
+import { ReceivedPokesList } from "@/components/poke/received-pokes-list";
 
 type NotificationBellProps = {
   unreadCount: number;
   notifications: SerializedNotification[];
+  receivedPokes?: SerializedPoke[];
 };
 
 function formatNotificationTime(iso: string): string {
@@ -101,6 +105,7 @@ function NotificationList({
 export function NotificationBell({
   unreadCount,
   notifications,
+  receivedPokes = [],
 }: NotificationBellProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -199,6 +204,43 @@ export function NotificationBell({
     </div>
   );
 
+  const nudgesSection =
+    receivedPokes.length > 0 ? (
+      <div className="border-b border-border-soft">
+        <p className="px-4 pt-3 text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-muted-light">
+          Recent nudges
+        </p>
+        <ReceivedPokesList pokes={receivedPokes} compact />
+      </div>
+    ) : null;
+
+  const updatesSection =
+    notifications.length > 0 ? (
+      <>
+        {receivedPokes.length > 0 ? (
+          <p className="px-4 pt-3 text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-muted-light">
+            Updates
+          </p>
+        ) : null}
+        <NotificationList
+          notifications={notifications}
+          isPending={isPending}
+          onNotificationClick={handleNotificationClick}
+        />
+      </>
+    ) : receivedPokes.length === 0 ? (
+      <p className="px-4 py-8 text-center text-sm text-muted">
+        No notifications yet.
+      </p>
+    ) : null;
+
+  const panelBody = (
+    <>
+      {nudgesSection}
+      {updatesSection}
+    </>
+  );
+
   const mobileOverlay =
     open && mounted ? (
       <div
@@ -219,13 +261,7 @@ export function NotificationBell({
           className="ui-mobile-overlay-panel ui-mobile-overlay-panel-wide !max-w-none"
         >
           <div className="ui-mobile-overlay-header">{header}</div>
-          <div className="ui-mobile-overlay-body">
-            <NotificationList
-              notifications={notifications}
-              isPending={isPending}
-              onNotificationClick={handleNotificationClick}
-            />
-          </div>
+          <div className="ui-mobile-overlay-body">{panelBody}</div>
         </div>
       </div>
     ) : null;
@@ -265,11 +301,7 @@ export function NotificationBell({
             className="ui-desktop-dropdown-panel !w-80 hidden md:block"
           >
             <div className="border-b border-border-soft">{header}</div>
-            <NotificationList
-              notifications={notifications}
-              isPending={isPending}
-              onNotificationClick={handleNotificationClick}
-            />
+            {panelBody}
           </div>
         </>
       ) : null}

@@ -13,6 +13,7 @@ import { MobileAppBar } from "@/components/mobile-app-bar";
 import type { AppNavAccess } from "@/lib/app-nav";
 import type { MobileNavRenderItem } from "@/lib/mobile-nav";
 import type { SerializedNotification } from "@/lib/notification-serialize";
+import type { SerializedPoke } from "@/lib/poke";
 
 type AppLayoutShellProps = {
   access: AppNavAccess;
@@ -25,6 +26,7 @@ type AppLayoutShellProps = {
   signOutButton: ReactNode;
   unreadNotificationCount?: number;
   notifications?: SerializedNotification[];
+  receivedPokes?: SerializedPoke[];
   children: ReactNode;
 };
 
@@ -39,6 +41,7 @@ export function AppLayoutShell({
   signOutButton,
   unreadNotificationCount = 0,
   notifications = [],
+  receivedPokes = [],
   children,
 }: AppLayoutShellProps) {
   return (
@@ -59,6 +62,7 @@ export function AppLayoutShell({
               signOutButton={signOutButton}
               unreadNotificationCount={unreadNotificationCount}
               notifications={notifications}
+              receivedPokes={receivedPokes}
             />
             <MobileAppBar
               userName={userName}
@@ -69,6 +73,7 @@ export function AppLayoutShell({
               signOutButton={signOutButton}
               unreadNotificationCount={unreadNotificationCount}
               notifications={notifications}
+              receivedPokes={receivedPokes}
               leadingAction={<AppNavMenuButton />}
             />
             <main className="ui-app-main relative z-0 mx-auto w-full max-w-2xl flex-1 px-5 pb-safe-nav pt-5 md:max-w-3xl md:px-8 md:pb-10 md:pt-8">

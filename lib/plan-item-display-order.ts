@@ -11,9 +11,20 @@ export function isPlanItemDone(item: SerializedPlanItem): boolean {
   return item.status === "DONE";
 }
 
+function compareDoneItems(a: SerializedPlanItem, b: SerializedPlanItem): number {
+  const aTime = a.completedAt ? Date.parse(a.completedAt) : 0;
+  const bTime = b.completedAt ? Date.parse(b.completedAt) : 0;
+
+  if (aTime !== bTime) {
+    return aTime - bTime;
+  }
+
+  return a.sortOrder - b.sortOrder;
+}
+
 /**
- * Stable partition: completed items first, then everything else.
- * Preserves relative order within each group. Does not mutate sortOrder.
+ * Completed items first (oldest completion first), then open items in sortOrder.
+ * Does not mutate sortOrder.
  */
 export function orderPlanItemsForDisplay(
   items: SerializedPlanItem[],
@@ -36,6 +47,8 @@ export function orderPlanItemsForDisplay(
       notDone.push(item);
     }
   }
+
+  done.sort(compareDoneItems);
 
   return [...done, ...notDone];
 }

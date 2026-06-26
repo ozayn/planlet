@@ -99,6 +99,7 @@ enum NotificationType {
   PLAN_KUDOS
   PLAN_ITEM_COMMENT
   APP_FEEDBACK
+  USER_POKE
 }
 
 enum FeedbackArea {
@@ -134,6 +135,16 @@ enum KudosType {
   PROUD
   ROOTING
   WARMTH
+}
+
+enum PokeType {
+  ENCOURAGE
+  CHECK_IN
+  CELEBRATE
+  LEARN
+  FOCUS
+  PAUSE
+  THINKING_OF_YOU
 }
 
 enum PlanItemView {
@@ -266,6 +277,8 @@ model User {
   planSharesReceived PlanShare[] @relation("PlanShareRecipient")
   sentKudos          PlanKudos[] @relation("SentKudos")
   receivedKudos      PlanKudos[] @relation("ReceivedKudos")
+  sentPokes          Poke[]      @relation("SentPokes")
+  receivedPokes      Poke[]      @relation("ReceivedPokes")
   notifications      Notification[]
   pushSubscriptions        PushSubscription[]
   notificationPreference   NotificationPreference?
@@ -358,6 +371,25 @@ model Notification {
 
   @@index([userId, readAt, createdAt])
   @@index([userId, createdAt])
+}
+
+model Poke {
+  id             String    @id @default(cuid())
+  senderId       String
+  sender         User      @relation("SentPokes", fields: [senderId], references: [id], onDelete: Cascade)
+  recipientId    String
+  recipient      User      @relation("ReceivedPokes", fields: [recipientId], references: [id], onDelete: Cascade)
+  pokeType       PokeType
+  message        String?
+  createdAt      DateTime  @default(now())
+  seenAt         DateTime?
+  acknowledgedAt DateTime?
+  dismissedAt    DateTime?
+
+  @@index([recipientId, dismissedAt, createdAt])
+  @@index([recipientId, seenAt, dismissedAt])
+  @@index([senderId, createdAt])
+  @@index([senderId, recipientId, dismissedAt, seenAt])
 }
 
 model LoginEvent {
@@ -558,6 +590,7 @@ model PlanItem {
   comment           String?
   shareable         Boolean            @default(true)
   sortOrder         Int                @default(0)
+  completedAt       DateTime?
   themeId           String?
   theme             Theme?             @relation(fields: [themeId], references: [id], onDelete: SetNull)
   projectId         String?

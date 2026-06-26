@@ -24,6 +24,7 @@ function revalidateNotificationSurfaces() {
   revalidatePath("/insights", "layout");
   revalidatePath("/settings", "layout");
   revalidatePath("/dashboard", "layout");
+  revalidatePath("/poke", "layout");
 }
 
 export type NotificationActionResult =

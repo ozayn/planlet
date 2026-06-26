@@ -31,6 +31,7 @@ export type SerializedPlanItem = {
   comment: string | null;
   shareable: boolean;
   sortOrder: number;
+  completedAt: string | null;
   themeId: string | null;
   themeName: string | null;
   projectId: string | null;
@@ -72,6 +73,7 @@ type PlanItemWithSubtasks = {
   comment: string | null;
   shareable: boolean;
   sortOrder: number;
+  completedAt?: Date | null;
   theme?: { id: string; name: string } | null;
   project?: { id: string; name: string } | null;
   _count?: { comments: number };
@@ -100,6 +102,7 @@ export function serializePlanItem(item: PlanItemWithSubtasks): SerializedPlanIte
     comment: item.comment,
     shareable: item.shareable,
     sortOrder: item.sortOrder,
+    completedAt: item.completedAt?.toISOString() ?? null,
     themeId: item.theme?.id ?? null,
     themeName: item.theme?.name ?? null,
     projectId: item.project?.id ?? null,
