@@ -10,6 +10,7 @@ import { useState, useTransition } from "react";
 import { submitFeedbackAction } from "@/app/(app)/feedback/actions";
 import {
   FEEDBACK_AREAS,
+  FEEDBACK_EMPTY_MESSAGE,
   FEEDBACK_PRIORITIES,
 } from "@/lib/feedback-constants";
 import {
@@ -34,11 +35,19 @@ export function FeedbackForm({ initialPagePath }: FeedbackFormProps) {
   function handleSubmit() {
     setError(null);
 
+    const trimmedTitle = title.trim();
+    const trimmedBody = body.trim();
+
+    if (!trimmedTitle && !trimmedBody) {
+      setError(FEEDBACK_EMPTY_MESSAGE);
+      return;
+    }
+
     startSubmit(async () => {
       const result = await submitFeedbackAction({
         area,
-        body,
-        title: title.trim() || null,
+        body: trimmedBody,
+        title: trimmedTitle || null,
         pagePath: initialPagePath ?? null,
         priority,
       });
@@ -136,7 +145,7 @@ export function FeedbackForm({ initialPagePath }: FeedbackFormProps) {
       <button
         type="button"
         onClick={handleSubmit}
-        disabled={isSubmitting || !body.trim()}
+        disabled={isSubmitting || (!title.trim() && !body.trim())}
         {...passwordManagerSafeControlProps}
         className="ui-btn-secondary ui-btn-compact min-h-9 px-4"
       >

@@ -7,6 +7,8 @@ import type {
 export const MAX_FEEDBACK_TITLE_LENGTH = 120;
 export const MAX_FEEDBACK_BODY_LENGTH = 4000;
 export const MAX_FEEDBACK_PAGE_PATH_LENGTH = 200;
+export const FEEDBACK_EMPTY_MESSAGE =
+  "Add a title or feedback before submitting.";
 
 export const FEEDBACK_AREAS: readonly FeedbackArea[] = [
   "MOBILE",

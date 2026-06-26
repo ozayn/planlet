@@ -6,6 +6,7 @@ import type {
 
 import {
   FEEDBACK_AREAS,
+  FEEDBACK_EMPTY_MESSAGE,
   FEEDBACK_PRIORITIES,
   FEEDBACK_STATUSES,
   MAX_FEEDBACK_BODY_LENGTH,
@@ -144,20 +145,24 @@ function validatePriority(priority: string): FeedbackPriority {
   return priority as FeedbackPriority;
 }
 
-function validateBody(body: string): string {
-  const trimmed = body.trim();
+function validateFeedbackContent(input: {
+  title?: string | null;
+  body: string;
+}): { title: string | null; body: string } {
+  const title = validateTitle(input.title);
+  const body = input.body.trim();
 
-  if (!trimmed) {
-    throw new FeedbackError("Feedback cannot be empty.");
+  if (!title && !body) {
+    throw new FeedbackError(FEEDBACK_EMPTY_MESSAGE);
   }
 
-  if (trimmed.length > MAX_FEEDBACK_BODY_LENGTH) {
+  if (body.length > MAX_FEEDBACK_BODY_LENGTH) {
     throw new FeedbackError(
       `Feedback must be ${MAX_FEEDBACK_BODY_LENGTH} characters or fewer.`,
     );
   }
 
-  return trimmed;
+  return { title, body };
 }
 
 function validateTitle(title?: string | null): string | null {
@@ -258,8 +263,10 @@ export async function createFeedback(
   }
 
   const area = validateArea(input.area);
-  const body = validateBody(input.body);
-  const title = validateTitle(input.title);
+  const { title, body } = validateFeedbackContent({
+    title: input.title,
+    body: input.body,
+  });
   const pagePath = validatePagePath(input.pagePath);
   const priority = input.priority
     ? validatePriority(input.priority)
