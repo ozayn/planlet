@@ -7,7 +7,6 @@ import { PlanletLogo } from "@/components/planlet-logo";
 import { ProfileMenu } from "@/components/profile-menu";
 import { ThemeToggle } from "@/components/theme-toggle";
 import type { SerializedNotification } from "@/lib/notification-serialize";
-import type { SerializedPoke } from "@/lib/poke";
 import { PRODUCT } from "@/config/product";
 
 type DesktopNavProps = {
@@ -19,7 +18,6 @@ type DesktopNavProps = {
   signOutButton: React.ReactNode;
   unreadNotificationCount?: number;
   notifications?: SerializedNotification[];
-  receivedPokes?: SerializedPoke[];
 };
 
 export function DesktopNav({
@@ -31,7 +29,6 @@ export function DesktopNav({
   signOutButton,
   unreadNotificationCount = 0,
   notifications = [],
-  receivedPokes = [],
 }: DesktopNavProps) {
   return (
     <header className="relative z-50 hidden shrink-0 border-b border-border-soft bg-surface md:block">
@@ -49,7 +46,6 @@ export function DesktopNav({
           <NotificationBell
             unreadCount={unreadNotificationCount}
             notifications={notifications}
-            receivedPokes={receivedPokes}
           />
           <ThemeToggle variant="compact" />
           <ProfileMenu

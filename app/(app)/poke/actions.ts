@@ -7,6 +7,7 @@ import { auth } from "@/auth";
 import {
   acknowledgePoke,
   dismissPoke,
+  markPokeSeen,
   PokeError,
   sendPoke,
   type SerializedPoke,
@@ -29,6 +30,7 @@ async function requireUserId(): Promise<string> {
 }
 
 function revalidatePokeSurfaces() {
+  revalidatePath("/nudges", "layout");
   revalidatePath("/poke", "layout");
   revalidatePath("/today", "layout");
   revalidatePath("/plans", "layout");
@@ -109,6 +111,29 @@ export async function dismissPokeAction(
           : error instanceof Error
             ? error.message
             : "Failed to dismiss nudge.",
+    };
+  }
+}
+
+export async function markPokeSeenAction(
+  pokeId: string,
+): Promise<ActionResult> {
+  const userId = await requireUserId();
+
+  try {
+    await markPokeSeen(userId, pokeId);
+    await touchUserSeenSafely(userId);
+    revalidatePokeSurfaces();
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof PokeError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : "Failed to mark nudge as seen.",
     };
   }
 }

@@ -12,14 +12,10 @@ import { BellIcon } from "@/components/ui/action-icons";
 import { APP_TIMEZONE } from "@/config/time";
 import { ACTION_LABELS } from "@/lib/action-labels";
 import type { SerializedNotification } from "@/lib/notification-serialize";
-import type { SerializedPoke } from "@/lib/poke";
-
-import { ReceivedPokesList } from "@/components/poke/received-pokes-list";
 
 type NotificationBellProps = {
   unreadCount: number;
   notifications: SerializedNotification[];
-  receivedPokes?: SerializedPoke[];
 };
 
 function formatNotificationTime(iso: string): string {
@@ -105,7 +101,6 @@ function NotificationList({
 export function NotificationBell({
   unreadCount,
   notifications,
-  receivedPokes = [],
 }: NotificationBellProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -184,10 +179,6 @@ export function NotificationBell({
     });
   }
 
-  function closeMenu() {
-    setOpen(false);
-  }
-
   const header = (
     <div className="flex items-center justify-between gap-3 px-4 py-3">
       <h2 className="text-sm font-semibold text-foreground">Notifications</h2>
@@ -204,41 +195,12 @@ export function NotificationBell({
     </div>
   );
 
-  const nudgesSection =
-    receivedPokes.length > 0 ? (
-      <div className="border-b border-border-soft">
-        <p className="px-4 pt-3 text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-muted-light">
-          Recent nudges
-        </p>
-        <ReceivedPokesList pokes={receivedPokes} compact />
-      </div>
-    ) : null;
-
-  const updatesSection =
-    notifications.length > 0 ? (
-      <>
-        {receivedPokes.length > 0 ? (
-          <p className="px-4 pt-3 text-[0.6875rem] font-medium uppercase tracking-[0.08em] text-muted-light">
-            Updates
-          </p>
-        ) : null}
-        <NotificationList
-          notifications={notifications}
-          isPending={isPending}
-          onNotificationClick={handleNotificationClick}
-        />
-      </>
-    ) : receivedPokes.length === 0 ? (
-      <p className="px-4 py-8 text-center text-sm text-muted">
-        No notifications yet.
-      </p>
-    ) : null;
-
   const panelBody = (
-    <>
-      {nudgesSection}
-      {updatesSection}
-    </>
+    <NotificationList
+      notifications={notifications}
+      isPending={isPending}
+      onNotificationClick={handleNotificationClick}
+    />
   );
 
   const mobileOverlay =
@@ -252,7 +214,7 @@ export function NotificationBell({
           type="button"
           aria-label="Close notifications"
           className="ui-mobile-overlay-backdrop"
-          onClick={closeMenu}
+          onClick={() => setOpen(false)}
         />
         <div
           id={menuId}

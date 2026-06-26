@@ -194,7 +194,7 @@ export async function createUserPokeNotification(input: {
   title: string;
   body: string;
 }) {
-  const href = `/poke?nudge=${input.pokeId}`;
+  const href = `/nudges?nudge=${input.pokeId}`;
 
   const notification = await createNotification({
     userId: input.recipientUserId,

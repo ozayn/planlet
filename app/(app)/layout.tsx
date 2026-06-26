@@ -21,7 +21,6 @@ import {
 } from "@/lib/notifications";
 import {
   getHeaderUnreadCount,
-  getRecentReceivedPokes,
 } from "@/lib/poke";
 import { getMobileNavItemsForUser } from "@/lib/user-preferences";
 
@@ -34,19 +33,15 @@ export default async function AppLayout({
   const userId = session?.user?.id;
   const isAdmin = isAdminRole(session?.user?.role);
 
-  const [unreadNotificationCount, notifications, receivedPokes, storedMobileNavItems] =
-    userId
+  const [unreadNotificationCount, notifications, storedMobileNavItems] = userId
     ? await Promise.all([
         getHeaderUnreadCount(userId),
         getNotificationsForUser(userId),
-        getRecentReceivedPokes(userId),
         getMobileNavItemsForUser(userId),
       ])
-    : [0, [], [], []];
+    : [0, [], []];
 
-  const serializedNotifications = notifications
-    .filter((notification) => notification.type !== "USER_POKE")
-    .map(serializeNotification);
+  const serializedNotifications = notifications.map(serializeNotification);
   const access = {
     isAdmin,
     canUseCoachingFeatures: canUseCoachingFeatures(session?.user ?? {}),
@@ -82,7 +77,6 @@ export default async function AppLayout({
         }
         unreadNotificationCount={unreadNotificationCount}
         notifications={serializedNotifications}
-        receivedPokes={receivedPokes}
       >
         {children}
       </AppLayoutShell>

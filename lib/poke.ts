@@ -9,6 +9,7 @@ import {
   MAX_POKE_MESSAGE_LENGTH,
   MAX_POKES_PER_DAY,
   POKE_CONTACTS_LIMIT,
+  POKE_HISTORY_LIMIT,
   RECENT_POKES_LIMIT,
 } from "@/lib/poke-constants";
 import { getPokeNotificationLine } from "@/lib/poke-labels";
@@ -101,7 +102,7 @@ function getPokeDayStart(now = new Date()): Date {
 }
 
 function pokeHref(pokeId: string): string {
-  return `/poke?nudge=${pokeId}`;
+  return `/nudges?nudge=${pokeId}`;
 }
 
 async function usersAreConnected(userA: string, userB: string): Promise<boolean> {
@@ -252,6 +253,43 @@ export async function getHeaderUnreadCount(userId: string): Promise<number> {
   ]);
 
   return pokeUnread + notificationUnread;
+}
+
+export type PokeHistory = {
+  received: SerializedPoke[];
+  sent: SerializedPoke[];
+};
+
+export async function getPokeHistory(
+  userId: string,
+  limit = POKE_HISTORY_LIMIT,
+): Promise<PokeHistory> {
+  const pokes = await prisma.poke.findMany({
+    where: {
+      OR: [{ recipientId: userId }, { senderId: userId }],
+    },
+    orderBy: { createdAt: "desc" },
+    take: limit,
+    include: {
+      sender: { select: pokeUserSelect },
+      recipient: { select: pokeUserSelect },
+    },
+  });
+
+  const received: SerializedPoke[] = [];
+  const sent: SerializedPoke[] = [];
+
+  for (const poke of pokes.map(serializePoke)) {
+    if (poke.recipient.id === userId) {
+      received.push(poke);
+    }
+
+    if (poke.sender.id === userId) {
+      sent.push(poke);
+    }
+  }
+
+  return { received, sent };
 }
 
 export async function getRecentReceivedPokes(

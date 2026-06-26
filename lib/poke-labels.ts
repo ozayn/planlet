@@ -54,3 +54,17 @@ export function formatPokeUserLabel(input: {
 }): string {
   return input.name?.trim() || input.email?.trim() || "Friend";
 }
+
+export function getReceivedPokeHistoryLine(input: {
+  pokeType: PokeType;
+  sender: { name: string | null; email: string | null };
+}): string {
+  return `${getPokeTypeLabel(input.pokeType)} from ${formatPokeUserLabel(input.sender)}`;
+}
+
+export function getSentPokeHistoryLine(input: {
+  pokeType: PokeType;
+  recipient: { name: string | null; email: string | null };
+}): string {
+  return `${getPokeTypeLabel(input.pokeType)} sent to ${formatPokeUserLabel(input.recipient)}`;
+}

@@ -7,7 +7,6 @@ import { NotificationBell } from "@/components/notification-bell";
 import { PlanletLogo } from "@/components/planlet-logo";
 import { ProfileMenu } from "@/components/profile-menu";
 import type { SerializedNotification } from "@/lib/notification-serialize";
-import type { SerializedPoke } from "@/lib/poke";
 
 type MobileAppBarProps = {
   userName?: string | null;
@@ -19,7 +18,6 @@ type MobileAppBarProps = {
   leadingAction?: ReactNode;
   unreadNotificationCount?: number;
   notifications?: SerializedNotification[];
-  receivedPokes?: SerializedPoke[];
 };
 
 export function MobileAppBar({
@@ -32,7 +30,6 @@ export function MobileAppBar({
   leadingAction,
   unreadNotificationCount = 0,
   notifications = [],
-  receivedPokes = [],
 }: MobileAppBarProps) {
   return (
     <header className="ui-mobile-app-bar sticky top-0 z-50 shrink-0 border-b border-border-soft bg-surface/95 pt-[env(safe-area-inset-top,0px)] backdrop-blur md:hidden">
@@ -52,7 +49,6 @@ export function MobileAppBar({
           <NotificationBell
             unreadCount={unreadNotificationCount}
             notifications={notifications}
-            receivedPokes={receivedPokes}
           />
           <ProfileMenu
             name={userName}

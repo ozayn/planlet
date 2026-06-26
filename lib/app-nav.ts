@@ -18,6 +18,7 @@ export type AppNavItemKey =
   | "coaching"
   | "learning-journey"
   | "body-journey"
+  | "nudges"
   | "jobs"
   | "career"
   | "admin";
@@ -71,6 +72,8 @@ function reflectionItems(access: AppNavAccess): AppNavItem[] {
     });
   }
 
+  items.push({ key: "nudges", label: "Nudges", href: "/nudges" });
+
   return items;
 }
 
@@ -111,6 +114,7 @@ export const ALL_APP_NAV_ITEM_KEYS: AppNavItemKey[] = [
   "coaching",
   "learning-journey",
   "body-journey",
+  "nudges",
   "jobs",
   "career",
   "admin",
@@ -139,6 +143,8 @@ export function canAccessAppNavItem(
       return canShowLearningJourneyInProfileMenu(access);
     case "body-journey":
       return canShowBodyJourneyInProfileMenu(access);
+    case "nudges":
+      return true;
     case "jobs":
       return canShowJobTrackerInProfileMenu(access);
     case "career":
@@ -219,6 +225,10 @@ export function isAppNavItemActive(
 
   if (key === "body-journey") {
     return pathname === "/body" || pathname.startsWith("/body/");
+  }
+
+  if (key === "nudges") {
+    return pathname === "/nudges" || pathname.startsWith("/nudges/");
   }
 
   if (key === "jobs") {
