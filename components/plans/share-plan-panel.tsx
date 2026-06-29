@@ -19,11 +19,16 @@ import {
 
 type SharePlanPanelProps = {
   plan: SerializedPlan;
+  /** When unset, uses the app default (completed items first). */
+  moveCompletedToTop?: boolean;
 };
 
 const FORMAT_OPTIONS: ShareUiFormat[] = ["plan", "plain", "update"];
 
-export function SharePlanPanel({ plan }: SharePlanPanelProps) {
+export function SharePlanPanel({
+  plan,
+  moveCompletedToTop,
+}: SharePlanPanelProps) {
   const [open, setOpen] = useState(false);
   const [format, setFormat] = useState<ShareUiFormat>("plan");
   const [copied, setCopied] = useState(false);
@@ -32,7 +37,10 @@ export function SharePlanPanel({ plan }: SharePlanPanelProps) {
   const [isSaving, setIsSaving] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const sharePlan = useMemo(() => serializedPlanToSharePlan(plan), [plan]);
+  const sharePlan = useMemo(
+    () => serializedPlanToSharePlan(plan, { moveCompletedToTop }),
+    [plan, moveCompletedToTop],
+  );
 
   const previewText = useMemo(
     () => generateShareText(sharePlan, shareUiFormatToOptions(format)),

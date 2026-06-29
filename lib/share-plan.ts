@@ -8,6 +8,11 @@ import type {
 } from "@/app/generated/prisma/client";
 
 import { formatPlanPeriodForShare } from "@/lib/dates";
+import {
+  orderPlanItemsForDisplay,
+  type PlanItemDisplayOrderOptions,
+} from "@/lib/plan-item-display-order";
+import type { SerializedPlan, SerializedPlanItem } from "@/lib/plan-serialize";
 import { isDefaultPlanTitle } from "@/lib/plan-title";
 import {
   getSimpleShareStatusMarker,
@@ -495,32 +500,14 @@ export function shareUiFormatToExportFormat(
   }
 }
 
-export function serializedPlanToSharePlan(plan: {
-  title: string;
-  type: PlanType;
-  summary: string | null;
-  language: PlanLanguage;
-  dateStart: string;
-  dateEnd: string;
-  items: Array<{
-    title: string;
-    status: PlanItemStatus;
-    type: PlanItemType;
-    timeHint: TimeHint | null;
-    comment: string | null;
-    shareable: boolean;
-    subtasks: Array<{
-      title: string;
-      status: PlanItemStatus;
-      type: PlanItemType;
-      timeHint: TimeHint | null;
-      comment: string | null;
-      shareable: boolean;
-    }>;
-  }>;
-}): SharePlan {
+export function serializedPlanToSharePlan(
+  plan: SerializedPlan,
+  displayOrderOptions?: PlanItemDisplayOrderOptions,
+): SharePlan {
+  const itemsForExport = orderPlanItemsForDisplay(plan.items, displayOrderOptions);
+
   const mapItem = (
-    item: (typeof plan.items)[number] | (typeof plan.items)[number]["subtasks"][number],
+    item: SerializedPlanItem,
   ): SharePlanItem => ({
     title: item.title,
     status: item.status,
@@ -541,6 +528,6 @@ export function serializedPlanToSharePlan(plan: {
     language: plan.language,
     dateStart: new Date(plan.dateStart),
     dateEnd: new Date(plan.dateEnd),
-    items: plan.items.map(mapItem),
+    items: itemsForExport.map(mapItem),
   };
 }
