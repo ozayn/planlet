@@ -13,6 +13,7 @@ export type AppNavAccess = ProfileMenuAccess;
 export type AppNavItemKey =
   | MainNavKey
   | "plans"
+  | "unfinished-tasks"
   | "insights"
   | "themes"
   | "coaching"
@@ -44,6 +45,7 @@ function planningItems(now = new Date()): AppNavItem[] {
       href: item.href,
     })),
     { key: "plans", label: "Plans", href: "/plans" },
+    { key: "unfinished-tasks", label: "Unfinished tasks", href: "/unfinished" },
     { key: "insights", label: "Insights", href: "/insights" },
     { key: "themes", label: "Themes & projects", href: "/themes" },
   ];
@@ -109,6 +111,7 @@ export const ALL_APP_NAV_ITEM_KEYS: AppNavItemKey[] = [
   "month",
   "year",
   "plans",
+  "unfinished-tasks",
   "insights",
   "themes",
   "coaching",
@@ -134,6 +137,7 @@ export function canAccessAppNavItem(
     case "month":
     case "year":
     case "plans":
+    case "unfinished-tasks":
     case "insights":
     case "themes":
       return true;
@@ -209,6 +213,10 @@ export function isAppNavItemActive(
 
   if (key === "insights") {
     return pathname === "/insights" || pathname.startsWith("/insights/");
+  }
+
+  if (key === "unfinished-tasks") {
+    return pathname === "/unfinished" || pathname.startsWith("/unfinished/");
   }
 
   if (key === "themes") {

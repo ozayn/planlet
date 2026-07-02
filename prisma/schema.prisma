@@ -299,6 +299,7 @@ model User {
   careerWeeklyReviews           CareerWeeklyReview[]
   bodyEntries                   BodyEntry[]
   learningEntries               LearningEntry[]
+  planItemReflections           PlanItemReflection[]
   aiUsageLogs                   AiUsageLog[]
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
@@ -596,6 +597,7 @@ model PlanItem {
   projectId         String?
   project           Project?           @relation(fields: [projectId], references: [id], onDelete: SetNull)
   comments          PlanItemComment[]
+  reflections       PlanItemReflection[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 
@@ -603,6 +605,21 @@ model PlanItem {
   @@index([parentItemId])
   @@index([themeId])
   @@index([projectId])
+}
+
+model PlanItemReflection {
+  id         String   @id @default(cuid())
+  planItemId String
+  planItem   PlanItem @relation(fields: [planItemId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reason     String?
+  note       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([planItemId, createdAt])
+  @@index([userId, createdAt])
 }
 
 model Project {
