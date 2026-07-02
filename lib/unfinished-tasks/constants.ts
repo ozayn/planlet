@@ -77,6 +77,7 @@ export type SerializedUnfinishedTask = {
   isSubtask: boolean;
   subtaskCount: number;
   movableSubtaskCount: number;
+  metadataLine: string;
   latestReflection: SerializedUnfinishedTaskReflection | null;
 };
 

@@ -15,6 +15,7 @@ import {
 } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
 import { getAssignmentDisplayLabel } from "@/lib/theme-project-types";
+import { buildUnfinishedTaskMetadataLine } from "@/lib/unfinished-tasks/metadata";
 import {
   UNFINISHED_TASK_ALL_RANGE_LIMIT,
   UNFINISHED_TASK_RECENT_DAYS,
@@ -279,6 +280,13 @@ export async function getUnfinishedTasksPageData(
           subtask.status,
         ),
       ).length,
+      metadataLine: buildUnfinishedTaskMetadataLine({
+        status: item.status,
+        planDate,
+        assignmentLabel,
+        parentTitle: item.parentItem?.title ?? null,
+        comment: item.comment,
+      }),
       latestReflection: latestReflection(item.reflections),
     };
   });

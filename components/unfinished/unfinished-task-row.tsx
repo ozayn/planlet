@@ -1,12 +1,9 @@
 "use client";
 
 import type { PlanItemView } from "@/app/generated/prisma/client";
-import { formatInTimeZone } from "date-fns-tz";
 
-import { MoveToDateIcon } from "@/components/plans/item-action-icons";
+import { MoveToDateIcon, TrashIcon } from "@/components/plans/item-action-icons";
 import { PlanItemStatusVisual } from "@/components/plans/plan-item-status-visual";
-import { APP_TIMEZONE } from "@/config/time";
-import { parseDateString } from "@/lib/dates";
 import { getStatusLabel, STATUS_STYLES } from "@/lib/plan-status";
 import type { SerializedUnfinishedTask } from "@/lib/unfinished-tasks/constants";
 
@@ -21,21 +18,6 @@ type UnfinishedTaskRowProps = {
   onReflect: (task: SerializedUnfinishedTask) => void;
   onDelete?: (task: SerializedUnfinishedTask) => void;
 };
-
-function compactPlanDateLabel(planDate: string): string {
-  return formatInTimeZone(parseDateString(planDate), APP_TIMEZONE, "MMM d");
-}
-
-function metadataLine(task: SerializedUnfinishedTask): string {
-  return [
-    compactPlanDateLabel(task.planDate),
-    getStatusLabel(task.status),
-    task.assignmentLabel,
-    task.parentTitle ? `Subtask of ${task.parentTitle}` : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-}
 
 function RowActions({
   task,
@@ -91,9 +73,14 @@ function RowActions({
           type="button"
           disabled={disabled}
           onClick={() => onDelete(task)}
-          className="inline-flex min-h-8 items-center rounded-md px-2 text-xs font-medium text-muted transition-colors hover:bg-accent-cream/60 hover:text-foreground disabled:opacity-50"
+          className="ui-icon-action-quiet shrink-0 disabled:opacity-50"
+          aria-label="Delete task"
+          title="Delete task"
         >
-          Delete
+          <TrashIcon className="h-4 w-4" />
+          <span className="ui-tooltip-bubble" role="tooltip">
+            Delete task
+          </span>
         </button>
       ) : null}
     </div>
@@ -157,7 +144,7 @@ export function UnfinishedTaskRow({
                 {task.title}
               </p>
               <p className="ui-plan-item-meta mt-0.5 truncate text-[0.6875rem] leading-tight text-muted-light">
-                {metadataLine(task)}
+                {task.metadataLine}
               </p>
               {task.subtaskCount > 0 ? (
                 <p className="ui-plan-item-meta mt-0.5 hidden truncate text-[0.6875rem] leading-tight text-muted-light md:block">

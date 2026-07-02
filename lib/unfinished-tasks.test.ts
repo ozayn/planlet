@@ -7,6 +7,7 @@ import {
   unfinishedTaskPlanDateFilter,
   unfinishedTaskPlanWhere,
 } from "@/lib/unfinished-tasks";
+import { buildUnfinishedTaskMetadataLine } from "@/lib/unfinished-tasks/metadata";
 import {
   UNFINISHED_TASK_ALL_RANGE_LIMIT,
   UNFINISHED_TASK_RECENT_DAYS,
@@ -85,5 +86,69 @@ describe("unfinished task query helpers", () => {
       userId: "user-1",
       type: { in: ["DAY", "WEEK", "MONTH", "YEAR"] },
     });
+  });
+});
+
+describe("unfinished task metadata", () => {
+  it("omits redundant Open label for open tasks", () => {
+    assert.equal(
+      buildUnfinishedTaskMetadataLine({
+        status: "OPEN",
+        planDate: "2026-07-02",
+        assignmentLabel: null,
+        parentTitle: null,
+        comment: null,
+      }),
+      "Jul 2",
+    );
+  });
+
+  it("shows partial and skipped status in metadata", () => {
+    assert.equal(
+      buildUnfinishedTaskMetadataLine({
+        status: "PARTIAL",
+        planDate: "2026-07-02",
+        assignmentLabel: null,
+        parentTitle: null,
+        comment: null,
+      }),
+      "Jul 2 · Partial",
+    );
+    assert.equal(
+      buildUnfinishedTaskMetadataLine({
+        status: "SKIPPED",
+        planDate: "2026-07-02",
+        assignmentLabel: null,
+        parentTitle: null,
+        comment: null,
+      }),
+      "Jul 2 · Skipped",
+    );
+  });
+
+  it("shows move context from the existing moved-to comment note", () => {
+    assert.equal(
+      buildUnfinishedTaskMetadataLine({
+        status: "MOVED",
+        planDate: "2026-07-01",
+        assignmentLabel: "Career",
+        parentTitle: null,
+        comment: "Moved to Thursday, Jul 2",
+      }),
+      "Moved from Jul 1 → Jul 2 · Career",
+    );
+  });
+
+  it("falls back to source-only move metadata when destination is unknown", () => {
+    assert.equal(
+      buildUnfinishedTaskMetadataLine({
+        status: "MOVED",
+        planDate: "2026-07-01",
+        assignmentLabel: null,
+        parentTitle: null,
+        comment: "Moved to someday",
+      }),
+      "Moved from Jul 1",
+    );
   });
 });
