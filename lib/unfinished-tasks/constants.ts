@@ -7,7 +7,17 @@ export const UNFINISHED_TASK_STATUSES = [
   "SKIPPED",
 ] as const satisfies readonly PlanItemStatus[];
 
-export type UnfinishedTaskRange = "today" | "week" | "month" | "recent";
+export const UNFINISHED_TASK_RECENT_DAYS = 30;
+
+/** Max unfinished tasks returned for the unrestricted "All" range. */
+export const UNFINISHED_TASK_ALL_RANGE_LIMIT = 100;
+
+export type UnfinishedTaskRange =
+  | "today"
+  | "week"
+  | "month"
+  | "recent"
+  | "all";
 
 export const UNFINISHED_TASK_RANGE_OPTIONS: {
   value: UnfinishedTaskRange;
@@ -17,6 +27,7 @@ export const UNFINISHED_TASK_RANGE_OPTIONS: {
   { value: "week", label: "This week" },
   { value: "month", label: "This month" },
   { value: "recent", label: "All recent" },
+  { value: "all", label: "All" },
 ];
 
 export const UNFINISHED_TASK_STATUS_FILTERS: {
@@ -78,4 +89,7 @@ export type UnfinishedTasksPageData = {
   range: UnfinishedTaskRange;
   tasks: SerializedUnfinishedTask[];
   assignmentFilters: UnfinishedTaskAssignmentFilter[];
+  /** True when the All range hit the query limit. */
+  truncated?: boolean;
+  limit?: number;
 };

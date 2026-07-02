@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 
+import { deletePlanItemAction } from "@/app/(app)/plans/actions";
 import { requireUserId } from "@/lib/require-auth";
 import {
   movePlanItemToDate,
@@ -121,6 +122,23 @@ export async function addUnfinishedTaskReflectionAction(input: {
           : error instanceof Error
             ? error.message
             : "Couldn't save this reflection.",
+    };
+  }
+}
+
+export async function deleteUnfinishedTaskAction(input: {
+  planId: string;
+  itemId: string;
+}): Promise<UnfinishedTaskActionResult> {
+  try {
+    await deletePlanItemAction(input.planId, input.itemId);
+    revalidatePath("/unfinished");
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Couldn't delete this task.",
     };
   }
 }

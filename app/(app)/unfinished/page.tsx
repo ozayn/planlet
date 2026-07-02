@@ -5,6 +5,7 @@ import {
   getUnfinishedTasksPageData,
   normalizeUnfinishedTaskRange,
 } from "@/lib/unfinished-tasks";
+import { getPlanningPreferencesForUser } from "@/lib/user-preferences";
 
 type UnfinishedPageProps = {
   searchParams: Promise<{ range?: string }>;
@@ -22,7 +23,10 @@ export default async function UnfinishedPage({
 
   const params = await searchParams;
   const range = normalizeUnfinishedTaskRange(params.range);
-  const data = await getUnfinishedTasksPageData(userId, range);
+  const [data, planningPreferences] = await Promise.all([
+    getUnfinishedTasksPageData(userId, range),
+    getPlanningPreferencesForUser(userId),
+  ]);
 
   return (
     <section className="ui-page-stack space-y-6">
@@ -30,7 +34,10 @@ export default async function UnfinishedPage({
         title="Unfinished tasks"
         subtitle="Review what is still open, move it forward, or learn from it."
       />
-      <UnfinishedTasksPage data={data} />
+      <UnfinishedTasksPage
+        data={data}
+        itemView={planningPreferences.planItemView}
+      />
     </section>
   );
 }

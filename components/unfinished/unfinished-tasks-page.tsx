@@ -4,15 +4,18 @@ import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
+import type { PlanItemView } from "@/app/generated/prisma/client";
 import {
   addUnfinishedTaskReflectionAction,
+  deleteUnfinishedTaskAction,
   markUnfinishedTaskDoneAction,
   moveUnfinishedTaskToDateAction,
 } from "@/app/(app)/unfinished/actions";
+import { UnfinishedTaskRow } from "@/components/unfinished/unfinished-task-row";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { SimpleSheet } from "@/components/ui/simple-sheet";
 import { shiftDateString } from "@/lib/dates";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
-import { getStatusIcon, getStatusLabel } from "@/lib/plan-status";
 import {
   UNFINISHED_TASK_RANGE_OPTIONS,
   UNFINISHED_TASK_REFLECTION_REASONS,
@@ -23,6 +26,8 @@ import {
 
 type UnfinishedTasksPageProps = {
   data: UnfinishedTasksPageData;
+  itemView?: PlanItemView;
+  canDelete?: boolean;
 };
 
 type MoveSheetState = {
@@ -38,6 +43,14 @@ type ReflectionSheetState = {
   note: string;
   error: string | null;
 };
+
+function deleteConfirmTitle(task: SerializedUnfinishedTask): string {
+  if (!task.isSubtask && task.subtaskCount > 0) {
+    return "Delete this task and its subtasks?";
+  }
+
+  return "Delete this task?";
+}
 
 function todayString(): string {
   const today = new Date();
@@ -59,109 +72,25 @@ function assignmentFilterValue(task: SerializedUnfinishedTask): string {
   return "all";
 }
 
-function metadataLine(task: SerializedUnfinishedTask): string {
-  return [
-    task.planDateLabel,
-    task.assignmentLabel,
-    task.parentTitle ? `Subtask of ${task.parentTitle}` : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-}
-
-function TaskCard({
-  task,
-  disabled,
-  onDone,
-  onMove,
-  onReflect,
-}: {
-  task: SerializedUnfinishedTask;
-  disabled: boolean;
-  onDone: (task: SerializedUnfinishedTask) => void;
-  onMove: (task: SerializedUnfinishedTask) => void;
-  onReflect: (task: SerializedUnfinishedTask) => void;
-}) {
-  const statusLabel = getStatusLabel(task.status);
-
-  return (
-    <article className="rounded-2xl border border-border-soft bg-surface p-4 shadow-sm">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 space-y-1">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-light">
-            {metadataLine(task)}
-          </p>
-          <h2 className="text-base font-semibold text-foreground" dir="auto">
-            {task.title}
-          </h2>
-        </div>
-        <span className="shrink-0 rounded-full border border-border-soft px-2.5 py-1 text-xs text-muted">
-          <span aria-hidden="true">{getStatusIcon(task.status)}</span> {statusLabel}
-        </span>
-      </div>
-
-      {task.subtaskCount > 0 ? (
-        <p className="mt-2 text-xs text-muted-light">
-          {task.movableSubtaskCount} unfinished subtask
-          {task.movableSubtaskCount === 1 ? "" : "s"} can move forward.
-        </p>
-      ) : null}
-
-      {task.latestReflection ? (
-        <div className="mt-3 rounded-xl border border-border-soft/80 bg-accent-cream/25 px-3 py-2 text-sm text-muted">
-          {task.latestReflection.reason ? (
-            <p className="font-medium text-foreground">
-              {task.latestReflection.reason}
-            </p>
-          ) : null}
-          {task.latestReflection.note ? (
-            <p className="mt-1 whitespace-pre-wrap" dir="auto">
-              {task.latestReflection.note}
-            </p>
-          ) : null}
-        </div>
-      ) : null}
-
-      <div className="mt-4 flex flex-wrap gap-2">
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={() => onDone(task)}
-          className="ui-btn-secondary ui-btn-compact min-h-9 px-3 text-xs disabled:opacity-50"
-        >
-          Mark done
-        </button>
-        <button
-          type="button"
-          disabled={disabled || task.isSubtask}
-          onClick={() => onMove(task)}
-          className="ui-btn-secondary ui-btn-compact min-h-9 px-3 text-xs disabled:opacity-50"
-          title={task.isSubtask ? "Move the parent task from its plan." : undefined}
-        >
-          Move to date
-        </button>
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={() => onReflect(task)}
-          className="text-xs font-medium text-muted transition-colors hover:text-foreground disabled:opacity-50"
-        >
-          Reflect
-        </button>
-      </div>
-    </article>
-  );
-}
-
-export function UnfinishedTasksPage({ data }: UnfinishedTasksPageProps) {
+export function UnfinishedTasksPage({
+  data,
+  itemView = "CHECKLIST",
+  canDelete = true,
+}: UnfinishedTasksPageProps) {
   const router = useRouter();
   const [statusFilter, setStatusFilter] = useState("all");
   const [assignmentFilter, setAssignmentFilter] = useState("all");
+  const [markingDoneId, setMarkingDoneId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<SerializedUnfinishedTask | null>(
+    null,
+  );
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [moveSheet, setMoveSheet] = useState<MoveSheetState | null>(null);
   const [reflectionSheet, setReflectionSheet] =
     useState<ReflectionSheetState | null>(null);
   const [pageError, setPageError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isDeleting, startDeleteTransition] = useTransition();
 
   const filteredTasks = useMemo(
     () =>
@@ -184,12 +113,15 @@ export function UnfinishedTasksPage({ data }: UnfinishedTasksPageProps) {
 
   function handleMarkDone(task: SerializedUnfinishedTask) {
     setPageError(null);
+    setMarkingDoneId(task.id);
     startTransition(async () => {
       const result = await markUnfinishedTaskDoneAction({ itemId: task.id });
       if (!result.success) {
+        setMarkingDoneId(null);
         setPageError(result.error);
         return;
       }
+      setMarkingDoneId(null);
       router.refresh();
     });
   }
@@ -249,7 +181,28 @@ export function UnfinishedTasksPage({ data }: UnfinishedTasksPageProps) {
     });
   }
 
+  function handleDeleteConfirm() {
+    if (!deleteTarget) return;
+
+    setDeleteError(null);
+    startDeleteTransition(async () => {
+      const result = await deleteUnfinishedTaskAction({
+        planId: deleteTarget.planId,
+        itemId: deleteTarget.id,
+      });
+
+      if (!result.success) {
+        setDeleteError(result.error);
+        return;
+      }
+
+      setDeleteTarget(null);
+      router.refresh();
+    });
+  }
+
   const defaultMoveDate = shiftDateString(todayString(), 1);
+  const rowDisabled = isPending || isDeleting;
 
   return (
     <div className="space-y-6">
@@ -308,18 +261,27 @@ export function UnfinishedTasksPage({ data }: UnfinishedTasksPageProps) {
         </p>
       ) : null}
 
+      {data.truncated && data.limit ? (
+        <p className="text-sm text-muted">
+          Showing the most recent {data.limit} unfinished tasks.
+        </p>
+      ) : null}
+
       {filteredTasks.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border-soft px-4 py-8 text-center">
           <p className="text-sm text-muted">No unfinished tasks in this range.</p>
         </div>
       ) : (
-        <ul className="space-y-3">
+        <ul className="space-y-1.5">
           {filteredTasks.map((task) => (
             <li key={task.id}>
-              <TaskCard
+              <UnfinishedTaskRow
                 task={task}
-                disabled={isPending}
-                onDone={handleMarkDone}
+                itemView={itemView}
+                disabled={rowDisabled}
+                markingDone={markingDoneId === task.id}
+                canDelete={canDelete}
+                onMarkDone={handleMarkDone}
                 onMove={(selectedTask) =>
                   setMoveSheet({
                     task: selectedTask,
@@ -336,11 +298,40 @@ export function UnfinishedTasksPage({ data }: UnfinishedTasksPageProps) {
                     error: null,
                   })
                 }
+                onDelete={
+                  canDelete
+                    ? (selectedTask) => {
+                        setDeleteError(null);
+                        setDeleteTarget(selectedTask);
+                      }
+                    : undefined
+                }
               />
             </li>
           ))}
         </ul>
       )}
+
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        title={deleteTarget ? deleteConfirmTitle(deleteTarget) : "Delete this task?"}
+        confirmLabel="Delete"
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => {
+          if (!isDeleting) {
+            setDeleteTarget(null);
+            setDeleteError(null);
+          }
+        }}
+        isConfirming={isDeleting}
+        confirmDanger
+      >
+        {deleteError ? (
+          <p className="text-accent-red" role="alert">
+            {deleteError}
+          </p>
+        ) : null}
+      </ConfirmDialog>
 
       <SimpleSheet
         open={moveSheet !== null}

@@ -1,17 +1,23 @@
-import type { PlanItemStatus } from "@/app/generated/prisma/client";
+import type {
+  PlanItemStatus,
+  PlanType,
+} from "@/app/generated/prisma/client";
 import { subDays } from "date-fns";
 
 import {
   formatDateString,
-  formatDayPlanContextLabel,
+  formatPlanCardDate,
   getDayRange,
   getMonthRange,
   getTodayRange,
   getWeekRange,
+  type DateRange,
 } from "@/lib/dates";
 import { prisma } from "@/lib/prisma";
 import { getAssignmentDisplayLabel } from "@/lib/theme-project-types";
 import {
+  UNFINISHED_TASK_ALL_RANGE_LIMIT,
+  UNFINISHED_TASK_RECENT_DAYS,
   UNFINISHED_TASK_STATUSES,
   type SerializedUnfinishedTask,
   type SerializedUnfinishedTaskReflection,
@@ -20,7 +26,9 @@ import {
 } from "@/lib/unfinished-tasks/constants";
 
 export {
+  UNFINISHED_TASK_ALL_RANGE_LIMIT,
   UNFINISHED_TASK_RANGE_OPTIONS,
+  UNFINISHED_TASK_RECENT_DAYS,
   UNFINISHED_TASK_REFLECTION_REASONS,
   UNFINISHED_TASK_STATUS_FILTERS,
   UNFINISHED_TASK_STATUSES,
@@ -39,7 +47,10 @@ export class UnfinishedTasksError extends Error {
   }
 }
 
-function resolveRange(range: UnfinishedTaskRange, now = new Date()) {
+export function resolveUnfinishedTaskRange(
+  range: Exclude<UnfinishedTaskRange, "all">,
+  now = new Date(),
+): DateRange {
   switch (range) {
     case "today":
       return getTodayRange(now);
@@ -48,12 +59,57 @@ function resolveRange(range: UnfinishedTaskRange, now = new Date()) {
     case "month":
       return getMonthRange(now);
     case "recent":
-    default:
       return {
-        start: getDayRange(subDays(now, 30)).start,
+        start: getDayRange(subDays(now, UNFINISHED_TASK_RECENT_DAYS)).start,
         end: getDayRange(now).end,
       };
   }
+}
+
+export function planTypesForUnfinishedTaskRange(
+  range: UnfinishedTaskRange,
+): PlanType[] {
+  switch (range) {
+    case "today":
+      return ["DAY"];
+    case "week":
+      return ["DAY", "WEEK"];
+    case "month":
+      return ["DAY", "WEEK", "MONTH"];
+    case "recent":
+      return ["DAY", "WEEK", "MONTH"];
+    case "all":
+      return ["DAY", "WEEK", "MONTH", "YEAR"];
+  }
+}
+
+export function unfinishedTaskPlanDateFilter(start: Date, end: Date) {
+  return {
+    dateStart: { lte: end },
+    dateEnd: { gte: start },
+  };
+}
+
+export function unfinishedTaskPlanWhere(
+  userId: string,
+  range: UnfinishedTaskRange,
+  now = new Date(),
+) {
+  const planTypes = planTypesForUnfinishedTaskRange(range);
+  const base = {
+    userId,
+    type: { in: planTypes },
+  };
+
+  if (range === "all") {
+    return base;
+  }
+
+  const { start, end } = resolveUnfinishedTaskRange(range, now);
+  return {
+    ...base,
+    ...unfinishedTaskPlanDateFilter(start, end),
+  };
 }
 
 export function normalizeUnfinishedTaskRange(
@@ -63,7 +119,8 @@ export function normalizeUnfinishedTaskRange(
     value === "today" ||
     value === "week" ||
     value === "month" ||
-    value === "recent"
+    value === "recent" ||
+    value === "all"
   ) {
     return value;
   }
@@ -110,21 +167,26 @@ function latestReflection(
 export async function getUnfinishedTasksPageData(
   userId: string,
   range: UnfinishedTaskRange,
+  now = new Date(),
 ): Promise<UnfinishedTasksPageData> {
-  const { start, end } = resolveRange(range);
+  const planWhere = unfinishedTaskPlanWhere(userId, range, now);
+  const queryLimit =
+    range === "all" ? UNFINISHED_TASK_ALL_RANGE_LIMIT + 1 : undefined;
+
+  if (process.env.NODE_ENV === "development") {
+    console.info("[unfinished-tasks]", {
+      range,
+      planWhere,
+      queryLimit: queryLimit ?? null,
+      userId,
+    });
+  }
 
   const items = await prisma.planItem.findMany({
     where: {
       status: { in: [...UNFINISHED_TASK_STATUSES] },
       type: { notIn: ["NOTE", "INTENTION"] },
-      plan: {
-        userId,
-        type: "DAY",
-        dateStart: {
-          gte: start,
-          lte: end,
-        },
-      },
+      plan: planWhere,
     },
     orderBy: [
       { plan: { dateStart: "desc" } },
@@ -132,8 +194,16 @@ export async function getUnfinishedTasksPageData(
       { sortOrder: "asc" },
       { createdAt: "asc" },
     ],
+    ...(queryLimit ? { take: queryLimit } : {}),
     include: {
-      plan: { select: { id: true, dateStart: true } },
+      plan: {
+        select: {
+          id: true,
+          type: true,
+          dateStart: true,
+          dateEnd: true,
+        },
+      },
       theme: { select: { id: true, name: true } },
       project: { select: { id: true, name: true } },
       parentItem: { select: { id: true, title: true } },
@@ -154,8 +224,23 @@ export async function getUnfinishedTasksPageData(
     },
   });
 
+  const truncated =
+    range === "all" && items.length > UNFINISHED_TASK_ALL_RANGE_LIMIT;
+  const visibleItems = truncated
+    ? items.slice(0, UNFINISHED_TASK_ALL_RANGE_LIMIT)
+    : items;
+
+  if (process.env.NODE_ENV === "development") {
+    console.info("[unfinished-tasks] results", {
+      range,
+      itemCount: visibleItems.length,
+      truncated,
+      statuses: [...new Set(visibleItems.map((item) => item.status))],
+    });
+  }
+
   const assignmentFilters = new Map<string, string>();
-  const tasks = items.map((item): SerializedUnfinishedTask => {
+  const tasks = visibleItems.map((item): SerializedUnfinishedTask => {
     const planDate = formatDateString(item.plan.dateStart);
     const assignmentLabel = getAssignmentDisplayLabel({
       themeName: item.theme?.name,
@@ -176,7 +261,11 @@ export async function getUnfinishedTasksPageData(
       title: item.title,
       status: item.status,
       planDate,
-      planDateLabel: formatDayPlanContextLabel(item.plan.dateStart),
+      planDateLabel: formatPlanCardDate({
+        type: item.plan.type,
+        dateStart: item.plan.dateStart,
+        dateEnd: item.plan.dateEnd,
+      }),
       themeId: item.themeId,
       themeName: item.theme?.name ?? null,
       projectId: item.projectId,
@@ -200,6 +289,12 @@ export async function getUnfinishedTasksPageData(
     assignmentFilters: Array.from(assignmentFilters.entries())
       .map(([value, label]) => ({ value, label }))
       .sort((a, b) => a.label.localeCompare(b.label)),
+    ...(truncated
+      ? {
+          truncated: true,
+          limit: UNFINISHED_TASK_ALL_RANGE_LIMIT,
+        }
+      : {}),
   };
 }
 
