@@ -1,10 +1,7 @@
 "use client";
 
 import { PrivateEntryActionsMenu } from "@/components/plans/private-entry-actions-menu";
-import {
-  formatLearningImportanceLabel,
-  type SerializedLearningEntry,
-} from "@/lib/learning-journey/constants";
+import type { SerializedLearningEntry } from "@/lib/learning-journey/constants";
 import { ACTION_LABELS } from "@/lib/action-labels";
 
 type LearningEntryCardProps = {
@@ -14,7 +11,7 @@ type LearningEntryCardProps = {
   onDelete: () => void;
 };
 
-function previewText(value: string | null, maxLength = 240): string | null {
+function previewText(value: string | null, maxLength = 180): string | null {
   if (!value?.trim()) {
     return null;
   }
@@ -25,26 +22,42 @@ function previewText(value: string | null, maxLength = 240): string | null {
     : trimmed;
 }
 
+function normalizeForCompare(value: string): string {
+  return value.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function shouldShowSummaryPreview(entry: SerializedLearningEntry): boolean {
+  const title = normalizeForCompare(entry.title);
+  const summary = normalizeForCompare(entry.summary);
+
+  if (!summary || summary === title) {
+    return false;
+  }
+
+  return !summary.startsWith(title);
+}
+
+function MetadataPill({ label }: { label: string }) {
+  return (
+    <span className="inline-flex items-center rounded-full border border-border-soft bg-surface/80 px-2.5 py-1 text-[0.6875rem] text-muted">
+      {label}
+    </span>
+  );
+}
+
 export function LearningEntryCard({
   entry,
   disabled = false,
   onEdit,
   onDelete,
 }: LearningEntryCardProps) {
-  const sourceParts = [
-    entry.sourceTypeLabel,
-    entry.sourceName,
-  ].filter(Boolean);
-  const summaryPreview = previewText(entry.summary);
-  const notesPreview = previewText(entry.notes);
-  const metadataParts = [
-    entry.categoryLabel,
-    ...entry.themes,
-  ].filter(Boolean);
-  const secondaryParts = [
-    sourceParts.length > 0 ? sourceParts.join(" · ") : null,
-    formatLearningImportanceLabel(entry.importance),
-  ].filter(Boolean);
+  const summaryPreview = shouldShowSummaryPreview(entry)
+    ? previewText(entry.summary)
+    : null;
+  const notesPreview = previewText(entry.notes, 140);
+  const sourceLabel = [entry.sourceTypeLabel, entry.sourceName]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <article className="group rounded-2xl border border-border-soft bg-surface p-4 shadow-sm">
@@ -69,13 +82,18 @@ export function LearningEntryCard({
         </div>
       </div>
 
-      {metadataParts.length > 0 ? (
-        <p className="mt-2 text-xs text-muted">{metadataParts.join(" · ")}</p>
+      {entry.categoryLabel || entry.themes.length > 0 ? (
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {entry.categoryLabel ? <MetadataPill label={entry.categoryLabel} /> : null}
+          {entry.themes.map((theme) => (
+            <MetadataPill key={theme} label={theme} />
+          ))}
+        </div>
       ) : null}
 
       {summaryPreview ? (
         <p
-          className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-foreground"
+          className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-muted"
           dir="auto"
         >
           {summaryPreview}
@@ -83,13 +101,15 @@ export function LearningEntryCard({
       ) : null}
 
       {notesPreview ? (
-        <p className="mt-3 whitespace-pre-wrap text-sm text-muted" dir="auto">
+        <p className="mt-2 whitespace-pre-wrap text-sm text-muted-light" dir="auto">
           {notesPreview}
         </p>
       ) : null}
 
-      {secondaryParts.length > 0 ? (
-        <p className="mt-3 text-xs text-muted-light">{secondaryParts.join(" · ")}</p>
+      {sourceLabel ? (
+        <p className="mt-3 text-xs text-muted-light" dir="auto">
+          {sourceLabel}
+        </p>
       ) : null}
     </article>
   );

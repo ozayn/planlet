@@ -91,6 +91,8 @@ export const LEARNING_CATEGORY_LABELS: Record<LearningCategoryValue, string> = {
 
 export const MAX_LEARNING_THEMES = 12;
 export const MAX_LEARNING_THEME_LENGTH = 40;
+export const MEANINGFUL_IMPORTANCE_MIN = 3;
+export const DERIVED_LEARNING_TITLE_MAX_LENGTH = 80;
 
 export const LEARNING_DEFAULT_THEMES = LEARNING_CATEGORIES.filter(
   (category) => category !== "OTHER",
@@ -120,7 +122,7 @@ export type LearningJourneyPageData = {
 };
 
 export type CreateLearningEntryInput = {
-  summary: string;
+  summary?: string | null;
   title?: string | null;
   sourceType?: LearningSourceTypeValue | null;
   sourceName?: string | null;

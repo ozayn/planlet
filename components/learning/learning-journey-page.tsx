@@ -8,8 +8,8 @@ import {
   deleteLearningEntryAction,
 } from "@/app/(app)/learning/actions";
 import { LearningCaptureForm } from "@/components/learning/learning-capture-form";
-import { LearningEntryCard } from "@/components/learning/learning-entry-card";
 import { LearningEntryEditSheet } from "@/components/learning/learning-entry-edit-sheet";
+import { LearningEntryList } from "@/components/learning/learning-entry-list";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { ACTION_LABELS } from "@/lib/action-labels";
 import type {
@@ -76,39 +76,13 @@ export function LearningJourneyPage({ data }: LearningJourneyPageProps) {
         </p>
       ) : null}
 
-      <section className="space-y-3">
-        <div className="flex items-baseline justify-between gap-3">
-          <h2 className="text-sm font-semibold text-foreground">
-            Recent learnings
-          </h2>
-          <p className="text-xs text-muted-light">
-            {data.entries.length === 0
-              ? "Nothing captured yet"
-              : `${data.entries.length} entr${data.entries.length === 1 ? "y" : "ies"}`}
-          </p>
-        </div>
-
-        {data.entries.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border-soft px-4 py-8 text-center">
-            <p className="text-sm text-muted">
-              Your learning timeline will appear here.
-            </p>
-          </div>
-        ) : (
-          <ul className="space-y-3">
-            {data.entries.map((entry) => (
-              <li key={entry.id}>
-                <LearningEntryCard
-                  entry={entry}
-                  disabled={isPending}
-                  onEdit={() => setEditingEntry(entry)}
-                  onDelete={() => setConfirmDeleteId(entry.id)}
-                />
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <LearningEntryList
+        entries={data.entries}
+        timezone={data.userTimezone}
+        disabled={isPending}
+        onEdit={setEditingEntry}
+        onDelete={setConfirmDeleteId}
+      />
 
       <LearningEntryEditSheet
         entry={editingEntry}

@@ -45,6 +45,16 @@ export {
   toggleLearningTheme,
 } from "@/lib/learning-journey/constants";
 
+export {
+  filterLearningEntries,
+  isLearningEntryInCurrentMonth,
+  isLearningEntryInCurrentWeek,
+  isMeaningfulLearningEntry,
+  LEARNING_ENTRY_FILTERS,
+  matchesLearningEntrySearch,
+  type LearningEntryFilter,
+} from "@/lib/learning-journey/search";
+
 export class LearningJourneyError extends Error {
   constructor(message: string) {
     super(message);
@@ -56,9 +66,34 @@ const MAX_TITLE_LENGTH = 120;
 const MAX_SUMMARY_LENGTH = 8000;
 const MAX_NOTES_LENGTH = 4000;
 const MAX_SOURCE_NAME_LENGTH = 200;
+const DERIVED_TITLE_MAX_LENGTH = 80;
 
-function clampImportance(value: number): number {
-  return Math.min(5, Math.max(1, Math.round(value)));
+function truncateDerivedTitle(text: string): string {
+  if (text.length <= DERIVED_TITLE_MAX_LENGTH) {
+    return text;
+  }
+
+  return `${text.slice(0, DERIVED_TITLE_MAX_LENGTH - 1).trim()}…`;
+}
+
+export function firstSentenceForLearningTitle(text: string): string {
+  const trimmed = text.trim();
+  if (!trimmed) {
+    return "";
+  }
+
+  const firstLine =
+    trimmed
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .find(Boolean) ?? trimmed;
+
+  const sentenceMatch = firstLine.match(/^(.+?[.!?])(?:\s|$)/);
+  if (sentenceMatch?.[1]) {
+    return sentenceMatch[1].trim();
+  }
+
+  return firstLine;
 }
 
 function deriveTitleFromFields(
@@ -71,33 +106,25 @@ function deriveTitleFromFields(
     return explicit.slice(0, MAX_TITLE_LENGTH);
   }
 
-  const summaryLine = summary
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .find(Boolean);
-
-  if (summaryLine) {
-    if (summaryLine.length <= MAX_TITLE_LENGTH) {
-      return summaryLine;
-    }
-
-    return `${summaryLine.slice(0, MAX_TITLE_LENGTH - 1).trim()}…`;
+  const fromSummary = summary.trim()
+    ? truncateDerivedTitle(firstSentenceForLearningTitle(summary))
+    : "";
+  if (fromSummary) {
+    return fromSummary.slice(0, MAX_TITLE_LENGTH);
   }
 
-  const notesLine = notes
-    ?.split(/\r?\n/)
-    .map((line) => line.trim())
-    .find(Boolean);
-
-  if (notesLine) {
-    if (notesLine.length <= MAX_TITLE_LENGTH) {
-      return notesLine;
-    }
-
-    return `${notesLine.slice(0, MAX_TITLE_LENGTH - 1).trim()}…`;
+  const fromNotes = notes?.trim()
+    ? truncateDerivedTitle(firstSentenceForLearningTitle(notes))
+    : "";
+  if (fromNotes) {
+    return fromNotes.slice(0, MAX_TITLE_LENGTH);
   }
 
   throw new LearningJourneyError("Add a title, summary, or notes.");
+}
+
+function clampImportance(value: number): number {
+  return Math.min(5, Math.max(1, Math.round(value)));
 }
 
 function deriveSummaryFromFields(
@@ -240,21 +267,7 @@ export function validateCreateLearningEntryInput(
   importance: number;
   themes: string[];
 } {
-  const summary = input.summary?.trim();
-
-  if (!summary) {
-    throw new LearningJourneyError("What did you learn?");
-  }
-
-  return parseLearningEntryFields(
-    {
-      ...input,
-      summary,
-      title: input.title,
-    },
-    timezone,
-    { requireAnyContent: false },
-  );
+  return parseLearningEntryFields(input, timezone, { requireAnyContent: true });
 }
 
 export function validateUpdateLearningEntryInput(

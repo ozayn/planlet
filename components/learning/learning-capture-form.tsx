@@ -25,9 +25,9 @@ export function LearningCaptureForm({
   disabled = false,
   onSubmit,
 }: LearningCaptureFormProps) {
+  const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [showDetails, setShowDetails] = useState(false);
-  const [title, setTitle] = useState("");
   const [sourceType, setSourceType] = useState<LearningSourceTypeValue | "">("");
   const [sourceName, setSourceName] = useState("");
   const [category, setCategory] = useState<LearningCategoryValue | "">("");
@@ -35,11 +35,14 @@ export function LearningCaptureForm({
   const [importance, setImportance] = useState("3");
   const [themes, setThemes] = useState<string[]>([]);
   const [notes, setNotes] = useState("");
+  const titleId = useId();
   const summaryId = useId();
 
+  const hasContent = Boolean(title.trim() || summary.trim() || notes.trim());
+
   function resetForm() {
-    setSummary("");
     setTitle("");
+    setSummary("");
     setSourceType("");
     setSourceName("");
     setCategory("");
@@ -53,9 +56,13 @@ export function LearningCaptureForm({
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
+    if (!hasContent) {
+      return;
+    }
+
     onSubmit({
-      summary,
       title: title.trim() || null,
+      summary: summary.trim() || null,
       sourceType: sourceType || null,
       sourceName: sourceName.trim() || null,
       category: category || null,
@@ -73,7 +80,22 @@ export function LearningCaptureForm({
       onSubmit={handleSubmit}
       className="rounded-2xl border border-border-soft bg-surface p-4 shadow-sm md:p-5"
     >
-      <label htmlFor={summaryId} className="block text-sm font-medium text-foreground">
+      <label htmlFor={titleId} className="block space-y-1.5">
+        <span className="text-xs font-medium text-muted">Title</span>
+        <input
+          id={titleId}
+          type="text"
+          value={title}
+          onChange={(event) => setTitle(event.target.value)}
+          disabled={disabled}
+          placeholder="Optional short title"
+          className="ui-input w-full"
+          dir="auto"
+          {...passwordManagerSafeControlProps}
+        />
+      </label>
+
+      <label htmlFor={summaryId} className="mt-4 block text-sm font-medium text-foreground">
         What did you learn today?
       </label>
       <textarea
@@ -81,9 +103,8 @@ export function LearningCaptureForm({
         value={summary}
         onChange={(event) => setSummary(event.target.value)}
         rows={5}
-        required
         disabled={disabled}
-        placeholder="A insight from a museum visit, podcast, conversation, book, or everyday life..."
+        placeholder="An insight from a museum visit, podcast, conversation, book, or everyday life..."
         className="ui-textarea mt-3 min-h-[8rem] w-full resize-y text-base leading-relaxed"
         dir="auto"
       />
@@ -102,31 +123,16 @@ export function LearningCaptureForm({
 
       {showDetails ? (
         <div className="mt-4 grid gap-4 border-t border-border-soft pt-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block space-y-1.5">
-              <span className="text-xs font-medium text-muted">Title</span>
-              <input
-                type="text"
-                value={title}
-                onChange={(event) => setTitle(event.target.value)}
-                disabled={disabled}
-                placeholder="Optional short title"
-                className="ui-input w-full"
-                dir="auto"
-              />
-            </label>
-
-            <label className="block space-y-1.5">
-              <span className="text-xs font-medium text-muted">When</span>
-              <input
-                type="date"
-                value={learnedAt}
-                onChange={(event) => setLearnedAt(event.target.value)}
-                disabled={disabled}
-                className="ui-input w-full"
-              />
-            </label>
-          </div>
+          <label className="block space-y-1.5">
+            <span className="text-xs font-medium text-muted">When</span>
+            <input
+              type="date"
+              value={learnedAt}
+              onChange={(event) => setLearnedAt(event.target.value)}
+              disabled={disabled}
+              className="ui-input w-full"
+            />
+          </label>
 
           <div className="grid gap-4 sm:grid-cols-2">
             <label className="block space-y-1.5">
@@ -220,10 +226,16 @@ export function LearningCaptureForm({
         </div>
       ) : null}
 
+      {!hasContent ? (
+        <p className="mt-3 text-xs text-muted">
+          Add a title, learning text, or notes to save.
+        </p>
+      ) : null}
+
       <div className="mt-4 flex justify-end">
         <button
           type="submit"
-          disabled={disabled || !summary.trim()}
+          disabled={disabled || !hasContent}
           className="ui-btn-primary min-h-11 px-5 disabled:opacity-50"
         >
           Save learning
