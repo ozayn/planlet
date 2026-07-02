@@ -7,7 +7,6 @@ import { MoveToDateIcon } from "@/components/plans/item-action-icons";
 import { PlanItemStatusVisual } from "@/components/plans/plan-item-status-visual";
 import { APP_TIMEZONE } from "@/config/time";
 import { parseDateString } from "@/lib/dates";
-import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 import { getStatusLabel, STATUS_STYLES } from "@/lib/plan-status";
 import type { SerializedUnfinishedTask } from "@/lib/unfinished-tasks/constants";
 
@@ -41,7 +40,9 @@ function metadataLine(task: SerializedUnfinishedTask): string {
 function RowActions({
   task,
   disabled,
+  markingDone = false,
   canDelete = true,
+  onMarkDone,
   onMove,
   onReflect,
   onDelete,
@@ -49,7 +50,9 @@ function RowActions({
 }: {
   task: SerializedUnfinishedTask;
   disabled: boolean;
+  markingDone?: boolean;
   canDelete?: boolean;
+  onMarkDone: (task: SerializedUnfinishedTask) => void;
   onMove: (task: SerializedUnfinishedTask) => void;
   onReflect: (task: SerializedUnfinishedTask) => void;
   onDelete?: (task: SerializedUnfinishedTask) => void;
@@ -57,6 +60,14 @@ function RowActions({
 }) {
   return (
     <div className={className}>
+      <button
+        type="button"
+        disabled={disabled || markingDone}
+        onClick={() => onMarkDone(task)}
+        className="inline-flex min-h-8 items-center rounded-md px-2 text-xs font-medium text-muted transition-colors hover:bg-accent-cream/60 hover:text-foreground disabled:opacity-50"
+      >
+        Mark done
+      </button>
       <button
         type="button"
         disabled={disabled || task.isSubtask}
@@ -121,23 +132,21 @@ export function UnfinishedTaskRow({
             />
 
             <div className="ui-plan-item-status shrink-0">
-              <button
-                type="button"
-                disabled={disabled || markingDone}
-                onClick={() => onMarkDone(task)}
-                {...passwordManagerSafeControlProps}
-                aria-label={`Mark done: ${task.title}`}
-                title="Mark done"
-                className={`ui-status-trigger ui-status-trigger-compact inline-flex items-center justify-center rounded-full border border-border-soft bg-surface/80 font-medium text-foreground transition-colors hover:border-border hover:bg-accent-cream focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-subtle)] disabled:opacity-50 ${STATUS_STYLES[statusForDisplay].icon}`}
+              <span
+                aria-label={`Status: ${statusLabel}`}
+                className={`ui-status-trigger ui-status-trigger-compact inline-flex cursor-default items-center justify-center rounded-full border border-border-soft bg-surface/80 font-medium text-foreground ${STATUS_STYLES[statusForDisplay].icon}`}
               >
-                <span className="ui-status-trigger-icon flex h-4 w-4 shrink-0 items-center justify-center">
+                <span
+                  className="ui-status-trigger-icon flex h-4 w-4 shrink-0 items-center justify-center"
+                  aria-hidden="true"
+                >
                   <PlanItemStatusVisual
                     status={statusForDisplay}
                     itemView={itemView}
                     className="h-3.5 w-3.5"
                   />
                 </span>
-              </button>
+              </span>
             </div>
 
             <div className="ui-plan-item-content min-w-0 flex-1">
@@ -161,7 +170,9 @@ export function UnfinishedTaskRow({
             <RowActions
               task={task}
               disabled={disabled}
+              markingDone={markingDone}
               canDelete={canDelete}
+              onMarkDone={onMarkDone}
               onMove={onMove}
               onReflect={onReflect}
               onDelete={onDelete}
@@ -179,7 +190,9 @@ export function UnfinishedTaskRow({
           <RowActions
             task={task}
             disabled={disabled}
+            markingDone={markingDone}
             canDelete={canDelete}
+            onMarkDone={onMarkDone}
             onMove={onMove}
             onReflect={onReflect}
             onDelete={onDelete}
