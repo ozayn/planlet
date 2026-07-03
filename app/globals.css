@@ -1362,6 +1362,36 @@ body {
     box-shadow: var(--shadow-sheet);
   }
 
+  .ui-simple-sheet-panel-enter {
+    animation: ui-sheet-enter 0.28s cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  @keyframes ui-sheet-enter {
+    from {
+      transform: translateY(100%);
+    }
+
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  .ui-simple-sheet-drag-zone {
+    flex-shrink: 0;
+    touch-action: none;
+    cursor: grab;
+    padding-top: 0.625rem;
+    padding-bottom: 0.25rem;
+  }
+
+  .ui-simple-sheet-drag-handle {
+    margin-inline: auto;
+    height: 0.25rem;
+    width: 2.5rem;
+    border-radius: 9999px;
+    background: var(--border);
+  }
+
   @media (min-width: 768px) {
     .ui-simple-sheet-panel {
       max-height: min(85dvh, 90vh);
