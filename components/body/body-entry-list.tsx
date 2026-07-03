@@ -5,6 +5,7 @@ import { useTransition } from "react";
 import { deleteBodyEntryAction } from "@/app/(app)/body/actions";
 import { PencilIcon, Trash2Icon } from "@/components/ui/action-icons";
 import type { SerializedBodyEntry } from "@/lib/body-journey/constants";
+import { formatBodySkinDetails } from "@/lib/body-journey/constants";
 import { BODY_SYMPTOM_META } from "@/lib/body-journey-types";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 
@@ -47,6 +48,7 @@ export function BodyEntryList({ entries, onEdit }: BodyEntryListProps) {
         {entries.map((entry) => {
           const meta = BODY_SYMPTOM_META[entry.symptomType];
           const notePreview = previewNotes(entry.notes);
+          const skinDetailsPreview = formatBodySkinDetails(entry);
 
           return (
             <li
@@ -62,6 +64,11 @@ export function BodyEntryList({ entries, onEdit }: BodyEntryListProps) {
                       {entry.intensity}/10
                     </span>
                   </div>
+                  {skinDetailsPreview ? (
+                    <p className="text-sm leading-relaxed text-muted-light">
+                      {skinDetailsPreview}
+                    </p>
+                  ) : null}
                   {notePreview ? (
                     <p className="text-sm leading-relaxed text-muted" dir="auto">
                       {notePreview}

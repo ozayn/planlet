@@ -12,8 +12,11 @@ import {
 } from "@/lib/body-journey";
 import {
   isBodySide,
+  isBodySkinChangeStatus,
   isBodySymptomType,
+  isSkinSymptomType,
   type BodySideValue,
+  type BodySkinChangeStatusValue,
   type BodySymptomTypeValue,
 } from "@/lib/body-journey-types";
 import { isValidDateString, parseDateString } from "@/lib/dates";
@@ -53,6 +56,10 @@ type BodyEntryPayload = {
   intensity: number;
   notes?: string | null;
   tagsRaw?: string;
+  skinSize?: string | null;
+  skinShape?: string | null;
+  skinColor?: string | null;
+  skinChanged?: BodySkinChangeStatusValue | null;
 };
 
 function parseObservedAt(value: string | undefined): Date {
@@ -78,6 +85,29 @@ function buildEntryInput(payload: BodyEntryPayload) {
     throw new BodyJourneyError("Invalid symptom type.");
   }
 
+  const skinChanged =
+    payload.skinChanged && isBodySkinChangeStatus(payload.skinChanged)
+      ? payload.skinChanged
+      : null;
+
+  if (payload.skinChanged && !skinChanged) {
+    throw new BodyJourneyError("Invalid skin change status.");
+  }
+
+  const skinFields = isSkinSymptomType(payload.symptomType)
+    ? {
+        skinSize: payload.skinSize?.trim() || null,
+        skinShape: payload.skinShape?.trim() || null,
+        skinColor: payload.skinColor?.trim() || null,
+        skinChanged,
+      }
+    : {
+        skinSize: null,
+        skinShape: null,
+        skinColor: null,
+        skinChanged: null,
+      };
+
   return {
     observedAt: parseObservedAt(payload.observedAt),
     bodySide: payload.bodySide,
@@ -87,6 +117,7 @@ function buildEntryInput(payload: BodyEntryPayload) {
     intensity: payload.intensity,
     notes: payload.notes ?? null,
     tags: parseBodyEntryTags(payload.tagsRaw ?? ""),
+    ...skinFields,
   };
 }
 

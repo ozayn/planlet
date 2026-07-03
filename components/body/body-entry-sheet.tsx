@@ -11,9 +11,13 @@ import type { SerializedBodyEntry } from "@/lib/body-journey/constants";
 import { formatBodyEntryTags } from "@/lib/body-journey/constants";
 import {
   BODY_SIDE_LABELS,
+  BODY_SKIN_CHANGE_LABELS,
+  BODY_SKIN_CHANGE_STATUSES,
+  BODY_SYMPTOM_GROUPS,
   BODY_SYMPTOM_META,
-  BODY_SYMPTOM_TYPES,
+  isSkinSymptomType,
   type BodySideValue,
+  type BodySkinChangeStatusValue,
   type BodySymptomTypeValue,
 } from "@/lib/body-journey-types";
 import { formatDateString, shiftDateString } from "@/lib/dates";
@@ -34,6 +38,37 @@ function formatMarkerHint(x: number, y: number): string {
   return `${vertical} ${horizontal}`;
 }
 
+function SymptomTypeChip({
+  type,
+  selected,
+  onSelect,
+}: {
+  type: BodySymptomTypeValue;
+  selected: boolean;
+  onSelect: (type: BodySymptomTypeValue) => void;
+}) {
+  const meta = BODY_SYMPTOM_META[type];
+
+  return (
+    <label
+      className={`flex min-h-10 cursor-pointer items-center rounded-xl px-3 text-sm transition-colors ${
+        selected ? "ui-segment-active" : "ui-segment"
+      }`}
+    >
+      <input
+        type="radio"
+        name="body-symptom-type"
+        value={type}
+        checked={selected}
+        onChange={() => onSelect(type)}
+        className="sr-only"
+        {...passwordManagerSafeControlProps}
+      />
+      {meta.label}
+    </label>
+  );
+}
+
 export function BodyEntrySheet({
   open,
   onClose,
@@ -47,12 +82,22 @@ export function BodyEntrySheet({
   const [observedAt, setObservedAt] = useState(defaultObservedDate);
   const [notes, setNotes] = useState("");
   const [tagsRaw, setTagsRaw] = useState("");
+  const [skinSize, setSkinSize] = useState("");
+  const [skinShape, setSkinShape] = useState("");
+  const [skinColor, setSkinColor] = useState("");
+  const [skinChanged, setSkinChanged] = useState<BodySkinChangeStatusValue | "">(
+    "",
+  );
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const notesId = useId();
   const tagsId = useId();
   const intensityId = useId();
   const observedAtId = useId();
+
+  const skinSizeId = useId();
+  const skinShapeId = useId();
+  const skinColorId = useId();
 
   useEffect(() => {
     if (!open) {
@@ -65,12 +110,20 @@ export function BodyEntrySheet({
       setObservedAt(formatDateString(new Date(entry.observedAt)));
       setNotes(entry.notes ?? "");
       setTagsRaw(formatBodyEntryTags(entry.tags));
+      setSkinSize(entry.skinSize ?? "");
+      setSkinShape(entry.skinShape ?? "");
+      setSkinColor(entry.skinColor ?? "");
+      setSkinChanged(entry.skinChanged ?? "");
     } else {
       setSymptomType("PAIN");
       setIntensity(5);
       setObservedAt(defaultObservedDate);
       setNotes("");
       setTagsRaw("");
+      setSkinSize("");
+      setSkinShape("");
+      setSkinColor("");
+      setSkinChanged("");
     }
 
     setError(null);
@@ -100,6 +153,10 @@ export function BodyEntrySheet({
         intensity,
         notes: notes.trim() || null,
         tagsRaw,
+        skinSize: skinSize.trim() || null,
+        skinShape: skinShape.trim() || null,
+        skinColor: skinColor.trim() || null,
+        skinChanged: skinChanged || null,
       };
 
       const result = entry
@@ -187,34 +244,102 @@ export function BodyEntrySheet({
           </div>
         </div>
 
-        <fieldset className="space-y-3">
+        <fieldset className="space-y-4">
           <legend className="ui-label">Symptom type</legend>
-          <div className="flex flex-wrap gap-2">
-            {BODY_SYMPTOM_TYPES.map((type) => {
-              const meta = BODY_SYMPTOM_META[type];
-
-              return (
-                <label
-                  key={type}
-                  className={`flex min-h-10 cursor-pointer items-center rounded-xl px-3 text-sm transition-colors ${
-                    symptomType === type ? "ui-segment-active" : "ui-segment"
-                  }`}
-                >
-                  <input
-                    type="radio"
-                    name="body-symptom-type"
-                    value={type}
-                    checked={symptomType === type}
-                    onChange={() => setSymptomType(type)}
-                    className="sr-only"
-                    {...passwordManagerSafeControlProps}
+          {BODY_SYMPTOM_GROUPS.map((group) => (
+            <div key={group.label} className="space-y-2">
+              <p className="text-xs font-medium text-muted">{group.label}</p>
+              <div className="flex flex-wrap gap-2">
+                {group.types.map((type) => (
+                  <SymptomTypeChip
+                    key={type}
+                    type={type}
+                    selected={symptomType === type}
+                    onSelect={setSymptomType}
                   />
-                  {meta.label}
-                </label>
-              );
-            })}
-          </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </fieldset>
+
+        {isSkinSymptomType(symptomType) ? (
+          <details className="rounded-xl border border-border-soft bg-surface/50 px-3 py-2.5">
+            <summary className="cursor-pointer text-sm font-medium text-foreground">
+              More details (optional)
+            </summary>
+            <div className="mt-3 space-y-3">
+              <label htmlFor={skinSizeId} className="block space-y-2">
+                <span className="ui-label">Size</span>
+                <input
+                  id={skinSizeId}
+                  name="body-skin-size"
+                  type="text"
+                  value={skinSize}
+                  onChange={(event) => setSkinSize(event.target.value)}
+                  className="ui-input min-h-10 text-sm"
+                  placeholder="pea-sized, 2 cm"
+                  {...passwordManagerSafeControlProps}
+                />
+              </label>
+
+              <label htmlFor={skinShapeId} className="block space-y-2">
+                <span className="ui-label">Shape</span>
+                <input
+                  id={skinShapeId}
+                  name="body-skin-shape"
+                  type="text"
+                  value={skinShape}
+                  onChange={(event) => setSkinShape(event.target.value)}
+                  className="ui-input min-h-10 text-sm"
+                  placeholder="round, irregular"
+                  {...passwordManagerSafeControlProps}
+                />
+              </label>
+
+              <label htmlFor={skinColorId} className="block space-y-2">
+                <span className="ui-label">Color</span>
+                <input
+                  id={skinColorId}
+                  name="body-skin-color"
+                  type="text"
+                  value={skinColor}
+                  onChange={(event) => setSkinColor(event.target.value)}
+                  className="ui-input min-h-10 text-sm"
+                  placeholder="red, brown, pale"
+                  {...passwordManagerSafeControlProps}
+                />
+              </label>
+
+              <fieldset className="space-y-2">
+                <legend className="ui-label">Changed since last time?</legend>
+                <div className="flex flex-wrap gap-2">
+                  {BODY_SKIN_CHANGE_STATUSES.map((status) => (
+                    <label
+                      key={status}
+                      className={`flex min-h-10 cursor-pointer items-center rounded-xl px-3 text-sm transition-colors ${
+                        skinChanged === status
+                          ? "ui-segment-active"
+                          : "ui-segment"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="body-skin-changed"
+                        value={status}
+                        checked={skinChanged === status}
+                        onChange={() => setSkinChanged(status)}
+                        className="sr-only"
+                        {...passwordManagerSafeControlProps}
+                      />
+                      {BODY_SKIN_CHANGE_LABELS[status]}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            </div>
+          </details>
+        ) : null}
 
         <div className="space-y-2">
           <label htmlFor={intensityId} className="ui-label">

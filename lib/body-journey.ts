@@ -7,7 +7,9 @@ import { APP_TIMEZONE } from "@/config/time";
 import type { BodyJourneyPeriodValue } from "@/lib/body-journey-period";
 import {
   BODY_SYMPTOM_TYPES,
+  isSkinSymptomType,
   type BodySideValue,
+  type BodySkinChangeStatusValue,
   type BodySymptomTypeValue,
 } from "@/lib/body-journey-types";
 import {
@@ -36,12 +38,14 @@ export type { BodyJourneyPeriodValue } from "@/lib/body-journey-period";
 
 export type {
   BodySideValue,
+  BodySkinChangeStatusValue,
   BodySymptomMeta,
   BodySymptomTypeValue,
 } from "@/lib/body-journey-types";
 
 export {
   formatBodyEntryTags,
+  formatBodySkinDetails,
   parseBodyEntryTags,
 } from "@/lib/body-journey/constants";
 
@@ -55,10 +59,17 @@ export {
 export {
   BODY_SIDE_LABELS,
   BODY_SIDES,
+  BODY_SKIN_CHANGE_LABELS,
+  BODY_SKIN_CHANGE_STATUSES,
+  BODY_SKIN_SYMPTOM_TYPES,
+  BODY_SYMPTOM_GROUPS,
   BODY_SYMPTOM_META,
   BODY_SYMPTOM_TYPES,
+  BODY_SENSATION_SYMPTOM_TYPES,
   isBodySide,
+  isBodySkinChangeStatus,
   isBodySymptomType,
+  isSkinSymptomType,
   parseBodySide,
 } from "@/lib/body-journey-types";
 
@@ -90,6 +101,10 @@ function serializeBodyEntry(entry: BodyEntry): SerializedBodyEntry {
     intensity: entry.intensity,
     notes: entry.notes,
     tags: entry.tags,
+    skinSize: entry.skinSize,
+    skinShape: entry.skinShape,
+    skinColor: entry.skinColor,
+    skinChanged: entry.skinChanged as BodySkinChangeStatusValue | null,
     createdAt: entry.createdAt.toISOString(),
     updatedAt: entry.updatedAt.toISOString(),
   };
@@ -219,12 +234,36 @@ export type BodyEntryInput = {
   intensity: number;
   notes?: string | null;
   tags?: string[];
+  skinSize?: string | null;
+  skinShape?: string | null;
+  skinColor?: string | null;
+  skinChanged?: BodySkinChangeStatusValue | null;
 };
+
+function normalizeSkinDetails(input: BodyEntryInput) {
+  if (!isSkinSymptomType(input.symptomType)) {
+    return {
+      skinSize: null,
+      skinShape: null,
+      skinColor: null,
+      skinChanged: null,
+    };
+  }
+
+  return {
+    skinSize: input.skinSize?.trim() || null,
+    skinShape: input.skinShape?.trim() || null,
+    skinColor: input.skinColor?.trim() || null,
+    skinChanged: input.skinChanged ?? null,
+  };
+}
 
 export async function createBodyEntry(
   userId: string,
   input: BodyEntryInput,
 ): Promise<SerializedBodyEntry> {
+  const skinDetails = normalizeSkinDetails(input);
+
   const entry = await prisma.bodyEntry.create({
     data: {
       userId,
@@ -236,6 +275,7 @@ export async function createBodyEntry(
       intensity: clampIntensity(input.intensity),
       notes: input.notes?.trim() || null,
       tags: input.tags ?? [],
+      ...skinDetails,
     },
   });
 
@@ -253,6 +293,8 @@ export async function updateBodyEntry(
     throw new BodyJourneyError("Observation not found.");
   }
 
+  const skinDetails = normalizeSkinDetails(input);
+
   const entry = await prisma.bodyEntry.update({
     where: { id: entryId },
     data: {
@@ -264,6 +306,7 @@ export async function updateBodyEntry(
       intensity: clampIntensity(input.intensity),
       notes: input.notes?.trim() || null,
       tags: input.tags ?? [],
+      ...skinDetails,
     },
   });
 
