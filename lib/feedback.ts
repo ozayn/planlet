@@ -14,7 +14,7 @@ import {
   MAX_FEEDBACK_TITLE_LENGTH,
 } from "@/lib/feedback-constants";
 import { createAppFeedbackNotification } from "@/lib/notifications";
-import { canGiveFeedback, isAdmin } from "@/lib/roles";
+import { canGiveFeedback, isAdmin, type UserAccess } from "@/lib/roles";
 import { prisma } from "@/lib/prisma";
 import { touchUserSeen } from "@/lib/user-activity";
 
@@ -195,6 +195,11 @@ function validatePagePath(pagePath?: string | null): string | null {
   return trimmed;
 }
 
+/** Whether submitting feedback should notify admins (e.g. skip for admin-authored feedback). */
+export function shouldNotifyFeedback(user: UserAccess): boolean {
+  return !isAdmin(user);
+}
+
 export async function getMyFeedback(
   userId: string,
 ): Promise<SerializedFeedback[]> {
@@ -286,14 +291,16 @@ export async function createFeedback(
 
   await touchUserSeen(userId);
 
-  try {
-    await createAppFeedbackNotification({
-      authorName: author.name,
-      authorEmail: author.email,
-      area,
-    });
-  } catch (error) {
-    console.warn("[planlet] feedback notification failed:", error);
+  if (shouldNotifyFeedback(author)) {
+    try {
+      await createAppFeedbackNotification({
+        authorName: author.name,
+        authorEmail: author.email,
+        area,
+      });
+    } catch (error) {
+      console.warn("[planlet] feedback notification failed:", error);
+    }
   }
 
   return serializeFeedback(feedback);

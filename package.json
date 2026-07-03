@@ -10,7 +10,7 @@
     "start:reminders": "npm run cron:reminders",
     "start:railway": "node scripts/railway-start.js",
     "lint": "eslint",
-    "test": "node --import tsx --test lib/plan-import/parse-messy-plan-text.test.ts lib/linkedin-job-url.test.ts lib/job-url-normalization.test.ts lib/mobile-nav.test.ts lib/learning-journey.test.ts lib/plan-item-completed-at.test.ts lib/plan-item-display-order.test.ts lib/parent-task-status.test.ts lib/poke-labels.test.ts lib/share-plan.test.ts lib/unfinished-tasks.test.ts",
+    "test": "node --import tsx --test lib/plan-import/parse-messy-plan-text.test.ts lib/linkedin-job-url.test.ts lib/job-url-normalization.test.ts lib/mobile-nav.test.ts lib/learning-journey.test.ts lib/plan-item-completed-at.test.ts lib/plan-item-display-order.test.ts lib/parent-task-status.test.ts lib/poke-labels.test.ts lib/share-plan.test.ts lib/unfinished-tasks.test.ts lib/feedback.test.ts",
     "postinstall": "prisma generate",
     "db:migrate": "prisma migrate deploy",
     "cron:reminders": "tsx scripts/run-reminders-cron.ts",
