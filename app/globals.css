@@ -2127,22 +2127,28 @@ body {
   padding: 0;
 }
 
-.ui-markdown .ui-mermaid-block {
+.ui-markdown .ui-mermaid {
   margin-top: 0.75rem;
   margin-bottom: 0.75rem;
   max-width: 100%;
   overflow-x: auto;
+  overflow-y: hidden;
+  padding: 1rem 0;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
 }
 
 .ui-markdown .ui-mermaid-svg {
   display: inline-block;
-  min-width: min(100%, max-content);
+  width: max-content;
+  min-width: min(100%, var(--mermaid-min-width, max-content));
 }
 
-.ui-markdown .ui-mermaid-svg svg {
+.ui-markdown .ui-mermaid svg {
   display: block;
-  height: auto;
+  width: max-content;
   max-width: none;
+  height: auto;
 }
 
 .ui-markdown .ui-mermaid-loading {

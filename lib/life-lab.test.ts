@@ -22,6 +22,7 @@ import {
   sectionIdFromFolderName,
 } from "@/lib/life-lab/sections";
 import { isLifeLabDevToolsEnabled } from "@/lib/life-lab/dev";
+import { prepareMermaidSvg } from "@/lib/life-lab/mermaid-svg";
 import { isMarkdownDriveFile } from "@/lib/life-lab/google-drive";
 import {
   lifeLabFolderEntriesToMap,
@@ -379,6 +380,19 @@ describe("life lab note organization", () => {
 describe("life lab dev tools", () => {
   it("enables dev tools only in development", () => {
     assert.equal(isLifeLabDevToolsEnabled(), process.env.NODE_ENV === "development");
+  });
+});
+
+describe("life lab mermaid sizing", () => {
+  it("removes fixed svg dimensions and preserves readable width", () => {
+    const prepared = prepareMermaidSvg(
+      '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80" viewBox="0 0 640 120"><text>Map</text></svg>',
+    );
+
+    assert.match(prepared.html, /min-width:\s*640px/);
+    assert.match(prepared.html, /width:\s*max-content/);
+    assert.match(prepared.html, /max-width:\s*none/);
+    assert.equal(prepared.minWidth, 640);
   });
 });
 

@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useState, type CSSProperties } from "react";
+
+import { prepareMermaidSvg, type PreparedMermaidSvg } from "@/lib/life-lab/mermaid-svg";
 
 type MermaidBlockProps = {
   code: string;
@@ -15,6 +17,16 @@ async function loadMermaid() {
     mermaid.initialize({
       startOnLoad: false,
       securityLevel: "strict",
+      themeVariables: {
+        fontSize: "16px",
+        fontFamily: "var(--font-sans, system-ui, sans-serif)",
+      },
+      flowchart: {
+        padding: 12,
+        nodeSpacing: 50,
+        rankSpacing: 60,
+        diagramPadding: 12,
+      },
     });
     mermaidInitialized = true;
   }
@@ -29,7 +41,7 @@ function mermaidElementId(reactId: string): string {
 export function MermaidBlock({ code }: MermaidBlockProps) {
   const reactId = useId();
   const elementId = mermaidElementId(reactId);
-  const [svg, setSvg] = useState<string | null>(null);
+  const [preparedSvg, setPreparedSvg] = useState<PreparedMermaidSvg | null>(null);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
@@ -37,7 +49,7 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
 
     async function renderDiagram() {
       setFailed(false);
-      setSvg(null);
+      setPreparedSvg(null);
 
       try {
         const mermaid = await loadMermaid();
@@ -47,7 +59,7 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
         );
 
         if (!cancelled) {
-          setSvg(renderedSvg);
+          setPreparedSvg(prepareMermaidSvg(renderedSvg));
         }
       } catch {
         if (!cancelled) {
@@ -72,11 +84,19 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
   }
 
   return (
-    <div className="ui-mermaid-block" aria-busy={!svg}>
-      {svg ? (
+    <div
+      className="ui-mermaid"
+      aria-busy={!preparedSvg}
+      style={
+        preparedSvg?.minWidth
+          ? ({ "--mermaid-min-width": `${preparedSvg.minWidth}px` } as CSSProperties)
+          : undefined
+      }
+    >
+      {preparedSvg ? (
         <div
           className="ui-mermaid-svg"
-          dangerouslySetInnerHTML={{ __html: svg }}
+          dangerouslySetInnerHTML={{ __html: preparedSvg.html }}
         />
       ) : (
         <p className="ui-mermaid-loading">Rendering diagram…</p>
