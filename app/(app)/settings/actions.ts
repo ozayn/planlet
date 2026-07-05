@@ -60,6 +60,7 @@ function getAppNavAccessFromSession(session: Session): AppNavAccess {
     canUseCoachingFeatures: session.user.canUseCoachingFeatures,
     canUseBodyJourneyFeatures: session.user.canUseBodyJourneyFeatures,
     canUseLearningJourneyFeatures: session.user.canUseLearningJourneyFeatures,
+    canUseLifeLabFeatures: session.user.canUseLifeLabFeatures,
     canUseJobTrackerFeatures: session.user.canUseJobTrackerFeatures,
     canUseCareerJourneyFeatures: session.user.canUseCareerJourneyFeatures,
   };

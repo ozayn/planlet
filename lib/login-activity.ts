@@ -76,6 +76,7 @@ export async function trackUserSignIn({
       canUseCareerJourneyFeatures: true,
       canUseBodyJourneyFeatures: true,
       canUseLearningJourneyFeatures: true,
+      canUseLifeLabFeatures: true,
       lastLoginAt: true,
     },
   });
@@ -94,6 +95,7 @@ export async function trackUserSignIn({
     canUseCareerJourneyFeatures: boolean;
     canUseBodyJourneyFeatures: boolean;
     canUseLearningJourneyFeatures: boolean;
+    canUseLifeLabFeatures: boolean;
     lastSeenAt: Date;
     lastLoginAt?: Date;
     loginCount?: { increment: number };
@@ -106,6 +108,7 @@ export async function trackUserSignIn({
     canUseCareerJourneyFeatures: access.canUseCareerJourneyFeatures,
     canUseBodyJourneyFeatures: access.canUseBodyJourneyFeatures,
     canUseLearningJourneyFeatures: access.canUseLearningJourneyFeatures,
+    canUseLifeLabFeatures: access.canUseLifeLabFeatures,
     lastSeenAt: now,
   };
 

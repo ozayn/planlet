@@ -16,6 +16,7 @@ declare module "next-auth" {
       canUseCareerJourneyFeatures: boolean;
       canUseBodyJourneyFeatures: boolean;
       canUseLearningJourneyFeatures: boolean;
+      canUseLifeLabFeatures: boolean;
       timezone: string;
       timezoneMode: TimezoneMode;
     };

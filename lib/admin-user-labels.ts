@@ -9,6 +9,8 @@ export function formatAdminRoleCapabilities(user: AdminUserStatRow): string {
 
   if (user.role === "REFLECTOR") {
     parts.push("Reflector");
+  } else if (user.role === "PERSONAL") {
+    parts.push("Personal");
   } else {
     parts.push("User");
   }

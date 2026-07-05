@@ -10,6 +10,7 @@ import {
   canUseCoachingFeatures,
   canUseJobTrackerFeatures,
   canUseLearningJourneyFeatures,
+  canUseLifeLabFeatures,
 } from "@/lib/roles";
 import { serializeNotification } from "@/lib/notification-serialize";
 import {
@@ -49,6 +50,7 @@ export default async function AppLayout({
     canUseLearningJourneyFeatures: canUseLearningJourneyFeatures(
       session?.user ?? {},
     ),
+    canUseLifeLabFeatures: canUseLifeLabFeatures(session?.user ?? {}),
     canUseJobTrackerFeatures: canUseJobTrackerFeatures(session?.user ?? {}),
     canUseCareerJourneyFeatures: canUseCareerJourneyFeatures(
       session?.user ?? {},

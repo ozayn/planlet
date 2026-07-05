@@ -51,6 +51,10 @@ export function getLearningJourneyEmails(): string[] {
   return parseEmailList(process.env.LEARNING_JOURNEY_EMAILS);
 }
 
+export function getLifeLabEmails(): string[] {
+  return parseEmailList(process.env.LIFE_LAB_EMAILS);
+}
+
 export function isAdminEmail(email?: string | null): boolean {
   if (!email?.trim()) {
     return false;
@@ -113,6 +117,14 @@ export function isLearningJourneyEmail(email?: string | null): boolean {
   }
 
   return getLearningJourneyEmails().includes(email.trim().toLowerCase());
+}
+
+export function isLifeLabEmail(email?: string | null): boolean {
+  if (!email?.trim()) {
+    return false;
+  }
+
+  return getLifeLabEmails().includes(email.trim().toLowerCase());
 }
 
 export function isEmailAllowed(email?: string | null): boolean {

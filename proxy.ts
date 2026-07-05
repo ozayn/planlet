@@ -16,6 +16,7 @@ const protectedPrefixes = [
   "/career",
   "/jobs",
   "/learning",
+  "/life-lab",
   "/nudges",
   "/feedback",
 ];
@@ -50,6 +51,7 @@ export const config = {
     "/career/:path*",
     "/jobs/:path*",
     "/learning/:path*",
+    "/life-lab/:path*",
     "/nudges/:path*",
     "/poke/:path*",
     "/feedback/:path*",

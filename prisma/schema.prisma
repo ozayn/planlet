@@ -86,6 +86,7 @@ enum ShareExportFormat {
 
 enum UserRole {
   USER
+  PERSONAL
   REFLECTOR
   ADMIN
 }
@@ -274,6 +275,7 @@ model User {
   canUseCareerJourneyFeatures Boolean   @default(false)
   canUseBodyJourneyFeatures   Boolean   @default(false)
   canUseLearningJourneyFeatures Boolean @default(false)
+  canUseLifeLabFeatures       Boolean   @default(false)
   planItemView              PlanItemView @default(CHECKLIST)
   taskOrganizationDisplay   TaskOrganizationDisplay @default(ASSIGNED_ONLY)
   mobileNavItems            String[]    @default([])

@@ -1,11 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Plus_Jakarta_Sans, Vazirmatn } from "next/font/google";
-import Script from "next/script";
 
 import { ThemeColorMeta } from "@/components/theme-color-meta";
 import { ThemeProvider } from "@/components/theme-provider";
 import { PRODUCT, PWA } from "@/config/product";
-import { THEME_INIT_SCRIPT } from "@/lib/theme";
 
 import "./globals.css";
 
@@ -75,9 +73,6 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className="min-h-full flex flex-col bg-background font-sans text-foreground">
-        <Script id="planlet-theme-init" strategy="beforeInteractive">
-          {THEME_INIT_SCRIPT}
-        </Script>
         <ThemeProvider>
           <ThemeColorMeta />
           {children}

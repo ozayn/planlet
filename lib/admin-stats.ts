@@ -34,6 +34,7 @@ export type AdminUserStatRow = {
   canUseCareerJourneyFeatures: boolean;
   canUseBodyJourneyFeatures: boolean;
   canUseLearningJourneyFeatures: boolean;
+  canUseLifeLabFeatures: boolean;
   createdAt: Date;
   lastSeenAt: Date | null;
   lastLoginAt: Date | null;
@@ -142,6 +143,7 @@ export async function getAdminUserStats(): Promise<AdminStats> {
         canUseCareerJourneyFeatures: true,
         canUseBodyJourneyFeatures: true,
         canUseLearningJourneyFeatures: true,
+        canUseLifeLabFeatures: true,
         createdAt: true,
         lastSeenAt: true,
         lastLoginAt: true,
@@ -332,6 +334,7 @@ export async function getAdminUserStats(): Promise<AdminStats> {
       canUseCareerJourneyFeatures: user.canUseCareerJourneyFeatures,
       canUseBodyJourneyFeatures: user.canUseBodyJourneyFeatures,
       canUseLearningJourneyFeatures: user.canUseLearningJourneyFeatures,
+      canUseLifeLabFeatures: user.canUseLifeLabFeatures,
       createdAt: user.createdAt,
       lastSeenAt: user.lastSeenAt,
       lastLoginAt: user.lastLoginAt,

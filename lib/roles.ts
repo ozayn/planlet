@@ -9,6 +9,7 @@ export type UserAccess = {
   canUseCareerJourneyFeatures?: boolean | null;
   canUseBodyJourneyFeatures?: boolean | null;
   canUseLearningJourneyFeatures?: boolean | null;
+  canUseLifeLabFeatures?: boolean | null;
 };
 
 type RoleInput = UserRole | string | null | undefined;
@@ -21,6 +22,11 @@ export function isAdmin(user: UserAccess | RoleInput): boolean {
 export function isReflector(user: UserAccess | RoleInput): boolean {
   const role = typeof user === "object" && user !== null ? user.role : user;
   return role === "REFLECTOR";
+}
+
+export function isPersonalRole(user: UserAccess | RoleInput): boolean {
+  const role = typeof user === "object" && user !== null ? user.role : user;
+  return role === "PERSONAL";
 }
 
 export function canGiveFeedback(user: UserAccess): boolean {
@@ -79,6 +85,15 @@ export function canUseLearningJourneyFeatures(user: UserAccess): boolean {
   return user.canUseLearningJourneyFeatures === true;
 }
 
+export function canUseLifeLabFeatures(user: UserAccess): boolean {
+  return isPersonalRole(user);
+}
+
+/** Route access: Personal users plus admins (for local setup/debug). */
+export function canAccessLifeLabPage(user: UserAccess): boolean {
+  return canUseLifeLabFeatures(user) || isAdmin(user);
+}
+
 export function canUseTherapyThoughts(user: UserAccess | RoleInput): boolean {
   if (isAdmin(user)) {
     return true;
@@ -93,6 +108,8 @@ export function formatUserRoleLabel(role: RoleInput): string {
       return "Admin";
     case "REFLECTOR":
       return "Reflector";
+    case "PERSONAL":
+      return "Personal";
     default:
       return "User";
   }

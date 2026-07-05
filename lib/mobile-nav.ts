@@ -36,6 +36,7 @@ const MOBILE_NAV_ACCENTS: Record<AppNavItemKey, string> = {
   themes: "bg-accent-red",
   coaching: "bg-accent-blue",
   "learning-journey": "bg-accent-yellow",
+  "life-lab": "bg-accent-blue",
   "body-journey": "bg-accent-red",
   nudges: "bg-accent-blue",
   jobs: "bg-accent-yellow",
@@ -54,6 +55,7 @@ const MOBILE_NAV_LABELS: Record<AppNavItemKey, string> = {
   themes: "Themes",
   coaching: "Coaching",
   "learning-journey": "Learning",
+  "life-lab": "Life Lab",
   "body-journey": "Body",
   nudges: "Nudges",
   jobs: "Jobs",
@@ -152,7 +154,7 @@ export function getSelectableMobileNavSections(access: AppNavAccess) {
     },
     {
       title: "Reflection",
-      items: (["coaching", "learning-journey", "body-journey"] as AppNavItemKey[])
+      items: (["coaching", "learning-journey", "life-lab", "body-journey"] as AppNavItemKey[])
         .filter((key) => canAccessAppNavItem(key, access))
         .map((key) => ({ key, label: getMobileNavLabel(key) })),
     },
