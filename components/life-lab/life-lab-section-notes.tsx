@@ -12,11 +12,13 @@ import type {
   LifeLabNoteSummary,
   LifeLabSectionId,
 } from "@/lib/life-lab/constants";
-import { groupDisclosureSummary } from "@/lib/life-lab/organization";
+import { selectCardPreview } from "@/lib/life-lab/card-preview";
 import {
   dictionaryCategoryLabel,
   resolveDictionaryCategory,
 } from "@/lib/life-lab/learning-dictionary";
+import { isPlaylistIndexNote } from "@/lib/life-lab/playlist-index";
+import { groupDisclosureSummary } from "@/lib/life-lab/organization";
 
 type LifeLabSectionNotesProps = {
   sectionId: LifeLabSectionId;
@@ -24,13 +26,17 @@ type LifeLabSectionNotesProps = {
   listingDiagnostic: LifeLabListingDiagnostic | null;
   showDiagnostics: boolean;
   refreshHref: string;
+  searchQuery?: string;
 };
 
 type LifeLabNoteCardProps = {
   sectionId: LifeLabSectionId;
   note: LifeLabNoteSummary;
   group: LifeLabNoteGroup;
+  searchQuery?: string;
 };
+
+const GROUP_INITIAL_VISIBLE = 3;
 
 function LifeLabListingDiagnosticPanel({
   diagnostic,
@@ -84,7 +90,6 @@ function shouldShowSubfolderLabel(
 
   const subfolder = note.subfolderLabel.toLowerCase();
 
-  // Month-split groups use ids like "daily:2026-07"; the subfolder is implied.
   return group.id !== subfolder && !group.id.startsWith(`${subfolder}:`);
 }
 
@@ -96,49 +101,126 @@ function CategoryBadge({ label }: { label: string }) {
   );
 }
 
-function LifeLabDictionaryNoteCard({
+function isPlaylistIndexCard(
+  sectionId: LifeLabSectionId,
+  note: LifeLabNoteSummary,
+): boolean {
+  return isPlaylistIndexNote({
+    sectionId,
+    relativePath: note.relativePath,
+    subfolderLabel: note.subfolderLabel,
+    metadata: note.metadata,
+  });
+}
+
+function CardPreview({
+  note,
+  searchQuery,
+}: {
+  note: LifeLabNoteSummary;
+  searchQuery?: string;
+}) {
+  const preview = selectCardPreview(note, { searchQuery });
+
+  if (!preview) {
+    return null;
+  }
+
+  return (
+    <p className="line-clamp-2 text-xs leading-relaxed text-muted md:line-clamp-1">
+      {preview}
+    </p>
+  );
+}
+
+function LifeLabPlaylistIndexCard({
   sectionId,
   note,
 }: {
   sectionId: LifeLabSectionId;
   note: LifeLabNoteSummary;
 }) {
+  const progress = note.excerpt?.trim();
+
+  return (
+    <li>
+      <div className="relative rounded-lg border border-border/50 bg-surface/70 p-2.5 transition-colors hover:bg-accent-cream/20">
+        <div className="flex items-start justify-between gap-2 pr-8">
+          <div className="min-w-0 flex-1 space-y-1">
+            <Link
+              href={`/life-lab/${sectionId}/${note.slug}`}
+              className="block line-clamp-2 text-sm font-semibold leading-snug text-foreground transition-colors hover:text-foreground/80"
+            >
+              {note.title}
+            </Link>
+            {progress ? (
+              <p className="text-xs text-muted">{progress}</p>
+            ) : null}
+            <Link
+              href={`/life-lab/${sectionId}/${note.slug}`}
+              className="inline-flex rounded-full border border-border/70 px-2.5 py-1 text-[0.6875rem] font-medium text-muted transition-colors hover:bg-accent-cream/50 hover:text-foreground"
+            >
+              Open playlist
+            </Link>
+          </div>
+          {note.dateLabel ?? note.modifiedAtLabel ? (
+            <span className="shrink-0 text-[0.6875rem] text-muted-light">
+              {note.dateLabel ?? note.modifiedAtLabel}
+            </span>
+          ) : null}
+        </div>
+        <div className="absolute right-2.5 top-2.5">
+          <LifeLabNoteCardDevMenu sectionId={sectionId} note={note} />
+        </div>
+      </div>
+    </li>
+  );
+}
+
+function LifeLabDictionaryNoteCard({
+  sectionId,
+  note,
+  searchQuery,
+}: {
+  sectionId: LifeLabSectionId;
+  note: LifeLabNoteSummary;
+  searchQuery?: string;
+}) {
   const category = resolveDictionaryCategory(note);
   const categoryLabel = category ? dictionaryCategoryLabel(category) : null;
 
   return (
     <li>
-      <div className="ui-card-padded relative !p-3 transition-colors hover:bg-accent-cream/25">
-        <div className="flex items-start justify-between gap-3 pr-10">
-          <div className="min-w-0 flex-1">
-            <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+      <div className="ui-card-padded relative !p-2.5 md:!p-3">
+        <div className="flex items-start justify-between gap-2 pr-8">
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
               {categoryLabel ? <CategoryBadge label={categoryLabel} /> : null}
-              <LifeLabNoteCardMeta sectionId={sectionId} note={note} />
+              {note.dateLabel ?? note.modifiedAtLabel ? (
+                <span className="text-[0.6875rem] text-muted-light">
+                  {note.dateLabel ?? note.modifiedAtLabel}
+                </span>
+              ) : null}
             </div>
             <Link
               href={`/life-lab/${sectionId}/${note.slug}`}
-              className="block text-base font-semibold leading-snug text-foreground transition-colors hover:text-foreground/80"
+              className="block line-clamp-2 text-sm font-semibold leading-snug text-foreground transition-colors hover:text-foreground/80"
             >
               {note.title}
             </Link>
-            <LifeLabMetadataChips
-              metadata={note.metadata}
-              sectionId={sectionId}
-              subfolderLabel={note.subfolderLabel}
-              variant="card"
-              className="mt-1.5"
-            />
-            {note.excerpt ? (
-              <Link
-                href={`/life-lab/${sectionId}/${note.slug}`}
-                className="mt-1.5 block text-sm leading-relaxed text-muted line-clamp-2"
-              >
-                {note.excerpt}
-              </Link>
-            ) : null}
+            <div className="flex flex-wrap items-center gap-1">
+              <LifeLabNoteCardMeta sectionId={sectionId} note={note} />
+              <LifeLabMetadataChips
+                metadata={note.metadata}
+                sectionId={sectionId}
+                subfolderLabel={note.subfolderLabel}
+                variant="card"
+              />
+            </div>
+            <CardPreview note={note} searchQuery={searchQuery} />
           </div>
         </div>
-        <div className="absolute right-3 top-3">
+        <div className="absolute right-2.5 top-2.5">
           <LifeLabNoteCardDevMenu sectionId={sectionId} note={note} />
         </div>
       </div>
@@ -146,53 +228,52 @@ function LifeLabDictionaryNoteCard({
   );
 }
 
-function LifeLabNoteCard({ sectionId, note, group }: LifeLabNoteCardProps) {
+function LifeLabNoteCard({
+  sectionId,
+  note,
+  group,
+  searchQuery,
+}: LifeLabNoteCardProps) {
+  if (isPlaylistIndexCard(sectionId, note)) {
+    return <LifeLabPlaylistIndexCard sectionId={sectionId} note={note} />;
+  }
+
   return (
     <li>
-      <div className="ui-card-padded relative !p-3.5 transition-colors hover:bg-accent-cream/25">
-        <div className="flex items-start justify-between gap-3 pr-10">
-          <div className="min-w-0 flex-1">
+      <div className="ui-card-padded relative !p-2.5 transition-colors hover:bg-accent-cream/25 md:!p-3">
+        <div className="flex items-start justify-between gap-2 pr-8">
+          <div className="min-w-0 flex-1 space-y-1">
             {shouldShowSubfolderLabel(note, group) ? (
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-light">
+              <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-light">
                 {note.subfolderLabel}
               </p>
             ) : null}
             <Link
               href={`/life-lab/${sectionId}/${note.slug}`}
-              className="block text-base font-semibold text-foreground transition-colors hover:text-foreground/80"
+              className="block line-clamp-2 text-sm font-semibold leading-snug text-foreground transition-colors hover:text-foreground/80 md:line-clamp-1"
             >
               {note.title}
             </Link>
-            <LifeLabMetadataChips
-              metadata={note.metadata}
-              sectionId={sectionId}
-              groupId={group.id}
-              groupLabel={group.label}
-              subfolderLabel={note.subfolderLabel}
-              variant="card"
-              className="mt-1.5"
-            />
-            <LifeLabNoteCardMeta
-              sectionId={sectionId}
-              note={note}
-              className="mt-2"
-            />
-            {note.excerpt ? (
-              <Link
-                href={`/life-lab/${sectionId}/${note.slug}`}
-                className="mt-1.5 block text-sm leading-relaxed text-muted line-clamp-2"
-              >
-                {note.excerpt}
-              </Link>
-            ) : null}
+            <div className="flex flex-wrap items-center gap-1">
+              <LifeLabNoteCardMeta sectionId={sectionId} note={note} />
+              <LifeLabMetadataChips
+                metadata={note.metadata}
+                sectionId={sectionId}
+                groupId={group.id}
+                groupLabel={group.label}
+                subfolderLabel={note.subfolderLabel}
+                variant="card"
+              />
+            </div>
+            <CardPreview note={note} searchQuery={searchQuery} />
           </div>
           {note.dateLabel ?? note.modifiedAtLabel ? (
-            <span className="shrink-0 text-xs text-muted-light">
+            <span className="shrink-0 text-[0.6875rem] text-muted-light">
               {note.dateLabel ?? note.modifiedAtLabel}
             </span>
           ) : null}
         </div>
-        <div className="absolute right-3 top-3">
+        <div className="absolute right-2.5 top-2.5">
           <LifeLabNoteCardDevMenu sectionId={sectionId} note={note} />
         </div>
       </div>
@@ -200,14 +281,14 @@ function LifeLabNoteCard({ sectionId, note, group }: LifeLabNoteCardProps) {
   );
 }
 
-const GROUP_INITIAL_VISIBLE = 10;
-
 function LifeLabNoteList({
   sectionId,
   group,
+  searchQuery,
 }: {
   sectionId: LifeLabSectionId;
   group: LifeLabNoteGroup;
+  searchQuery?: string;
 }) {
   const [expanded, setExpanded] = useState(false);
   const hasOverflow = group.notes.length > GROUP_INITIAL_VISIBLE;
@@ -218,13 +299,14 @@ function LifeLabNoteList({
 
   return (
     <div className="space-y-2">
-      <ul className="space-y-2">
+      <ul className="space-y-1.5">
         {visibleNotes.map((note) =>
           sectionId === "learning-dictionary" ? (
             <LifeLabDictionaryNoteCard
               key={note.slug}
               sectionId={sectionId}
               note={note}
+              searchQuery={searchQuery}
             />
           ) : (
             <LifeLabNoteCard
@@ -232,6 +314,7 @@ function LifeLabNoteList({
               sectionId={sectionId}
               note={note}
               group={group}
+              searchQuery={searchQuery}
             />
           ),
         )}
@@ -240,7 +323,7 @@ function LifeLabNoteList({
         <button
           type="button"
           onClick={() => setExpanded((current) => !current)}
-          className="rounded-full border border-border/70 px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:border-border hover:text-foreground"
+          className="rounded-full border border-border/70 px-3 py-1 text-xs font-medium text-muted transition-colors hover:border-border hover:text-foreground"
         >
           {expanded
             ? "Show less"
@@ -254,9 +337,11 @@ function LifeLabNoteList({
 function LifeLabNoteGroupSection({
   sectionId,
   group,
+  searchQuery,
 }: {
   sectionId: LifeLabSectionId;
   group: LifeLabNoteGroup;
+  searchQuery?: string;
 }) {
   const hidePrimaryHeading =
     sectionId === "reading-briefs" &&
@@ -265,13 +350,17 @@ function LifeLabNoteGroupSection({
 
   if (group.variant === "primary") {
     return (
-      <section className={hidePrimaryHeading ? "space-y-0" : "space-y-2"}>
+      <section className={hidePrimaryHeading ? "space-y-0" : "space-y-1.5"}>
         {hidePrimaryHeading ? null : (
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+          <h2 className="text-xs font-semibold uppercase tracking-wide text-muted">
             {group.label}
           </h2>
         )}
-        <LifeLabNoteList sectionId={sectionId} group={group} />
+        <LifeLabNoteList
+          sectionId={sectionId}
+          group={group}
+          searchQuery={searchQuery}
+        />
       </section>
     );
   }
@@ -282,7 +371,11 @@ function LifeLabNoteGroupSection({
         {groupDisclosureSummary(group)}
       </summary>
       <div className="ui-settings-details-body">
-        <LifeLabNoteList sectionId={sectionId} group={group} />
+        <LifeLabNoteList
+          sectionId={sectionId}
+          group={group}
+          searchQuery={searchQuery}
+        />
       </div>
     </details>
   );
@@ -294,14 +387,16 @@ export function LifeLabSectionNotes({
   listingDiagnostic,
   showDiagnostics,
   refreshHref,
+  searchQuery,
 }: LifeLabSectionNotesProps) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {groups.map((group) => (
         <LifeLabNoteGroupSection
           key={group.id}
           sectionId={sectionId}
           group={group}
+          searchQuery={searchQuery}
         />
       ))}
 

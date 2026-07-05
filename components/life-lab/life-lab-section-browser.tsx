@@ -22,7 +22,6 @@ import {
 } from "@/lib/life-lab/browse";
 import { groupLifeLabNotes } from "@/lib/life-lab/organization";
 import { noteMatchesSearch } from "@/lib/life-lab/search";
-import { resolveStudyStatusLabel } from "@/lib/life-lab/study-status";
 import { LifeLabSectionNotes } from "@/components/life-lab/life-lab-section-notes";
 
 const FILTER_PARAM_KEYS: LifeLabFilterKey[] = [
@@ -92,62 +91,6 @@ type LifeLabSectionBrowserProps = {
   showDiagnostics: boolean;
   refreshHref: string;
 };
-
-function HighlightRow({
-  sectionId,
-  note,
-}: {
-  sectionId: LifeLabSectionId;
-  note: LifeLabNoteSummary;
-}) {
-  const statusLabel = resolveStudyStatusLabel(note.metadata);
-
-  return (
-    <li>
-      <Link
-        href={`/life-lab/${sectionId}/${note.slug}`}
-        className="flex items-baseline justify-between gap-3 rounded-lg px-2 py-1.5 transition-colors hover:bg-accent-cream/40"
-      >
-        <span className="min-w-0 flex-1 truncate text-sm font-medium text-foreground">
-          {note.title}
-        </span>
-        <span className="flex shrink-0 items-center gap-2 text-xs text-muted-light">
-          {statusLabel ? <span>{statusLabel}</span> : null}
-          {note.dateLabel ?? note.modifiedAtLabel ? (
-            <span>{note.dateLabel ?? note.modifiedAtLabel}</span>
-          ) : null}
-        </span>
-      </Link>
-    </li>
-  );
-}
-
-function HighlightGroup({
-  title,
-  sectionId,
-  notes,
-}: {
-  title: string;
-  sectionId: LifeLabSectionId;
-  notes: LifeLabNoteSummary[];
-}) {
-  if (notes.length === 0) {
-    return null;
-  }
-
-  return (
-    <div className="min-w-0 flex-1 space-y-1">
-      <h3 className="px-2 text-xs font-semibold uppercase tracking-wide text-muted">
-        {title}
-      </h3>
-      <ul className="space-y-0.5">
-        {notes.map((note) => (
-          <HighlightRow key={note.slug} sectionId={sectionId} note={note} />
-        ))}
-      </ul>
-    </div>
-  );
-}
 
 export function LifeLabSectionBrowser({
   sectionId,
@@ -346,29 +289,19 @@ export function LifeLabSectionBrowser({
         ) : null}
       </div>
 
-      {highlights &&
-      (highlights.latest.length > 0 ||
-        highlights.continueStudying.length > 0 ||
-        highlights.recentlyAdded.length > 0) ? (
-        <div className="ui-card-padded !p-3.5 md:!p-4">
-          <div className="flex flex-col gap-4 md:flex-row md:gap-6">
-            <HighlightGroup
-              title="Latest"
-              sectionId={sectionId}
-              notes={highlights.latest}
-            />
-            <HighlightGroup
-              title="Continue studying"
-              sectionId={sectionId}
-              notes={highlights.continueStudying}
-            />
-            <HighlightGroup
-              title="Recently added"
-              sectionId={sectionId}
-              notes={highlights.recentlyAdded}
-            />
-          </div>
-        </div>
+      {highlights?.latest[0] ? (
+        <p className="text-xs text-muted">
+          Latest{" "}
+          <Link
+            href={`/life-lab/${sectionId}/${highlights.latest[0].slug}`}
+            className="font-medium text-foreground transition-colors hover:text-foreground/80"
+          >
+            {highlights.latest[0].title}
+          </Link>
+          {highlights.latest[0].dateLabel ?? highlights.latest[0].modifiedAtLabel
+            ? ` · ${highlights.latest[0].dateLabel ?? highlights.latest[0].modifiedAtLabel}`
+            : ""}
+        </p>
       ) : null}
 
       {filteredNotes.length === 0 ? (
@@ -380,6 +313,7 @@ export function LifeLabSectionBrowser({
           listingDiagnostic={listingDiagnostic}
           showDiagnostics={showDiagnostics}
           refreshHref={refreshHref}
+          searchQuery={searchQuery}
         />
       )}
     </div>

@@ -174,20 +174,17 @@ export function isRedundantMetadataChip(
 }
 
 function maxVisibleChips(context: LifeLabChipContext): number {
+  if (context.variant === "card") {
+    return 3;
+  }
+
   if (context.sectionId === "reading-briefs" && context.variant === "detail-mobile") {
     return 3;
   }
 
   if (
-    context.sectionId === "learning-dictionary" &&
-    context.variant === "card"
-  ) {
-    return 5;
-  }
-
-  if (
     context.sectionId === "reading-briefs" &&
-    (context.variant === "card" || context.variant === "detail-compact")
+    context.variant === "detail-compact"
   ) {
     return 5;
   }
@@ -261,11 +258,10 @@ export function selectVisibleMetadataChips(
   const limit = maxVisibleChips(context);
   const visible = deduped.slice(0, limit);
   const hideOverflow =
-    (context.sectionId === "reading-briefs" ||
-      context.sectionId === "learning-dictionary") &&
-    (context.variant === "card" ||
-      context.variant === "detail-compact" ||
-      context.variant === "detail-mobile");
+    context.variant === "card" ||
+    (context.sectionId === "reading-briefs" &&
+      (context.variant === "detail-compact" ||
+        context.variant === "detail-mobile"));
 
   return {
     visible,

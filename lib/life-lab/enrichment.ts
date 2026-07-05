@@ -22,6 +22,11 @@ import {
   extractDictionaryDefinition,
   isDictionaryEntryNote,
 } from "@/lib/life-lab/learning-dictionary";
+import {
+  formatPlaylistProcessingSummary,
+  isPlaylistIndexNote,
+  parsePlaylistIndexNote,
+} from "@/lib/life-lab/playlist-index";
 import type { DriveCredentials } from "@/lib/life-lab/google-drive";
 import { downloadDriveFile } from "@/lib/life-lab/google-drive";
 
@@ -79,11 +84,32 @@ export function processLifeLabNoteContent(
     subfolderLabel: record.subfolderLabel,
     metadata: normalizedMetadata,
   });
-  const excerpt = isReadingBrief
+  const isPlaylistIndex = isPlaylistIndexNote({
+    sectionId: "youtube-learning",
+    relativePath: record.relativePath,
+    subfolderLabel: record.subfolderLabel,
+    metadata: normalizedMetadata,
+    content: body,
+  });
+  let excerpt = isReadingBrief
     ? extractReadingBriefPreview(body)
     : isDictionaryEntry
       ? extractDictionaryDefinition(body)
       : markdownExcerpt(body);
+
+  if (isPlaylistIndex) {
+    const playlistDisplay = parsePlaylistIndexNote({
+      ...record,
+      sectionId: "youtube-learning",
+      sectionLabel: "YouTube learning",
+      content: body,
+      metadata: normalizedMetadata,
+    });
+
+    if (playlistDisplay.parseSucceeded) {
+      excerpt = formatPlaylistProcessingSummary(playlistDisplay.summary);
+    }
+  }
   const title = isDictionaryEntry
     ? dictionaryDisplayTitle({
         title: headingTitle ?? record.title,

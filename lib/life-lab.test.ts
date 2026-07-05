@@ -31,6 +31,11 @@ import {
   shouldShowLifeLabHighlights,
   sortLifeLabNotes,
 } from "@/lib/life-lab/browse";
+import {
+  buildCardPreview,
+  isNoisyCardPreview,
+  selectCardPreview,
+} from "@/lib/life-lab/card-preview";
 import { processLifeLabNoteContent } from "@/lib/life-lab/enrichment";
 import {
   assessReadingBriefStructure,
@@ -868,6 +873,19 @@ describe("life lab metadata chips", () => {
     assert.equal(chips.visible.length, 8);
     assert.equal(chips.overflowCount, 1);
   });
+
+  it("hides card overflow counts and limits cards to three chips", () => {
+    const chips = selectVisibleMetadataChips(
+      {
+        topics: ["one", "two", "three", "four"],
+        tags: ["five", "six"],
+      },
+      { sectionId: "youtube-learning", variant: "card" },
+    );
+
+    assert.equal(chips.visible.length, 3);
+    assert.equal(chips.overflowCount, 0);
+  });
 });
 
 describe("life lab study status", () => {
@@ -1321,14 +1339,12 @@ describe("reading briefs", () => {
       variant: "card",
     });
 
-    assert.equal(chips.visible.length, 5);
+    assert.equal(chips.visible.length, 3);
     assert.equal(chips.overflowCount, 0);
     assert.deepEqual(chips.visible, [
       "political legitimacy",
       "succession",
       "migration",
-      "nationalism",
-      "climate data",
     ]);
   });
 });
@@ -1455,10 +1471,44 @@ describe("learning dictionary", () => {
       variant: "card",
     });
 
-    assert.equal(chips.visible.length, 5);
+    assert.equal(chips.visible.length, 3);
     assert.equal(chips.overflowCount, 0);
     assert.ok(chips.visible.includes("institutions"));
-    assert.ok(chips.visible.includes("succession"));
+    assert.ok(chips.visible.includes("state power"));
+    assert.ok(chips.visible.includes("authority"));
+  });
+});
+
+describe("life lab card previews", () => {
+  it("skips noisy previews with urls and metadata labels", () => {
+    assert.equal(isNoisyCardPreview("URL: https://youtube.com/watch?v=abc"), true);
+    assert.equal(isNoisyCardPreview("Channel: Lessons from the Past"), true);
+    assert.equal(isNoisyCardPreview("videos/2026-07-05-note.md"), true);
+    assert.equal(
+      buildCardPreview("A clean one-line summary about political legitimacy."),
+      "A clean one-line summary about political legitimacy.",
+    );
+    assert.equal(
+      selectCardPreview({
+        excerpt: "URL: https://youtube.com/watch?v=abc",
+        searchText: "political legitimacy in Iran",
+      }),
+      null,
+    );
+  });
+
+  it("shows a clean search snippet when search is active", () => {
+    const preview = selectCardPreview(
+      {
+        excerpt: "URL: https://youtube.com/watch?v=abc",
+        searchText:
+          "Notes about political legitimacy and succession in modern Iran.",
+      },
+      { searchQuery: "political legitimacy" },
+    );
+
+    assert.match(preview ?? "", /political legitimacy/i);
+    assert.doesNotMatch(preview ?? "", /https?:\/\//);
   });
 });
 
@@ -1569,5 +1619,24 @@ describe("playlist index notes", () => {
       sectionLabel: "YouTube learning",
       content: "# Empty\n\nNo table yet.",
     }), false);
+  });
+
+  it("uses playlist progress as the card excerpt during enrichment", () => {
+    const processed = processLifeLabNoteContent(
+      {
+        slug: "playlists__the-iranian-revolution",
+        title: "The Iranian Revolution",
+        excerpt: "",
+        modifiedAt: null,
+        modifiedAtLabel: null,
+        dateLabel: null,
+        subfolderLabel: "playlists",
+        fileId: "fixture-playlist",
+        relativePath: "playlists/the-iranian-revolution.md",
+      },
+      samplePlaylistIndex,
+    );
+
+    assert.match(processed.excerpt, /3 processed · 1 pending/);
   });
 });
