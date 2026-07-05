@@ -83,10 +83,6 @@ function SpeechVoiceSelector({
   setSelectedVoiceId: (voiceId: string) => void;
   disabled?: boolean;
 }) {
-  if (voices.length === 0) {
-    return null;
-  }
-
   return (
     <label className="inline-flex min-w-0 items-center gap-1.5 text-xs text-muted">
       <span className="shrink-0">Voice</span>
@@ -214,16 +210,9 @@ export function ReadAloudControls({
       diagnostics={diagnostics}
     >
       {!isSpeaking ? (
-        <>
-          <ControlButton onClick={() => speak(text)}>
-            Read aloud
-          </ControlButton>
-          {process.env.NODE_ENV === "development" ? (
-            <ControlButton onClick={() => speak("Planlet read aloud test.")}>
-              Test voice
-            </ControlButton>
-          ) : null}
-        </>
+        <ControlButton onClick={() => speak(text)}>
+          Read aloud
+        </ControlButton>
       ) : (
         <>
           <ControlButton onClick={stop} active>

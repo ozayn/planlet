@@ -42,6 +42,7 @@ import {
   DEFAULT_SPEECH_RATE,
   detectSpeechBrowserNameFromUserAgent,
   findSpeechVoiceById,
+  findSelectableSpeechVoiceById,
   getSpeechVoiceId,
   listEnglishSpeechVoices,
   listSelectableSpeechVoices,
@@ -854,6 +855,74 @@ describe("life lab speech", () => {
       { name: "Bad News", lang: "en-US", voiceURI: "bad-news" } as SpeechSynthesisVoice,
       { name: "Google US English", lang: "en-US", voiceURI: "google-us" } as SpeechSynthesisVoice,
     ]).length, 1);
+  });
+
+  it("lists clean Safari English voices when Google voices are unavailable", () => {
+    const voices = listSelectableSpeechVoices([
+      { name: "Bad News", lang: "en-US", voiceURI: "bad-news" } as SpeechSynthesisVoice,
+      { name: "Grandma", lang: "en-US", voiceURI: "grandma" } as SpeechSynthesisVoice,
+      { name: "Flo", lang: "en-GB", voiceURI: "flo" } as SpeechSynthesisVoice,
+      { name: "Serena", lang: "en-GB", voiceURI: "serena" } as SpeechSynthesisVoice,
+      { name: "Thomas", lang: "fr-FR", voiceURI: "thomas" } as SpeechSynthesisVoice,
+    ]);
+
+    assert.deepEqual(
+      voices.map((voice) => voice.label),
+      ["Flo (en-gb)", "Serena (en-gb)"],
+    );
+    assert.equal(
+      resolveSpeechVoice(
+        [
+          { name: "Flo", lang: "en-GB", voiceURI: "flo" } as SpeechSynthesisVoice,
+          { name: "Serena", lang: "en-GB", voiceURI: "serena" } as SpeechSynthesisVoice,
+        ],
+        getSpeechVoiceId({ name: "Serena", lang: "en-GB", voiceURI: "serena" } as SpeechSynthesisVoice),
+      )?.name,
+      "Serena",
+    );
+  });
+
+  it("filters novelty Safari voices from the dropdown", () => {
+    const voices = listSelectableSpeechVoices([
+      { name: "Albert", lang: "en-US", voiceURI: "albert" } as SpeechSynthesisVoice,
+      { name: "Bahh", lang: "en-US", voiceURI: "bahh" } as SpeechSynthesisVoice,
+      { name: "Junior", lang: "en-US", voiceURI: "junior" } as SpeechSynthesisVoice,
+      { name: "Ralph", lang: "en-US", voiceURI: "ralph" } as SpeechSynthesisVoice,
+      { name: "Wobble", lang: "en-US", voiceURI: "wobble" } as SpeechSynthesisVoice,
+      { name: "Daniel", lang: "en-GB", voiceURI: "daniel" } as SpeechSynthesisVoice,
+      { name: "Fred", lang: "en-US", voiceURI: "fred" } as SpeechSynthesisVoice,
+      { name: "Karen", lang: "en-AU", voiceURI: "karen" } as SpeechSynthesisVoice,
+      { name: "Moira", lang: "en-IE", voiceURI: "moira" } as SpeechSynthesisVoice,
+      { name: "Samantha", lang: "en-US", voiceURI: "samantha" } as SpeechSynthesisVoice,
+    ]);
+
+    assert.deepEqual(
+      voices.map((voice) => voice.label),
+      [
+        "Daniel (en-gb)",
+        "Fred (en-us)",
+        "Karen (en-au)",
+        "Moira (en-ie)",
+        "Samantha (en-us)",
+      ],
+    );
+    assert.equal(
+      findSelectableSpeechVoiceById(
+        [{ name: "Albert", lang: "en-US", voiceURI: "albert" } as SpeechSynthesisVoice],
+        "albert",
+      ),
+      null,
+    );
+  });
+
+  it("returns no selectable voices when only novelty voices are available", () => {
+    const voices = listSelectableSpeechVoices([
+      { name: "Albert", lang: "en-US", voiceURI: "albert" } as SpeechSynthesisVoice,
+      { name: "Bahh", lang: "en-US", voiceURI: "bahh" } as SpeechSynthesisVoice,
+      { name: "Wobble", lang: "en-US", voiceURI: "wobble" } as SpeechSynthesisVoice,
+    ]);
+
+    assert.deepEqual(voices, []);
   });
 
   it("resolves manual and auto voice selections", () => {

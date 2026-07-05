@@ -20,6 +20,29 @@ const VOICE_PREFERENCE_RULES: VoicePreferenceRule[] = [
 
 const ROBOTIC_VOICE_NAMES = ["daniel"] as const;
 
+const NOVELTY_VOICE_NAMES = [
+  "albert",
+  "bad news",
+  "bahh",
+  "bells",
+  "boing",
+  "bubbles",
+  "cellos",
+  "good news",
+  "grandma",
+  "grandpa",
+  "junior",
+  "ralph",
+  "reed",
+  "rocko",
+  "sandy",
+  "shelley",
+  "superstar",
+  "trinoids",
+  "wobble",
+  "zarvox",
+] as const;
+
 // Browser note: Chrome on macOS may expose speechSynthesis voices but fail to start audio;
 // Safari is more reliable for native speech.
 export const DEFAULT_SPEECH_LANG = "en-GB";
@@ -183,13 +206,13 @@ export type ListedSelectableSpeechVoice = {
 export function listSelectableSpeechVoices(
   voices: SpeechSynthesisVoice[],
 ): ListedSelectableSpeechVoice[] {
-  const listed: ListedSelectableSpeechVoice[] = [];
+  const googleVoices: ListedSelectableSpeechVoice[] = [];
 
   for (const option of SELECTABLE_SPEECH_VOICE_OPTIONS) {
     const voice = voices.find(option.matches);
 
     if (voice) {
-      listed.push({
+      googleVoices.push({
         id: option.id,
         label: option.label,
         voice,
@@ -197,22 +220,43 @@ export function listSelectableSpeechVoices(
     }
   }
 
-  return listed;
+  if (googleVoices.length > 0) {
+    return googleVoices;
+  }
+
+  const englishVoices = sortVoicesForDropdown(
+    voices.filter(
+      (voice) => isEnglishSpeechVoice(voice) && !isNoveltySpeechVoice(voice),
+    ),
+  );
+
+  if (englishVoices.length > 0) {
+    return englishVoices.map((voice) => toListedSelectableSpeechVoice(voice));
+  }
+
+  return [];
 }
 
 export function findSelectableSpeechVoiceById(
   voices: SpeechSynthesisVoice[],
   voiceId: string,
 ): SpeechSynthesisVoice | null {
-  const option = SELECTABLE_SPEECH_VOICE_OPTIONS.find(
+  const googleOption = SELECTABLE_SPEECH_VOICE_OPTIONS.find(
     (entry) => entry.id === voiceId,
   );
 
-  if (!option) {
+  if (googleOption) {
+    const voice = voices.find(googleOption.matches);
+    return voice && !isNoveltySpeechVoice(voice) ? voice : null;
+  }
+
+  const voice = findSpeechVoiceById(voices, voiceId);
+
+  if (!voice || isNoveltySpeechVoice(voice)) {
     return null;
   }
 
-  return voices.find(option.matches) ?? null;
+  return voice;
 }
 
 export function isEnglishSpeechVoice(voice: SpeechSynthesisVoice): boolean {
@@ -221,6 +265,44 @@ export function isEnglishSpeechVoice(voice: SpeechSynthesisVoice): boolean {
 
 function normalizeSpeechLang(lang: string): string {
   return lang.toLowerCase().replace("_", "-");
+}
+
+function isNoveltySpeechVoice(voice: SpeechSynthesisVoice): boolean {
+  const normalized = normalizeSpeechVoiceName(voice.name);
+  const primaryName = normalized.split(/[\s(]/)[0] ?? normalized;
+
+  return NOVELTY_VOICE_NAMES.some(
+    (name) =>
+      normalized === name ||
+      primaryName === name ||
+      normalized.startsWith(`${name} `) ||
+      normalized.endsWith(` ${name}`),
+  );
+}
+
+function sortVoicesForDropdown(
+  voices: SpeechSynthesisVoice[],
+): SpeechSynthesisVoice[] {
+  return [...voices].sort((left, right) => {
+    const leftGb = normalizeSpeechLang(left.lang).startsWith("en-gb") ? 0 : 1;
+    const rightGb = normalizeSpeechLang(right.lang).startsWith("en-gb") ? 0 : 1;
+
+    if (leftGb !== rightGb) {
+      return leftGb - rightGb;
+    }
+
+    return left.name.localeCompare(right.name);
+  });
+}
+
+function toListedSelectableSpeechVoice(
+  voice: SpeechSynthesisVoice,
+): ListedSelectableSpeechVoice {
+  return {
+    id: getSpeechVoiceId(voice),
+    label: `${voice.name} (${normalizeSpeechLang(voice.lang)})`,
+    voice,
+  };
 }
 
 function voiceNameIncludes(voice: SpeechSynthesisVoice, fragment: string): boolean {
@@ -258,12 +340,10 @@ export function listEnglishSpeechVoices(
 }
 
 export function formatSpeechVoiceLabel(voice: SpeechSynthesisVoice): string {
-  const listed = listSelectableSpeechVoices([voice]).find(
-    (entry) => getSpeechVoiceId(entry.voice) === getSpeechVoiceId(voice),
-  );
-
-  if (listed) {
-    return listed.label;
+  for (const option of SELECTABLE_SPEECH_VOICE_OPTIONS) {
+    if (option.matches(voice)) {
+      return option.label;
+    }
   }
 
   return `${voice.name} (${normalizeSpeechLang(voice.lang)})`;
@@ -322,7 +402,7 @@ export function pickSpeechVoice(
 
   for (const rule of VOICE_PREFERENCE_RULES) {
     const match = pickFirstMatchingVoice(voices, (voice) =>
-      matchesVoicePreferenceRule(voice, rule),
+      matchesVoicePreferenceRule(voice, rule) && !isNoveltySpeechVoice(voice),
     );
 
     if (match) {
@@ -330,8 +410,10 @@ export function pickSpeechVoice(
     }
   }
 
-  const enGbVoices = voices.filter((voice) =>
-    normalizeSpeechLang(voice.lang).startsWith("en-gb"),
+  const enGbVoices = voices.filter(
+    (voice) =>
+      normalizeSpeechLang(voice.lang).startsWith("en-gb") &&
+      !isNoveltySpeechVoice(voice),
   );
   const naturalEnGbVoice = pickFirstMatchingVoice(
     enGbVoices,
@@ -346,7 +428,9 @@ export function pickSpeechVoice(
     return enGbVoices[0];
   }
 
-  const englishVoices = voices.filter(isEnglishSpeechVoice);
+  const englishVoices = voices.filter(
+    (voice) => isEnglishSpeechVoice(voice) && !isNoveltySpeechVoice(voice),
+  );
   const naturalEnglishVoice = pickFirstMatchingVoice(
     englishVoices,
     (voice) => !isRoboticSpeechVoice(voice),

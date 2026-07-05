@@ -15,6 +15,7 @@ import {
   primeSpeechSynthesis,
   readStoredSpeechVoiceId,
   resolveSpeechVoice,
+  findSelectableSpeechVoiceById,
   SPEECH_AUTO_VOICE_ID,
   SPEECH_START_TIMEOUT_MS,
   SPEECH_VOICE_SELECTION_FALLBACK_MESSAGE,
@@ -128,6 +129,13 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
       const voices = window.speechSynthesis.getVoices();
       setVoiceCount(voices.length);
       setSelectableVoices(listSelectableSpeechVoices(voices));
+
+      if (
+        selectedVoiceIdRef.current !== SPEECH_AUTO_VOICE_ID &&
+        !findSelectableSpeechVoiceById(voices, selectedVoiceIdRef.current)
+      ) {
+        resetToAutoVoice();
+      }
     }
 
     loadVoices();
@@ -146,7 +154,7 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
         intentionalCancelRef.current = null;
       }
     };
-  }, [clearStartTimeout, instanceId]);
+  }, [clearStartTimeout, instanceId, resetToAutoVoice]);
 
   const clearSpeakingState = useCallback(() => {
     if (!isMountedRef.current) {
