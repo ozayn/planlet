@@ -1,0 +1,25 @@
+---
+description: Planlet UI design preferences (Azin) — minimal, mobile-first, calm
+alwaysApply: true
+---
+
+# Planlet UI preferences
+
+Keep Planlet aligned with these design principles:
+
+- **Minimal, reductive, clean** — remove before adding; clarity over feature density
+- **Mobile-first** — thumb-friendly spacing, compact layouts, conventional interactions
+- **Progressive disclosure** — show less by default; reveal detail on demand
+- **No visual noise** — no raw URLs, debug output, filenames, or internal metadata in main UI
+- **Restrained metadata** — avoid too many chips or controls on list/card surfaces
+- **Short previews** — prefer truncated excerpts and “Show more” over long inline text
+- **Scannable lists, calm details** — list pages should scan fast; detail pages can be richer but still readable
+
+## Life Lab
+
+When improving Life Lab, prioritize **clarity and readability** over adding visible features.
+
+List pages: compact cards, filtered previews, capped chips, grouped “Show more”.
+Detail pages: structured content and progressive sections; keep the default view calm.
+
+Match existing patterns in `components/life-lab/` and `lib/life-lab/card-preview.ts`.
