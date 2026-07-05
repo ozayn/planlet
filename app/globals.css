@@ -2126,3 +2126,32 @@ body {
   background: transparent;
   padding: 0;
 }
+
+.ui-markdown .ui-mermaid-block {
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.ui-markdown .ui-mermaid-svg {
+  display: inline-block;
+  min-width: min(100%, max-content);
+}
+
+.ui-markdown .ui-mermaid-svg svg {
+  display: block;
+  height: auto;
+  max-width: none;
+}
+
+.ui-markdown .ui-mermaid-loading {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--muted-light);
+}
+
+.ui-markdown .ui-mermaid-fallback {
+  margin-top: 0.75rem;
+  margin-bottom: 0.75rem;
+}

@@ -55,6 +55,8 @@ export type LifeLabNoteSummary = {
   modifiedAtLabel: string | null;
   dateLabel: string | null;
   subfolderLabel: string | null;
+  fileId: string;
+  relativePath: string;
   dev?: LifeLabNoteDevMeta;
 };
 
@@ -62,6 +64,8 @@ export type LifeLabNoteGroup = {
   id: string;
   label: string;
   notes: LifeLabNoteSummary[];
+  collapsedByDefault: boolean;
+  variant: "primary" | "disclosure";
 };
 
 export type LifeLabListingDiagnostic = {

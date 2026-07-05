@@ -6,28 +6,46 @@ import {
   slugToRelativePath,
 } from "@/lib/life-lab/slug";
 
-const README_GROUP_ID = "readme";
+const ABOUT_GROUP_ID = "about";
+const ARCHIVE_GROUP_ID = "archive";
 const REFERENCE_GROUP_ID = "reference";
+const VIDEOS_GROUP_ID = "videos";
 
-export function noteGroupId(note: LifeLabNoteSummary): string {
+const SECONDARY_GROUP_ORDER = [
+  REFERENCE_GROUP_ID,
+  ARCHIVE_GROUP_ID,
+  ABOUT_GROUP_ID,
+] as const;
+
+export function classifyNoteGroup(note: LifeLabNoteSummary): string {
   if (isReadmeSlug(note.slug)) {
-    return README_GROUP_ID;
+    return ABOUT_GROUP_ID;
   }
 
-  if (note.subfolderLabel) {
-    return note.subfolderLabel.toLowerCase();
+  if (!note.subfolderLabel) {
+    return REFERENCE_GROUP_ID;
   }
 
-  return REFERENCE_GROUP_ID;
+  return note.subfolderLabel.toLowerCase();
+}
+
+function isPrimaryContentGroup(groupId: string): boolean {
+  return !SECONDARY_GROUP_ORDER.includes(
+    groupId as (typeof SECONDARY_GROUP_ORDER)[number],
+  );
 }
 
 export function noteGroupLabel(groupId: string): string {
-  if (groupId === README_GROUP_ID) {
-    return "Readme";
+  if (groupId === ABOUT_GROUP_ID) {
+    return "About this section";
   }
 
   if (groupId === REFERENCE_GROUP_ID) {
     return "Reference";
+  }
+
+  if (groupId === ARCHIVE_GROUP_ID) {
+    return "Archive";
   }
 
   return groupId.charAt(0).toUpperCase() + groupId.slice(1);
@@ -38,7 +56,9 @@ function noteSortValue(note: LifeLabNoteSummary): number {
     return new Date(note.modifiedAt).getTime();
   }
 
-  const filename = relativePathFilename(slugToRelativePath(note.slug));
+  const filename = relativePathFilename(
+    note.relativePath || slugToRelativePath(note.slug),
+  );
   const datePrefix = parseDateFromFilename(filename);
 
   if (datePrefix) {
@@ -61,43 +81,118 @@ function sortNotesInGroup(notes: LifeLabNoteSummary[]): LifeLabNoteSummary[] {
   });
 }
 
+export function noteAssignmentPriority(groupId: string): number {
+  if (groupId === VIDEOS_GROUP_ID) {
+    return 0;
+  }
+
+  if (isPrimaryContentGroup(groupId)) {
+    return 10;
+  }
+
+  if (groupId === REFERENCE_GROUP_ID) {
+    return 20;
+  }
+
+  if (groupId === ARCHIVE_GROUP_ID) {
+    return 30;
+  }
+
+  return 40;
+}
+
 function compareGroupIds(left: string, right: string): number {
-  if (left === README_GROUP_ID) {
-    return 1;
+  const leftPrimary = isPrimaryContentGroup(left);
+  const rightPrimary = isPrimaryContentGroup(right);
+
+  if (leftPrimary !== rightPrimary) {
+    return leftPrimary ? -1 : 1;
   }
 
-  if (right === README_GROUP_ID) {
-    return -1;
+  if (leftPrimary && rightPrimary) {
+    if (left === VIDEOS_GROUP_ID) {
+      return -1;
+    }
+
+    if (right === VIDEOS_GROUP_ID) {
+      return 1;
+    }
+
+    return left.localeCompare(right);
   }
 
-  if (left === REFERENCE_GROUP_ID) {
-    return 1;
-  }
+  return (
+    SECONDARY_GROUP_ORDER.indexOf(
+      left as (typeof SECONDARY_GROUP_ORDER)[number],
+    ) -
+    SECONDARY_GROUP_ORDER.indexOf(
+      right as (typeof SECONDARY_GROUP_ORDER)[number],
+    )
+  );
+}
 
-  if (right === REFERENCE_GROUP_ID) {
-    return -1;
-  }
+function disclosureSummary(label: string, count: number): string {
+  const noteLabel = count === 1 ? "note" : "notes";
 
-  return left.localeCompare(right);
+  return `${label} · ${count} ${noteLabel}`;
+}
+
+export function groupDisclosureSummary(group: LifeLabNoteGroup): string {
+  return disclosureSummary(group.label, group.notes.length);
 }
 
 export function groupLifeLabNotes(
   notes: LifeLabNoteSummary[],
 ): LifeLabNoteGroup[] {
+  const seenFileIds = new Set<string>();
+  const seenRelativePaths = new Set<string>();
   const groups = new Map<string, LifeLabNoteSummary[]>();
 
-  for (const note of notes) {
-    const id = noteGroupId(note);
-    const existing = groups.get(id) ?? [];
+  const classified = notes
+    .map((note) => ({
+      note,
+      groupId: classifyNoteGroup(note),
+    }))
+    .sort((left, right) => {
+      const priorityDelta =
+        noteAssignmentPriority(left.groupId) - noteAssignmentPriority(right.groupId);
+
+      if (priorityDelta !== 0) {
+        return priorityDelta;
+      }
+
+      return noteSortValue(right.note) - noteSortValue(left.note);
+    });
+
+  for (const { note, groupId } of classified) {
+    const relativePath = note.relativePath || slugToRelativePath(note.slug);
+
+    if (seenFileIds.has(note.fileId) || seenRelativePaths.has(relativePath)) {
+      continue;
+    }
+
+    seenFileIds.add(note.fileId);
+    seenRelativePaths.add(relativePath);
+
+    const existing = groups.get(groupId) ?? [];
     existing.push(note);
-    groups.set(id, existing);
+    groups.set(groupId, existing);
   }
 
   return [...groups.keys()]
     .sort(compareGroupIds)
-    .map((id) => ({
-      id,
-      label: noteGroupLabel(id),
-      notes: sortNotesInGroup(groups.get(id) ?? []),
-    }));
+    .map((id) => {
+      const label = noteGroupLabel(id);
+      const groupNotes = sortNotesInGroup(groups.get(id) ?? []);
+      const isPrimary = isPrimaryContentGroup(id);
+
+      return {
+        id,
+        label,
+        notes: groupNotes,
+        collapsedByDefault: !isPrimary,
+        variant: isPrimary ? ("primary" as const) : ("disclosure" as const),
+      };
+    })
+    .filter((group) => group.notes.length > 0);
 }

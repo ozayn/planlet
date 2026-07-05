@@ -27,7 +27,11 @@ import {
   type DriveListingStats,
   type DriveMarkdownEntry,
 } from "@/lib/life-lab/google-drive";
-import { groupLifeLabNotes } from "@/lib/life-lab/organization";
+import {
+  classifyNoteGroup,
+  groupLifeLabNotes,
+  noteAssignmentPriority,
+} from "@/lib/life-lab/organization";
 import {
   getAllowedLifeLabSectionIds,
   getLifeLabSectionLabel,
@@ -331,13 +335,45 @@ function summarizeMarkdownEntry(
 function dedupeSectionNoteRecords(
   records: LifeLabSectionNoteRecord[],
 ): LifeLabSectionNoteRecord[] {
-  const byRelativePath = new Map<string, LifeLabSectionNoteRecord>();
+  const sorted = [...records].sort((left, right) => {
+    const leftPriority = noteAssignmentPriority(
+      classifyNoteGroupFromRecord(left),
+    );
+    const rightPriority = noteAssignmentPriority(
+      classifyNoteGroupFromRecord(right),
+    );
 
-  for (const record of records) {
+    return leftPriority - rightPriority;
+  });
+  const byRelativePath = new Map<string, LifeLabSectionNoteRecord>();
+  const byFileId = new Map<string, LifeLabSectionNoteRecord>();
+
+  for (const record of sorted) {
+    if (byFileId.has(record.fileId) || byRelativePath.has(record.relativePath)) {
+      continue;
+    }
+
+    byFileId.set(record.fileId, record);
     byRelativePath.set(record.relativePath, record);
   }
 
   return [...byRelativePath.values()];
+}
+
+function classifyNoteGroupFromRecord(
+  record: LifeLabSectionNoteRecord,
+): string {
+  return classifyNoteGroup({
+    slug: record.slug,
+    title: record.title,
+    excerpt: record.excerpt,
+    modifiedAt: record.modifiedAt,
+    modifiedAtLabel: record.modifiedAtLabel,
+    dateLabel: record.dateLabel,
+    subfolderLabel: record.subfolderLabel,
+    fileId: record.fileId,
+    relativePath: record.relativePath,
+  });
 }
 
 function toNoteSummary(record: LifeLabSectionNoteRecord): LifeLabNoteSummary {
@@ -349,6 +385,8 @@ function toNoteSummary(record: LifeLabSectionNoteRecord): LifeLabNoteSummary {
     modifiedAtLabel: record.modifiedAtLabel,
     dateLabel: record.dateLabel,
     subfolderLabel: record.subfolderLabel,
+    fileId: record.fileId,
+    relativePath: record.relativePath,
   };
 
   if (isLifeLabDevToolsEnabled()) {

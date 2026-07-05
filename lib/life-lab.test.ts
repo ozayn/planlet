@@ -14,7 +14,7 @@ import {
   slugToTitle,
   titleFromFilename,
 } from "@/lib/life-lab/slug";
-import { groupLifeLabNotes } from "@/lib/life-lab/organization";
+import { groupDisclosureSummary, groupLifeLabNotes } from "@/lib/life-lab/organization";
 import {
   isLifeLabSectionBlocked,
   isLifeLabSectionId,
@@ -33,12 +33,20 @@ import type { LifeLabNoteSummary } from "@/lib/life-lab/constants";
 function noteSummary(
   partial: Partial<LifeLabNoteSummary> & Pick<LifeLabNoteSummary, "slug" | "title">,
 ): LifeLabNoteSummary {
+  const relativePath =
+    partial.relativePath ??
+    (partial.slug.includes("__")
+      ? `${partial.slug.split("__").join("/")}.md`
+      : `${partial.slug}.md`);
+
   return {
     excerpt: "",
     modifiedAt: null,
     modifiedAtLabel: null,
     dateLabel: null,
     subfolderLabel: null,
+    fileId: partial.fileId ?? `file-${partial.slug}`,
+    relativePath,
     ...partial,
   };
 }
@@ -204,42 +212,53 @@ describe("life lab slug helpers", () => {
 });
 
 describe("life lab note organization", () => {
-  it("groups nested video notes, reference notes, and readme", () => {
+  it("groups video notes first with collapsed reference and about sections", () => {
     const groups = groupLifeLabNotes([
       noteSummary({
         slug: "readme",
         title: "Readme",
+        relativePath: "README.md",
       }),
       noteSummary({
         slug: "channels",
         title: "Channels",
+        relativePath: "channels.md",
       }),
       noteSummary({
         slug: "videos__2026-07-05-rest-is-history-benjamin-franklin",
         title: "Rest Is History Benjamin Franklin",
         subfolderLabel: "videos",
+        relativePath: "videos/2026-07-05-rest-is-history-benjamin-franklin.md",
         dateLabel: "Jul 5, 2026",
       }),
       noteSummary({
         slug: "videos__2026-07-04-bplus-bush-gulf-war",
         title: "Bplus Bush Gulf War",
         subfolderLabel: "videos",
+        relativePath: "videos/2026-07-04-bplus-bush-gulf-war.md",
         dateLabel: "Jul 4, 2026",
       }),
       noteSummary({
         slug: "concepts",
         title: "Concepts",
+        relativePath: "concepts.md",
       }),
       noteSummary({
         slug: "questions",
         title: "Questions",
+        relativePath: "questions.md",
       }),
     ]);
 
     assert.deepEqual(
       groups.map((group) => group.label),
-      ["Videos", "Reference", "Readme"],
+      ["Videos", "Reference", "About this section"],
     );
+    assert.equal(groups[0]?.variant, "primary");
+    assert.equal(groups[0]?.collapsedByDefault, false);
+    assert.equal(groups[1]?.variant, "disclosure");
+    assert.equal(groups[1]?.collapsedByDefault, true);
+    assert.equal(groups[2]?.label, "About this section");
     assert.deepEqual(
       groups[0]?.notes.map((note) => note.title),
       [
@@ -250,6 +269,46 @@ describe("life lab note organization", () => {
     assert.deepEqual(
       groups[1]?.notes.map((note) => note.title),
       ["Channels", "Concepts", "Questions"],
+    );
+  });
+
+  it("dedupes duplicate file ids using videos over archive priority", () => {
+    const groups = groupLifeLabNotes([
+      noteSummary({
+        slug: "archive__2026-07-04-bplus-bush-gulf-war",
+        title: "Archived copy",
+        subfolderLabel: "archive",
+        fileId: "shared-file",
+        relativePath: "archive/2026-07-04-bplus-bush-gulf-war.md",
+      }),
+      noteSummary({
+        slug: "videos__2026-07-04-bplus-bush-gulf-war",
+        title: "Bplus Bush Gulf War",
+        subfolderLabel: "videos",
+        fileId: "shared-file",
+        relativePath: "videos/2026-07-04-bplus-bush-gulf-war.md",
+      }),
+    ]);
+
+    assert.deepEqual(groups.map((group) => group.label), ["Videos"]);
+    assert.equal(groups[0]?.notes.length, 1);
+    assert.equal(groups[0]?.notes[0]?.title, "Bplus Bush Gulf War");
+  });
+
+  it("formats disclosure summaries with note counts", () => {
+    assert.equal(
+      groupDisclosureSummary({
+        id: "reference",
+        label: "Reference",
+        notes: [
+          noteSummary({ slug: "channels", title: "Channels" }),
+          noteSummary({ slug: "concepts", title: "Concepts" }),
+          noteSummary({ slug: "questions", title: "Questions" }),
+        ],
+        collapsedByDefault: true,
+        variant: "disclosure",
+      }),
+      "Reference · 3 notes",
     );
   });
 });
