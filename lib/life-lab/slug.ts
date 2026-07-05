@@ -80,6 +80,28 @@ export function slugToTitle(slug: string): string {
   return titleFromFilename(`${leafSlug}.md`);
 }
 
+export function titleFromMarkdownHeading(content: string): string | null {
+  for (const line of content.split("\n")) {
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      continue;
+    }
+
+    const match = trimmed.match(/^#{1,6}\s+(.+?)\s*#*\s*$/);
+
+    if (match?.[1]) {
+      return match[1].trim();
+    }
+
+    // Stop at the first non-empty, non-heading line so a heading buried
+    // deep in the document does not override the filename title.
+    return null;
+  }
+
+  return null;
+}
+
 export function parseDateFromFilename(filename: string): string | null {
   const match = filename.match(/(\d{4}-\d{2}-\d{2})/);
   return match?.[1] ?? null;

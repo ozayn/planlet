@@ -13,6 +13,7 @@ import {
   slugToRelativePath,
   slugToTitle,
   titleFromFilename,
+  titleFromMarkdownHeading,
 } from "@/lib/life-lab/slug";
 import { groupDisclosureSummary, groupLifeLabNotes } from "@/lib/life-lab/organization";
 import {
@@ -122,6 +123,7 @@ describe("life lab sections", () => {
   it("allows only configured public sections", () => {
     assert.equal(isLifeLabSectionId("youtube-learning"), true);
     assert.equal(isLifeLabSectionId("photography"), true);
+    assert.equal(isLifeLabSectionId("reading-briefs"), true);
     assert.equal(isLifeLabSectionId("therapy-prep"), false);
   });
 
@@ -133,6 +135,7 @@ describe("life lab sections", () => {
 
   it("maps allowed folder names to section ids", () => {
     assert.equal(sectionIdFromFolderName("art-history"), "art-history");
+    assert.equal(sectionIdFromFolderName("reading-briefs"), "reading-briefs");
     assert.equal(sectionIdFromFolderName("therapy-prep"), null);
   });
 });
@@ -208,6 +211,19 @@ describe("life lab slug helpers", () => {
       markdownExcerpt("# Heading\n\nA **short** note about art."),
       "Heading A short note about art.",
     );
+  });
+
+  it("extracts titles from leading markdown headings", () => {
+    assert.equal(
+      titleFromMarkdownHeading("# Reading Brief: July 4\n\nWhat I read…"),
+      "Reading Brief: July 4",
+    );
+    assert.equal(
+      titleFromMarkdownHeading("\n\n## Main stories ##\ntext"),
+      "Main stories",
+    );
+    assert.equal(titleFromMarkdownHeading("Plain text first\n# Later"), null);
+    assert.equal(titleFromMarkdownHeading(""), null);
   });
 });
 
@@ -293,6 +309,53 @@ describe("life lab note organization", () => {
     assert.deepEqual(groups.map((group) => group.label), ["Videos"]);
     assert.equal(groups[0]?.notes.length, 1);
     assert.equal(groups[0]?.notes[0]?.title, "Bplus Bush Gulf War");
+  });
+
+  it("groups reading briefs with daily and saved-articles first", () => {
+    const groups = groupLifeLabNotes([
+      noteSummary({
+        slug: "readme",
+        title: "Readme",
+        relativePath: "README.md",
+      }),
+      noteSummary({
+        slug: "sources",
+        title: "Sources",
+        relativePath: "sources.md",
+      }),
+      noteSummary({
+        slug: "interests",
+        title: "Interests",
+        relativePath: "interests.md",
+      }),
+      noteSummary({
+        slug: "daily__2026-07-04-brief",
+        title: "Brief",
+        subfolderLabel: "daily",
+        relativePath: "daily/2026-07-04-brief.md",
+        dateLabel: "Jul 4, 2026",
+      }),
+      noteSummary({
+        slug: "saved-articles__2026-07-03-essay",
+        title: "Essay",
+        subfolderLabel: "saved-articles",
+        relativePath: "saved-articles/2026-07-03-essay.md",
+        dateLabel: "Jul 3, 2026",
+      }),
+    ]);
+
+    assert.deepEqual(
+      groups.map((group) => group.id),
+      ["daily", "saved-articles", "reference", "about"],
+    );
+    assert.equal(groups[0]?.variant, "primary");
+    assert.equal(groups[1]?.variant, "primary");
+    assert.equal(groups[2]?.collapsedByDefault, true);
+    assert.equal(groups[3]?.collapsedByDefault, true);
+    assert.deepEqual(
+      groups[2]?.notes.map((note) => note.title),
+      ["Interests", "Sources"],
+    );
   });
 
   it("formats disclosure summaries with note counts", () => {

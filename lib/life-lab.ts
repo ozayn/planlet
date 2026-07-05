@@ -46,6 +46,7 @@ import {
   relativePathFilename,
   relativePathSubfolder,
   titleFromFilename,
+  titleFromMarkdownHeading,
 } from "@/lib/life-lab/slug";
 import { canAccessLifeLabPage, type UserAccess } from "@/lib/roles";
 
@@ -830,9 +831,11 @@ function buildLifeLabNote(
 ): LifeLabNote {
   const summary = toNoteSummary(record);
   const { dev: _summaryDev, ...baseSummary } = summary;
+  const headingTitle = titleFromMarkdownHeading(content);
 
   const note: LifeLabNote = {
     ...baseSummary,
+    title: headingTitle ?? baseSummary.title,
     sectionId,
     sectionLabel: getLifeLabSectionLabel(sectionId),
     content,

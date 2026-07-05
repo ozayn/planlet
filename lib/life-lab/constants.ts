@@ -30,6 +30,10 @@ export const LIFE_LAB_ALLOWED_SECTIONS = {
     label: "Photography",
     folderName: "photography",
   },
+  "reading-briefs": {
+    label: "Reading Briefs",
+    folderName: "reading-briefs",
+  },
 } as const;
 
 export type LifeLabSectionId = keyof typeof LIFE_LAB_ALLOWED_SECTIONS;
