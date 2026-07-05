@@ -22,7 +22,8 @@ import {
   sectionIdFromFolderName,
 } from "@/lib/life-lab/sections";
 import { isLifeLabDevToolsEnabled } from "@/lib/life-lab/dev";
-import { prepareMermaidSvg } from "@/lib/life-lab/mermaid-svg";
+import { prepareMermaidSvg, mermaidSvgHasVisibleContent } from "@/lib/life-lab/mermaid-svg";
+import { getMermaidInitializeOptions } from "@/lib/life-lab/mermaid-config";
 import { isMarkdownDriveFile } from "@/lib/life-lab/google-drive";
 import {
   lifeLabFolderEntriesToMap,
@@ -384,15 +385,42 @@ describe("life lab dev tools", () => {
 });
 
 describe("life lab mermaid sizing", () => {
-  it("removes fixed svg dimensions and preserves readable width", () => {
+  it("expands undersized svg dimensions while preserving viewBox", () => {
     const prepared = prepareMermaidSvg(
       '<svg xmlns="http://www.w3.org/2000/svg" width="120" height="80" viewBox="0 0 640 120"><text>Map</text></svg>',
     );
 
-    assert.match(prepared.html, /min-width:\s*640px/);
-    assert.match(prepared.html, /width:\s*max-content/);
-    assert.match(prepared.html, /max-width:\s*none/);
+    assert.match(prepared.html, /viewBox=["']0 0 640 120["']/);
+    assert.match(prepared.html, /width=["']640["']/);
+    assert.match(prepared.html, /height=["']120["']/);
+    assert.doesNotMatch(prepared.html, /style=/);
     assert.equal(prepared.minWidth, 640);
+  });
+
+  it("detects visible mermaid node content", () => {
+    assert.equal(
+      mermaidSvgHasVisibleContent(
+        '<svg viewBox="0 0 10 10"><g class="node"><rect/><text>Hi</text></g></svg>',
+      ),
+      true,
+    );
+    assert.equal(
+      mermaidSvgHasVisibleContent('<svg viewBox="0 0 10 10"><path d="M0 0"/></svg>'),
+      false,
+    );
+  });
+
+  it("uses theme-aware mermaid colors", () => {
+    assert.equal(getMermaidInitializeOptions("dark").theme, "dark");
+    assert.equal(
+      getMermaidInitializeOptions("dark").themeVariables.primaryTextColor,
+      "#f4efe8",
+    );
+    assert.equal(getMermaidInitializeOptions("light").theme, "base");
+    assert.equal(
+      getMermaidInitializeOptions("light").themeVariables.primaryColor,
+      "#f8f5ef",
+    );
   });
 });
 

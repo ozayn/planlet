@@ -2,33 +2,31 @@
 
 import { useEffect, useId, useState, type CSSProperties } from "react";
 
-import { prepareMermaidSvg, type PreparedMermaidSvg } from "@/lib/life-lab/mermaid-svg";
+import { useTheme } from "@/components/theme-provider";
+import {
+  getMermaidInitializeOptions,
+  getMermaidThemeMode,
+  type MermaidThemeMode,
+} from "@/lib/life-lab/mermaid-config";
+import { isLifeLabDevToolsEnabled } from "@/lib/life-lab/dev";
+import {
+  mermaidSvgHasVisibleContent,
+  prepareMermaidSvg,
+  type PreparedMermaidSvg,
+} from "@/lib/life-lab/mermaid-svg";
 
 type MermaidBlockProps = {
   code: string;
 };
 
-let mermaidInitialized = false;
+let initializedTheme: MermaidThemeMode | null = null;
 
-async function loadMermaid() {
+async function loadMermaid(theme: MermaidThemeMode) {
   const mermaid = (await import("mermaid")).default;
 
-  if (!mermaidInitialized) {
-    mermaid.initialize({
-      startOnLoad: false,
-      securityLevel: "strict",
-      themeVariables: {
-        fontSize: "16px",
-        fontFamily: "var(--font-sans, system-ui, sans-serif)",
-      },
-      flowchart: {
-        padding: 12,
-        nodeSpacing: 50,
-        rankSpacing: 60,
-        diagramPadding: 12,
-      },
-    });
-    mermaidInitialized = true;
+  if (initializedTheme !== theme) {
+    mermaid.initialize(getMermaidInitializeOptions(theme));
+    initializedTheme = theme;
   }
 
   return mermaid;
@@ -39,6 +37,8 @@ function mermaidElementId(reactId: string): string {
 }
 
 export function MermaidBlock({ code }: MermaidBlockProps) {
+  const { resolvedTheme } = useTheme();
+  const themeMode = getMermaidThemeMode(resolvedTheme);
   const reactId = useId();
   const elementId = mermaidElementId(reactId);
   const [preparedSvg, setPreparedSvg] = useState<PreparedMermaidSvg | null>(null);
@@ -52,15 +52,27 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
       setPreparedSvg(null);
 
       try {
-        const mermaid = await loadMermaid();
+        const mermaid = await loadMermaid(themeMode);
         const { svg: renderedSvg } = await mermaid.render(
           elementId,
           code.trim(),
         );
 
-        if (!cancelled) {
-          setPreparedSvg(prepareMermaidSvg(renderedSvg));
+        if (cancelled) {
+          return;
         }
+
+        const prepared = prepareMermaidSvg(renderedSvg);
+
+        if (
+          !mermaidSvgHasVisibleContent(prepared.html) &&
+          isLifeLabDevToolsEnabled()
+        ) {
+          setFailed(true);
+          return;
+        }
+
+        setPreparedSvg(prepared);
       } catch {
         if (!cancelled) {
           setFailed(true);
@@ -73,7 +85,7 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
     return () => {
       cancelled = true;
     };
-  }, [code, elementId]);
+  }, [code, elementId, themeMode]);
 
   if (failed) {
     return (

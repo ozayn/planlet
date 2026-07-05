@@ -13,56 +13,52 @@ function parseSvgLength(value: string | null | undefined): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
-function upsertSvgStyle(svgString: string, style: string): string {
-  const styleAttribute = /style=(["'])(.*?)\1/i;
-
-  if (styleAttribute.test(svgString)) {
-    return svgString.replace(styleAttribute, `style="${style}"`);
-  }
-
-  return svgString.replace(/<svg\b/i, `<svg style="${style}"`);
-}
-
 export function prepareMermaidSvg(svgString: string): PreparedMermaidSvg {
   const viewBoxMatch = svgString.match(/viewBox=(["'])([^"']+)\1/i);
   const viewBoxParts = viewBoxMatch?.[2]?.split(/\s+/).map(Number) ?? [];
   const viewWidth = viewBoxParts[2] ?? 0;
   const viewHeight = viewBoxParts[3] ?? 0;
-  const widthMatch = svgString.match(/\bwidth=(["'])([^"']+)\1/i);
-  const heightMatch = svgString.match(/\bheight=(["'])([^"']+)\1/i);
-  const attrWidth = parseSvgLength(widthMatch?.[2]);
-  const attrHeight = parseSvgLength(heightMatch?.[2]);
-  const intrinsicWidth = Math.max(viewWidth, attrWidth);
-  const intrinsicHeight = Math.max(viewHeight, attrHeight);
 
-  let html = svgString
-    .replace(/\s(width|height)=(["'])[^"']*\2/gi, "")
-    .replace(
-      /preserveAspectRatio=(["'])[^"']*\1/i,
-      'preserveAspectRatio="xMinYMin meet"',
-    );
+  let html = svgString;
 
-  if (!/preserveAspectRatio=/i.test(html)) {
-    html = html.replace(/<svg\b/i, '<svg preserveAspectRatio="xMinYMin meet"');
-  }
+  if (viewWidth > 0 && viewHeight > 0) {
+    const widthMatch = html.match(/\bwidth=(["'])([^"']+)\1/i);
+    const heightMatch = html.match(/\bheight=(["'])([^"']+)\1/i);
+    const attrWidth = parseSvgLength(widthMatch?.[2]);
+    const attrHeight = parseSvgLength(heightMatch?.[2]);
 
-  const styleParts = [
-    "display: block",
-    "width: max-content",
-    "max-width: none",
-    "height: auto",
-  ];
+    if (attrWidth < viewWidth) {
+      html = html.replace(
+        /\bwidth=(["'])[^"']*\1/i,
+        `width="${Math.round(viewWidth)}"`,
+      );
+    }
 
-  if (intrinsicWidth > 0) {
-    styleParts.push(`min-width: ${Math.round(intrinsicWidth)}px`);
-  }
-
-  if (intrinsicHeight > 0) {
-    styleParts.push(`min-height: ${Math.round(intrinsicHeight)}px`);
+    if (attrHeight < viewHeight) {
+      html = html.replace(
+        /\bheight=(["'])[^"']*\1/i,
+        `height="${Math.round(viewHeight)}"`,
+      );
+    }
   }
 
   return {
-    html: upsertSvgStyle(html, styleParts.join("; ")),
-    minWidth: intrinsicWidth > 0 ? intrinsicWidth : null,
+    html,
+    minWidth: viewWidth > 0 ? viewWidth : null,
   };
+}
+
+export function mermaidSvgHasVisibleContent(svgString: string): boolean {
+  const hasNodeShapes =
+    /class=(["'])[^"']*\bnode\b/i.test(svgString) ||
+    /<rect\b/i.test(svgString) ||
+    /<polygon\b/i.test(svgString) ||
+    /<ellipse\b/i.test(svgString);
+
+  const hasLabels =
+    /<text\b/i.test(svgString) ||
+    /<tspan\b/i.test(svgString) ||
+    /<foreignObject\b/i.test(svgString);
+
+  return hasNodeShapes && hasLabels;
 }
