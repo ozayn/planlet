@@ -63,6 +63,7 @@ export type LifeLabNoteMetadata = {
   source?: string;
   channel?: string;
   playlist?: string;
+  playlist_url?: string;
   episode?: string | number;
   date?: string;
   topics?: string[];

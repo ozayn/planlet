@@ -88,6 +88,7 @@ function normalizeMetadata(raw: Record<string, unknown>): LifeLabNoteMetadata {
     "source",
     "channel",
     "playlist",
+    "playlist_url",
     "date",
     "study_status",
     "term",

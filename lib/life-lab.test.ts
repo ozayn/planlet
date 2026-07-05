@@ -52,6 +52,15 @@ import {
   resolveDictionaryCategory,
 } from "@/lib/life-lab/learning-dictionary";
 import {
+  buildYoutubeVideoNoteHref,
+  formatPlaylistProcessingSummary,
+  hasPlaylistVideosTable,
+  isPlaylistIndexNote,
+  parsePlaylistIndexNote,
+  resolveYoutubeVideoNoteSlug,
+  shouldRenderPlaylistIndexUi,
+} from "@/lib/life-lab/playlist-index";
+import {
   isRedundantMetadataChip,
   selectVisibleMetadataChips,
 } from "@/lib/life-lab/metadata-chips";
@@ -1450,5 +1459,115 @@ describe("learning dictionary", () => {
     assert.equal(chips.overflowCount, 0);
     assert.ok(chips.visible.includes("institutions"));
     assert.ok(chips.visible.includes("succession"));
+  });
+});
+
+describe("playlist index notes", () => {
+  const fixturePath = join(
+    import.meta.dirname,
+    "life-lab/fixtures/sample-playlist-index.md",
+  );
+  const samplePlaylistIndex = readFileSync(fixturePath, "utf8");
+
+  it("detects playlist index notes by metadata, path, and table shape", () => {
+    const { metadata, body } = parseLifeLabFrontmatter(samplePlaylistIndex);
+
+    assert.equal(isPlaylistIndexNote({
+      sectionId: "youtube-learning",
+      relativePath: "playlists/the-iranian-revolution.md",
+      subfolderLabel: "playlists",
+      metadata,
+      content: body,
+    }), true);
+    assert.equal(hasPlaylistVideosTable(body), true);
+    assert.equal(isPlaylistIndexNote({
+      sectionId: "youtube-learning",
+      relativePath: "videos/2026-07-05-shahs-last-stand.md",
+      subfolderLabel: "videos",
+      metadata: { type: "youtube-learning" },
+      content: "# Video note\n\nRegular video notes without a playlist table.",
+    }), false);
+  });
+
+  it("parses playlist videos, summary counts, and batch notes", () => {
+    const { metadata, body } = parseLifeLabFrontmatter(samplePlaylistIndex);
+    const note = processLifeLabNoteContent(
+      {
+        slug: "playlists__the-iranian-revolution",
+        title: "The Iranian Revolution",
+        excerpt: "",
+        modifiedAt: null,
+        modifiedAtLabel: null,
+        dateLabel: "Jul 5, 2026",
+        subfolderLabel: "playlists",
+        fileId: "fixture-playlist",
+        relativePath: "playlists/the-iranian-revolution.md",
+        metadata,
+      },
+      samplePlaylistIndex,
+    );
+    const display = parsePlaylistIndexNote({
+      ...note,
+      sectionId: "youtube-learning",
+      sectionLabel: "YouTube learning",
+      content: body,
+    });
+
+    assert.equal(display.playlistTitle, "The Iranian Revolution");
+    assert.equal(display.channel, "The Rest Is History");
+    assert.equal(display.summary.total, 5);
+    assert.equal(display.summary.processed, 3);
+    assert.equal(display.summary.pending, 1);
+    assert.equal(display.summary.skipped, 1);
+    assert.equal(display.summary.error, 0);
+    assert.match(
+      formatPlaylistProcessingSummary(display.summary),
+      /3 processed · 1 pending · 1 skipped · 0 errors/,
+    );
+    assert.equal(display.batchNotes.length, 3);
+    assert.equal(display.videos[0]?.noteHref, "/life-lab/youtube-learning/videos__2026-07-05-shahs-last-stand");
+    assert.equal(display.videos[3]?.noteHref, null);
+    assert.equal(shouldRenderPlaylistIndexUi({
+      ...note,
+      sectionId: "youtube-learning",
+      sectionLabel: "YouTube learning",
+      content: body,
+    }), true);
+  });
+
+  it("builds youtube video note links only for videos/ note filenames", () => {
+    assert.equal(
+      resolveYoutubeVideoNoteSlug("videos/2026-07-05-shahs-last-stand.md"),
+      "videos__2026-07-05-shahs-last-stand",
+    );
+    assert.equal(
+      buildYoutubeVideoNoteHref(
+        "youtube-learning",
+        "2026-07-05-shahs-last-stand.md",
+      ),
+      "/life-lab/youtube-learning/videos__2026-07-05-shahs-last-stand",
+    );
+    assert.equal(
+      buildYoutubeVideoNoteHref("youtube-learning", "archive/old-note.md"),
+      null,
+    );
+  });
+
+  it("falls back when playlist table parsing fails", () => {
+    assert.equal(shouldRenderPlaylistIndexUi({
+      slug: "playlists__empty",
+      title: "Empty playlist",
+      excerpt: "",
+      modifiedAt: null,
+      modifiedAtLabel: null,
+      dateLabel: null,
+      subfolderLabel: "playlists",
+      fileId: "fixture-empty",
+      relativePath: "playlists/empty.md",
+      metadata: { type: "playlist-index" },
+      sectionId: "youtube-learning",
+      sectionLabel: "YouTube learning",
+      content: "# Empty\n\nNo table yet.",
+    }), false);
   });
 });

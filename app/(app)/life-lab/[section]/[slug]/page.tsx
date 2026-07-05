@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { auth } from "@/auth";
 import { LifeLabReadingBriefHeader } from "@/components/life-lab/life-lab-reading-brief-header";
 import { LifeLabReadingBriefNote } from "@/components/life-lab/life-lab-reading-brief-note";
+import { LifeLabPlaylistIndexNote } from "@/components/life-lab/life-lab-playlist-index-note";
 import { LifeLabMetadataChips } from "@/components/life-lab/life-lab-metadata-chips";
 import { LifeLabNoteCardMeta } from "@/components/life-lab/life-lab-note-card-meta";
 import { LifeLabNoteReadAloud } from "@/components/life-lab/life-lab-note-read-aloud";
@@ -15,6 +16,7 @@ import { PageHeader } from "@/components/page-header";
 import { getLifeLabNoteData } from "@/lib/life-lab";
 import { isLifeLabDevToolsEnabled } from "@/lib/life-lab/dev";
 import { isReadingBriefNote } from "@/lib/life-lab/reading-briefs";
+import { shouldRenderPlaylistIndexUi } from "@/lib/life-lab/playlist-index";
 import { isAdminRole } from "@/lib/auth-roles";
 import { canAccessLifeLabPage } from "@/lib/roles";
 
@@ -51,10 +53,15 @@ export default async function LifeLabNotePage({
     subfolderLabel: note.subfolderLabel,
     metadata: note.metadata,
   });
+  const isPlaylistIndex = shouldRenderPlaylistIndexUi(note);
 
   return (
     <section
-      className={`ui-page-stack ${isReadingBrief ? "space-y-3 md:space-y-4" : "space-y-6"}`}
+      className={`ui-page-stack ${
+        isReadingBrief || isPlaylistIndex
+          ? "space-y-3 md:space-y-4"
+          : "space-y-6"
+      }`}
     >
       {isReadingBrief ? (
         <LifeLabReadingBriefHeader
@@ -62,7 +69,7 @@ export default async function LifeLabNotePage({
           sectionLabel={note.sectionLabel}
           note={note}
         />
-      ) : (
+      ) : isPlaylistIndex ? null : (
         <PageHeader
           title={note.title}
           subtitle={note.sectionLabel}
@@ -94,7 +101,7 @@ export default async function LifeLabNotePage({
         <>
           <article
             className={
-              isReadingBrief
+              isReadingBrief || isPlaylistIndex
                 ? "md:ui-card-padded rounded-xl border-0 bg-transparent p-0 md:border md:border-border/60 md:bg-surface md:p-5"
                 : "ui-card-padded"
             }
@@ -106,6 +113,8 @@ export default async function LifeLabNotePage({
                 slug={note.slug}
                 flashcards={note.flashcards}
               />
+            ) : isPlaylistIndex ? (
+              <LifeLabPlaylistIndexNote note={note} />
             ) : (
               <>
                 {note.dateLabel ?? note.modifiedAtLabel ? (
