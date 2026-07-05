@@ -5,6 +5,9 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { useSpeechSynthesis } from "@/components/life-lab/use-speech-synthesis";
 import {
   formatSpeechRate,
+  formatSpeechVoiceLabel,
+  getSpeechVoiceId,
+  SPEECH_AUTO_VOICE_ID,
   SPEECH_BROWSER_FALLBACK_MESSAGE,
   SPEECH_RATE_OPTIONS,
   type SpeechDiagnostics,
@@ -68,6 +71,41 @@ function SpeechRateControls({
   );
 }
 
+function SpeechVoiceSelector({
+  voices,
+  selectedVoiceId,
+  setSelectedVoiceId,
+  disabled = false,
+}: {
+  voices: SpeechSynthesisVoice[];
+  selectedVoiceId: string;
+  setSelectedVoiceId: (voiceId: string) => void;
+  disabled?: boolean;
+}) {
+  if (voices.length === 0) {
+    return null;
+  }
+
+  return (
+    <label className="inline-flex min-w-0 items-center gap-1.5 text-xs text-muted">
+      <span className="shrink-0">Voice</span>
+      <select
+        value={selectedVoiceId}
+        onChange={(event) => setSelectedVoiceId(event.target.value)}
+        disabled={disabled}
+        className="max-w-[9.5rem] truncate rounded-full border border-border/70 bg-transparent px-2 py-1.5 text-xs text-foreground disabled:cursor-not-allowed disabled:opacity-50 sm:max-w-[12rem]"
+      >
+        <option value={SPEECH_AUTO_VOICE_ID}>Auto</option>
+        {voices.map((voice) => (
+          <option key={getSpeechVoiceId(voice)} value={getSpeechVoiceId(voice)}>
+            {formatSpeechVoiceLabel(voice)}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 function SpeechPlaybackNotice({ show }: { show: boolean }) {
   if (!show) {
     return null;
@@ -76,6 +114,18 @@ function SpeechPlaybackNotice({ show }: { show: boolean }) {
   return (
     <p className="w-full text-xs leading-relaxed text-muted">
       {SPEECH_BROWSER_FALLBACK_MESSAGE}
+    </p>
+  );
+}
+
+function SpeechVoiceFallbackNotice({ message }: { message: string | null }) {
+  if (!message) {
+    return null;
+  }
+
+  return (
+    <p className="w-full text-xs leading-relaxed text-muted">
+      {message}
     </p>
   );
 }
@@ -99,6 +149,7 @@ type ReadAloudPanelProps = {
   className?: string;
   children: ReactNode;
   playbackFailed: boolean;
+  voiceFallbackNotice: string | null;
   diagnostics: SpeechDiagnostics;
 };
 
@@ -106,11 +157,13 @@ function ReadAloudPanel({
   className = "",
   children,
   playbackFailed,
+  voiceFallbackNotice,
   diagnostics,
 }: ReadAloudPanelProps) {
   return (
     <div className={`flex flex-col gap-1.5 ${className}`}>
       <div className="flex flex-wrap items-center gap-2">{children}</div>
+      <SpeechVoiceFallbackNotice message={voiceFallbackNotice} />
       <SpeechPlaybackNotice show={playbackFailed} />
       <SpeechDevDiagnostic diagnostics={diagnostics} />
     </div>
@@ -126,7 +179,11 @@ export function ReadAloudControls({
     isSpeaking,
     isPaused,
     playbackFailed,
+    voiceFallbackNotice,
     diagnostics,
+    englishVoices,
+    selectedVoiceId,
+    setSelectedVoiceId,
     rate,
     setRate,
     speak,
@@ -151,6 +208,7 @@ export function ReadAloudControls({
     <ReadAloudPanel
       className={className}
       playbackFailed={playbackFailed}
+      voiceFallbackNotice={voiceFallbackNotice}
       diagnostics={diagnostics}
     >
       {!isSpeaking ? (
@@ -176,6 +234,13 @@ export function ReadAloudControls({
           )}
         </>
       )}
+
+      <SpeechVoiceSelector
+        voices={englishVoices}
+        selectedVoiceId={selectedVoiceId}
+        setSelectedVoiceId={setSelectedVoiceId}
+        disabled={isSpeaking}
+      />
 
       <SpeechRateControls
         rate={rate}
@@ -206,7 +271,11 @@ export function FlashcardReadAloudControls({
     isSpeaking,
     isPaused,
     playbackFailed,
+    voiceFallbackNotice,
     diagnostics,
+    englishVoices,
+    selectedVoiceId,
+    setSelectedVoiceId,
     rate,
     setRate,
     speak,
@@ -236,6 +305,7 @@ export function FlashcardReadAloudControls({
     <ReadAloudPanel
       className={className}
       playbackFailed={playbackFailed}
+      voiceFallbackNotice={voiceFallbackNotice}
       diagnostics={diagnostics}
     >
       {!isSpeaking ? (
@@ -266,6 +336,13 @@ export function FlashcardReadAloudControls({
           )}
         </>
       )}
+
+      <SpeechVoiceSelector
+        voices={englishVoices}
+        selectedVoiceId={selectedVoiceId}
+        setSelectedVoiceId={setSelectedVoiceId}
+        disabled={isSpeaking}
+      />
 
       <SpeechRateControls
         rate={rate}

@@ -39,11 +39,21 @@ import {
 import {
   chunkSpeechText,
   DEFAULT_SPEECH_LANG,
+  DEFAULT_SPEECH_RATE,
   detectSpeechBrowserNameFromUserAgent,
+  findSpeechVoiceById,
+  getSpeechVoiceId,
+  listEnglishSpeechVoices,
   markdownToSpeechText,
   pickSpeechVoice,
+  plainTextToSpeechText,
+  prepareFlashcardSpeechText,
   prepareNoteSpeechText,
+  resolveSpeechVoice,
+  SPEECH_AUTO_VOICE_ID,
   SPEECH_BROWSER_FALLBACK_MESSAGE,
+  SPEECH_RATE_OPTIONS,
+  SPEECH_VOICE_SELECTION_FALLBACK_MESSAGE,
 } from "@/lib/life-lab/speech";
 import {
   isLifeLabSectionBlocked,
@@ -717,6 +727,63 @@ describe("life lab speech", () => {
     assert.match(spoken, /Plain text/);
     assert.doesNotMatch(spoken, /```/);
     assert.doesNotMatch(spoken, /graph LR/);
+    assert.doesNotMatch(spoken, /example\.com/);
+  });
+
+  it("reads markdown link text without the URL", () => {
+    const spoken = markdownToSpeechText(
+      "[BBC article](https://example.com/article)",
+    );
+
+    assert.equal(spoken, "BBC article");
+  });
+
+  it("removes bare https URLs but keeps the rest of the sentence", () => {
+    const spoken = markdownToSpeechText(
+      "See https://example.com/article for details.",
+    );
+
+    assert.equal(spoken, "See for details.");
+  });
+
+  it("removes bare www URLs from speech text", () => {
+    const spoken = plainTextToSpeechText(
+      "More at www.example.com/article today.",
+    );
+
+    assert.equal(spoken, "More at today.");
+  });
+
+  it("skips lines that only contain a URL", () => {
+    const spoken = markdownToSpeechText(
+      "Keep this.\nhttps://example.com/article\nAlso this.",
+    );
+
+    assert.equal(spoken, "Keep this. Also this.");
+  });
+
+  it("does not read source lines that only contain a URL", () => {
+    const spoken = markdownToSpeechText(
+      "Intro paragraph.\n\nSource: https://bbc.co.uk/news/article\n\nClosing note.",
+    );
+
+    assert.match(spoken, /Intro paragraph/);
+    assert.match(spoken, /Closing note/);
+    assert.doesNotMatch(spoken, /bbc\.co\.uk/);
+    assert.doesNotMatch(spoken, /https?:/);
+  });
+
+  it("cleans URLs from flashcard speech text", () => {
+    const segments = prepareFlashcardSpeechText({
+      question: "What is [BBC article](https://example.com)?",
+      answer: "See https://example.com/docs for more.",
+      revealed: true,
+    });
+
+    assert.deepEqual(segments, [
+      "What is BBC article?",
+      "See for more.",
+    ]);
   });
 
   it("prepares note speech text with title and cleaned body", () => {
@@ -735,8 +802,58 @@ describe("life lab speech", () => {
     assert.equal(voice?.name, "Serena");
   });
 
+  it("prefers Flo over Serena and Daniel for auto voice", () => {
+    const voice = pickSpeechVoice([
+      { name: "Daniel", lang: "en-GB", voiceURI: "daniel" } as SpeechSynthesisVoice,
+      { name: "Serena", lang: "en-GB", voiceURI: "serena" } as SpeechSynthesisVoice,
+      { name: "Flo (English (UK))", lang: "en-GB", voiceURI: "flo" } as SpeechSynthesisVoice,
+    ]);
+
+    assert.equal(voice?.name, "Flo (English (UK))");
+  });
+
+  it("deprioritizes Daniel among en-GB voices", () => {
+    const voice = pickSpeechVoice([
+      { name: "Daniel", lang: "en-GB", voiceURI: "daniel" } as SpeechSynthesisVoice,
+      { name: "Arthur", lang: "en-GB", voiceURI: "arthur" } as SpeechSynthesisVoice,
+    ]);
+
+    assert.equal(voice?.name, "Arthur");
+  });
+
+  it("lists English voices only for the voice selector", () => {
+    const voices = listEnglishSpeechVoices([
+      { name: "Flo", lang: "en-GB", voiceURI: "flo" } as SpeechSynthesisVoice,
+      { name: "Thomas", lang: "fr-FR", voiceURI: "thomas" } as SpeechSynthesisVoice,
+      { name: "Karen", lang: "en-AU", voiceURI: "karen" } as SpeechSynthesisVoice,
+    ]);
+
+    assert.equal(voices.length, 2);
+    assert.equal(voices[0]?.name, "Flo");
+    assert.equal(voices[1]?.name, "Karen");
+  });
+
+  it("resolves manual and auto voice selections", () => {
+    const voices = [
+      { name: "Flo", lang: "en-GB", voiceURI: "flo" } as SpeechSynthesisVoice,
+      { name: "Daniel", lang: "en-GB", voiceURI: "daniel" } as SpeechSynthesisVoice,
+    ];
+
+    assert.equal(resolveSpeechVoice(voices, SPEECH_AUTO_VOICE_ID)?.name, "Flo");
+    assert.equal(
+      resolveSpeechVoice(voices, getSpeechVoiceId(voices[1]!))?.name,
+      "Daniel",
+    );
+    assert.equal(findSpeechVoiceById(voices, "missing"), null);
+  });
+
   it("uses en-GB lang hint without assigning a voice by default", () => {
     assert.equal(DEFAULT_SPEECH_LANG, "en-GB");
+  });
+
+  it("includes 0.9x speech rate and uses it as the default", () => {
+    assert.deepEqual(SPEECH_RATE_OPTIONS, [0.8, 0.9, 1, 1.2]);
+    assert.equal(DEFAULT_SPEECH_RATE, 0.9);
   });
 
   it("chunks long note text into readable segments", () => {
@@ -767,5 +884,6 @@ describe("life lab speech", () => {
   it("includes a calm browser fallback message for speech failures", () => {
     assert.match(SPEECH_BROWSER_FALLBACK_MESSAGE, /Safari on macOS/);
     assert.match(SPEECH_BROWSER_FALLBACK_MESSAGE, /may not work/);
+    assert.match(SPEECH_VOICE_SELECTION_FALLBACK_MESSAGE, /Auto/);
   });
 });

@@ -1,8 +1,24 @@
 const FLASHCARD_SECTION_PATTERN =
   /^#{1,6}\s+(?:Optional Flashcards|Flashcards|Study Cards)\s*[\r\n]+[\s\S]*$/gim;
 
-const PREFERRED_EN_GB_FEMALE_NAMES = ["kate", "serena", "samantha"] as const;
-const PREFERRED_EN_GB_MALE_FALLBACK = "daniel";
+type VoicePreferenceRule = {
+  langPrefix: string;
+  nameIncludes: string;
+};
+
+// Prefer natural macOS Safari system voices. Daniel is intentionally deprioritized.
+const VOICE_PREFERENCE_RULES: VoicePreferenceRule[] = [
+  { langPrefix: "en-gb", nameIncludes: "flo" },
+  { langPrefix: "en-gb", nameIncludes: "serena" },
+  { langPrefix: "en-gb", nameIncludes: "kate" },
+  { langPrefix: "en-gb", nameIncludes: "moira" },
+  { langPrefix: "en-gb", nameIncludes: "samantha" },
+  { langPrefix: "en-us", nameIncludes: "samantha" },
+  { langPrefix: "en-au", nameIncludes: "karen" },
+  { langPrefix: "en-gb", nameIncludes: "eddy" },
+];
+
+const ROBOTIC_VOICE_NAMES = ["daniel"] as const;
 
 // Browser note: macOS Safari speechSynthesis tends to work reliably with system voices.
 // Chrome on macOS may expose voices yet fail to produce audible speech for some utterances.
@@ -10,12 +26,21 @@ export const DEFAULT_SPEECH_LANG = "en-GB";
 
 export const SPEECH_CHUNK_MAX_LENGTH = 1000;
 
-export const SPEECH_RATE_OPTIONS = [0.8, 1, 1.2] as const;
+export const SPEECH_RATE_OPTIONS = [0.8, 0.9, 1, 1.2] as const;
+
+export const DEFAULT_SPEECH_RATE: SpeechRate = 0.9;
 
 export const SPEECH_START_TIMEOUT_MS = 2500;
 
+export const SPEECH_AUTO_VOICE_ID = "auto";
+
+export const SPEECH_VOICE_STORAGE_KEY = "planlet-life-lab-speech-voice";
+
 export const SPEECH_BROWSER_FALLBACK_MESSAGE =
   "Read aloud may not work in this browser. Try Safari on macOS, or another browser.";
+
+export const SPEECH_VOICE_SELECTION_FALLBACK_MESSAGE =
+  "That voice didn't work here. Switched back to Auto.";
 
 export type SpeechRate = (typeof SPEECH_RATE_OPTIONS)[number];
 
@@ -72,6 +97,103 @@ export function getSpeechVoiceCount(): number {
   return window.speechSynthesis.getVoices().length;
 }
 
+export function getSpeechVoiceId(voice: SpeechSynthesisVoice): string {
+  return voice.voiceURI || `${voice.name}:${voice.lang}`;
+}
+
+export function isEnglishSpeechVoice(voice: SpeechSynthesisVoice): boolean {
+  return voice.lang.toLowerCase().startsWith("en");
+}
+
+function normalizeSpeechLang(lang: string): string {
+  return lang.toLowerCase().replace("_", "-");
+}
+
+function voiceNameIncludes(voice: SpeechSynthesisVoice, fragment: string): boolean {
+  return voice.name.toLowerCase().includes(fragment);
+}
+
+function isRoboticSpeechVoice(voice: SpeechSynthesisVoice): boolean {
+  return ROBOTIC_VOICE_NAMES.some((name) => voiceNameIncludes(voice, name));
+}
+
+function matchesVoicePreferenceRule(
+  voice: SpeechSynthesisVoice,
+  rule: VoicePreferenceRule,
+): boolean {
+  const lang = normalizeSpeechLang(voice.lang);
+
+  if (!lang.startsWith(rule.langPrefix)) {
+    return false;
+  }
+
+  return voiceNameIncludes(voice, rule.nameIncludes);
+}
+
+function pickFirstMatchingVoice(
+  voices: SpeechSynthesisVoice[],
+  predicate: (voice: SpeechSynthesisVoice) => boolean,
+): SpeechSynthesisVoice | null {
+  return voices.find(predicate) ?? null;
+}
+
+export function listEnglishSpeechVoices(
+  voices: SpeechSynthesisVoice[],
+): SpeechSynthesisVoice[] {
+  return voices
+    .filter(isEnglishSpeechVoice)
+    .sort((left, right) => {
+      const leftGb = normalizeSpeechLang(left.lang).startsWith("en-gb") ? 0 : 1;
+      const rightGb = normalizeSpeechLang(right.lang).startsWith("en-gb") ? 0 : 1;
+
+      if (leftGb !== rightGb) {
+        return leftGb - rightGb;
+      }
+
+      return left.name.localeCompare(right.name);
+    });
+}
+
+export function formatSpeechVoiceLabel(voice: SpeechSynthesisVoice): string {
+  return `${voice.name} (${normalizeSpeechLang(voice.lang)})`;
+}
+
+export function findSpeechVoiceById(
+  voices: SpeechSynthesisVoice[],
+  voiceId: string,
+): SpeechSynthesisVoice | null {
+  return (
+    voices.find((voice) => getSpeechVoiceId(voice) === voiceId) ?? null
+  );
+}
+
+export function readStoredSpeechVoiceId(): string {
+  if (typeof window === "undefined") {
+    return SPEECH_AUTO_VOICE_ID;
+  }
+
+  try {
+    return (
+      window.localStorage.getItem(SPEECH_VOICE_STORAGE_KEY) ??
+      SPEECH_AUTO_VOICE_ID
+    );
+  } catch {
+    return SPEECH_AUTO_VOICE_ID;
+  }
+}
+
+export function writeStoredSpeechVoiceId(voiceId: string): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  try {
+    window.localStorage.setItem(SPEECH_VOICE_STORAGE_KEY, voiceId);
+  } catch {
+    // Ignore storage failures and keep the in-memory selection.
+  }
+}
+
 export function pickSpeechVoice(
   voices: SpeechSynthesisVoice[],
 ): SpeechSynthesisVoice | null {
@@ -79,13 +201,9 @@ export function pickSpeechVoice(
     return null;
   }
 
-  const enGbVoices = voices.filter((voice) =>
-    voice.lang.toLowerCase().startsWith("en-gb"),
-  );
-
-  for (const preferredName of PREFERRED_EN_GB_FEMALE_NAMES) {
-    const match = enGbVoices.find((voice) =>
-      voice.name.toLowerCase().includes(preferredName),
+  for (const rule of VOICE_PREFERENCE_RULES) {
+    const match = pickFirstMatchingVoice(voices, (voice) =>
+      matchesVoicePreferenceRule(voice, rule),
     );
 
     if (match) {
@@ -93,27 +211,114 @@ export function pickSpeechVoice(
     }
   }
 
-  const daniel = enGbVoices.find((voice) =>
-    voice.name.toLowerCase().includes(PREFERRED_EN_GB_MALE_FALLBACK),
+  const enGbVoices = voices.filter((voice) =>
+    normalizeSpeechLang(voice.lang).startsWith("en-gb"),
+  );
+  const naturalEnGbVoice = pickFirstMatchingVoice(
+    enGbVoices,
+    (voice) => !isRoboticSpeechVoice(voice),
   );
 
-  if (daniel) {
-    return daniel;
+  if (naturalEnGbVoice) {
+    return naturalEnGbVoice;
   }
 
   if (enGbVoices.length > 0) {
     return enGbVoices[0];
   }
 
-  const englishVoices = voices.filter((voice) =>
-    voice.lang.toLowerCase().startsWith("en"),
+  const englishVoices = voices.filter(isEnglishSpeechVoice);
+  const naturalEnglishVoice = pickFirstMatchingVoice(
+    englishVoices,
+    (voice) => !isRoboticSpeechVoice(voice),
   );
+
+  if (naturalEnglishVoice) {
+    return naturalEnglishVoice;
+  }
 
   if (englishVoices.length > 0) {
     return englishVoices[0];
   }
 
-  return voices[0] ?? null;
+  return null;
+}
+
+export function resolveSpeechVoice(
+  voices: SpeechSynthesisVoice[],
+  selectedVoiceId: string,
+): SpeechSynthesisVoice | null {
+  if (selectedVoiceId === SPEECH_AUTO_VOICE_ID) {
+    return pickSpeechVoice(voices);
+  }
+
+  return findSpeechVoiceById(voices, selectedVoiceId);
+}
+
+const BARE_HTTPS_URL_PATTERN = /https?:\/\/[^\s<>"')\]]+/gi;
+const BARE_WWW_URL_PATTERN = /\bwww\.[^\s<>"')\]]+/gi;
+const ANGLE_BRACKET_URL_PATTERN = /<https?:\/\/[^>]+>/gi;
+const MARKDOWN_LINK_PATTERN = /!?\[([^\]]*)]\([^)]*\)/g;
+
+export function stripBareUrlsFromSpeechText(text: string): string {
+  return text
+    .replace(BARE_HTTPS_URL_PATTERN, "")
+    .replace(BARE_WWW_URL_PATTERN, "");
+}
+
+export function isUrlOnlySpeechLine(line: string): boolean {
+  const trimmed = line.trim();
+
+  if (!trimmed) {
+    return false;
+  }
+
+  return /^(https?:\/\/\S+|www\.\S+)$/i.test(trimmed);
+}
+
+function cleanupSpeechSpacing(text: string): string {
+  return text
+    .replace(/\(\s*\)/g, "")
+    .replace(/\s+([.,;:!?])/g, "$1")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
+function sanitizeSpeechLine(line: string): string {
+  let cleaned = stripBareUrlsFromSpeechText(line.replace(ANGLE_BRACKET_URL_PATTERN, " "));
+
+  if (/^source\s*:/i.test(cleaned.trim())) {
+    const remainder = cleaned.replace(/^source\s*:\s*/i, "").trim();
+    return remainder ? cleaned : "";
+  }
+
+  return cleaned;
+}
+
+export function sanitizeSpeechText(text: string): string {
+  const cleaned = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .filter((line) => !isUrlOnlySpeechLine(line))
+    .map((line) => sanitizeSpeechLine(line))
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+
+  return cleanupSpeechSpacing(cleaned.join(" "));
+}
+
+export function plainTextToSpeechText(text: string): string {
+  let cleaned = text.trim();
+
+  if (!cleaned) {
+    return "";
+  }
+
+  cleaned = cleaned.replace(MARKDOWN_LINK_PATTERN, "$1");
+  cleaned = cleaned.replace(ANGLE_BRACKET_URL_PATTERN, " ");
+
+  return sanitizeSpeechText(cleaned);
 }
 
 export function markdownToSpeechText(content: string): string {
@@ -122,14 +327,19 @@ export function markdownToSpeechText(content: string): string {
   text = text.replace(/```mermaid[\s\S]*?```/gi, " ");
   text = text.replace(/```[\s\S]*?```/g, " ");
   text = text.replace(FLASHCARD_SECTION_PATTERN, " ");
-  text = text.replace(/!\[([^\]]*)]\([^)]*\)/g, "$1");
-  text = text.replace(/\[([^\]]+)]\([^)]*\)/g, "$1");
+  text = text.replace(MARKDOWN_LINK_PATTERN, "$1");
+  text = text.replace(ANGLE_BRACKET_URL_PATTERN, " ");
+  text = text
+    .split(/\r?\n/)
+    .filter((line) => !isUrlOnlySpeechLine(line))
+    .map((line) => sanitizeSpeechLine(line))
+    .join("\n");
   text = text.replace(/^#{1,6}\s+(.+?)\s*#*\s*$/gm, "$1. ");
   text = text.replace(/`([^`]+)`/g, "$1");
   text = text.replace(/^\s*[-*+]\s+/gm, "");
   text = text.replace(/^\s*\d+\.\s+/gm, "");
   text = text.replace(/[#>*_~|]/g, " ");
-  text = text.replace(/\s+/g, " ").trim();
+  text = sanitizeSpeechText(text);
 
   return text;
 }
@@ -216,14 +426,18 @@ export function prepareFlashcardSpeechText(parts: {
   revealed?: boolean;
 }): string[] {
   const segments: string[] = [];
-  const question = parts.question.trim();
+  const question = plainTextToSpeechText(parts.question);
 
   if (question) {
     segments.push(question);
   }
 
-  if (parts.revealed && parts.answer?.trim()) {
-    segments.push(parts.answer.trim());
+  if (parts.revealed && parts.answer) {
+    const answer = plainTextToSpeechText(parts.answer);
+
+    if (answer) {
+      segments.push(answer);
+    }
   }
 
   return segments;
@@ -245,7 +459,7 @@ export function createSpeechUtterance(
 ): SpeechSynthesisUtterance {
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = options.lang ?? DEFAULT_SPEECH_LANG;
-  utterance.rate = options.rate ?? 1;
+  utterance.rate = options.rate ?? DEFAULT_SPEECH_RATE;
   utterance.pitch = 1;
   utterance.volume = 1;
 

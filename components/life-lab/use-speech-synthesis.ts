@@ -6,12 +6,19 @@ import {
   chunkSpeechText,
   createSpeechUtterance,
   detectSpeechBrowserName,
+  DEFAULT_SPEECH_RATE,
   getSpeechVoiceCount,
   isSpeechSynthesisSupported,
+  listEnglishSpeechVoices,
   logSpeechSynthesisError,
-  pickSpeechVoice,
+  plainTextToSpeechText,
   primeSpeechSynthesis,
+  readStoredSpeechVoiceId,
+  resolveSpeechVoice,
+  SPEECH_AUTO_VOICE_ID,
   SPEECH_START_TIMEOUT_MS,
+  SPEECH_VOICE_SELECTION_FALLBACK_MESSAGE,
+  writeStoredSpeechVoiceId,
   type SpeechCancelReason,
   type SpeechDiagnostics,
   type SpeechRate,
@@ -19,7 +26,6 @@ import {
 
 type UseSpeechSynthesisOptions = {
   rate?: SpeechRate;
-  usePreferredVoice?: boolean;
 };
 
 // Uses browser-native speechSynthesis only. macOS Safari is the most reliable target;
@@ -32,12 +38,22 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [playbackFailed, setPlaybackFailed] = useState(false);
+  const [voiceFallbackNotice, setVoiceFallbackNotice] = useState<string | null>(
+    null,
+  );
   const [lastError, setLastError] = useState<string | null>(null);
   const [voiceCount, setVoiceCount] = useState(0);
+  const [englishVoices, setEnglishVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [selectedVoiceId, setSelectedVoiceIdState] = useState(
+    SPEECH_AUTO_VOICE_ID,
+  );
   const [browserName] = useState(() => detectSpeechBrowserName());
-  const [rate, setRate] = useState<SpeechRate>(options.rate ?? 1);
-  const preferredVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
-  const usePreferredVoiceRef = useRef(options.usePreferredVoice ?? false);
+  const [rate, setRate] = useState<SpeechRate>(
+    options.rate ?? DEFAULT_SPEECH_RATE,
+  );
+  const selectedVoiceIdRef = useRef(SPEECH_AUTO_VOICE_ID);
+  const sessionVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
+  const sessionUsesVoiceRef = useRef(false);
   const rateRef = useRef<SpeechRate>(rate);
   const sequenceIndexRef = useRef(0);
   const sequenceRef = useRef<string[]>([]);
@@ -54,17 +70,14 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
     }
   }, []);
 
-  const recordSpeechFailure = useCallback(
-    (error: string) => {
-      if (!isMountedRef.current) {
-        return;
-      }
+  const recordSpeechFailure = useCallback((error: string) => {
+    if (!isMountedRef.current) {
+      return;
+    }
 
-      setPlaybackFailed(true);
-      setLastError(error);
-    },
-    [],
-  );
+    setPlaybackFailed(true);
+    setLastError(error);
+  }, []);
 
   const recordSpeechSuccess = useCallback(() => {
     if (!isMountedRef.current) {
@@ -75,13 +88,29 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
     setLastError(null);
   }, []);
 
+  const setSelectedVoiceId = useCallback((voiceId: string) => {
+    selectedVoiceIdRef.current = voiceId;
+    setSelectedVoiceIdState(voiceId);
+    writeStoredSpeechVoiceId(voiceId);
+    setVoiceFallbackNotice(null);
+  }, []);
+
+  const resetToAutoVoice = useCallback(() => {
+    selectedVoiceIdRef.current = SPEECH_AUTO_VOICE_ID;
+    setSelectedVoiceIdState(SPEECH_AUTO_VOICE_ID);
+    writeStoredSpeechVoiceId(SPEECH_AUTO_VOICE_ID);
+    setVoiceFallbackNotice(SPEECH_VOICE_SELECTION_FALLBACK_MESSAGE);
+  }, []);
+
   useEffect(() => {
     rateRef.current = rate;
   }, [rate]);
 
   useEffect(() => {
-    usePreferredVoiceRef.current = options.usePreferredVoice ?? false;
-  }, [options.usePreferredVoice]);
+    const storedVoiceId = readStoredSpeechVoiceId();
+    selectedVoiceIdRef.current = storedVoiceId;
+    setSelectedVoiceIdState(storedVoiceId);
+  }, []);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -95,10 +124,7 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
     function loadVoices(): void {
       const voices = window.speechSynthesis.getVoices();
       setVoiceCount(voices.length);
-
-      if (voices.length > 0) {
-        preferredVoiceRef.current = pickSpeechVoice(voices);
-      }
+      setEnglishVoices(listEnglishSpeechVoices(voices));
     }
 
     loadVoices();
@@ -138,6 +164,8 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
     speakGenerationRef.current += 1;
     sequenceRef.current = [];
     sequenceIndexRef.current = 0;
+    sessionVoiceRef.current = null;
+    sessionUsesVoiceRef.current = false;
     activeUtteranceRef.current = null;
 
     if (activeSpeechOwnerId === instanceId) {
@@ -153,7 +181,7 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
     (
       text: string,
       generation: number,
-      assignVoice: boolean,
+      useAssignedVoice: boolean,
       onComplete?: () => void,
       allowVoiceRetry = true,
     ) => {
@@ -166,8 +194,8 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
       }
 
       const voice =
-        assignVoice && usePreferredVoiceRef.current
-          ? preferredVoiceRef.current
+        useAssignedVoice && sessionUsesVoiceRef.current
+          ? sessionVoiceRef.current
           : null;
 
       const utterance = createSpeechUtterance(text, {
@@ -242,6 +270,16 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
         }
 
         if (voice && allowVoiceRetry) {
+          const usedManualVoice =
+            selectedVoiceIdRef.current !== SPEECH_AUTO_VOICE_ID;
+
+          sessionUsesVoiceRef.current = false;
+          sessionVoiceRef.current = null;
+
+          if (usedManualVoice) {
+            resetToAutoVoice();
+          }
+
           speakChunk(text, generation, false, onComplete, false);
           return;
         }
@@ -260,6 +298,7 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
       instanceId,
       recordSpeechFailure,
       recordSpeechSuccess,
+      resetToAutoVoice,
     ],
   );
 
@@ -283,13 +322,13 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
         return;
       }
 
-      const assignVoice =
-        sequenceIndexRef.current === 0 && usePreferredVoiceRef.current;
+      const useAssignedVoice =
+        sequenceIndexRef.current === 0 && sessionUsesVoiceRef.current;
 
       speakChunk(
         nextText,
         generation,
-        assignVoice,
+        useAssignedVoice,
         () => {
           sequenceIndexRef.current += 1;
           speakNextInSequence(generation);
@@ -309,6 +348,19 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
         window.speechSynthesis.cancel();
       }
 
+      const voices = window.speechSynthesis.getVoices();
+      let voiceId = selectedVoiceIdRef.current;
+      let resolvedVoice = resolveSpeechVoice(voices, voiceId);
+
+      if (voiceId !== SPEECH_AUTO_VOICE_ID && !resolvedVoice) {
+        resetToAutoVoice();
+        voiceId = SPEECH_AUTO_VOICE_ID;
+        resolvedVoice = resolveSpeechVoice(voices, voiceId);
+      }
+
+      sessionVoiceRef.current = resolvedVoice;
+      sessionUsesVoiceRef.current = resolvedVoice !== null;
+
       speakGenerationRef.current += 1;
       const generation = speakGenerationRef.current;
       activeSpeechOwnerId = instanceId;
@@ -322,7 +374,7 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
         speakNextInSequence(generation);
       }, 0);
     },
-    [clearStartTimeout, instanceId, speakNextInSequence],
+    [clearStartTimeout, instanceId, resetToAutoVoice, speakNextInSequence],
   );
 
   const speak = useCallback(
@@ -332,6 +384,7 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
       }
 
       const segments = (Array.isArray(text) ? text : [text])
+        .map((segment) => plainTextToSpeechText(segment))
         .flatMap((segment) => chunkSpeechText(segment))
         .map((segment) => segment.trim())
         .filter(Boolean);
@@ -386,8 +439,12 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
     isSpeaking,
     isPaused,
     playbackFailed,
+    voiceFallbackNotice,
     lastError,
     diagnostics,
+    englishVoices,
+    selectedVoiceId,
+    setSelectedVoiceId,
     rate,
     setRate,
     speak,
