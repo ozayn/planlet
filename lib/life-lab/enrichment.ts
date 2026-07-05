@@ -13,6 +13,15 @@ import {
   relativePathFilename,
   titleFromMarkdownHeading,
 } from "@/lib/life-lab/slug";
+import {
+  extractReadingBriefPreview,
+  isReadingBriefNote,
+} from "@/lib/life-lab/reading-briefs";
+import {
+  dictionaryDisplayTitle,
+  extractDictionaryDefinition,
+  isDictionaryEntryNote,
+} from "@/lib/life-lab/learning-dictionary";
 import type { DriveCredentials } from "@/lib/life-lab/google-drive";
 import { downloadDriveFile } from "@/lib/life-lab/google-drive";
 
@@ -60,11 +69,33 @@ export function processLifeLabNoteContent(
   const headingTitle = titleFromMarkdownHeading(body);
   const filename = relativePathFilename(record.relativePath);
   const normalizedMetadata = hasLifeLabMetadata(metadata) ? metadata : undefined;
+  const isReadingBrief = isReadingBriefNote({
+    relativePath: record.relativePath,
+    subfolderLabel: record.subfolderLabel,
+    metadata: normalizedMetadata,
+  });
+  const isDictionaryEntry = isDictionaryEntryNote({
+    relativePath: record.relativePath,
+    subfolderLabel: record.subfolderLabel,
+    metadata: normalizedMetadata,
+  });
+  const excerpt = isReadingBrief
+    ? extractReadingBriefPreview(body)
+    : isDictionaryEntry
+      ? extractDictionaryDefinition(body)
+      : markdownExcerpt(body);
+  const title = isDictionaryEntry
+    ? dictionaryDisplayTitle({
+        title: headingTitle ?? record.title,
+        metadata: normalizedMetadata,
+        body,
+      })
+    : (headingTitle ?? record.title);
 
   return {
     ...record,
-    title: headingTitle ?? record.title,
-    excerpt: markdownExcerpt(body),
+    title,
+    excerpt,
     dateLabel:
       (normalizedMetadata?.date
         ? formatDateLabelFromIso(normalizedMetadata.date)

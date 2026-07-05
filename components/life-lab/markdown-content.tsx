@@ -6,9 +6,13 @@ import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 
 import { MermaidBlock } from "@/components/life-lab/mermaid-block";
+import { readingBriefHeadingAnchor } from "@/lib/life-lab/reading-briefs";
 
 type MarkdownContentProps = {
   content: string;
+  compact?: boolean;
+  readingBriefAnchors?: boolean;
+  readingBriefMode?: boolean;
 };
 
 function getCodeText(children: ReactNode): string {
@@ -17,6 +21,23 @@ function getCodeText(children: ReactNode): string {
   }
 
   return String(children).replace(/\n$/, "");
+}
+
+function getPlainText(children: ReactNode): string {
+  if (typeof children === "string" || typeof children === "number") {
+    return String(children);
+  }
+
+  if (Array.isArray(children)) {
+    return children.map(getPlainText).join("");
+  }
+
+  if (isValidElement(children)) {
+    const props = children.props as { children?: ReactNode };
+    return getPlainText(props.children);
+  }
+
+  return "";
 }
 
 function getMermaidCode(child: ReactNode): string | null {
@@ -36,32 +57,60 @@ function getMermaidCode(child: ReactNode): string | null {
   return getCodeText(props.children);
 }
 
-const markdownComponents: Components = {
-  pre({ children }) {
-    const mermaidCode = getMermaidCode(children);
+function createMarkdownComponents(
+  readingBriefAnchors: boolean,
+): Components {
+  return {
+    pre({ children }) {
+      const mermaidCode = getMermaidCode(children);
 
-    if (mermaidCode) {
-      return <MermaidBlock code={mermaidCode} />;
-    }
+      if (mermaidCode) {
+        return <MermaidBlock code={mermaidCode} />;
+      }
 
-    return <pre>{children}</pre>;
-  },
-  code({ className, children, ...props }) {
-    return (
-      <code className={className} {...props}>
-        {children}
-      </code>
-    );
-  },
-};
+      return <pre>{children}</pre>;
+    },
+    code({ className, children, ...props }) {
+      return (
+        <code className={className} {...props}>
+          {children}
+        </code>
+      );
+    },
+    h2({ children }) {
+      const headingText = getPlainText(children);
+      const anchorId = readingBriefAnchors
+        ? readingBriefHeadingAnchor(headingText)
+        : undefined;
 
-export function MarkdownContent({ content }: MarkdownContentProps) {
+      return (
+        <h2
+          id={anchorId}
+          className={anchorId ? "scroll-mt-20" : undefined}
+        >
+          {children}
+        </h2>
+      );
+    },
+  };
+}
+
+export function MarkdownContent({
+  content,
+  compact = false,
+  readingBriefAnchors = false,
+  readingBriefMode = false,
+}: MarkdownContentProps) {
   return (
-    <div className="ui-markdown">
+    <div
+      className={`ui-markdown ${compact ? "ui-markdown-compact" : ""} ${
+        readingBriefMode ? "ui-markdown-reading-brief" : ""
+      }`}
+    >
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeSanitize]}
-        components={markdownComponents}
+        components={createMarkdownComponents(readingBriefAnchors)}
       >
         {content}
       </ReactMarkdown>

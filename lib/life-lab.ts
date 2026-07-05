@@ -745,7 +745,7 @@ export async function getLifeLabSectionData(
       sectionId,
       sectionLabel: getLifeLabSectionLabel(sectionId),
       notes,
-      groups: groupLifeLabNotes(notes),
+      groups: groupLifeLabNotes(notes, { sectionId }),
       filterOptions: collectLifeLabFilterOptions(notes),
       flashcardNoteCount: notes.filter((note) => note.hasFlashcards).length,
       listingDiagnostic: options.includeListingDiagnostic

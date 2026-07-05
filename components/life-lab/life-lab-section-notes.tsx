@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { useState } from "react";
 
 import { LifeLabMetadataChips } from "@/components/life-lab/life-lab-metadata-chips";
 import { LifeLabNoteCardMeta } from "@/components/life-lab/life-lab-note-card-meta";
@@ -10,6 +13,10 @@ import type {
   LifeLabSectionId,
 } from "@/lib/life-lab/constants";
 import { groupDisclosureSummary } from "@/lib/life-lab/organization";
+import {
+  dictionaryCategoryLabel,
+  resolveDictionaryCategory,
+} from "@/lib/life-lab/learning-dictionary";
 
 type LifeLabSectionNotesProps = {
   sectionId: LifeLabSectionId;
@@ -75,15 +82,74 @@ function shouldShowSubfolderLabel(
     return false;
   }
 
-  return note.subfolderLabel.toLowerCase() !== group.id;
+  const subfolder = note.subfolderLabel.toLowerCase();
+
+  // Month-split groups use ids like "daily:2026-07"; the subfolder is implied.
+  return group.id !== subfolder && !group.id.startsWith(`${subfolder}:`);
 }
 
-function LifeLabNoteCard({ sectionId, note, group }: LifeLabNoteCardProps) {
-  const showExcerpt = group.variant !== "primary";
+function CategoryBadge({ label }: { label: string }) {
+  return (
+    <span className="rounded-full border border-border/70 px-2 py-0.5 text-[0.6875rem] font-medium text-muted">
+      {label}
+    </span>
+  );
+}
+
+function LifeLabDictionaryNoteCard({
+  sectionId,
+  note,
+}: {
+  sectionId: LifeLabSectionId;
+  note: LifeLabNoteSummary;
+}) {
+  const category = resolveDictionaryCategory(note);
+  const categoryLabel = category ? dictionaryCategoryLabel(category) : null;
 
   return (
     <li>
-      <div className="ui-card-padded relative transition-colors hover:bg-accent-cream/25">
+      <div className="ui-card-padded relative !p-3 transition-colors hover:bg-accent-cream/25">
+        <div className="flex items-start justify-between gap-3 pr-10">
+          <div className="min-w-0 flex-1">
+            <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+              {categoryLabel ? <CategoryBadge label={categoryLabel} /> : null}
+              <LifeLabNoteCardMeta sectionId={sectionId} note={note} />
+            </div>
+            <Link
+              href={`/life-lab/${sectionId}/${note.slug}`}
+              className="block text-base font-semibold leading-snug text-foreground transition-colors hover:text-foreground/80"
+            >
+              {note.title}
+            </Link>
+            <LifeLabMetadataChips
+              metadata={note.metadata}
+              sectionId={sectionId}
+              subfolderLabel={note.subfolderLabel}
+              variant="card"
+              className="mt-1.5"
+            />
+            {note.excerpt ? (
+              <Link
+                href={`/life-lab/${sectionId}/${note.slug}`}
+                className="mt-1.5 block text-sm leading-relaxed text-muted line-clamp-2"
+              >
+                {note.excerpt}
+              </Link>
+            ) : null}
+          </div>
+        </div>
+        <div className="absolute right-3 top-3">
+          <LifeLabNoteCardDevMenu sectionId={sectionId} note={note} />
+        </div>
+      </div>
+    </li>
+  );
+}
+
+function LifeLabNoteCard({ sectionId, note, group }: LifeLabNoteCardProps) {
+  return (
+    <li>
+      <div className="ui-card-padded relative !p-3.5 transition-colors hover:bg-accent-cream/25">
         <div className="flex items-start justify-between gap-3 pr-10">
           <div className="min-w-0 flex-1">
             {shouldShowSubfolderLabel(note, group) ? (
@@ -111,10 +177,10 @@ function LifeLabNoteCard({ sectionId, note, group }: LifeLabNoteCardProps) {
               note={note}
               className="mt-2"
             />
-            {showExcerpt && note.excerpt ? (
+            {note.excerpt ? (
               <Link
                 href={`/life-lab/${sectionId}/${note.slug}`}
-                className="mt-1 block text-sm leading-relaxed text-muted"
+                className="mt-1.5 block text-sm leading-relaxed text-muted line-clamp-2"
               >
                 {note.excerpt}
               </Link>
@@ -134,6 +200,8 @@ function LifeLabNoteCard({ sectionId, note, group }: LifeLabNoteCardProps) {
   );
 }
 
+const GROUP_INITIAL_VISIBLE = 10;
+
 function LifeLabNoteList({
   sectionId,
   group,
@@ -141,17 +209,45 @@ function LifeLabNoteList({
   sectionId: LifeLabSectionId;
   group: LifeLabNoteGroup;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const hasOverflow = group.notes.length > GROUP_INITIAL_VISIBLE;
+  const visibleNotes =
+    hasOverflow && !expanded
+      ? group.notes.slice(0, GROUP_INITIAL_VISIBLE)
+      : group.notes;
+
   return (
-    <ul className="space-y-2">
-      {group.notes.map((note) => (
-        <LifeLabNoteCard
-          key={note.slug}
-          sectionId={sectionId}
-          note={note}
-          group={group}
-        />
-      ))}
-    </ul>
+    <div className="space-y-2">
+      <ul className="space-y-2">
+        {visibleNotes.map((note) =>
+          sectionId === "learning-dictionary" ? (
+            <LifeLabDictionaryNoteCard
+              key={note.slug}
+              sectionId={sectionId}
+              note={note}
+            />
+          ) : (
+            <LifeLabNoteCard
+              key={note.slug}
+              sectionId={sectionId}
+              note={note}
+              group={group}
+            />
+          ),
+        )}
+      </ul>
+      {hasOverflow ? (
+        <button
+          type="button"
+          onClick={() => setExpanded((current) => !current)}
+          className="rounded-full border border-border/70 px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:border-border hover:text-foreground"
+        >
+          {expanded
+            ? "Show less"
+            : `Show ${group.notes.length - GROUP_INITIAL_VISIBLE} more`}
+        </button>
+      ) : null}
+    </div>
   );
 }
 
@@ -162,12 +258,19 @@ function LifeLabNoteGroupSection({
   sectionId: LifeLabSectionId;
   group: LifeLabNoteGroup;
 }) {
+  const hidePrimaryHeading =
+    sectionId === "reading-briefs" &&
+    group.variant === "primary" &&
+    group.notes.length === 1;
+
   if (group.variant === "primary") {
     return (
-      <section className="space-y-2">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
-          {group.label}
-        </h2>
+      <section className={hidePrimaryHeading ? "space-y-0" : "space-y-2"}>
+        {hidePrimaryHeading ? null : (
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">
+            {group.label}
+          </h2>
+        )}
         <LifeLabNoteList sectionId={sectionId} group={group} />
       </section>
     );

@@ -1,4 +1,6 @@
 import type { LifeLabNoteMetadata, LifeLabNoteSummary } from "@/lib/life-lab/constants";
+import { monthKeyLabel, noteMonthKey } from "@/lib/life-lab/browse";
+import { resolveStudyStatusValue, studyStatusLabel } from "@/lib/life-lab/study-status";
 
 export type LifeLabFilterKey =
   | "subfolder"
@@ -8,16 +10,22 @@ export type LifeLabFilterKey =
   | "channel"
   | "playlist"
   | "person"
-  | "place";
+  | "place"
+  | "status"
+  | "month";
 
 export type LifeLabNoteFilters = Partial<Record<LifeLabFilterKey, string>>;
 
-export type LifeLabFilterOptions = Record<LifeLabFilterKey, string[]>;
+export type LifeLabFilterOption = {
+  value: string;
+  label: string;
+};
 
-const FILTER_METADATA_KEYS: Record<
-  Exclude<LifeLabFilterKey, "subfolder">,
-  keyof LifeLabNoteMetadata
-> = {
+export type LifeLabFilterOptions = Record<LifeLabFilterKey, LifeLabFilterOption[]>;
+
+type MetadataFilterKey = Exclude<LifeLabFilterKey, "subfolder" | "status" | "month">;
+
+const FILTER_METADATA_KEYS: Record<MetadataFilterKey, keyof LifeLabNoteMetadata> = {
   tag: "tags",
   topic: "topics",
   source: "source",
@@ -27,15 +35,15 @@ const FILTER_METADATA_KEYS: Record<
   place: "places",
 };
 
-function uniqueSorted(values: string[]): string[] {
-  return [...new Set(values.map((value) => value.trim()).filter(Boolean))].sort(
-    (left, right) => left.localeCompare(right),
-  );
+function uniqueSortedOptions(values: string[]): LifeLabFilterOption[] {
+  return [...new Set(values.map((value) => value.trim()).filter(Boolean))]
+    .sort((left, right) => left.localeCompare(right))
+    .map((value) => ({ value, label: value }));
 }
 
 function metadataValues(
   metadata: LifeLabNoteMetadata,
-  key: Exclude<LifeLabFilterKey, "subfolder">,
+  key: MetadataFilterKey,
 ): string[] {
   const metadataKey = FILTER_METADATA_KEYS[key];
   const value = metadata[metadataKey];
@@ -54,7 +62,7 @@ function metadataValues(
 export function collectLifeLabFilterOptions(
   notes: LifeLabNoteSummary[],
 ): LifeLabFilterOptions {
-  const options: LifeLabFilterOptions = {
+  const raw: Record<MetadataFilterKey | "subfolder", string[]> = {
     subfolder: [],
     tag: [],
     topic: [],
@@ -64,30 +72,51 @@ export function collectLifeLabFilterOptions(
     person: [],
     place: [],
   };
+  const statuses = new Set<string>();
+  const monthKeys = new Set<string>();
 
   for (const note of notes) {
     if (note.subfolderLabel) {
-      options.subfolder.push(note.subfolderLabel);
+      raw.subfolder.push(note.subfolderLabel);
     }
 
     const metadata = note.metadata ?? {};
 
-    for (const key of Object.keys(FILTER_METADATA_KEYS) as Array<
-      Exclude<LifeLabFilterKey, "subfolder">
-    >) {
-      options[key].push(...metadataValues(metadata, key));
+    for (const key of Object.keys(FILTER_METADATA_KEYS) as MetadataFilterKey[]) {
+      raw[key].push(...metadataValues(metadata, key));
+    }
+
+    const status = resolveStudyStatusValue(metadata);
+
+    if (status) {
+      statuses.add(status);
+    }
+
+    const monthKey = noteMonthKey(note);
+
+    if (monthKey) {
+      monthKeys.add(monthKey);
     }
   }
 
   return {
-    subfolder: uniqueSorted(options.subfolder),
-    tag: uniqueSorted(options.tag),
-    topic: uniqueSorted(options.topic),
-    source: uniqueSorted(options.source),
-    channel: uniqueSorted(options.channel),
-    playlist: uniqueSorted(options.playlist),
-    person: uniqueSorted(options.person),
-    place: uniqueSorted(options.place),
+    subfolder: uniqueSortedOptions(raw.subfolder),
+    tag: uniqueSortedOptions(raw.tag),
+    topic: uniqueSortedOptions(raw.topic),
+    source: uniqueSortedOptions(raw.source),
+    channel: uniqueSortedOptions(raw.channel),
+    playlist: uniqueSortedOptions(raw.playlist),
+    person: uniqueSortedOptions(raw.person),
+    place: uniqueSortedOptions(raw.place),
+    status: [...statuses]
+      .sort((left, right) => left.localeCompare(right))
+      .map((value) => ({
+        value,
+        label: studyStatusLabel(value as Parameters<typeof studyStatusLabel>[0]),
+      })),
+    month: [...monthKeys]
+      .sort((left, right) => right.localeCompare(left))
+      .map((value) => ({ value, label: monthKeyLabel(value) })),
   };
 }
 
@@ -105,6 +134,22 @@ export function noteMatchesFilters(
 
     if (key === "subfolder") {
       if ((note.subfolderLabel ?? "").toLowerCase() !== value.toLowerCase()) {
+        return false;
+      }
+
+      continue;
+    }
+
+    if (key === "status") {
+      if (resolveStudyStatusValue(note.metadata) !== value.toLowerCase()) {
+        return false;
+      }
+
+      continue;
+    }
+
+    if (key === "month") {
+      if (noteMonthKey(note) !== value) {
         return false;
       }
 

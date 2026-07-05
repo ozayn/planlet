@@ -11,7 +11,7 @@ export type LifeLabChipContext = {
   groupId?: string;
   groupLabel?: string;
   subfolderLabel?: string | null;
-  variant?: "card" | "detail";
+  variant?: "card" | "detail" | "detail-compact" | "detail-mobile";
 };
 
 export type VisibleMetadataChips = {
@@ -106,6 +106,30 @@ export function isRedundantMetadataChip(
     return true;
   }
 
+  if (
+    context.sectionId === "learning-dictionary" &&
+    [
+      "dictionary-entry",
+      "dictionary entry",
+      "learning-dictionary",
+      "learning dictionary",
+      "concept",
+      "phrase",
+      "person",
+      "place",
+    ].includes(normalized)
+  ) {
+    return true;
+  }
+
+  if (
+    context.sectionId === "learning-dictionary" &&
+    metadata?.category &&
+    normalizeChipValue(metadata.category) === normalized
+  ) {
+    return true;
+  }
+
   const impliedSubfolder =
     context.groupId?.toLowerCase() ?? context.subfolderLabel?.toLowerCase();
 
@@ -150,7 +174,55 @@ export function isRedundantMetadataChip(
 }
 
 function maxVisibleChips(context: LifeLabChipContext): number {
+  if (context.sectionId === "reading-briefs" && context.variant === "detail-mobile") {
+    return 3;
+  }
+
+  if (
+    context.sectionId === "learning-dictionary" &&
+    context.variant === "card"
+  ) {
+    return 5;
+  }
+
+  if (
+    context.sectionId === "reading-briefs" &&
+    (context.variant === "card" || context.variant === "detail-compact")
+  ) {
+    return 5;
+  }
+
   return context.variant === "detail" ? 8 : 4;
+}
+
+function readingBriefCardCandidates(
+  metadata: LifeLabNoteMetadata,
+): string[] {
+  const candidates: string[] = [];
+
+  if (metadata.topics) {
+    candidates.push(...metadata.topics);
+  }
+
+  if (metadata.people) {
+    candidates.push(...metadata.people);
+  }
+
+  return candidates;
+}
+
+function dictionaryCardCandidates(metadata: LifeLabNoteMetadata): string[] {
+  const candidates: string[] = [];
+
+  if (metadata.tags) {
+    candidates.push(...metadata.tags);
+  }
+
+  if (metadata.related) {
+    candidates.push(...metadata.related);
+  }
+
+  return candidates;
 }
 
 export function selectVisibleMetadataChips(
@@ -161,6 +233,52 @@ export function selectVisibleMetadataChips(
     return { visible: [], overflowCount: 0 };
   }
 
+  const candidates: string[] =
+    context.sectionId === "reading-briefs" && context.variant === "card"
+      ? readingBriefCardCandidates(metadata)
+      : context.sectionId === "learning-dictionary" && context.variant === "card"
+        ? dictionaryCardCandidates(metadata)
+        : buildMetadataChipCandidates(metadata, context);
+
+  const seen = new Set<string>();
+  const deduped: string[] = [];
+
+  for (const chip of candidates) {
+    const key = normalizeChipValue(chip);
+
+    if (!key || seen.has(key)) {
+      continue;
+    }
+
+    if (isRedundantMetadataChip(chip, context, metadata)) {
+      continue;
+    }
+
+    seen.add(key);
+    deduped.push(chip);
+  }
+
+  const limit = maxVisibleChips(context);
+  const visible = deduped.slice(0, limit);
+  const hideOverflow =
+    (context.sectionId === "reading-briefs" ||
+      context.sectionId === "learning-dictionary") &&
+    (context.variant === "card" ||
+      context.variant === "detail-compact" ||
+      context.variant === "detail-mobile");
+
+  return {
+    visible,
+    overflowCount: hideOverflow
+      ? 0
+      : Math.max(0, deduped.length - visible.length),
+  };
+}
+
+function buildMetadataChipCandidates(
+  metadata: LifeLabNoteMetadata,
+  context: LifeLabChipContext,
+): string[] {
   const candidates: string[] = [];
 
   if (metadata.topics) {
@@ -184,13 +302,28 @@ export function selectVisibleMetadataChips(
   }
 
   if (
-    context.variant === "detail" &&
+    (context.variant === "detail" || context.variant === "detail-compact") &&
     metadata.channel?.trim() &&
     !isRedundantMetadataChip(metadata.channel, context, metadata)
   ) {
     candidates.push(metadata.channel.trim());
   }
 
+  return candidates;
+}
+
+export function collectAllMetadataChips(
+  metadata: LifeLabNoteMetadata | undefined,
+  context: LifeLabChipContext = {},
+): string[] {
+  if (!metadata) {
+    return [];
+  }
+
+  const candidates = buildMetadataChipCandidates(metadata, {
+    ...context,
+    variant: "detail",
+  });
   const seen = new Set<string>();
   const deduped: string[] = [];
 
@@ -209,11 +342,5 @@ export function selectVisibleMetadataChips(
     deduped.push(chip);
   }
 
-  const limit = maxVisibleChips(context);
-  const visible = deduped.slice(0, limit);
-
-  return {
-    visible,
-    overflowCount: Math.max(0, deduped.length - visible.length),
-  };
+  return deduped;
 }

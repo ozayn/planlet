@@ -10,6 +10,7 @@ import {
   SPEECH_AUTO_VOICE_ID,
   SPEECH_BROWSER_FALLBACK_MESSAGE,
   SPEECH_RATE_OPTIONS,
+  DEFAULT_SPEECH_RATE,
   type ListedSelectableSpeechVoice,
   type SpeechDiagnostics,
   type SpeechRate,
@@ -18,6 +19,7 @@ import {
 type ReadAloudControlsProps = {
   text: string | string[];
   className?: string;
+  compact?: boolean;
 };
 
 function ControlButton({
@@ -171,6 +173,7 @@ function ReadAloudPanel({
 export function ReadAloudControls({
   text,
   className = "",
+  compact = false,
 }: ReadAloudControlsProps) {
   const {
     isSupported,
@@ -200,6 +203,96 @@ export function ReadAloudControls({
 
   if (!hasText) {
     return null;
+  }
+
+  if (compact) {
+    return (
+      <>
+        <div className={`md:hidden ${className}`}>
+          <div className="flex flex-wrap items-center gap-2">
+            {!isSpeaking ? (
+              <ControlButton onClick={() => speak(text)}>
+                Read aloud
+              </ControlButton>
+            ) : null}
+            {!isSpeaking && rate !== DEFAULT_SPEECH_RATE ? (
+              <span className="text-xs text-muted">{formatSpeechRate(rate)}</span>
+            ) : null}
+          </div>
+
+          <details className="ui-settings-details group mt-1.5">
+            <summary className="ui-settings-details-summary !py-1.5 !text-xs !normal-case !tracking-normal">
+              Audio options
+            </summary>
+            <div className="ui-settings-details-body space-y-2">
+              <SpeechVoiceSelector
+                voices={selectableVoices}
+                selectedVoiceId={selectedVoiceId}
+                setSelectedVoiceId={setSelectedVoiceId}
+                disabled={isSpeaking}
+              />
+              <SpeechRateControls
+                rate={rate}
+                setRate={setRate}
+                disabled={isSpeaking}
+              />
+              <SpeechVoiceFallbackNotice message={voiceFallbackNotice} />
+              <SpeechPlaybackNotice show={playbackFailed} />
+              <SpeechDevDiagnostic diagnostics={diagnostics} />
+            </div>
+          </details>
+
+          {isSpeaking ? (
+            <div className="fixed inset-x-0 bottom-0 z-40 flex items-center justify-center gap-2 border-t border-border/60 bg-surface/95 px-4 py-2.5 backdrop-blur">
+              <ControlButton onClick={stop} active>
+                Stop
+              </ControlButton>
+              {isPaused ? (
+                <ControlButton onClick={resume}>Resume</ControlButton>
+              ) : (
+                <ControlButton onClick={pause}>Pause</ControlButton>
+              )}
+              <span className="text-xs text-muted">{formatSpeechRate(rate)}</span>
+            </div>
+          ) : null}
+        </div>
+
+        <ReadAloudPanel
+          className={`hidden md:flex ${className}`}
+          playbackFailed={playbackFailed}
+          voiceFallbackNotice={voiceFallbackNotice}
+          diagnostics={diagnostics}
+        >
+          {!isSpeaking ? (
+            <ControlButton onClick={() => speak(text)}>Read aloud</ControlButton>
+          ) : (
+            <>
+              <ControlButton onClick={stop} active>
+                Stop
+              </ControlButton>
+              {isPaused ? (
+                <ControlButton onClick={resume}>Resume</ControlButton>
+              ) : (
+                <ControlButton onClick={pause}>Pause</ControlButton>
+              )}
+            </>
+          )}
+
+          <SpeechVoiceSelector
+            voices={selectableVoices}
+            selectedVoiceId={selectedVoiceId}
+            setSelectedVoiceId={setSelectedVoiceId}
+            disabled={isSpeaking}
+          />
+
+          <SpeechRateControls
+            rate={rate}
+            setRate={setRate}
+            disabled={isSpeaking}
+          />
+        </ReadAloudPanel>
+      </>
+    );
   }
 
   return (

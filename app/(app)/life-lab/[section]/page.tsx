@@ -31,7 +31,7 @@ export default async function LifeLabSectionPage({
   const showDiagnostics =
     isAdmin && process.env.NODE_ENV === "development";
 
-  const { availability, sectionId, sectionLabel, notes, filterOptions, flashcardNoteCount, listingDiagnostic } =
+  const { availability, sectionId, sectionLabel, notes, filterOptions, listingDiagnostic } =
     await getLifeLabSectionData(section, {
       refresh: shouldRefresh,
       includeListingDiagnostic: showDiagnostics,
@@ -71,7 +71,6 @@ export default async function LifeLabSectionPage({
           sectionId={sectionId}
           notes={notes}
           filterOptions={filterOptions}
-          flashcardNoteCount={flashcardNoteCount}
           listingDiagnostic={listingDiagnostic}
           showDiagnostics={showDiagnostics}
           refreshHref={

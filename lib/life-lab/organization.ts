@@ -1,4 +1,20 @@
-import type { LifeLabNoteGroup, LifeLabNoteSummary } from "@/lib/life-lab/constants";
+import type {
+  LifeLabNoteGroup,
+  LifeLabNoteSummary,
+  LifeLabSectionId,
+} from "@/lib/life-lab/constants";
+import {
+  monthKeyLabel,
+  noteMonthKey,
+  sortLifeLabNotes,
+  type LifeLabSortKey,
+} from "@/lib/life-lab/browse";
+import {
+  classifyDictionaryNoteGroup,
+  compareDictionaryGroupIds,
+  dictionaryCategoryLabel,
+  isDictionaryCategoryId,
+} from "@/lib/life-lab/learning-dictionary";
 import {
   isReadmeSlug,
   parseDateFromFilename,
@@ -189,8 +205,150 @@ function groupLabelForId(id: string, notes: LifeLabNoteSummary[]): string {
   return noteGroupLabel(id);
 }
 
+export type GroupLifeLabNotesOptions = {
+  sectionId?: LifeLabSectionId;
+  sort?: LifeLabSortKey;
+};
+
+// When a dated primary group grows large, split it into month groups so the
+// latest notes stay scannable and older ones collapse behind month headers.
+const MONTH_SPLIT_THRESHOLD = 8;
+
+function splitLargeDatedGroupByMonth(
+  group: LifeLabNoteGroup,
+): LifeLabNoteGroup[] {
+  if (group.notes.length <= MONTH_SPLIT_THRESHOLD) {
+    return [group];
+  }
+
+  const monthBuckets = new Map<string, LifeLabNoteSummary[]>();
+  const undated: LifeLabNoteSummary[] = [];
+
+  for (const note of group.notes) {
+    const monthKey = noteMonthKey(note);
+
+    if (!monthKey) {
+      undated.push(note);
+      continue;
+    }
+
+    const bucket = monthBuckets.get(monthKey) ?? [];
+    bucket.push(note);
+    monthBuckets.set(monthKey, bucket);
+  }
+
+  if (monthBuckets.size <= 1) {
+    return [group];
+  }
+
+  const monthKeys = [...monthBuckets.keys()].sort((left, right) =>
+    right.localeCompare(left),
+  );
+
+  const monthGroups = monthKeys.map((monthKey, index) => ({
+    id: `${group.id}:${monthKey}`,
+    label: `${group.label} · ${monthKeyLabel(monthKey)}`,
+    notes: monthBuckets.get(monthKey) ?? [],
+    collapsedByDefault: index > 0,
+    variant: index === 0 ? ("primary" as const) : ("disclosure" as const),
+  }));
+
+  if (undated.length > 0) {
+    monthGroups.push({
+      id: `${group.id}:undated`,
+      label: `${group.label} · Undated`,
+      notes: undated,
+      collapsedByDefault: true,
+      variant: "disclosure" as const,
+    });
+  }
+
+  return monthGroups;
+}
+
+function mergeSecondaryGroups(
+  groups: LifeLabNoteGroup[],
+  mergedLabel: string,
+): LifeLabNoteGroup[] {
+  const primaryGroups = groups.filter((group) => group.variant === "primary");
+  const secondaryGroups = groups.filter(
+    (group) => group.variant === "disclosure",
+  );
+
+  if (secondaryGroups.length === 0) {
+    return groups;
+  }
+
+  const mergedNotes = sortNotesInGroup(
+    secondaryGroups.flatMap((group) => group.notes),
+  );
+
+  return [
+    ...primaryGroups,
+    {
+      id: "section-files",
+      label: mergedLabel,
+      notes: mergedNotes,
+      collapsedByDefault: true,
+      variant: "disclosure",
+    },
+  ];
+}
+
+function mergeReadingBriefSecondaryGroups(
+  groups: LifeLabNoteGroup[],
+): LifeLabNoteGroup[] {
+  return mergeSecondaryGroups(groups, "About & reference");
+}
+
+function mergeDictionarySecondaryGroups(
+  groups: LifeLabNoteGroup[],
+): LifeLabNoteGroup[] {
+  return mergeSecondaryGroups(groups, "About & reference");
+}
+
+function classifyNoteGroupForSection(
+  note: LifeLabNoteSummary,
+  sectionId?: LifeLabSectionId,
+): string {
+  if (sectionId === "learning-dictionary") {
+    return classifyDictionaryNoteGroup(note);
+  }
+
+  return classifyNoteGroup(note);
+}
+
+function compareGroupIdsForSection(
+  left: string,
+  right: string,
+  sectionId?: LifeLabSectionId,
+): number {
+  if (sectionId === "learning-dictionary") {
+    return compareDictionaryGroupIds(left, right);
+  }
+
+  return compareGroupIds(left, right);
+}
+
+function groupLabelForSectionId(
+  id: string,
+  notes: LifeLabNoteSummary[],
+  sectionId?: LifeLabSectionId,
+): string {
+  if (sectionId === "learning-dictionary" && isDictionaryCategoryId(id)) {
+    return dictionaryCategoryLabel(id);
+  }
+
+  return groupLabelForId(id, notes);
+}
+
+function isPrimaryDictionaryGroup(groupId: string): boolean {
+  return isDictionaryCategoryId(groupId);
+}
+
 export function groupLifeLabNotes(
   notes: LifeLabNoteSummary[],
+  options: GroupLifeLabNotesOptions = {},
 ): LifeLabNoteGroup[] {
   const seenFileIds = new Set<string>();
   const seenRelativePaths = new Set<string>();
@@ -199,7 +357,7 @@ export function groupLifeLabNotes(
   const classified = notes
     .map((note) => ({
       note,
-      groupId: classifyNoteGroup(note),
+      groupId: classifyNoteGroupForSection(note, options.sectionId),
     }))
     .sort((left, right) => {
       const priorityDelta =
@@ -227,20 +385,44 @@ export function groupLifeLabNotes(
     groups.set(groupId, existing);
   }
 
-  return [...groups.keys()]
-    .sort(compareGroupIds)
+  const builtGroups = [...groups.keys()]
+    .sort((left, right) =>
+      compareGroupIdsForSection(left, right, options.sectionId),
+    )
     .map((id) => {
-      const label = groupLabelForId(id, groups.get(id) ?? []);
-      const groupNotes = sortNotesInGroup(groups.get(id) ?? []);
-      const isPrimary = isPrimaryContentGroup(id);
+      const groupNotes = groups.get(id) ?? [];
+      const label = groupLabelForSectionId(id, groupNotes, options.sectionId);
+      const sortedNotes = options.sort
+        ? sortLifeLabNotes(groupNotes, options.sort)
+        : sortNotesInGroup(groupNotes);
+      const isPrimary =
+        options.sectionId === "learning-dictionary"
+          ? isPrimaryDictionaryGroup(id)
+          : isPrimaryContentGroup(id);
 
       return {
         id,
         label,
-        notes: groupNotes,
+        notes: sortedNotes,
         collapsedByDefault: !isPrimary,
         variant: isPrimary ? ("primary" as const) : ("disclosure" as const),
       };
     })
     .filter((group) => group.notes.length > 0);
+
+  if (options.sectionId === "reading-briefs") {
+    const merged = mergeReadingBriefSecondaryGroups(builtGroups);
+
+    return merged.flatMap((group) =>
+      group.variant === "primary"
+        ? splitLargeDatedGroupByMonth(group)
+        : [group],
+    );
+  }
+
+  if (options.sectionId === "learning-dictionary") {
+    return mergeDictionarySecondaryGroups(builtGroups);
+  }
+
+  return builtGroups;
 }

@@ -26,9 +26,9 @@ export function studyStatusLabel(status: LifeLabStudyStatus): string {
   return STUDY_STATUS_LABELS[status];
 }
 
-export function resolveStudyStatusLabel(
+export function resolveStudyStatusValue(
   metadata?: LifeLabNoteMetadata,
-): string | null {
+): LifeLabStudyStatus | null {
   if (!metadata) {
     return null;
   }
@@ -36,18 +36,26 @@ export function resolveStudyStatusLabel(
   const rawStatus = metadata.study_status?.trim().toLowerCase();
 
   if (rawStatus && isLifeLabStudyStatus(rawStatus)) {
-    return studyStatusLabel(rawStatus);
+    return rawStatus;
   }
 
   if (metadata.reviewed === true) {
-    return studyStatusLabel("reviewed");
+    return "reviewed";
   }
 
   if (metadata.reviewed === false) {
-    return studyStatusLabel("new");
+    return "new";
   }
 
   return null;
+}
+
+export function resolveStudyStatusLabel(
+  metadata?: LifeLabNoteMetadata,
+): string | null {
+  const status = resolveStudyStatusValue(metadata);
+
+  return status ? studyStatusLabel(status) : null;
 }
 
 export function noteShowsFlashcardAction(note: {

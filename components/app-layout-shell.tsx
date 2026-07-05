@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { usePathname } from "next/navigation";
 
 import {
   AppNavDrawerProvider,
@@ -41,6 +42,9 @@ export function AppLayoutShell({
   notifications = [],
   children,
 }: AppLayoutShellProps) {
+  const pathname = usePathname();
+  const hideBottomNav = /^\/life-lab\/[^/]+\/[^/]+$/.test(pathname);
+
   return (
     <AppNavDrawerProvider
       access={access}
@@ -71,12 +75,16 @@ export function AppLayoutShell({
               notifications={notifications}
               leadingAction={<AppNavMenuButton />}
             />
-            <main className="ui-app-main relative z-0 mx-auto w-full max-w-2xl flex-1 px-5 pb-safe-nav pt-5 md:max-w-3xl md:px-8 md:pb-10 md:pt-8">
+            <main
+              className={`ui-app-main relative z-0 mx-auto w-full max-w-2xl flex-1 px-5 pt-5 md:max-w-3xl md:px-8 md:pt-8 ${
+                hideBottomNav ? "pb-6 md:pb-10" : "pb-safe-nav md:pb-10"
+              }`}
+            >
               {children}
             </main>
           </div>
         </div>
-        <BottomNav items={mobileNavItems} />
+        {hideBottomNav ? null : <BottomNav items={mobileNavItems} />}
       </div>
     </AppNavDrawerProvider>
   );

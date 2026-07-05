@@ -7,12 +7,14 @@ type LifeLabNoteReadAloudProps = {
   title: string;
   content: string;
   className?: string;
+  compact?: boolean;
 };
 
 export function LifeLabNoteReadAloud({
   title,
   content,
   className = "",
+  compact = false,
 }: LifeLabNoteReadAloudProps) {
   const speechChunks = prepareNoteSpeechChunks(title, content);
 
@@ -24,6 +26,7 @@ export function LifeLabNoteReadAloud({
     <ReadAloudControls
       text={speechChunks}
       className={className}
+      compact={compact}
     />
   );
 }

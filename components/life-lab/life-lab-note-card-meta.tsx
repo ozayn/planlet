@@ -44,7 +44,7 @@ export function LifeLabNoteCardMeta({
           className="rounded-full bg-accent-cream px-2.5 py-0.5 text-[0.6875rem] font-medium text-foreground transition-colors hover:bg-accent-cream/80"
         >
           Study
-          {note.flashcardCount ? ` · ${note.flashcardCount}` : ""}
+          {note.flashcardCount ? ` · ${note.flashcardCount} cards` : ""}
         </Link>
       ) : null}
     </div>

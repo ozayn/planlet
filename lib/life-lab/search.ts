@@ -11,6 +11,9 @@ function metadataSearchValues(metadata: LifeLabNoteMetadata): string[] {
     metadata.channel,
     metadata.playlist,
     metadata.study_status,
+    metadata.date,
+    metadata.term,
+    metadata.category,
     typeof metadata.episode === "string" || typeof metadata.episode === "number"
       ? String(metadata.episode)
       : undefined,
@@ -23,6 +26,7 @@ function metadataSearchValues(metadata: LifeLabNoteMetadata): string[] {
     metadata.people,
     metadata.places,
     metadata.tags,
+    metadata.related,
   ]) {
     if (list) {
       values.push(...list);

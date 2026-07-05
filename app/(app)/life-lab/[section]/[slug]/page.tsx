@@ -2,6 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { auth } from "@/auth";
+import { LifeLabReadingBriefHeader } from "@/components/life-lab/life-lab-reading-brief-header";
+import { LifeLabReadingBriefNote } from "@/components/life-lab/life-lab-reading-brief-note";
 import { LifeLabMetadataChips } from "@/components/life-lab/life-lab-metadata-chips";
 import { LifeLabNoteCardMeta } from "@/components/life-lab/life-lab-note-card-meta";
 import { LifeLabNoteReadAloud } from "@/components/life-lab/life-lab-note-read-aloud";
@@ -12,6 +14,7 @@ import { LifeLabStatusPanel } from "@/components/life-lab/life-lab-status-panel"
 import { PageHeader } from "@/components/page-header";
 import { getLifeLabNoteData } from "@/lib/life-lab";
 import { isLifeLabDevToolsEnabled } from "@/lib/life-lab/dev";
+import { isReadingBriefNote } from "@/lib/life-lab/reading-briefs";
 import { isAdminRole } from "@/lib/auth-roles";
 import { canAccessLifeLabPage } from "@/lib/roles";
 
@@ -43,62 +46,94 @@ export default async function LifeLabNotePage({
   }
 
   const isAdmin = isAdminRole(session.user.role);
+  const isReadingBrief = isReadingBriefNote({
+    relativePath: note.relativePath,
+    subfolderLabel: note.subfolderLabel,
+    metadata: note.metadata,
+  });
 
   return (
-    <section className="ui-page-stack space-y-6">
-      <PageHeader
-        title={note.title}
-        subtitle={note.sectionLabel}
-        action={
-          <div className="flex flex-wrap items-center gap-3">
-            {note.flashcards && note.flashcards.length > 0 ? (
+    <section
+      className={`ui-page-stack ${isReadingBrief ? "space-y-3 md:space-y-4" : "space-y-6"}`}
+    >
+      {isReadingBrief ? (
+        <LifeLabReadingBriefHeader
+          sectionId={note.sectionId}
+          sectionLabel={note.sectionLabel}
+          note={note}
+        />
+      ) : (
+        <PageHeader
+          title={note.title}
+          subtitle={note.sectionLabel}
+          action={
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              {note.flashcards && note.flashcards.length > 0 ? (
+                <Link
+                  href={`/life-lab/${note.sectionId}/${note.slug}/study`}
+                  className="rounded-full bg-accent-cream px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent-cream/80"
+                >
+                  Study · {note.flashcards.length} cards
+                </Link>
+              ) : null}
+              <LifeLabNoteDevToolbar note={note} />
               <Link
-                href={`/life-lab/${note.sectionId}/${note.slug}/study`}
-                className="rounded-full bg-accent-cream px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent-cream/80"
+                href={`/life-lab/${note.sectionId}`}
+                className="text-sm font-medium text-muted transition-colors hover:text-foreground"
               >
-                Study ({note.flashcards.length})
+                Back to section
               </Link>
-            ) : null}
-            <LifeLabNoteDevToolbar note={note} />
-            <Link
-              href={`/life-lab/${note.sectionId}`}
-              className="text-sm font-medium text-muted transition-colors hover:text-foreground"
-            >
-              Back to section
-            </Link>
-          </div>
-        }
-      />
+            </div>
+          }
+        />
+      )}
 
       {availability.status !== "ready" ? (
         <LifeLabStatusPanel availability={availability} isAdmin={isAdmin} />
       ) : (
         <>
-          <article className="ui-card-padded">
-            {note.dateLabel ?? note.modifiedAtLabel ? (
-              <p className="mb-2 text-xs text-muted-light">
-                {note.dateLabel ?? note.modifiedAtLabel}
-              </p>
-            ) : null}
-            <LifeLabMetadataChips
-              metadata={note.metadata}
-              sectionId={note.sectionId}
-              sectionLabel={note.sectionLabel}
-              subfolderLabel={note.subfolderLabel}
-              variant="detail"
-              className="mb-2"
-            />
-            <LifeLabNoteCardMeta
-              sectionId={note.sectionId}
-              note={note}
-              className="mb-3"
-            />
-            <LifeLabNoteReadAloud
-              title={note.title}
-              content={note.content}
-              className="mb-4"
-            />
-            <MarkdownContent content={note.content} />
+          <article
+            className={
+              isReadingBrief
+                ? "md:ui-card-padded rounded-xl border-0 bg-transparent p-0 md:border md:border-border/60 md:bg-surface md:p-5"
+                : "ui-card-padded"
+            }
+          >
+            {isReadingBrief ? (
+              <LifeLabReadingBriefNote
+                content={note.content}
+                sectionId={note.sectionId}
+                slug={note.slug}
+                flashcards={note.flashcards}
+              />
+            ) : (
+              <>
+                {note.dateLabel ?? note.modifiedAtLabel ? (
+                  <p className="mb-2 text-xs text-muted-light">
+                    {note.dateLabel ?? note.modifiedAtLabel}
+                  </p>
+                ) : null}
+                <LifeLabMetadataChips
+                  metadata={note.metadata}
+                  sectionId={note.sectionId}
+                  sectionLabel={note.sectionLabel}
+                  subfolderLabel={note.subfolderLabel}
+                  variant="detail"
+                  className="mb-2"
+                />
+                <LifeLabNoteCardMeta
+                  sectionId={note.sectionId}
+                  note={note}
+                  className="mb-3"
+                />
+                <LifeLabNoteReadAloud
+                  title={note.title}
+                  content={note.content}
+                  className="mb-4"
+                />
+                <MarkdownContent content={note.content} />
+              </>
+            )}
           </article>
           {note.dev ? (
             <LifeLabNoteDevInfoPanel

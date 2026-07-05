@@ -34,6 +34,10 @@ export const LIFE_LAB_ALLOWED_SECTIONS = {
     label: "Reading Briefs",
     folderName: "reading-briefs",
   },
+  "learning-dictionary": {
+    label: "Learning Dictionary",
+    folderName: "learning-dictionary",
+  },
 } as const;
 
 export type LifeLabSectionId = keyof typeof LIFE_LAB_ALLOWED_SECTIONS;
@@ -65,6 +69,9 @@ export type LifeLabNoteMetadata = {
   people?: string[];
   places?: string[];
   tags?: string[];
+  term?: string;
+  category?: string;
+  related?: string[];
   study_status?: string;
   reviewed?: boolean;
   flashcards?: boolean;

@@ -26,7 +26,31 @@ import {
   collectLifeLabFilterOptions,
   filterLifeLabNotes,
 } from "@/lib/life-lab/filters";
+import {
+  buildLifeLabHighlights,
+  shouldShowLifeLabHighlights,
+  sortLifeLabNotes,
+} from "@/lib/life-lab/browse";
 import { processLifeLabNoteContent } from "@/lib/life-lab/enrichment";
+import {
+  assessReadingBriefStructure,
+  detectReadingBriefNavSections,
+  extractReadingBriefPreview,
+  parseSaveWorthySection,
+  parseGlanceListItems,
+  prepareReadingBriefSegments,
+  readingBriefDisplayTitle,
+  readingBriefHeadingAnchor,
+  READING_BRIEF_INTEREST_TOPICS,
+  READING_BRIEF_MIN_FLASHCARDS,
+  transformMarkdownTables,
+} from "@/lib/life-lab/reading-briefs";
+import {
+  dictionaryDisplayTitle,
+  extractDictionaryDefinition,
+  isDictionaryEntryNote,
+  resolveDictionaryCategory,
+} from "@/lib/life-lab/learning-dictionary";
 import {
   isRedundantMetadataChip,
   selectVisibleMetadataChips,
@@ -167,6 +191,7 @@ describe("life lab sections", () => {
     assert.equal(isLifeLabSectionId("youtube-learning"), true);
     assert.equal(isLifeLabSectionId("photography"), true);
     assert.equal(isLifeLabSectionId("reading-briefs"), true);
+    assert.equal(isLifeLabSectionId("learning-dictionary"), true);
     assert.equal(isLifeLabSectionId("therapy-prep"), false);
   });
 
@@ -179,6 +204,7 @@ describe("life lab sections", () => {
   it("maps allowed folder names to section ids", () => {
     assert.equal(sectionIdFromFolderName("art-history"), "art-history");
     assert.equal(sectionIdFromFolderName("reading-briefs"), "reading-briefs");
+    assert.equal(sectionIdFromFolderName("learning-dictionary"), "learning-dictionary");
     assert.equal(sectionIdFromFolderName("therapy-prep"), null);
   });
 });
@@ -355,7 +381,7 @@ describe("life lab note organization", () => {
   });
 
   it("groups reading briefs with daily and saved-articles first", () => {
-    const groups = groupLifeLabNotes([
+    const notes = [
       noteSummary({
         slug: "readme",
         title: "Readme",
@@ -385,19 +411,36 @@ describe("life lab note organization", () => {
         relativePath: "saved-articles/2026-07-03-essay.md",
         dateLabel: "Jul 3, 2026",
       }),
-    ]);
+    ];
+
+    const defaultGroups = groupLifeLabNotes(notes);
 
     assert.deepEqual(
-      groups.map((group) => group.id),
+      defaultGroups.map((group) => group.id),
       ["daily", "saved-articles", "reference", "about"],
     );
-    assert.equal(groups[0]?.variant, "primary");
-    assert.equal(groups[1]?.variant, "primary");
-    assert.equal(groups[2]?.collapsedByDefault, true);
-    assert.equal(groups[3]?.collapsedByDefault, true);
+    assert.equal(defaultGroups[0]?.variant, "primary");
+    assert.equal(defaultGroups[1]?.variant, "primary");
+    assert.equal(defaultGroups[2]?.collapsedByDefault, true);
+    assert.equal(defaultGroups[3]?.collapsedByDefault, true);
     assert.deepEqual(
-      groups[2]?.notes.map((note) => note.title),
+      defaultGroups[2]?.notes.map((note) => note.title),
       ["Interests", "Sources"],
+    );
+
+    const readingBriefGroups = groupLifeLabNotes(notes, {
+      sectionId: "reading-briefs",
+    });
+
+    assert.deepEqual(
+      readingBriefGroups.map((group) => group.id),
+      ["daily", "saved-articles", "section-files"],
+    );
+    assert.equal(readingBriefGroups[2]?.label, "About & reference");
+    assert.equal(readingBriefGroups[2]?.collapsedByDefault, true);
+    assert.deepEqual(
+      readingBriefGroups[2]?.notes.map((note) => note.title),
+      ["Interests", "Readme", "Sources"],
     );
   });
 
@@ -573,10 +616,145 @@ describe("life lab search and filters", () => {
     const filtered = filterLifeLabNotes(notes, { tag: "history", playlist: "Series A" });
 
     assert.deepEqual(filtered.map((note) => note.slug), ["one"]);
-    assert.deepEqual(collectLifeLabFilterOptions(notes).playlist, [
-      "Series A",
-      "Series B",
-    ]);
+    assert.deepEqual(
+      collectLifeLabFilterOptions(notes).playlist.map((option) => option.value),
+      ["Series A", "Series B"],
+    );
+  });
+
+  it("filters by study status and month", () => {
+    const notes = [
+      noteSummary({
+        slug: "videos__2026-07-04-a",
+        title: "A",
+        subfolderLabel: "videos",
+        metadata: { study_status: "studying" },
+      }),
+      noteSummary({
+        slug: "videos__2026-06-10-b",
+        title: "B",
+        subfolderLabel: "videos",
+        metadata: { study_status: "learned" },
+      }),
+    ];
+
+    assert.deepEqual(
+      filterLifeLabNotes(notes, { status: "studying" }).map((note) => note.slug),
+      ["videos__2026-07-04-a"],
+    );
+    assert.deepEqual(
+      filterLifeLabNotes(notes, { month: "2026-06" }).map((note) => note.slug),
+      ["videos__2026-06-10-b"],
+    );
+
+    const options = collectLifeLabFilterOptions(notes);
+
+    assert.deepEqual(
+      options.status.map((option) => option.value),
+      ["learned", "studying"],
+    );
+    assert.deepEqual(
+      options.month.map((option) => option.value),
+      ["2026-07", "2026-06"],
+    );
+    assert.equal(options.month[0]?.label, "July 2026");
+  });
+});
+
+describe("life lab browsing", () => {
+  const browseNotes = [
+    noteSummary({
+      slug: "videos__2026-07-04-newer",
+      title: "Newer video",
+      subfolderLabel: "videos",
+      metadata: { study_status: "new" },
+    }),
+    noteSummary({
+      slug: "videos__2026-06-01-older",
+      title: "Older video",
+      subfolderLabel: "videos",
+      modifiedAt: "2026-07-05T10:00:00Z",
+      metadata: { study_status: "studying" },
+    }),
+    noteSummary({
+      slug: "videos__2026-05-01-learned",
+      title: "Learned video",
+      subfolderLabel: "videos",
+      metadata: { study_status: "learned" },
+    }),
+  ];
+
+  it("sorts notes by each sort key", () => {
+    assert.deepEqual(
+      sortLifeLabNotes(browseNotes, "newest").map((note) => note.title),
+      ["Newer video", "Older video", "Learned video"],
+    );
+    assert.deepEqual(
+      sortLifeLabNotes(browseNotes, "oldest").map((note) => note.title),
+      ["Learned video", "Older video", "Newer video"],
+    );
+    assert.deepEqual(
+      sortLifeLabNotes(browseNotes, "title").map((note) => note.title),
+      ["Learned video", "Newer video", "Older video"],
+    );
+    assert.deepEqual(
+      sortLifeLabNotes(browseNotes, "status").map((note) => note.title),
+      ["Older video", "Newer video", "Learned video"],
+    );
+    assert.equal(
+      sortLifeLabNotes(browseNotes, "recent")[0]?.title,
+      "Older video",
+    );
+  });
+
+  it("builds highlights with latest, continue, and recently added", () => {
+    const highlights = buildLifeLabHighlights(browseNotes, 2);
+
+    assert.deepEqual(
+      highlights.latest.map((note) => note.title),
+      ["Newer video", "Older video"],
+    );
+    assert.deepEqual(
+      highlights.continueStudying.map((note) => note.title),
+      ["Older video"],
+    );
+    assert.ok(
+      highlights.recentlyAdded.every(
+        (note) => !["Newer video", "Older video"].includes(note.title),
+      ),
+    );
+  });
+
+  it("shows highlights only for large unfiltered sections", () => {
+    assert.equal(shouldShowLifeLabHighlights(20, false), true);
+    assert.equal(shouldShowLifeLabHighlights(20, true), false);
+    assert.equal(shouldShowLifeLabHighlights(5, false), false);
+  });
+
+  it("splits large reading-brief daily groups by month", () => {
+    const manyDailies = Array.from({ length: 12 }, (_, index) => {
+      const month = index < 6 ? "07" : "06";
+      const day = String((index % 6) + 1).padStart(2, "0");
+
+      return noteSummary({
+        slug: `daily__2026-${month}-${day}-brief`,
+        title: `Brief ${month}-${day}`,
+        subfolderLabel: "daily",
+        relativePath: `daily/2026-${month}-${day}-brief.md`,
+      });
+    });
+
+    const groups = groupLifeLabNotes(manyDailies, {
+      sectionId: "reading-briefs",
+    });
+
+    assert.deepEqual(
+      groups.map((group) => group.label),
+      ["Daily · July 2026", "Daily · June 2026"],
+    );
+    assert.equal(groups[0]?.variant, "primary");
+    assert.equal(groups[1]?.variant, "disclosure");
+    assert.equal(groups[1]?.collapsedByDefault, true);
   });
 });
 
@@ -981,5 +1159,296 @@ describe("life lab speech", () => {
     assert.match(SPEECH_BROWSER_FALLBACK_MESSAGE, /Safari on macOS/);
     assert.match(SPEECH_BROWSER_FALLBACK_MESSAGE, /may not work/);
     assert.match(SPEECH_VOICE_SELECTION_FALLBACK_MESSAGE, /Auto/);
+  });
+});
+
+describe("reading briefs", () => {
+  const sampleBrief = readFileSync(
+    join(
+      process.cwd(),
+      "lib/life-lab/fixtures/sample-bbc-world-service-daily-brief.md",
+    ),
+    "utf8",
+  );
+
+  it("defines Azin interest topics for brief prioritization", () => {
+    assert.ok(READING_BRIEF_INTEREST_TOPICS.includes("iran"));
+    assert.ok(READING_BRIEF_INTEREST_TOPICS.includes("systems thinking"));
+    assert.ok(READING_BRIEF_INTEREST_TOPICS.length >= 10);
+  });
+
+  it("validates the sample BBC daily brief structure", () => {
+    const assessment = assessReadingBriefStructure(sampleBrief);
+
+    assert.deepEqual(assessment.missingSections, []);
+    assert.ok(assessment.presentSections.includes("Opening synthesis"));
+    assert.ok(assessment.presentSections.includes("Top story clusters"));
+    assert.ok(assessment.hasSourceLimitation);
+    assert.ok(assessment.flashcardCount >= READING_BRIEF_MIN_FLASHCARDS);
+    assert.equal(assessment.meetsFlashcardMinimum, true);
+  });
+
+  it("extracts searchable metadata and flashcards from the sample brief", () => {
+    const { metadata, body } = parseLifeLabFrontmatter(sampleBrief);
+    const processed = processLifeLabNoteContent(
+      {
+        slug: "daily__2026-07-05-bbc-world-service",
+        title: "BBC World Service Daily Brief — 2026-07-05",
+        excerpt: "",
+        modifiedAt: null,
+        modifiedAtLabel: null,
+        dateLabel: null,
+        subfolderLabel: "daily",
+        fileId: "fixture",
+        relativePath: "daily/2026-07-05-bbc-world-service.md",
+        metadata,
+      },
+      sampleBrief,
+    );
+
+    assert.equal(metadata.source, "bbc-world-service");
+    assert.ok(metadata.topics?.includes("political legitimacy"));
+    assert.ok(metadata.tags?.includes("iran"));
+    assert.ok(processed.flashcards && processed.flashcards.length >= 8);
+    assert.match(body, /Why this brief fits Azin/);
+    assert.match(
+      processed.excerpt,
+      /States perform legitimacy under pressure while borders, public memory, and measurement all shift at once/,
+    );
+  });
+
+  it("extracts card preview from short version fields", () => {
+    const preview = extractReadingBriefPreview(sampleBrief);
+
+    assert.match(preview, /States perform legitimacy under pressure/);
+    assert.match(preview, /Iran succession ritual/);
+    assert.match(preview, /What makes a state look legitimate/);
+    assert.ok(preview.length <= 283);
+  });
+
+  it("prepares reading brief display with short version and nav", () => {
+    const { glanceSegments, contentSegments, navSections } =
+      prepareReadingBriefSegments(sampleBrief);
+
+    assert.equal(glanceSegments.length, 1);
+    assert.match(glanceSegments[0]?.content ?? "", /Pattern of the day/);
+    assert.ok(contentSegments.some((segment) => segment.kind === "flashcards"));
+    assert.ok(contentSegments.some((segment) => segment.kind === "save-worthy"));
+    assert.deepEqual(
+      navSections.map((section) => section.id),
+      [
+        "short-version",
+        "top-clusters",
+        "study-notes",
+        "flashcards",
+        "follow-ups",
+      ],
+    );
+    assert.equal(readingBriefHeadingAnchor("Top story clusters"), "top-clusters");
+    assert.equal(readingBriefHeadingAnchor("Optional Flashcards"), "flashcards");
+    assert.equal(readingBriefHeadingAnchor("Follow-up questions"), "follow-ups");
+
+    const sourceNote = contentSegments.find(
+      (segment) =>
+        segment.kind === "markdown" &&
+        segment.heading === "Source note" &&
+        segment.collapsible,
+    );
+    assert.ok(sourceNote && sourceNote.kind === "markdown");
+    assert.match(sourceNote.preview ?? "", /Built from BBC World Service RSS/);
+    assert.doesNotMatch(sourceNote.content, /^##\s+Source note/m);
+  });
+
+  it("formats reading brief display title without trailing date", () => {
+    assert.equal(
+      readingBriefDisplayTitle("BBC World Service Daily Brief — 2026-07-05"),
+      "BBC World Service Daily Brief",
+    );
+  });
+
+  it("parses glance list items from bullets or middots", () => {
+    assert.deepEqual(parseGlanceListItems("One · Two · Three"), [
+      "One",
+      "Two",
+      "Three",
+    ]);
+    assert.deepEqual(parseGlanceListItems("- Alpha\n- Beta"), ["Alpha", "Beta"]);
+  });
+
+  it("limits mobile detail metadata chips to three without overflow", () => {
+    const { metadata } = parseLifeLabFrontmatter(sampleBrief);
+    const chips = selectVisibleMetadataChips(metadata, {
+      sectionId: "reading-briefs",
+      variant: "detail-mobile",
+    });
+
+    assert.equal(chips.visible.length, 3);
+    assert.equal(chips.overflowCount, 0);
+  });
+
+  it("transforms markdown tables into stacked card markdown", () => {
+    const transformed = transformMarkdownTables(
+      "| Item | One-line explanation |\n| --- | --- |\n| Khamenei | Leader |",
+    );
+
+    assert.match(transformed, /### Khamenei/);
+    assert.match(transformed, /\*\*One-line explanation:\*\* Leader/);
+  });
+
+  it("parses save-worthy groups", () => {
+    const groups = parseSaveWorthySection(
+      "### Must save\n- [One](https://example.com)\n\n### Maybe save\n- [Two](https://example.com)",
+    );
+
+    assert.equal(groups.length, 2);
+    assert.equal(groups[0]?.id, "must");
+    assert.equal(groups[1]?.id, "maybe");
+  });
+
+  it("shows only a few topic chips on reading brief cards", () => {
+    const { metadata } = parseLifeLabFrontmatter(sampleBrief);
+    const chips = selectVisibleMetadataChips(metadata, {
+      sectionId: "reading-briefs",
+      variant: "card",
+    });
+
+    assert.equal(chips.visible.length, 5);
+    assert.equal(chips.overflowCount, 0);
+    assert.deepEqual(chips.visible, [
+      "political legitimacy",
+      "succession",
+      "migration",
+      "nationalism",
+      "climate data",
+    ]);
+  });
+});
+
+describe("learning dictionary", () => {
+  const fixtureRoot = join(
+    import.meta.dirname,
+    "life-lab/fixtures/learning-dictionary",
+  );
+  const conceptFixture = readFileSync(
+    join(fixtureRoot, "concepts/political-legitimacy.md"),
+    "utf8",
+  );
+
+  function dictionaryNote(
+    relativePath: string,
+    partial: Partial<LifeLabNoteSummary> = {},
+  ): LifeLabNoteSummary {
+    const slug = driveRelativePathToSlug(relativePath);
+
+    return noteSummary({
+      slug,
+      title: slugToTitle(slug),
+      relativePath,
+      subfolderLabel: relativePathSubfolder(relativePath),
+      ...partial,
+    });
+  }
+
+  it("detects dictionary entries from metadata and subfolders", () => {
+    const { metadata } = parseLifeLabFrontmatter(conceptFixture);
+
+    assert.equal(isDictionaryEntryNote({
+      relativePath: "concepts/political-legitimacy.md",
+      subfolderLabel: "concepts",
+      metadata,
+    }), true);
+    assert.equal(isDictionaryEntryNote({
+      relativePath: "README.md",
+      subfolderLabel: null,
+      metadata: {},
+    }), false);
+  });
+
+  it("extracts term, definition, and flashcards from sample entries", () => {
+    const { metadata, body } = parseLifeLabFrontmatter(conceptFixture);
+    const processed = processLifeLabNoteContent(
+      dictionaryNote("concepts/political-legitimacy.md", {
+        title: "Political Legitimacy",
+        metadata,
+      }),
+      conceptFixture,
+    );
+
+    assert.equal(
+      dictionaryDisplayTitle({
+        title: processed.title,
+        metadata,
+        body,
+      }),
+      "Political legitimacy",
+    );
+    assert.match(
+      extractDictionaryDefinition(body),
+      /belief that a government or ruler is rightful/i,
+    );
+    assert.equal(processed.title, "Political legitimacy");
+    assert.match(processed.excerpt, /belief that a government or ruler is rightful/i);
+    assert.equal(processed.flashcardCount, 2);
+    assert.equal(resolveDictionaryCategory(processed), "concepts");
+  });
+
+  it("groups dictionary entries by category and merges reference files", () => {
+    const notes = [
+      dictionaryNote("concepts/political-legitimacy.md", {
+        title: "Political legitimacy",
+        metadata: { type: "dictionary-entry", category: "concept" },
+      }),
+      dictionaryNote("phrases/perform-legitimacy.md", {
+        title: "Perform legitimacy",
+        metadata: { type: "dictionary-entry", category: "phrase" },
+      }),
+      dictionaryNote("people/khamenei.md", {
+        title: "Ali Khamenei",
+        metadata: { type: "dictionary-entry", category: "person" },
+      }),
+      dictionaryNote("places/lampedusa.md", {
+        title: "Lampedusa",
+        metadata: { type: "dictionary-entry", category: "place" },
+      }),
+      dictionaryNote("README.md", { title: "Learning Dictionary" }),
+      dictionaryNote("index.md", { title: "Learning Dictionary index" }),
+    ];
+
+    const groups = groupLifeLabNotes(notes, { sectionId: "learning-dictionary" });
+
+    assert.deepEqual(
+      groups.map((group) => group.label),
+      ["Concepts", "Phrases", "People", "Places", "About & reference"],
+    );
+    assert.equal(groups[0]?.notes.length, 1);
+    assert.equal(groups.at(-1)?.variant, "disclosure");
+    assert.equal(groups.at(-1)?.notes.length, 2);
+  });
+
+  it("searches dictionary entries by term, definition, tags, and related", () => {
+    const { metadata, body } = parseLifeLabFrontmatter(conceptFixture);
+    const processed = processLifeLabNoteContent(
+      dictionaryNote("concepts/political-legitimacy.md", { metadata }),
+      conceptFixture,
+    );
+
+    assert.equal(noteMatchesSearch(processed, "political legitimacy"), true);
+    assert.equal(noteMatchesSearch(processed, "public memory"), true);
+    assert.equal(noteMatchesSearch(processed, "state power"), true);
+    assert.equal(noteMatchesSearch(processed, "rightful and entitled"), true);
+    assert.equal(noteMatchesSearch(processed, "gateway islands"), false);
+  });
+
+  it("shows compact dictionary card chips without overflow noise", () => {
+    const { metadata } = parseLifeLabFrontmatter(conceptFixture);
+    const chips = selectVisibleMetadataChips(metadata, {
+      sectionId: "learning-dictionary",
+      variant: "card",
+    });
+
+    assert.equal(chips.visible.length, 5);
+    assert.equal(chips.overflowCount, 0);
+    assert.ok(chips.visible.includes("institutions"));
+    assert.ok(chips.visible.includes("succession"));
   });
 });
