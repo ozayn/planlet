@@ -14,11 +14,11 @@ import {
 import {
   downloadDriveFile,
   getLifeLabDriveCredentials,
-  isMarkdownDriveFile,
   LifeLabDriveError,
   listDriveChildren,
+  listMarkdownFilesRecursive,
   type DriveCredentials,
-  type DriveFile,
+  type DriveMarkdownEntry,
 } from "@/lib/life-lab/google-drive";
 import {
   getAllowedLifeLabSectionIds,
@@ -28,9 +28,11 @@ import {
   sectionIdFromFolderName,
 } from "@/lib/life-lab/sections";
 import {
-  driveFilenameToSlug,
+  driveRelativePathToSlug,
+  isReadmeSlug,
   markdownExcerpt,
   parseDateFromFilename,
+  relativePathSubfolder,
   slugToTitle,
 } from "@/lib/life-lab/slug";
 import { canAccessLifeLabPage, type UserAccess } from "@/lib/roles";
@@ -248,15 +250,8 @@ function formatModifiedLabel(modifiedTime: string | null | undefined): string | 
   }).format(new Date(modifiedTime));
 }
 
-function noteTitleFromFile(file: DriveFile, slug: string): string {
-  const datePrefix = parseDateFromFilename(file.name);
-  const title = slugToTitle(slug);
-
-  if (datePrefix) {
-    return title;
-  }
-
-  return title;
+function noteTitleFromSlug(slug: string): string {
+  return slugToTitle(slug);
 }
 
 function noteSortValue(note: LifeLabNoteSummary): number {
@@ -264,7 +259,7 @@ function noteSortValue(note: LifeLabNoteSummary): number {
     return new Date(note.modifiedAt).getTime();
   }
 
-  const datePrefix = parseDateFromFilename(`${note.slug}.md`);
+  const datePrefix = parseDateFromFilename(`${note.slug.split("__").at(-1) ?? note.slug}.md`);
   if (datePrefix) {
     return new Date(`${datePrefix}T12:00:00Z`).getTime();
   }
@@ -272,17 +267,57 @@ function noteSortValue(note: LifeLabNoteSummary): number {
   return 0;
 }
 
-function summarizeMarkdownFile(file: DriveFile, content?: string): LifeLabNoteSummary {
-  const slug = driveFilenameToSlug(file.name);
+function sortLifeLabNotes(notes: LifeLabNoteSummary[]): LifeLabNoteSummary[] {
+  const hasContentNotes = notes.some((note) => !isReadmeSlug(note.slug));
+
+  return [...notes].sort((left, right) => {
+    if (hasContentNotes) {
+      const leftReadme = isReadmeSlug(left.slug);
+      const rightReadme = isReadmeSlug(right.slug);
+
+      if (leftReadme !== rightReadme) {
+        return leftReadme ? 1 : -1;
+      }
+    }
+
+    return noteSortValue(right) - noteSortValue(left);
+  });
+}
+
+type LifeLabSectionNoteRecord = LifeLabNoteSummary & {
+  fileId: string;
+  relativePath: string;
+};
+
+function summarizeMarkdownEntry(
+  entry: DriveMarkdownEntry,
+  content?: string,
+): LifeLabSectionNoteRecord {
+  const { file, relativePath } = entry;
+  const slug = driveRelativePathToSlug(relativePath);
   const excerptSource = content ?? "";
   const modifiedAt = file.modifiedTime ?? null;
 
   return {
     slug,
-    title: noteTitleFromFile(file, slug),
+    title: noteTitleFromSlug(slug),
     excerpt: excerptSource ? markdownExcerpt(excerptSource) : "",
     modifiedAt,
     modifiedAtLabel: formatModifiedLabel(modifiedAt),
+    subfolderLabel: relativePathSubfolder(relativePath),
+    fileId: file.id,
+    relativePath,
+  };
+}
+
+function toNoteSummary(record: LifeLabSectionNoteRecord): LifeLabNoteSummary {
+  return {
+    slug: record.slug,
+    title: record.title,
+    excerpt: record.excerpt,
+    modifiedAt: record.modifiedAt,
+    modifiedAtLabel: record.modifiedAtLabel,
+    subfolderLabel: record.subfolderLabel,
   };
 }
 
@@ -308,12 +343,11 @@ async function listSectionFolders(
   return folders;
 }
 
-async function listMarkdownFilesInFolder(
+async function listSectionMarkdownFiles(
   credentials: DriveCredentials,
   folderId: string,
-): Promise<DriveFile[]> {
-  const children = await listDriveChildren(credentials, folderId);
-  return children.filter(isMarkdownDriveFile);
+): Promise<DriveMarkdownEntry[]> {
+  return listMarkdownFilesRecursive(credentials, folderId);
 }
 
 const getSectionFolderMapCached = unstable_cache(
@@ -345,36 +379,35 @@ const getSectionNotesCached = unstable_cache(
     const mapResult = await getSectionFolderMap();
 
     if (!mapResult.ok) {
-      return [] as LifeLabNoteSummary[];
+      return [] as LifeLabSectionNoteRecord[];
     }
 
     const credentials = getLifeLabDriveCredentials();
     if (!credentials) {
-      return [] as LifeLabNoteSummary[];
+      return [] as LifeLabSectionNoteRecord[];
     }
 
     const folderMap = resolveLifeLabFolderMap(mapResult);
     const folderId = folderMap?.get(sectionId);
 
     if (!folderId) {
-      return [] as LifeLabNoteSummary[];
+      return [] as LifeLabSectionNoteRecord[];
     }
 
-    const files = await listMarkdownFilesInFolder(credentials, folderId);
+    const entries = await listSectionMarkdownFiles(credentials, folderId);
 
-    return files
-      .map((file) => summarizeMarkdownFile(file))
-      .sort((a, b) => noteSortValue(b) - noteSortValue(a));
+    return entries.map((entry) => summarizeMarkdownEntry(entry));
   },
-  ["life-lab-section-notes"],
+  ["life-lab-section-notes-recursive"],
   { revalidate: LIFE_LAB_CACHE_SECONDS },
 );
 
 const getNoteContentCached = unstable_cache(
   async (sectionId: LifeLabSectionId, slug: string) => {
-    const mapResult = await getSectionFolderMap();
+    const records = await getSectionNotesCached(sectionId);
+    const record = records.find((item) => item.slug === slug);
 
-    if (!mapResult.ok) {
+    if (!record) {
       return null;
     }
 
@@ -383,25 +416,10 @@ const getNoteContentCached = unstable_cache(
       return null;
     }
 
-    const folderMap = resolveLifeLabFolderMap(mapResult);
-    const folderId = folderMap?.get(sectionId);
-
-    if (!folderId) {
-      return null;
-    }
-
-    const files = await listMarkdownFilesInFolder(credentials, folderId);
-    const file = files.find((item) => driveFilenameToSlug(item.name) === slug);
-
-    if (!file) {
-      return null;
-    }
-
-    const content = await downloadDriveFile(credentials, file.id);
-    const summary = summarizeMarkdownFile(file, content);
+    const content = await downloadDriveFile(credentials, record.fileId);
 
     return {
-      ...summary,
+      ...toNoteSummary(record),
       sectionId,
       sectionLabel: getLifeLabSectionLabel(sectionId),
       content,
@@ -452,8 +470,8 @@ export async function getLifeLabHomeData(): Promise<{
         if (folderId) {
           const credentials = getLifeLabDriveCredentials();
           if (credentials) {
-            const files = await listMarkdownFilesInFolder(credentials, folderId);
-            noteCount = files.length;
+            const entries = await listSectionMarkdownFiles(credentials, folderId);
+            noteCount = entries.length;
           }
         }
 
@@ -528,7 +546,9 @@ export async function getLifeLabSectionData(
       };
     }
 
-    const notes = await getSectionNotesCached(sectionId);
+    const notes = sortLifeLabNotes(
+      (await getSectionNotesCached(sectionId)).map(toNoteSummary),
+    );
     return {
       availability,
       sectionId,

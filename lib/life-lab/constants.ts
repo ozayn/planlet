@@ -1,5 +1,9 @@
 export const LIFE_LAB_CACHE_SECONDS = 600;
 
+export const LIFE_LAB_MAX_FOLDER_DEPTH = 5;
+
+export const LIFE_LAB_MAX_FILES_PER_SECTION = 300;
+
 export const LIFE_LAB_DRIVE_READONLY_SCOPE =
   "https://www.googleapis.com/auth/drive.readonly";
 
@@ -43,6 +47,7 @@ export type LifeLabNoteSummary = {
   excerpt: string;
   modifiedAt: string | null;
   modifiedAtLabel: string | null;
+  subfolderLabel: string | null;
 };
 
 export type LifeLabNote = LifeLabNoteSummary & {

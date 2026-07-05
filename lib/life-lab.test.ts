@@ -3,8 +3,13 @@ import { describe, it } from "node:test";
 
 import {
   driveFilenameToSlug,
+  driveRelativePathToSlug,
+  isReadmeRelativePath,
+  isReadmeSlug,
   markdownExcerpt,
   parseDateFromFilename,
+  relativePathSubfolder,
+  slugToRelativePath,
   slugToTitle,
 } from "@/lib/life-lab/slug";
 import {
@@ -114,8 +119,37 @@ describe("life lab slug helpers", () => {
     );
   });
 
-  it("derives titles from slugs", () => {
+  it("converts nested relative paths to reversible slugs", () => {
+    assert.equal(
+      driveRelativePathToSlug("videos/2026-07-04-bplus-bush-gulf-war.md"),
+      "videos__2026-07-04-bplus-bush-gulf-war",
+    );
+    assert.equal(
+      slugToRelativePath("videos__2026-07-04-bplus-bush-gulf-war"),
+      "videos/2026-07-04-bplus-bush-gulf-war.md",
+    );
+  });
+
+  it("extracts subfolder labels from relative paths", () => {
+    assert.equal(
+      relativePathSubfolder("videos/2026-07-04-bplus-bush-gulf-war.md"),
+      "videos",
+    );
+    assert.equal(relativePathSubfolder("README.md"), null);
+  });
+
+  it("detects README notes", () => {
+    assert.equal(isReadmeRelativePath("README.md"), true);
+    assert.equal(isReadmeSlug("readme"), true);
+    assert.equal(isReadmeSlug("videos__2026-07-04-bplus-bush-gulf-war"), false);
+  });
+
+  it("derives titles from nested slugs", () => {
     assert.equal(slugToTitle("renaissance-notes"), "Renaissance Notes");
+    assert.equal(
+      slugToTitle("videos__2026-07-04-bplus-bush-gulf-war"),
+      "2026 07 04 Bplus Bush Gulf War",
+    );
   });
 
   it("parses date prefixes from filenames", () => {

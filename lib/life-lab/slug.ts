@@ -7,8 +7,46 @@ export function driveFilenameToSlug(filename: string): string {
     .replace(/^-+|-+$/g, "");
 }
 
+export function driveRelativePathToSlug(relativePath: string): string {
+  const withoutExtension = relativePath.replace(/\.md$/i, "").trim();
+
+  return withoutExtension
+    .split("/")
+    .filter(Boolean)
+    .map((segment) => driveFilenameToSlug(`${segment}.md`))
+    .join("__");
+}
+
+export function slugToRelativePath(slug: string): string {
+  return `${slug.split("__").join("/")}.md`;
+}
+
+export function relativePathSubfolder(relativePath: string): string | null {
+  const parts = relativePath.split("/").filter(Boolean);
+
+  if (parts.length <= 1) {
+    return null;
+  }
+
+  return parts[0] ?? null;
+}
+
+export function isReadmeRelativePath(relativePath: string): boolean {
+  const filename = relativePath.split("/").pop() ?? relativePath;
+
+  return filename.replace(/\.md$/i, "").toLowerCase() === "readme";
+}
+
+export function isReadmeSlug(slug: string): boolean {
+  const relativePath = slugToRelativePath(slug);
+
+  return isReadmeRelativePath(relativePath);
+}
+
 export function slugToTitle(slug: string): string {
-  return slug
+  const leafSlug = slug.includes("__") ? slug.split("__").at(-1) ?? slug : slug;
+
+  return leafSlug
     .split("-")
     .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))

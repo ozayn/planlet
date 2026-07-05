@@ -1,6 +1,10 @@
 import { createSign } from "node:crypto";
 
-import { LIFE_LAB_DRIVE_READONLY_SCOPE } from "@/lib/life-lab/constants";
+import {
+  LIFE_LAB_DRIVE_READONLY_SCOPE,
+  LIFE_LAB_MAX_FILES_PER_SECTION,
+  LIFE_LAB_MAX_FOLDER_DEPTH,
+} from "@/lib/life-lab/constants";
 
 type DriveCredentials = {
   clientEmail: string;
@@ -190,6 +194,59 @@ export async function listDriveChildren(
   );
 
   return data.files ?? [];
+}
+
+export type DriveMarkdownEntry = {
+  file: DriveFile;
+  relativePath: string;
+};
+
+export async function listMarkdownFilesRecursive(
+  credentials: DriveCredentials,
+  folderId: string,
+  options?: {
+    maxDepth?: number;
+    maxFiles?: number;
+  },
+): Promise<DriveMarkdownEntry[]> {
+  const maxDepth = options?.maxDepth ?? LIFE_LAB_MAX_FOLDER_DEPTH;
+  const maxFiles = options?.maxFiles ?? LIFE_LAB_MAX_FILES_PER_SECTION;
+  const results: DriveMarkdownEntry[] = [];
+
+  async function walk(
+    currentFolderId: string,
+    prefix: string,
+    folderDepth: number,
+  ): Promise<void> {
+    if (folderDepth > maxDepth || results.length >= maxFiles) {
+      return;
+    }
+
+    const children = await listDriveChildren(credentials, currentFolderId);
+
+    for (const item of children) {
+      if (results.length >= maxFiles) {
+        break;
+      }
+
+      if (item.mimeType === "application/vnd.google-apps.folder") {
+        const nextPrefix = prefix ? `${prefix}/${item.name}` : item.name;
+        await walk(item.id, nextPrefix, folderDepth + 1);
+        continue;
+      }
+
+      if (!isMarkdownDriveFile(item)) {
+        continue;
+      }
+
+      const relativePath = prefix ? `${prefix}/${item.name}` : item.name;
+      results.push({ file: item, relativePath });
+    }
+  }
+
+  await walk(folderId, "", 0);
+
+  return results;
 }
 
 export async function downloadDriveFile(

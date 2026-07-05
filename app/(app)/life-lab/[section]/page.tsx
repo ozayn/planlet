@@ -64,6 +64,11 @@ export default async function LifeLabSectionPage({
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
+                    {note.subfolderLabel ? (
+                      <p className="text-xs font-medium uppercase tracking-wide text-muted-light">
+                        {note.subfolderLabel}
+                      </p>
+                    ) : null}
                     <h2 className="text-base font-semibold text-foreground">
                       {note.title}
                     </h2>
