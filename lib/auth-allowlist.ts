@@ -55,6 +55,10 @@ export function getLifeLabEmails(): string[] {
   return parseEmailList(process.env.LIFE_LAB_EMAILS);
 }
 
+export function getIdeasEmails(): string[] {
+  return parseEmailList(process.env.IDEAS_EMAILS);
+}
+
 export function isAdminEmail(email?: string | null): boolean {
   if (!email?.trim()) {
     return false;
@@ -125,6 +129,14 @@ export function isLifeLabEmail(email?: string | null): boolean {
   }
 
   return getLifeLabEmails().includes(email.trim().toLowerCase());
+}
+
+export function isIdeasEmail(email?: string | null): boolean {
+  if (!email?.trim()) {
+    return false;
+  }
+
+  return getIdeasEmails().includes(email.trim().toLowerCase());
 }
 
 export function isEmailAllowed(email?: string | null): boolean {

@@ -10,6 +10,7 @@ export type UserAccess = {
   canUseBodyJourneyFeatures?: boolean | null;
   canUseLearningJourneyFeatures?: boolean | null;
   canUseLifeLabFeatures?: boolean | null;
+  canUseIdeasFeatures?: boolean | null;
 };
 
 type RoleInput = UserRole | string | null | undefined;
@@ -96,6 +97,14 @@ export function canUseLifeLabFeatures(user: UserAccess): boolean {
 /** @deprecated Use canUseLifeLabFeatures */
 export function canAccessLifeLabPage(user: UserAccess): boolean {
   return canUseLifeLabFeatures(user);
+}
+
+export function canUseIdeasFeatures(user: UserAccess): boolean {
+  if (isAdmin(user)) {
+    return true;
+  }
+
+  return user.canUseIdeasFeatures === true;
 }
 
 export function canUseTherapyThoughts(user: UserAccess | RoleInput): boolean {

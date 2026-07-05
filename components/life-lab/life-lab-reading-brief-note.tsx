@@ -1,8 +1,10 @@
+import { LifeLabDictionaryCandidatesCard } from "@/components/life-lab/life-lab-dictionary-candidates-card";
 import { LifeLabReadingBriefFlashcards } from "@/components/life-lab/life-lab-reading-brief-flashcards";
 import { LifeLabReadingBriefGlance } from "@/components/life-lab/life-lab-reading-brief-glance";
 import { LifeLabReadingBriefSaveWorthy } from "@/components/life-lab/life-lab-reading-brief-save-worthy";
 import { MarkdownContent } from "@/components/life-lab/markdown-content";
 import type { LifeLabFlashcard, LifeLabSectionId } from "@/lib/life-lab/constants";
+import { extractDictionaryCandidatesSection } from "@/lib/life-lab/dictionary-candidates";
 import {
   prepareReadingBriefSegments,
   readingBriefHeadingAnchor,
@@ -14,8 +16,30 @@ type LifeLabReadingBriefNoteProps = {
   content: string;
   sectionId: LifeLabSectionId;
   slug: string;
+  title: string;
   flashcards?: LifeLabFlashcard[];
 };
+
+const STUDY_NOTES_INSERT_HEADINGS = new Set([
+  "study layer",
+  "study notes",
+  "vocabulary and phrasing",
+  "names and concepts to remember",
+]);
+
+function shouldInsertDictionaryCandidatesCard(
+  segment: ReadingBriefSegment,
+  inserted: boolean,
+  hasCandidates: boolean,
+): boolean {
+  if (!hasCandidates || inserted || segment.kind !== "markdown") {
+    return false;
+  }
+
+  const heading = segment.heading?.trim().toLowerCase();
+
+  return heading ? STUDY_NOTES_INSERT_HEADINGS.has(heading) : false;
+}
 
 function CollapsibleReadingBriefSection({
   segment,
@@ -109,9 +133,12 @@ export function LifeLabReadingBriefNote({
   content,
   sectionId,
   slug,
+  title,
   flashcards = [],
 }: LifeLabReadingBriefNoteProps) {
   const usedNavAnchors = new Set<string>();
+  const dictionaryCandidates = extractDictionaryCandidatesSection(content);
+  let dictionaryCandidatesInserted = false;
 
   const { glanceSegments, contentSegments, navSections } =
     prepareReadingBriefSegments(content, flashcards);
@@ -146,15 +173,34 @@ export function LifeLabReadingBriefNote({
         ) : null,
       )}
 
-      {contentSegments.map((segment, index) => (
-        <ReadingBriefSegmentBlock
-          key={`${segment.kind}-${index}`}
-          segment={segment}
-          sectionId={sectionId}
-          slug={slug}
-          usedAnchors={usedNavAnchors}
-        />
-      ))}
+      {contentSegments.map((segment, index) => {
+        const insertDictionaryCandidates = shouldInsertDictionaryCandidatesCard(
+          segment,
+          dictionaryCandidatesInserted,
+          Boolean(dictionaryCandidates),
+        );
+
+        if (insertDictionaryCandidates) {
+          dictionaryCandidatesInserted = true;
+        }
+
+        return (
+          <div key={`${segment.kind}-${index}`} className="space-y-3 md:space-y-4">
+            {insertDictionaryCandidates && dictionaryCandidates ? (
+              <LifeLabDictionaryCandidatesCard
+                noteTitle={title}
+                section={dictionaryCandidates}
+              />
+            ) : null}
+            <ReadingBriefSegmentBlock
+              segment={segment}
+              sectionId={sectionId}
+              slug={slug}
+              usedAnchors={usedNavAnchors}
+            />
+          </div>
+        );
+      })}
     </div>
   );
 }

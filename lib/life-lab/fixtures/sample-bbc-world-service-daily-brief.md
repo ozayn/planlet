@@ -146,6 +146,13 @@ Courts, coalitions, reception systems, and statistical agencies are the real act
 
 Use the vocabulary, names and concepts, and follow-up questions below as one study pass after the story clusters.
 
+## Dictionary candidates
+
+- Political legitimacy
+- Gateway island
+- Coalition arithmetic
+- Heat exposure gap
+
 ## Vocabulary and phrasing
 
 ### gateway island

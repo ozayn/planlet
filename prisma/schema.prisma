@@ -261,6 +261,28 @@ enum LearningCategory {
   OTHER
 }
 
+enum IdeaCategory {
+  PRODUCT
+  BUSINESS
+  CAREER
+  PHOTOGRAPHY
+  LEARNING
+  TRAVEL
+  WRITING
+  PERSONAL
+  CREATIVE
+  RESEARCH
+  OTHER
+}
+
+enum IdeaStatus {
+  NEW
+  THINKING
+  EXPLORING
+  BUILDING
+  ARCHIVED
+}
+
 model User {
   id            String      @id @default(cuid())
   name          String?
@@ -276,6 +298,7 @@ model User {
   canUseBodyJourneyFeatures   Boolean   @default(false)
   canUseLearningJourneyFeatures Boolean @default(false)
   canUseLifeLabFeatures       Boolean   @default(false)
+  canUseIdeasFeatures         Boolean   @default(false)
   planItemView              PlanItemView @default(CHECKLIST)
   taskOrganizationDisplay   TaskOrganizationDisplay @default(ASSIGNED_ONLY)
   mobileNavItems            String[]    @default([])
@@ -315,6 +338,7 @@ model User {
   careerWeeklyReviews           CareerWeeklyReview[]
   bodyEntries                   BodyEntry[]
   learningEntries               LearningEntry[]
+  ideas                         Idea[]
   planItemReflections           PlanItemReflection[]
   aiUsageLogs                   AiUsageLog[]
   createdAt     DateTime    @default(now())
@@ -869,6 +893,24 @@ model LearningEntry {
   updatedAt  DateTime            @updatedAt
 
   @@index([userId, learnedAt])
+}
+
+model Idea {
+  id        String        @id @default(cuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  content   String        @db.Text
+  category  IdeaCategory?
+  status    IdeaStatus    @default(NEW)
+  tags      String[]
+  notes     String?       @db.Text
+  ideaDate  DateTime
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([userId, ideaDate])
+  @@index([userId, status])
 }
 
 model AppSetting {

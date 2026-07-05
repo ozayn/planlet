@@ -8,6 +8,7 @@ import {
   isJobTrackerEmail,
   isLearningJourneyEmail,
   isLifeLabEmail,
+  isIdeasEmail,
   isReflectorEmail,
 } from "@/lib/auth-allowlist";
 import { isAdmin } from "@/lib/roles";
@@ -23,6 +24,7 @@ export type ResolvedUserAccess = {
   canUseBodyJourneyFeatures: boolean;
   canUseLearningJourneyFeatures: boolean;
   canUseLifeLabFeatures: boolean;
+  canUseIdeasFeatures: boolean;
 };
 
 type ExistingUserAccess = {
@@ -35,6 +37,7 @@ type ExistingUserAccess = {
   canUseBodyJourneyFeatures?: boolean;
   canUseLearningJourneyFeatures?: boolean;
   canUseLifeLabFeatures?: boolean;
+  canUseIdeasFeatures?: boolean;
 };
 
 export function resolveUserAccessFromEmail(
@@ -52,6 +55,7 @@ export function resolveUserAccessFromEmail(
       canUseBodyJourneyFeatures: true,
       canUseLearningJourneyFeatures: true,
       canUseLifeLabFeatures: false,
+      canUseIdeasFeatures: true,
     };
   }
 
@@ -71,6 +75,7 @@ export function resolveUserAccessFromEmail(
   }
 
   const canUseLifeLabFeatures = role === "PERSONAL";
+  const canUseIdeasFeatures = isIdeasEmail(email);
 
   return {
     role,
@@ -82,6 +87,7 @@ export function resolveUserAccessFromEmail(
     canUseBodyJourneyFeatures,
     canUseLearningJourneyFeatures,
     canUseLifeLabFeatures,
+    canUseIdeasFeatures,
   };
 }
 
@@ -110,6 +116,7 @@ export async function syncUserAccessOnSignIn(
       canUseBodyJourneyFeatures: true,
       canUseLearningJourneyFeatures: true,
       canUseLifeLabFeatures: true,
+      canUseIdeasFeatures: true,
     },
   });
 
@@ -124,7 +131,8 @@ export async function syncUserAccessOnSignIn(
     existing?.canUseCareerJourneyFeatures !== access.canUseCareerJourneyFeatures ||
     existing?.canUseBodyJourneyFeatures !== access.canUseBodyJourneyFeatures ||
     existing?.canUseLearningJourneyFeatures !== access.canUseLearningJourneyFeatures ||
-    existing?.canUseLifeLabFeatures !== access.canUseLifeLabFeatures
+    existing?.canUseLifeLabFeatures !== access.canUseLifeLabFeatures ||
+    existing?.canUseIdeasFeatures !== access.canUseIdeasFeatures
   ) {
     await prisma.user.update({
       where: { id: userId },

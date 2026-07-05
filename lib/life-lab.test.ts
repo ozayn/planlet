@@ -57,6 +57,13 @@ import {
   resolveDictionaryCategory,
 } from "@/lib/life-lab/learning-dictionary";
 import {
+  buildDictionaryCandidatesCopyPrompt,
+  buildDictionaryNoteContentBlocks,
+  extractDictionaryCandidatesSection,
+  hasDictionaryStudySections,
+  summarizeDictionaryCandidates,
+} from "@/lib/life-lab/dictionary-candidates";
+import {
   buildYoutubeVideoNoteHref,
   formatPlaylistProcessingSummary,
   hasPlaylistVideosTable,
@@ -1476,6 +1483,86 @@ describe("learning dictionary", () => {
     assert.ok(chips.visible.includes("institutions"));
     assert.ok(chips.visible.includes("state power"));
     assert.ok(chips.visible.includes("authority"));
+  });
+});
+
+describe("dictionary candidates in notes", () => {
+  const sampleBriefPath = join(
+    import.meta.dirname,
+    "life-lab/fixtures/sample-bbc-world-service-daily-brief.md",
+  );
+  const sampleBrief = readFileSync(sampleBriefPath, "utf8");
+  const { body: sampleBriefBody } = parseLifeLabFrontmatter(sampleBrief);
+
+  it("extracts dictionary candidate sections and builds copy prompts", () => {
+    const candidates = extractDictionaryCandidatesSection(sampleBriefBody);
+
+    assert.ok(candidates);
+    assert.equal(candidates?.title, "Dictionary candidates");
+    assert.deepEqual(summarizeDictionaryCandidates(candidates?.content ?? ""), [
+      "Political legitimacy",
+      "Gateway island",
+      "Coalition arithmetic",
+      "Heat exposure gap",
+    ]);
+
+    const prompt = buildDictionaryCandidatesCopyPrompt({
+      noteTitle: "BBC World Service Daily Brief",
+      content: candidates?.content ?? "",
+    });
+
+    assert.match(prompt, /Add these dictionary candidates from this note/i);
+    assert.match(prompt, /BBC World Service Daily Brief/);
+    assert.match(prompt, /Political legitimacy/);
+  });
+
+  it("keeps non-dictionary sections when splitting note content", () => {
+    assert.equal(hasDictionaryStudySections(sampleBriefBody), true);
+
+    const blocks = buildDictionaryNoteContentBlocks(sampleBriefBody);
+    const markdownBlocks = blocks.filter((block) => block.kind === "markdown");
+    const dictionaryBlocks = blocks.filter(
+      (block) => block.kind === "dictionary-section",
+    );
+
+    assert.ok(markdownBlocks.length > 0);
+    assert.equal(
+      dictionaryBlocks.filter((block) => block.section.kind === "candidates")
+        .length,
+      1,
+    );
+    assert.ok(
+      dictionaryBlocks.some((block) => block.section.kind === "vocabulary"),
+    );
+    assert.ok(
+      dictionaryBlocks.some((block) => block.section.kind === "names"),
+    );
+    assert.ok(
+      markdownBlocks.some((block) =>
+        block.content.includes("Follow-up questions"),
+      ),
+    );
+  });
+
+  it("renders reading brief segments without duplicating dictionary candidates", () => {
+    const { contentSegments } = prepareReadingBriefSegments(sampleBriefBody);
+
+    assert.equal(
+      contentSegments.some(
+        (segment) =>
+          segment.kind === "markdown" &&
+          segment.heading === "Dictionary candidates",
+      ),
+      false,
+    );
+    assert.equal(
+      contentSegments.some(
+        (segment) =>
+          segment.kind === "markdown" &&
+          segment.heading === "Vocabulary and phrasing",
+      ),
+      true,
+    );
   });
 });
 

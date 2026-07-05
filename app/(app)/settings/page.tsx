@@ -27,6 +27,7 @@ import {
   canUseJobTrackerFeatures,
   canUseLearningJourneyFeatures,
   canUseLifeLabFeatures,
+  canUseIdeasFeatures,
   canUseReflectionFeatures,
   canUseTherapyThoughts,
 } from "@/lib/roles";
@@ -46,6 +47,7 @@ export default async function SettingsPage() {
       session?.user ?? {},
     ),
     canUseLifeLabFeatures: canUseLifeLabFeatures(session?.user ?? {}),
+    canUseIdeasFeatures: canUseIdeasFeatures(session?.user ?? {}),
     canUseJobTrackerFeatures: canUseJobTrackerFeatures(session?.user ?? {}),
     canUseCareerJourneyFeatures: canUseCareerJourneyFeatures(
       session?.user ?? {},

@@ -13,6 +13,7 @@ export type ProfileMenuAccess = {
   canUseCoachingFeatures?: boolean;
   canUseLearningJourneyFeatures?: boolean;
   canUseLifeLabFeatures?: boolean;
+  canUseIdeasFeatures?: boolean;
   isAdmin?: boolean;
 };
 
@@ -70,4 +71,10 @@ export function canShowLifeLabInProfileMenu(
   access: ProfileMenuAccess,
 ): boolean {
   return Boolean(access.canUseLifeLabFeatures || access.isAdmin);
+}
+
+export function canShowIdeasInProfileMenu(
+  access: ProfileMenuAccess,
+): boolean {
+  return Boolean(access.canUseIdeasFeatures || access.isAdmin);
 }

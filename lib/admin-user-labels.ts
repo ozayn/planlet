@@ -43,5 +43,9 @@ export function formatAdminRoleCapabilities(user: AdminUserStatRow): string {
     parts.push("Learning");
   }
 
+  if (user.canUseIdeasFeatures) {
+    parts.push("Ideas");
+  }
+
   return parts.join(" · ");
 }

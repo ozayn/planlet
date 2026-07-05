@@ -1,5 +1,6 @@
 import { AdminCoachingReflectionLimitSetting } from "@/components/admin/admin-coaching-reflection-limit-setting";
 import { AdminFeedbackSummary } from "@/components/admin/admin-feedback-summary";
+import { AdminIdeasDebug } from "@/components/admin/admin-ideas-debug";
 import { AdminLifeLabDebug } from "@/components/admin/admin-life-lab-debug";
 import { AdminRecentLogins } from "@/components/admin/admin-recent-logins";
 import { AdminSummaryLine } from "@/components/admin/admin-summary-line";
@@ -11,6 +12,7 @@ import {
   getAdminEmails,
   getAllowedEmails,
   getFeedbackEmails,
+  getIdeasEmails,
   getLifeLabEmails,
   getReflectorEmails,
 } from "@/lib/auth-allowlist";
@@ -25,7 +27,7 @@ import {
 } from "@/lib/env";
 import { getAdminFeedbackCounts } from "@/lib/feedback";
 import { getCoachingReflectionWeeklyLimit } from "@/lib/app-settings";
-import { canUseLifeLabFeatures } from "@/lib/roles";
+import { canUseIdeasFeatures, canUseLifeLabFeatures } from "@/lib/roles";
 
 export default async function AdminPage() {
   const session = await auth();
@@ -38,6 +40,7 @@ export default async function AdminPage() {
     feedbackCounts,
     coachingReflectionWeeklyLimit,
     lifeLabEmails,
+    ideasEmails,
   ] = await Promise.all([
     getAdminUserStats(),
     Promise.resolve(getAllowedEmails()),
@@ -47,6 +50,7 @@ export default async function AdminPage() {
     getAdminFeedbackCounts(),
     getCoachingReflectionWeeklyLimit(),
     Promise.resolve(getLifeLabEmails()),
+    Promise.resolve(getIdeasEmails()),
   ]);
 
   const textParserConfigured = isTextParserConfigured();
@@ -105,6 +109,12 @@ export default async function AdminPage() {
           isAdmin={isAdminRole(session?.user?.role)}
           canUseLifeLabFeatures={canUseLifeLabFeatures(session?.user ?? {})}
           lifeLabEmails={lifeLabEmails}
+        />
+        <AdminIdeasDebug
+          signedInEmail={session?.user?.email}
+          isAdmin={isAdminRole(session?.user?.role)}
+          canUseIdeasFeatures={canUseIdeasFeatures(session?.user ?? {})}
+          ideasEmails={ideasEmails}
         />
         <AdminRecentLogins logins={recentLogins} />
       </div>

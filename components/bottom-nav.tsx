@@ -179,6 +179,22 @@ function NavIcon({
           <path d="M12 2a7 7 0 0 0-4 12.7V17h8v-2.3A7 7 0 0 0 12 2Z" />
         </svg>
       );
+    case "ideas":
+      return (
+        <svg
+          className={className}
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth={1.75}
+          aria-hidden="true"
+        >
+          <path d="M12 3v3" />
+          <path d="M18.4 5.6 16.3 7.7" />
+          <path d="M5.6 5.6l2.1 2.1" />
+          <path d="M12 10a4 4 0 0 1 4 4c0 1.5-.8 2.4-1.6 3.2-.5.6-.9 1.1-.9 1.8h-3c0-.7-.4-1.2-.9-1.8-.8-.8-1.6-1.7-1.6-3.2a4 4 0 0 1 4-4Z" />
+          <path d="M10.5 21h3" />
+        </svg>
+      );
     case "life-lab":
       return (
         <svg

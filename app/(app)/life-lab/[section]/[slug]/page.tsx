@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { auth } from "@/auth";
+import { LifeLabNoteDictionarySections } from "@/components/life-lab/life-lab-note-dictionary-sections";
 import { LifeLabReadingBriefHeader } from "@/components/life-lab/life-lab-reading-brief-header";
 import { LifeLabReadingBriefNote } from "@/components/life-lab/life-lab-reading-brief-note";
 import { LifeLabPlaylistIndexNote } from "@/components/life-lab/life-lab-playlist-index-note";
@@ -15,6 +16,7 @@ import { LifeLabStatusPanel } from "@/components/life-lab/life-lab-status-panel"
 import { PageHeader } from "@/components/page-header";
 import { getLifeLabNoteData } from "@/lib/life-lab";
 import { isLifeLabDevToolsEnabled } from "@/lib/life-lab/dev";
+import { hasDictionaryStudySections } from "@/lib/life-lab/dictionary-candidates";
 import { isReadingBriefNote } from "@/lib/life-lab/reading-briefs";
 import { shouldRenderPlaylistIndexUi } from "@/lib/life-lab/playlist-index";
 import { isAdminRole } from "@/lib/auth-roles";
@@ -54,6 +56,7 @@ export default async function LifeLabNotePage({
     metadata: note.metadata,
   });
   const isPlaylistIndex = shouldRenderPlaylistIndexUi(note);
+  const hasDictionarySections = hasDictionaryStudySections(note.content);
 
   return (
     <section
@@ -111,6 +114,7 @@ export default async function LifeLabNotePage({
                 content={note.content}
                 sectionId={note.sectionId}
                 slug={note.slug}
+                title={note.title}
                 flashcards={note.flashcards}
               />
             ) : isPlaylistIndex ? (
@@ -140,7 +144,14 @@ export default async function LifeLabNotePage({
                   content={note.content}
                   className="mb-4"
                 />
-                <MarkdownContent content={note.content} />
+                {hasDictionarySections ? (
+                  <LifeLabNoteDictionarySections
+                    content={note.content}
+                    noteTitle={note.title}
+                  />
+                ) : (
+                  <MarkdownContent content={note.content} />
+                )}
               </>
             )}
           </article>

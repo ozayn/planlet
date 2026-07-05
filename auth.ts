@@ -69,6 +69,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           canUseBodyJourneyFeatures: true,
           canUseLearningJourneyFeatures: true,
           canUseLifeLabFeatures: true,
+          canUseIdeasFeatures: true,
           timezone: true,
           timezoneMode: true,
           image: true,
@@ -89,6 +90,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         canUseBodyJourneyFeatures: dbUser.canUseBodyJourneyFeatures,
         canUseLearningJourneyFeatures: dbUser.canUseLearningJourneyFeatures,
         canUseLifeLabFeatures: dbUser.canUseLifeLabFeatures,
+        canUseIdeasFeatures: dbUser.canUseIdeasFeatures,
       });
 
       session.user.id = token.sub;
@@ -103,6 +105,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       session.user.canUseLearningJourneyFeatures =
         access.canUseLearningJourneyFeatures;
       session.user.canUseLifeLabFeatures = access.canUseLifeLabFeatures;
+      session.user.canUseIdeasFeatures = access.canUseIdeasFeatures;
       session.user.timezone = dbUser.timezone ?? FALLBACK_TIMEZONE;
       session.user.timezoneMode = dbUser.timezoneMode;
       session.user.image = dbUser.image ?? session.user.image ?? null;

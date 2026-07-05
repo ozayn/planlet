@@ -128,6 +128,18 @@ export const ACTION_LABELS = {
     title: "More",
     ariaLabel: "Open learning entry actions",
   },
+  moreIdea: {
+    title: "More",
+    ariaLabel: "Open idea actions",
+  },
+  editIdea: {
+    title: "Edit",
+    ariaLabel: "Edit idea",
+  },
+  deleteIdea: {
+    title: "Delete",
+    ariaLabel: "Delete idea",
+  },
   editLearningEntry: {
     title: "Edit",
     ariaLabel: "Edit learning entry",

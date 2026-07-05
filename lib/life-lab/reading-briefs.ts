@@ -352,6 +352,10 @@ export function parseGlanceListItems(text: string): string[] {
   return trimmed ? [trimmed] : [];
 }
 
+function isDictionaryCandidatesSection(title: string): boolean {
+  return title.trim().toLowerCase() === "dictionary candidates";
+}
+
 export function isCollapsibleReadingBriefSection(title: string): boolean {
   return COLLAPSIBLE_READING_BRIEF_HEADINGS.has(title.trim().toLowerCase());
 }
@@ -570,6 +574,10 @@ export function prepareReadingBriefSegments(
   }
 
   for (const section of sections) {
+    if (isDictionaryCandidatesSection(section.title)) {
+      continue;
+    }
+
     if (isGlanceSectionTitle(section.title)) {
       segments.push({
         kind: "glance",
