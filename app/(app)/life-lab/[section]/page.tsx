@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { auth } from "@/auth";
+import { LifeLabSectionNotes } from "@/components/life-lab/life-lab-section-notes";
 import { LifeLabStatusPanel } from "@/components/life-lab/life-lab-status-panel";
 import { PageHeader } from "@/components/page-header";
 import { getLifeLabSectionData } from "@/lib/life-lab";
@@ -10,10 +11,12 @@ import { canAccessLifeLabPage } from "@/lib/roles";
 
 type LifeLabSectionPageProps = {
   params: Promise<{ section: string }>;
+  searchParams: Promise<{ refresh?: string }>;
 };
 
 export default async function LifeLabSectionPage({
   params,
+  searchParams,
 }: LifeLabSectionPageProps) {
   const session = await auth();
 
@@ -22,14 +25,26 @@ export default async function LifeLabSectionPage({
   }
 
   const { section } = await params;
-  const { availability, sectionId, sectionLabel, notes } =
-    await getLifeLabSectionData(section);
+  const { refresh } = await searchParams;
+  const isAdmin = isAdminRole(session.user.role);
+  const shouldRefresh = refresh === "1" && isAdmin;
+  const showDiagnostics =
+    isAdmin && process.env.NODE_ENV === "development";
+
+  const { availability, sectionId, sectionLabel, groups, listingDiagnostic } =
+    await getLifeLabSectionData(section, {
+      refresh: shouldRefresh,
+      includeListingDiagnostic: showDiagnostics,
+    });
 
   if (!sectionId || !sectionLabel) {
     notFound();
   }
 
-  const isAdmin = isAdminRole(session.user.role);
+  const noteCount = groups.reduce(
+    (total, group) => total + group.notes.length,
+    0,
+  );
 
   return (
     <section className="ui-page-stack space-y-6">
@@ -48,46 +63,24 @@ export default async function LifeLabSectionPage({
 
       {availability.status !== "ready" ? (
         <LifeLabStatusPanel availability={availability} isAdmin={isAdmin} />
-      ) : notes.length === 0 ? (
+      ) : noteCount === 0 ? (
         <LifeLabStatusPanel
           availability={availability}
           isAdmin={isAdmin}
           emptyMessage="No notes in this section yet."
         />
       ) : (
-        <ul className="space-y-2">
-          {notes.map((note) => (
-            <li key={note.slug}>
-              <Link
-                href={`/life-lab/${sectionId}/${note.slug}`}
-                className="ui-card-padded block transition-colors hover:bg-accent-cream/25"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    {note.subfolderLabel ? (
-                      <p className="text-xs font-medium uppercase tracking-wide text-muted-light">
-                        {note.subfolderLabel}
-                      </p>
-                    ) : null}
-                    <h2 className="text-base font-semibold text-foreground">
-                      {note.title}
-                    </h2>
-                    {note.excerpt ? (
-                      <p className="mt-1 text-sm leading-relaxed text-muted">
-                        {note.excerpt}
-                      </p>
-                    ) : null}
-                  </div>
-                  {note.modifiedAtLabel ? (
-                    <span className="shrink-0 text-xs text-muted-light">
-                      {note.modifiedAtLabel}
-                    </span>
-                  ) : null}
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
+        <LifeLabSectionNotes
+          sectionId={sectionId}
+          groups={groups}
+          listingDiagnostic={listingDiagnostic}
+          showDiagnostics={showDiagnostics}
+          refreshHref={
+            shouldRefresh
+              ? `/life-lab/${sectionId}`
+              : `/life-lab/${sectionId}?refresh=1`
+          }
+        />
       )}
     </section>
   );

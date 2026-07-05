@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
   driveFilenameToSlug,
   driveRelativePathToSlug,
+  formatDateLabelFromFilename,
   isReadmeRelativePath,
   isReadmeSlug,
   markdownExcerpt,
@@ -11,12 +12,15 @@ import {
   relativePathSubfolder,
   slugToRelativePath,
   slugToTitle,
+  titleFromFilename,
 } from "@/lib/life-lab/slug";
+import { groupLifeLabNotes } from "@/lib/life-lab/organization";
 import {
   isLifeLabSectionBlocked,
   isLifeLabSectionId,
   sectionIdFromFolderName,
 } from "@/lib/life-lab/sections";
+import { isLifeLabDevToolsEnabled } from "@/lib/life-lab/dev";
 import { isMarkdownDriveFile } from "@/lib/life-lab/google-drive";
 import {
   lifeLabFolderEntriesToMap,
@@ -24,6 +28,20 @@ import {
   resolveLifeLabFolderMap,
 } from "@/lib/life-lab";
 import { canUseLifeLabFeatures, canAccessLifeLabPage } from "@/lib/roles";
+import type { LifeLabNoteSummary } from "@/lib/life-lab/constants";
+
+function noteSummary(
+  partial: Partial<LifeLabNoteSummary> & Pick<LifeLabNoteSummary, "slug" | "title">,
+): LifeLabNoteSummary {
+  return {
+    excerpt: "",
+    modifiedAt: null,
+    modifiedAtLabel: null,
+    dateLabel: null,
+    subfolderLabel: null,
+    ...partial,
+  };
+}
 
 describe("life lab folder map handling", () => {
   it("reconstructs a Map from cached entries", () => {
@@ -128,6 +146,12 @@ describe("life lab slug helpers", () => {
       slugToRelativePath("videos__2026-07-04-bplus-bush-gulf-war"),
       "videos/2026-07-04-bplus-bush-gulf-war.md",
     );
+    assert.equal(
+      driveRelativePathToSlug(
+        "videos/2026-07-05-rest-is-history-benjamin-franklin.md",
+      ),
+      "videos__2026-07-05-rest-is-history-benjamin-franklin",
+    );
   });
 
   it("extracts subfolder labels from relative paths", () => {
@@ -144,11 +168,23 @@ describe("life lab slug helpers", () => {
     assert.equal(isReadmeSlug("videos__2026-07-04-bplus-bush-gulf-war"), false);
   });
 
-  it("derives titles from nested slugs", () => {
+  it("derives titles without date prefixes", () => {
     assert.equal(slugToTitle("renaissance-notes"), "Renaissance Notes");
     assert.equal(
+      titleFromFilename("2026-07-04-bplus-bush-gulf-war.md"),
+      "Bplus Bush Gulf War",
+    );
+    assert.equal(
       slugToTitle("videos__2026-07-04-bplus-bush-gulf-war"),
-      "2026 07 04 Bplus Bush Gulf War",
+      "Bplus Bush Gulf War",
+    );
+    assert.equal(titleFromFilename("channels.md"), "Channels");
+  });
+
+  it("formats date labels from filenames", () => {
+    assert.equal(
+      formatDateLabelFromFilename("2026-07-04-bplus-bush-gulf-war.md"),
+      "Jul 4, 2026",
     );
   });
 
@@ -164,6 +200,63 @@ describe("life lab slug helpers", () => {
       markdownExcerpt("# Heading\n\nA **short** note about art."),
       "Heading A short note about art.",
     );
+  });
+});
+
+describe("life lab note organization", () => {
+  it("groups nested video notes, reference notes, and readme", () => {
+    const groups = groupLifeLabNotes([
+      noteSummary({
+        slug: "readme",
+        title: "Readme",
+      }),
+      noteSummary({
+        slug: "channels",
+        title: "Channels",
+      }),
+      noteSummary({
+        slug: "videos__2026-07-05-rest-is-history-benjamin-franklin",
+        title: "Rest Is History Benjamin Franklin",
+        subfolderLabel: "videos",
+        dateLabel: "Jul 5, 2026",
+      }),
+      noteSummary({
+        slug: "videos__2026-07-04-bplus-bush-gulf-war",
+        title: "Bplus Bush Gulf War",
+        subfolderLabel: "videos",
+        dateLabel: "Jul 4, 2026",
+      }),
+      noteSummary({
+        slug: "concepts",
+        title: "Concepts",
+      }),
+      noteSummary({
+        slug: "questions",
+        title: "Questions",
+      }),
+    ]);
+
+    assert.deepEqual(
+      groups.map((group) => group.label),
+      ["Videos", "Reference", "Readme"],
+    );
+    assert.deepEqual(
+      groups[0]?.notes.map((note) => note.title),
+      [
+        "Rest Is History Benjamin Franklin",
+        "Bplus Bush Gulf War",
+      ],
+    );
+    assert.deepEqual(
+      groups[1]?.notes.map((note) => note.title),
+      ["Channels", "Concepts", "Questions"],
+    );
+  });
+});
+
+describe("life lab dev tools", () => {
+  it("enables dev tools only in development", () => {
+    assert.equal(isLifeLabDevToolsEnabled(), process.env.NODE_ENV === "development");
   });
 });
 

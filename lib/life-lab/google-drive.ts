@@ -17,10 +17,19 @@ type DriveFile = {
   name: string;
   mimeType?: string;
   modifiedTime?: string;
+  size?: string;
 };
 
 type DriveListResponse = {
   files?: DriveFile[];
+  nextPageToken?: string;
+};
+
+export type DriveListingStats = {
+  fileCount: number;
+  foldersTraversed: number;
+  maxDepthUsed: number;
+  paginationOccurred: boolean;
 };
 
 export class LifeLabDriveError extends Error {
@@ -182,23 +191,54 @@ export function isMarkdownDriveFile(file: DriveFile): boolean {
   );
 }
 
+export function isDriveFolder(file: DriveFile): boolean {
+  return file.mimeType === "application/vnd.google-apps.folder";
+}
+
 export async function listDriveChildren(
   credentials: DriveCredentials,
   folderId: string,
-): Promise<DriveFile[]> {
+): Promise<{ files: DriveFile[]; paginationOccurred: boolean }> {
   const query = `'${folderId}' in parents and trashed = false`;
-  const fields = "files(id,name,mimeType,modifiedTime)";
-  const data = await driveRequest<DriveListResponse>(
-    credentials,
-    `/files?q=${encodeURIComponent(query)}&fields=${encodeURIComponent(fields)}&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true`,
-  );
+  const fields = "nextPageToken,files(id,name,mimeType,modifiedTime,size)";
+  const files: DriveFile[] = [];
+  let pageToken: string | undefined;
+  let paginationOccurred = false;
 
-  return data.files ?? [];
+  do {
+    const params = new URLSearchParams({
+      q: query,
+      fields,
+      pageSize: "1000",
+      supportsAllDrives: "true",
+      includeItemsFromAllDrives: "true",
+    });
+
+    if (pageToken) {
+      params.set("pageToken", pageToken);
+      paginationOccurred = true;
+    }
+
+    const data = await driveRequest<DriveListResponse>(
+      credentials,
+      `/files?${params.toString()}`,
+    );
+
+    files.push(...(data.files ?? []));
+    pageToken = data.nextPageToken;
+  } while (pageToken);
+
+  return { files, paginationOccurred };
 }
 
 export type DriveMarkdownEntry = {
   file: DriveFile;
   relativePath: string;
+};
+
+export type DriveMarkdownListing = {
+  entries: DriveMarkdownEntry[];
+  stats: DriveListingStats;
 };
 
 export async function listMarkdownFilesRecursive(
@@ -208,10 +248,16 @@ export async function listMarkdownFilesRecursive(
     maxDepth?: number;
     maxFiles?: number;
   },
-): Promise<DriveMarkdownEntry[]> {
+): Promise<DriveMarkdownListing> {
   const maxDepth = options?.maxDepth ?? LIFE_LAB_MAX_FOLDER_DEPTH;
   const maxFiles = options?.maxFiles ?? LIFE_LAB_MAX_FILES_PER_SECTION;
   const results: DriveMarkdownEntry[] = [];
+  const stats: DriveListingStats = {
+    fileCount: 0,
+    foldersTraversed: 0,
+    maxDepthUsed: 0,
+    paginationOccurred: false,
+  };
 
   async function walk(
     currentFolderId: string,
@@ -222,14 +268,24 @@ export async function listMarkdownFilesRecursive(
       return;
     }
 
-    const children = await listDriveChildren(credentials, currentFolderId);
+    stats.maxDepthUsed = Math.max(stats.maxDepthUsed, folderDepth);
+
+    const { files: children, paginationOccurred } = await listDriveChildren(
+      credentials,
+      currentFolderId,
+    );
+
+    if (paginationOccurred) {
+      stats.paginationOccurred = true;
+    }
 
     for (const item of children) {
       if (results.length >= maxFiles) {
         break;
       }
 
-      if (item.mimeType === "application/vnd.google-apps.folder") {
+      if (isDriveFolder(item)) {
+        stats.foldersTraversed += 1;
         const nextPrefix = prefix ? `${prefix}/${item.name}` : item.name;
         await walk(item.id, nextPrefix, folderDepth + 1);
         continue;
@@ -241,12 +297,13 @@ export async function listMarkdownFilesRecursive(
 
       const relativePath = prefix ? `${prefix}/${item.name}` : item.name;
       results.push({ file: item, relativePath });
+      stats.fileCount += 1;
     }
   }
 
   await walk(folderId, "", 0);
 
-  return results;
+  return { entries: results, stats };
 }
 
 export async function downloadDriveFile(

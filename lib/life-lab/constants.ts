@@ -1,5 +1,11 @@
 export const LIFE_LAB_CACHE_SECONDS = 600;
 
+export const LIFE_LAB_CACHE_TAG = "life-lab";
+
+export function getLifeLabCacheSeconds(): number {
+  return process.env.NODE_ENV === "development" ? 30 : LIFE_LAB_CACHE_SECONDS;
+}
+
 export const LIFE_LAB_MAX_FOLDER_DEPTH = 5;
 
 export const LIFE_LAB_MAX_FILES_PER_SECTION = 300;
@@ -47,13 +53,44 @@ export type LifeLabNoteSummary = {
   excerpt: string;
   modifiedAt: string | null;
   modifiedAtLabel: string | null;
+  dateLabel: string | null;
   subfolderLabel: string | null;
+  dev?: LifeLabNoteDevMeta;
+};
+
+export type LifeLabNoteGroup = {
+  id: string;
+  label: string;
+  notes: LifeLabNoteSummary[];
+};
+
+export type LifeLabListingDiagnostic = {
+  fileCount: number;
+  foldersTraversed: number;
+  maxDepthUsed: number;
+  paginationOccurred: boolean;
+};
+
+export type LifeLabNoteDevMeta = {
+  fileId: string;
+  relativePath: string;
+  filename: string;
+  parentFolder: string | null;
+  mimeType: string | null;
+  modifiedAt: string | null;
+  fileSizeBytes: number | null;
+};
+
+export type LifeLabNoteLoadMeta = {
+  fromCache: boolean;
+  loadedAt: string;
 };
 
 export type LifeLabNote = LifeLabNoteSummary & {
   sectionId: LifeLabSectionId;
   sectionLabel: string;
   content: string;
+  dev?: LifeLabNoteDevMeta & LifeLabNoteLoadMeta;
 };
 
 export type LifeLabDiagnostic = {
