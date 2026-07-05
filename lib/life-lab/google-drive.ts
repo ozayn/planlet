@@ -247,6 +247,7 @@ export async function listMarkdownFilesRecursive(
   options?: {
     maxDepth?: number;
     maxFiles?: number;
+    shouldSkipFolder?: (folderName: string, prefix: string) => boolean;
   },
 ): Promise<DriveMarkdownListing> {
   const maxDepth = options?.maxDepth ?? LIFE_LAB_MAX_FOLDER_DEPTH;
@@ -285,8 +286,13 @@ export async function listMarkdownFilesRecursive(
       }
 
       if (isDriveFolder(item)) {
-        stats.foldersTraversed += 1;
         const nextPrefix = prefix ? `${prefix}/${item.name}` : item.name;
+
+        if (options?.shouldSkipFolder?.(item.name, prefix)) {
+          continue;
+        }
+
+        stats.foldersTraversed += 1;
         await walk(item.id, nextPrefix, folderDepth + 1);
         continue;
       }

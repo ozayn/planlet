@@ -38,6 +38,10 @@ import {
   type DriveMarkdownEntry,
 } from "@/lib/life-lab/google-drive";
 import {
+  isFilmLabExcludedFolder,
+  isFilmLabExcludedRelativePath,
+} from "@/lib/life-lab/film-lab";
+import {
   classifyNoteGroup,
   groupLifeLabNotes,
   noteAssignmentPriority,
@@ -450,8 +454,27 @@ async function listSectionFolders(
 async function listSectionMarkdownFiles(
   credentials: DriveCredentials,
   folderId: string,
+  sectionId?: LifeLabSectionId,
 ) {
-  return listMarkdownFilesRecursive(credentials, folderId);
+  return listMarkdownFilesRecursive(credentials, folderId, {
+    shouldSkipFolder:
+      sectionId === "film-lab"
+        ? (folderName, prefix) => isFilmLabExcludedFolder(folderName, prefix)
+        : undefined,
+  });
+}
+
+function filterSectionMarkdownEntries(
+  entries: DriveMarkdownEntry[],
+  sectionId: LifeLabSectionId,
+): DriveMarkdownEntry[] {
+  if (sectionId !== "film-lab") {
+    return entries;
+  }
+
+  return entries.filter(
+    (entry) => !isFilmLabExcludedRelativePath(entry.relativePath),
+  );
 }
 
 const getSectionFolderMapCached = unstable_cache(
@@ -532,9 +555,14 @@ async function loadSectionNotes(
     };
   }
 
-  const { entries, stats } = await listSectionMarkdownFiles(credentials, folderId);
+  const { entries, stats } = await listSectionMarkdownFiles(
+    credentials,
+    folderId,
+    sectionId,
+  );
+  const visibleEntries = filterSectionMarkdownEntries(entries, sectionId);
   const baseRecords = dedupeSectionNoteRecords(
-    entries.map((entry) => summarizeMarkdownEntry(entry)),
+    visibleEntries.map((entry) => summarizeMarkdownEntry(entry)),
   );
   const records = await enrichSectionNoteRecords(credentials, baseRecords);
 

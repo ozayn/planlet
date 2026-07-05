@@ -130,6 +130,28 @@ export function isRedundantMetadataChip(
     return true;
   }
 
+  if (
+    context.sectionId === "film-lab" &&
+    [
+      "film-lab",
+      "film lab",
+      "film-summary",
+      "film summary",
+      "imdb",
+      "imdb summary",
+    ].includes(normalized)
+  ) {
+    return true;
+  }
+
+  if (
+    context.sectionId === "film-lab" &&
+    context.groupLabel &&
+    normalizeChipValue(value) === normalizeChipValue(context.groupLabel)
+  ) {
+    return true;
+  }
+
   const impliedSubfolder =
     context.groupId?.toLowerCase() ?? context.subfolderLabel?.toLowerCase();
 
@@ -222,6 +244,28 @@ function dictionaryCardCandidates(metadata: LifeLabNoteMetadata): string[] {
   return candidates;
 }
 
+function filmLabCardCandidates(metadata: LifeLabNoteMetadata): string[] {
+  const candidates: string[] = [];
+
+  if (metadata.tags) {
+    candidates.push(...metadata.tags);
+  }
+
+  if (metadata.topics) {
+    candidates.push(...metadata.topics);
+  }
+
+  if (metadata.people) {
+    candidates.push(...metadata.people);
+  }
+
+  if (metadata.places) {
+    candidates.push(...metadata.places);
+  }
+
+  return candidates;
+}
+
 export function selectVisibleMetadataChips(
   metadata: LifeLabNoteMetadata | undefined,
   context: LifeLabChipContext = {},
@@ -235,7 +279,9 @@ export function selectVisibleMetadataChips(
       ? readingBriefCardCandidates(metadata)
       : context.sectionId === "learning-dictionary" && context.variant === "card"
         ? dictionaryCardCandidates(metadata)
-        : buildMetadataChipCandidates(metadata, context);
+        : context.sectionId === "film-lab" && context.variant === "card"
+          ? filmLabCardCandidates(metadata)
+          : buildMetadataChipCandidates(metadata, context);
 
   const seen = new Set<string>();
   const deduped: string[] = [];

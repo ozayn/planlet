@@ -93,6 +93,7 @@ function normalizeMetadata(raw: Record<string, unknown>): LifeLabNoteMetadata {
     "study_status",
     "term",
     "category",
+    "summary",
   ] as const;
 
   for (const field of stringFields) {

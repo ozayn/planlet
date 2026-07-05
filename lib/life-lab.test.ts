@@ -64,6 +64,13 @@ import {
   summarizeDictionaryCandidates,
 } from "@/lib/life-lab/dictionary-candidates";
 import {
+  classifyFilmLabNoteGroup,
+  extractFilmLabPreview,
+  isFilmLabExcludedFolder,
+  isFilmLabExcludedRelativePath,
+  isFilmLabNote,
+} from "@/lib/life-lab/film-lab";
+import {
   buildYoutubeVideoNoteHref,
   formatPlaylistProcessingSummary,
   hasPlaylistVideosTable,
@@ -213,6 +220,7 @@ describe("life lab sections", () => {
     assert.equal(isLifeLabSectionId("photography"), true);
     assert.equal(isLifeLabSectionId("reading-briefs"), true);
     assert.equal(isLifeLabSectionId("learning-dictionary"), true);
+    assert.equal(isLifeLabSectionId("film-lab"), true);
     assert.equal(isLifeLabSectionId("therapy-prep"), false);
   });
 
@@ -226,6 +234,7 @@ describe("life lab sections", () => {
     assert.equal(sectionIdFromFolderName("art-history"), "art-history");
     assert.equal(sectionIdFromFolderName("reading-briefs"), "reading-briefs");
     assert.equal(sectionIdFromFolderName("learning-dictionary"), "learning-dictionary");
+    assert.equal(sectionIdFromFolderName("film-lab"), "film-lab");
     assert.equal(sectionIdFromFolderName("therapy-prep"), null);
   });
 });
@@ -1483,6 +1492,197 @@ describe("learning dictionary", () => {
     assert.ok(chips.visible.includes("institutions"));
     assert.ok(chips.visible.includes("state power"));
     assert.ok(chips.visible.includes("authority"));
+  });
+});
+
+describe("film lab", () => {
+  const fixtureRoot = join(import.meta.dirname, "life-lab/fixtures/film-lab");
+  const tasteMapFixture = readFileSync(join(fixtureRoot, "taste-map.md"), "utf8");
+  const ratingsSummaryFixture = readFileSync(
+    join(fixtureRoot, "imdb/ratings-summary.md"),
+    "utf8",
+  );
+
+  function filmLabNote(
+    relativePath: string,
+    partial: Partial<LifeLabNoteSummary> = {},
+  ): LifeLabNoteSummary {
+    const slug = driveRelativePathToSlug(relativePath);
+
+    return noteSummary({
+      slug,
+      title: slugToTitle(slug),
+      relativePath,
+      subfolderLabel: relativePathSubfolder(relativePath),
+      ...partial,
+    });
+  }
+
+  it("excludes raw folders, csv paths, and non-markdown data", () => {
+    assert.equal(isFilmLabExcludedRelativePath("imdb/raw/ratings.csv"), true);
+    assert.equal(isFilmLabExcludedRelativePath("imdb/raw/export.tsv"), true);
+    assert.equal(isFilmLabExcludedRelativePath("imdb/raw/notes.md"), true);
+    assert.equal(isFilmLabExcludedRelativePath("raw/export.csv"), true);
+    assert.equal(isFilmLabExcludedRelativePath("imdb/ratings-summary.md"), false);
+    assert.equal(isFilmLabExcludedFolder("raw", "imdb"), true);
+    assert.equal(isFilmLabExcludedFolder("raw", ""), true);
+    assert.equal(isFilmLabExcludedFolder("imdb", ""), false);
+  });
+
+  it("groups synced drive markdown files into taste, imdb, and recommendations", () => {
+    const notes = [
+      filmLabNote("README.md", { title: "Film Lab" }),
+      filmLabNote("taste-map.md", { title: "Taste map" }),
+      filmLabNote("imdb/README.md", { title: "IMDb summaries" }),
+      filmLabNote("imdb/ratings-summary.md", { title: "Ratings summary" }),
+      filmLabNote("imdb/taste-patterns.md", { title: "Taste patterns" }),
+      filmLabNote("imdb/watchlist-summary.md", { title: "Watchlist summary" }),
+      filmLabNote("recommendations/what-to-watch-next.md", {
+        title: "What to watch next",
+      }),
+    ];
+
+    const groups = groupLifeLabNotes(notes, { sectionId: "film-lab" });
+
+    assert.deepEqual(
+      groups.map((group) => group.label),
+      ["Taste Map", "IMDb Summaries", "Recommendations", "About & reference"],
+    );
+    assert.equal(groups[0]?.notes.length, 1);
+    assert.equal(groups[1]?.notes.length, 3);
+    assert.equal(groups[2]?.notes.length, 1);
+    assert.equal(groups[3]?.notes.length, 2);
+    assert.equal(groups.at(-1)?.variant, "disclosure");
+  });
+
+  it("groups film lab notes into taste, imdb, and discovery sections", () => {
+    const notes = [
+      filmLabNote("taste-map.md", { title: "Taste map" }),
+      filmLabNote("imdb/ratings-summary.md", { title: "Ratings summary" }),
+      filmLabNote("imdb/watchlist-summary.md", { title: "Watchlist summary" }),
+      filmLabNote("recommendations/summer-picks.md", { title: "Summer picks" }),
+      filmLabNote("favorites/after-hours.md", { title: "After Hours" }),
+      filmLabNote("themes/noir.md", { title: "Noir" }),
+      filmLabNote("directors/kubrick.md", { title: "Stanley Kubrick" }),
+      filmLabNote("countries/japan.md", { title: "Japan" }),
+      filmLabNote("README.md", { title: "Film Lab" }),
+    ];
+
+    const groups = groupLifeLabNotes(notes, { sectionId: "film-lab" });
+
+    assert.deepEqual(
+      groups.map((group) => group.label),
+      [
+        "Taste Map",
+        "IMDb Summaries",
+        "Recommendations",
+        "Favorites",
+        "Themes",
+        "Directors",
+        "Countries",
+        "About & reference",
+      ],
+    );
+    assert.equal(groups[0]?.notes.length, 1);
+    assert.equal(groups[1]?.notes.length, 2);
+    assert.equal(groups.at(-1)?.variant, "disclosure");
+  });
+
+  it("uses frontmatter summaries for compact previews", () => {
+    const { metadata, body } = parseLifeLabFrontmatter(tasteMapFixture);
+    const processed = processLifeLabNoteContent(
+      filmLabNote("taste-map.md", { title: "Taste map", metadata }),
+      tasteMapFixture,
+    );
+
+    assert.equal(isFilmLabNote({
+      relativePath: "taste-map.md",
+      metadata,
+    }), true);
+    assert.match(
+      extractFilmLabPreview(body, metadata),
+      /recurring taste patterns/i,
+    );
+    assert.match(processed.excerpt, /recurring taste patterns/i);
+    assert.equal(processed.title, "Taste map");
+  });
+
+  it("opens imdb summary notes and searches by summary text", () => {
+    const { metadata, body } = parseLifeLabFrontmatter(ratingsSummaryFixture);
+    const processed = processLifeLabNoteContent(
+      filmLabNote("imdb/ratings-summary.md", {
+        title: "Ratings summary",
+        metadata,
+      }),
+      ratingsSummaryFixture,
+    );
+
+    assert.equal(classifyFilmLabNoteGroup({
+      slug: processed.slug,
+      relativePath: "imdb/ratings-summary.md",
+    }), "imdb-summaries");
+    assert.match(processed.excerpt, /ratings cluster around/i);
+    assert.equal(noteMatchesSearch(processed, "production design"), true);
+    assert.equal(isNoisyCardPreview("imdb/raw/ratings.csv"), true);
+    assert.equal(buildCardPreview(processed.excerpt), processed.excerpt);
+    assert.doesNotMatch(body, /imdb\/raw/);
+  });
+
+  it("opens watchlist summary notes", () => {
+    const watchlistFixture = readFileSync(
+      join(fixtureRoot, "imdb/watchlist-summary.md"),
+      "utf8",
+    );
+    const { metadata } = parseLifeLabFrontmatter(watchlistFixture);
+    const processed = processLifeLabNoteContent(
+      filmLabNote("imdb/watchlist-summary.md", {
+        title: "Watchlist summary",
+        metadata,
+      }),
+      watchlistFixture,
+    );
+
+    assert.equal(classifyFilmLabNoteGroup({
+      slug: processed.slug,
+      relativePath: "imdb/watchlist-summary.md",
+    }), "imdb-summaries");
+    assert.match(processed.excerpt, /queued to watch next/i);
+  });
+
+  it("opens what-to-watch-next recommendation notes", () => {
+    const recommendationFixture = readFileSync(
+      join(fixtureRoot, "recommendations/what-to-watch-next.md"),
+      "utf8",
+    );
+    const { metadata } = parseLifeLabFrontmatter(recommendationFixture);
+    const processed = processLifeLabNoteContent(
+      filmLabNote("recommendations/what-to-watch-next.md", {
+        title: "What to watch next",
+        metadata,
+      }),
+      recommendationFixture,
+    );
+
+    assert.equal(classifyFilmLabNoteGroup({
+      slug: processed.slug,
+      relativePath: "recommendations/what-to-watch-next.md",
+    }), "recommendations");
+    assert.match(processed.excerpt, /watch next/i);
+    assert.equal(processed.title, "What to watch next");
+  });
+
+  it("shows compact film lab card chips without section noise", () => {
+    const { metadata } = parseLifeLabFrontmatter(tasteMapFixture);
+    const chips = selectVisibleMetadataChips(metadata, {
+      sectionId: "film-lab",
+      variant: "card",
+      groupLabel: "Taste Map",
+    });
+
+    assert.equal(chips.visible.length, 3);
+    assert.equal(chips.overflowCount, 0);
+    assert.ok(chips.visible.includes("arthouse"));
+    assert.ok(chips.visible.includes("slow cinema"));
   });
 });
 

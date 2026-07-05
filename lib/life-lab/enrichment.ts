@@ -27,6 +27,11 @@ import {
   isPlaylistIndexNote,
   parsePlaylistIndexNote,
 } from "@/lib/life-lab/playlist-index";
+import {
+  extractFilmLabPreview,
+  filmLabDisplayTitle,
+  isFilmLabNote,
+} from "@/lib/life-lab/film-lab";
 import type { DriveCredentials } from "@/lib/life-lab/google-drive";
 import { downloadDriveFile } from "@/lib/life-lab/google-drive";
 
@@ -84,6 +89,11 @@ export function processLifeLabNoteContent(
     subfolderLabel: record.subfolderLabel,
     metadata: normalizedMetadata,
   });
+  const isFilmLab = isFilmLabNote({
+    relativePath: record.relativePath,
+    subfolderLabel: record.subfolderLabel,
+    metadata: normalizedMetadata,
+  });
   const isPlaylistIndex = isPlaylistIndexNote({
     sectionId: "youtube-learning",
     relativePath: record.relativePath,
@@ -95,7 +105,9 @@ export function processLifeLabNoteContent(
     ? extractReadingBriefPreview(body)
     : isDictionaryEntry
       ? extractDictionaryDefinition(body)
-      : markdownExcerpt(body);
+      : isFilmLab
+        ? extractFilmLabPreview(body, normalizedMetadata)
+        : markdownExcerpt(body);
 
   if (isPlaylistIndex) {
     const playlistDisplay = parsePlaylistIndexNote({
@@ -116,7 +128,13 @@ export function processLifeLabNoteContent(
         metadata: normalizedMetadata,
         body,
       })
-    : (headingTitle ?? record.title);
+    : isFilmLab
+      ? filmLabDisplayTitle({
+          title: headingTitle ?? record.title,
+          metadata: normalizedMetadata,
+          body,
+        })
+      : (headingTitle ?? record.title);
 
   return {
     ...record,

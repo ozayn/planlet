@@ -16,6 +16,12 @@ import {
   isDictionaryCategoryId,
 } from "@/lib/life-lab/learning-dictionary";
 import {
+  classifyFilmLabNoteGroup,
+  compareFilmLabGroupIds,
+  filmLabGroupLabel,
+  isFilmLabGroupId,
+} from "@/lib/life-lab/film-lab";
+import {
   isReadmeSlug,
   parseDateFromFilename,
   relativePathFilename,
@@ -307,12 +313,22 @@ function mergeDictionarySecondaryGroups(
   return mergeSecondaryGroups(groups, "About & reference");
 }
 
+function mergeFilmLabSecondaryGroups(
+  groups: LifeLabNoteGroup[],
+): LifeLabNoteGroup[] {
+  return mergeSecondaryGroups(groups, "About & reference");
+}
+
 function classifyNoteGroupForSection(
   note: LifeLabNoteSummary,
   sectionId?: LifeLabSectionId,
 ): string {
   if (sectionId === "learning-dictionary") {
     return classifyDictionaryNoteGroup(note);
+  }
+
+  if (sectionId === "film-lab") {
+    return classifyFilmLabNoteGroup(note);
   }
 
   return classifyNoteGroup(note);
@@ -327,6 +343,10 @@ function compareGroupIdsForSection(
     return compareDictionaryGroupIds(left, right);
   }
 
+  if (sectionId === "film-lab") {
+    return compareFilmLabGroupIds(left, right);
+  }
+
   return compareGroupIds(left, right);
 }
 
@@ -339,7 +359,15 @@ function groupLabelForSectionId(
     return dictionaryCategoryLabel(id);
   }
 
+  if (sectionId === "film-lab" && isFilmLabGroupId(id)) {
+    return filmLabGroupLabel(id);
+  }
+
   return groupLabelForId(id, notes);
+}
+
+function isPrimaryFilmLabGroup(groupId: string): boolean {
+  return isFilmLabGroupId(groupId);
 }
 
 function isPrimaryDictionaryGroup(groupId: string): boolean {
@@ -398,7 +426,9 @@ export function groupLifeLabNotes(
       const isPrimary =
         options.sectionId === "learning-dictionary"
           ? isPrimaryDictionaryGroup(id)
-          : isPrimaryContentGroup(id);
+          : options.sectionId === "film-lab"
+            ? isPrimaryFilmLabGroup(id)
+            : isPrimaryContentGroup(id);
 
       return {
         id,
@@ -422,6 +452,10 @@ export function groupLifeLabNotes(
 
   if (options.sectionId === "learning-dictionary") {
     return mergeDictionarySecondaryGroups(builtGroups);
+  }
+
+  if (options.sectionId === "film-lab") {
+    return mergeFilmLabSecondaryGroups(builtGroups);
   }
 
   return builtGroups;

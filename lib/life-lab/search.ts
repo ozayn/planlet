@@ -14,6 +14,7 @@ function metadataSearchValues(metadata: LifeLabNoteMetadata): string[] {
     metadata.date,
     metadata.term,
     metadata.category,
+    metadata.summary,
     typeof metadata.episode === "string" || typeof metadata.episode === "number"
       ? String(metadata.episode)
       : undefined,
