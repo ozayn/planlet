@@ -1,5 +1,7 @@
 "use client";
 
+// Chrome on macOS may expose speechSynthesis voices but fail to start audio;
+// Safari is more reliable for native speech. We show a calm fallback instead of forcing Chrome.
 import { useEffect, useRef, type ReactNode } from "react";
 
 import { useSpeechSynthesis } from "@/components/life-lab/use-speech-synthesis";
@@ -107,6 +109,7 @@ function SpeechVoiceSelector({
 }
 
 function SpeechPlaybackNotice({ show }: { show: boolean }) {
+  // Expected on Chrome/macOS when speechSynthesis never reaches onstart.
   if (!show) {
     return null;
   }

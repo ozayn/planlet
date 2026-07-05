@@ -28,8 +28,9 @@ type UseSpeechSynthesisOptions = {
   rate?: SpeechRate;
 };
 
-// Uses browser-native speechSynthesis only. macOS Safari is the most reliable target;
-// Chrome on macOS may list voices without producing audible speech.
+// Uses browser-native speechSynthesis only.
+// Chrome on macOS may expose speechSynthesis voices but fail to start audio;
+// Safari is more reliable for native speech.
 let activeSpeechOwnerId: string | null = null;
 
 export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
@@ -207,6 +208,7 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
       let chunkStarted = false;
 
       clearStartTimeout();
+      // If onstart never fires, show the browser fallback. This is expected on Chrome/macOS.
       startTimeoutRef.current = window.setTimeout(() => {
         if (
           speakGenerationRef.current !== generation ||

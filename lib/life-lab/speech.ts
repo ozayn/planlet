@@ -20,8 +20,8 @@ const VOICE_PREFERENCE_RULES: VoicePreferenceRule[] = [
 
 const ROBOTIC_VOICE_NAMES = ["daniel"] as const;
 
-// Browser note: macOS Safari speechSynthesis tends to work reliably with system voices.
-// Chrome on macOS may expose voices yet fail to produce audible speech for some utterances.
+// Browser note: Chrome on macOS may expose speechSynthesis voices but fail to start audio;
+// Safari is more reliable for native speech.
 export const DEFAULT_SPEECH_LANG = "en-GB";
 
 export const SPEECH_CHUNK_MAX_LENGTH = 1000;
