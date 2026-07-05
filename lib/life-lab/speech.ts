@@ -101,6 +101,120 @@ export function getSpeechVoiceId(voice: SpeechSynthesisVoice): string {
   return voice.voiceURI || `${voice.name}:${voice.lang}`;
 }
 
+export type SelectableSpeechVoiceOption = {
+  id: string;
+  label: string;
+  matches: (voice: SpeechSynthesisVoice) => boolean;
+};
+
+export const SELECTABLE_SPEECH_VOICE_OPTIONS: readonly SelectableSpeechVoiceOption[] =
+  [
+    {
+      id: "google-uk-english-female",
+      label: "Google UK English Female (en-gb)",
+      matches: (voice) =>
+        normalizeSpeechLang(voice.lang).startsWith("en-gb") &&
+        matchesGoogleUkEnglishFemaleName(voice.name),
+    },
+    {
+      id: "google-uk-english-male",
+      label: "Google UK English Male (en-gb)",
+      matches: (voice) =>
+        normalizeSpeechLang(voice.lang).startsWith("en-gb") &&
+        matchesGoogleUkEnglishMaleName(voice.name),
+    },
+    {
+      id: "google-us-english",
+      label: "Google US English (en-us)",
+      matches: (voice) =>
+        normalizeSpeechLang(voice.lang).startsWith("en-us") &&
+        matchesGoogleUsEnglishName(voice.name),
+    },
+  ] as const;
+
+function normalizeSpeechVoiceName(name: string): string {
+  return name.trim().toLowerCase();
+}
+
+function matchesGoogleUkEnglishFemaleName(name: string): boolean {
+  const normalized = normalizeSpeechVoiceName(name);
+
+  return (
+    normalized === "google uk english female" ||
+    (normalized.includes("google") &&
+      normalized.includes("uk") &&
+      normalized.includes("female"))
+  );
+}
+
+function matchesGoogleUkEnglishMaleName(name: string): boolean {
+  const normalized = normalizeSpeechVoiceName(name);
+
+  if (normalized.includes("female")) {
+    return false;
+  }
+
+  return (
+    normalized === "google uk english male" ||
+    (normalized.includes("google") &&
+      normalized.includes("uk") &&
+      normalized.includes("male"))
+  );
+}
+
+function matchesGoogleUsEnglishName(name: string): boolean {
+  const normalized = normalizeSpeechVoiceName(name);
+
+  return (
+    normalized === "google us english" ||
+    (normalized.includes("google") &&
+      normalized.includes("us") &&
+      normalized.includes("english") &&
+      !normalized.includes("uk"))
+  );
+}
+
+export type ListedSelectableSpeechVoice = {
+  id: string;
+  label: string;
+  voice: SpeechSynthesisVoice;
+};
+
+export function listSelectableSpeechVoices(
+  voices: SpeechSynthesisVoice[],
+): ListedSelectableSpeechVoice[] {
+  const listed: ListedSelectableSpeechVoice[] = [];
+
+  for (const option of SELECTABLE_SPEECH_VOICE_OPTIONS) {
+    const voice = voices.find(option.matches);
+
+    if (voice) {
+      listed.push({
+        id: option.id,
+        label: option.label,
+        voice,
+      });
+    }
+  }
+
+  return listed;
+}
+
+export function findSelectableSpeechVoiceById(
+  voices: SpeechSynthesisVoice[],
+  voiceId: string,
+): SpeechSynthesisVoice | null {
+  const option = SELECTABLE_SPEECH_VOICE_OPTIONS.find(
+    (entry) => entry.id === voiceId,
+  );
+
+  if (!option) {
+    return null;
+  }
+
+  return voices.find(option.matches) ?? null;
+}
+
 export function isEnglishSpeechVoice(voice: SpeechSynthesisVoice): boolean {
   return voice.lang.toLowerCase().startsWith("en");
 }
@@ -140,21 +254,18 @@ function pickFirstMatchingVoice(
 export function listEnglishSpeechVoices(
   voices: SpeechSynthesisVoice[],
 ): SpeechSynthesisVoice[] {
-  return voices
-    .filter(isEnglishSpeechVoice)
-    .sort((left, right) => {
-      const leftGb = normalizeSpeechLang(left.lang).startsWith("en-gb") ? 0 : 1;
-      const rightGb = normalizeSpeechLang(right.lang).startsWith("en-gb") ? 0 : 1;
-
-      if (leftGb !== rightGb) {
-        return leftGb - rightGb;
-      }
-
-      return left.name.localeCompare(right.name);
-    });
+  return listSelectableSpeechVoices(voices).map((entry) => entry.voice);
 }
 
 export function formatSpeechVoiceLabel(voice: SpeechSynthesisVoice): string {
+  const listed = listSelectableSpeechVoices([voice]).find(
+    (entry) => getSpeechVoiceId(entry.voice) === getSpeechVoiceId(voice),
+  );
+
+  if (listed) {
+    return listed.label;
+  }
+
   return `${voice.name} (${normalizeSpeechLang(voice.lang)})`;
 }
 
@@ -199,6 +310,14 @@ export function pickSpeechVoice(
 ): SpeechSynthesisVoice | null {
   if (voices.length === 0) {
     return null;
+  }
+
+  for (const option of SELECTABLE_SPEECH_VOICE_OPTIONS) {
+    const match = voices.find(option.matches);
+
+    if (match) {
+      return match;
+    }
   }
 
   for (const rule of VOICE_PREFERENCE_RULES) {
@@ -252,7 +371,7 @@ export function resolveSpeechVoice(
     return pickSpeechVoice(voices);
   }
 
-  return findSpeechVoiceById(voices, selectedVoiceId);
+  return findSelectableSpeechVoiceById(voices, selectedVoiceId);
 }
 
 const BARE_HTTPS_URL_PATTERN = /https?:\/\/[^\s<>"')\]]+/gi;

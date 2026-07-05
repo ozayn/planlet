@@ -44,6 +44,7 @@ import {
   findSpeechVoiceById,
   getSpeechVoiceId,
   listEnglishSpeechVoices,
+  listSelectableSpeechVoices,
   markdownToSpeechText,
   pickSpeechVoice,
   plainTextToSpeechText,
@@ -802,7 +803,7 @@ describe("life lab speech", () => {
     assert.equal(voice?.name, "Serena");
   });
 
-  it("prefers Flo over Serena and Daniel for auto voice", () => {
+  it("prefers Flo over Serena and Daniel for auto voice on Safari", () => {
     const voice = pickSpeechVoice([
       { name: "Daniel", lang: "en-GB", voiceURI: "daniel" } as SpeechSynthesisVoice,
       { name: "Serena", lang: "en-GB", voiceURI: "serena" } as SpeechSynthesisVoice,
@@ -810,6 +811,16 @@ describe("life lab speech", () => {
     ]);
 
     assert.equal(voice?.name, "Flo (English (UK))");
+  });
+
+  it("prefers Google UK English Female for auto voice when available", () => {
+    const voice = pickSpeechVoice([
+      { name: "Bad News", lang: "en-US", voiceURI: "bad-news" } as SpeechSynthesisVoice,
+      { name: "Google UK English Male", lang: "en-GB", voiceURI: "google-uk-male" } as SpeechSynthesisVoice,
+      { name: "Google UK English Female", lang: "en-GB", voiceURI: "google-uk-female" } as SpeechSynthesisVoice,
+    ]);
+
+    assert.equal(voice?.name, "Google UK English Female");
   });
 
   it("deprioritizes Daniel among en-GB voices", () => {
@@ -821,30 +832,46 @@ describe("life lab speech", () => {
     assert.equal(voice?.name, "Arthur");
   });
 
-  it("lists English voices only for the voice selector", () => {
-    const voices = listEnglishSpeechVoices([
+  it("lists only curated Google English voices for the voice selector", () => {
+    const voices = listSelectableSpeechVoices([
+      { name: "Bad News", lang: "en-US", voiceURI: "bad-news" } as SpeechSynthesisVoice,
+      { name: "Bubbles", lang: "en-US", voiceURI: "bubbles" } as SpeechSynthesisVoice,
+      { name: "Google UK English Female", lang: "en-GB", voiceURI: "google-uk-female" } as SpeechSynthesisVoice,
+      { name: "Google UK English Male", lang: "en_GB", voiceURI: "google-uk-male" } as SpeechSynthesisVoice,
+      { name: "Google US English", lang: "en-US", voiceURI: "google-us" } as SpeechSynthesisVoice,
       { name: "Flo", lang: "en-GB", voiceURI: "flo" } as SpeechSynthesisVoice,
-      { name: "Thomas", lang: "fr-FR", voiceURI: "thomas" } as SpeechSynthesisVoice,
-      { name: "Karen", lang: "en-AU", voiceURI: "karen" } as SpeechSynthesisVoice,
     ]);
 
-    assert.equal(voices.length, 2);
-    assert.equal(voices[0]?.name, "Flo");
-    assert.equal(voices[1]?.name, "Karen");
+    assert.deepEqual(
+      voices.map((voice) => voice.label),
+      [
+        "Google UK English Female (en-gb)",
+        "Google UK English Male (en-gb)",
+        "Google US English (en-us)",
+      ],
+    );
+    assert.equal(listEnglishSpeechVoices([
+      { name: "Bad News", lang: "en-US", voiceURI: "bad-news" } as SpeechSynthesisVoice,
+      { name: "Google US English", lang: "en-US", voiceURI: "google-us" } as SpeechSynthesisVoice,
+    ]).length, 1);
   });
 
   it("resolves manual and auto voice selections", () => {
     const voices = [
-      { name: "Flo", lang: "en-GB", voiceURI: "flo" } as SpeechSynthesisVoice,
-      { name: "Daniel", lang: "en-GB", voiceURI: "daniel" } as SpeechSynthesisVoice,
+      { name: "Google UK English Female", lang: "en-GB", voiceURI: "google-uk-female" } as SpeechSynthesisVoice,
+      { name: "Google US English", lang: "en-US", voiceURI: "google-us" } as SpeechSynthesisVoice,
     ];
 
-    assert.equal(resolveSpeechVoice(voices, SPEECH_AUTO_VOICE_ID)?.name, "Flo");
     assert.equal(
-      resolveSpeechVoice(voices, getSpeechVoiceId(voices[1]!))?.name,
-      "Daniel",
+      resolveSpeechVoice(voices, SPEECH_AUTO_VOICE_ID)?.name,
+      "Google UK English Female",
+    );
+    assert.equal(
+      resolveSpeechVoice(voices, "google-us-english")?.name,
+      "Google US English",
     );
     assert.equal(findSpeechVoiceById(voices, "missing"), null);
+    assert.equal(resolveSpeechVoice(voices, "google-uk-english-female")?.name, "Google UK English Female");
   });
 
   it("uses en-GB lang hint without assigning a voice by default", () => {

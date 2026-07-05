@@ -9,7 +9,7 @@ import {
   DEFAULT_SPEECH_RATE,
   getSpeechVoiceCount,
   isSpeechSynthesisSupported,
-  listEnglishSpeechVoices,
+  listSelectableSpeechVoices,
   logSpeechSynthesisError,
   plainTextToSpeechText,
   primeSpeechSynthesis,
@@ -44,7 +44,9 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
   );
   const [lastError, setLastError] = useState<string | null>(null);
   const [voiceCount, setVoiceCount] = useState(0);
-  const [englishVoices, setEnglishVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [selectableVoices, setSelectableVoices] = useState<
+    ReturnType<typeof listSelectableSpeechVoices>
+  >([]);
   const [selectedVoiceId, setSelectedVoiceIdState] = useState(
     SPEECH_AUTO_VOICE_ID,
   );
@@ -125,7 +127,7 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
     function loadVoices(): void {
       const voices = window.speechSynthesis.getVoices();
       setVoiceCount(voices.length);
-      setEnglishVoices(listEnglishSpeechVoices(voices));
+      setSelectableVoices(listSelectableSpeechVoices(voices));
     }
 
     loadVoices();
@@ -444,7 +446,7 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
     voiceFallbackNotice,
     lastError,
     diagnostics,
-    englishVoices,
+    selectableVoices,
     selectedVoiceId,
     setSelectedVoiceId,
     rate,

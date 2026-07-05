@@ -7,11 +7,10 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { useSpeechSynthesis } from "@/components/life-lab/use-speech-synthesis";
 import {
   formatSpeechRate,
-  formatSpeechVoiceLabel,
-  getSpeechVoiceId,
   SPEECH_AUTO_VOICE_ID,
   SPEECH_BROWSER_FALLBACK_MESSAGE,
   SPEECH_RATE_OPTIONS,
+  type ListedSelectableSpeechVoice,
   type SpeechDiagnostics,
   type SpeechRate,
 } from "@/lib/life-lab/speech";
@@ -79,7 +78,7 @@ function SpeechVoiceSelector({
   setSelectedVoiceId,
   disabled = false,
 }: {
-  voices: SpeechSynthesisVoice[];
+  voices: ListedSelectableSpeechVoice[];
   selectedVoiceId: string;
   setSelectedVoiceId: (voiceId: string) => void;
   disabled?: boolean;
@@ -95,12 +94,12 @@ function SpeechVoiceSelector({
         value={selectedVoiceId}
         onChange={(event) => setSelectedVoiceId(event.target.value)}
         disabled={disabled}
-        className="max-w-[9.5rem] truncate rounded-full border border-border/70 bg-transparent px-2 py-1.5 text-xs text-foreground disabled:cursor-not-allowed disabled:opacity-50 sm:max-w-[12rem]"
+        className="max-w-[11rem] truncate rounded-full border border-border/70 bg-transparent px-2 py-1.5 text-xs text-foreground disabled:cursor-not-allowed disabled:opacity-50 sm:max-w-[14rem]"
       >
         <option value={SPEECH_AUTO_VOICE_ID}>Auto</option>
         {voices.map((voice) => (
-          <option key={getSpeechVoiceId(voice)} value={getSpeechVoiceId(voice)}>
-            {formatSpeechVoiceLabel(voice)}
+          <option key={voice.id} value={voice.id}>
+            {voice.label}
           </option>
         ))}
       </select>
@@ -184,7 +183,7 @@ export function ReadAloudControls({
     playbackFailed,
     voiceFallbackNotice,
     diagnostics,
-    englishVoices,
+    selectableVoices,
     selectedVoiceId,
     setSelectedVoiceId,
     rate,
@@ -239,7 +238,7 @@ export function ReadAloudControls({
       )}
 
       <SpeechVoiceSelector
-        voices={englishVoices}
+        voices={selectableVoices}
         selectedVoiceId={selectedVoiceId}
         setSelectedVoiceId={setSelectedVoiceId}
         disabled={isSpeaking}
@@ -276,7 +275,7 @@ export function FlashcardReadAloudControls({
     playbackFailed,
     voiceFallbackNotice,
     diagnostics,
-    englishVoices,
+    selectableVoices,
     selectedVoiceId,
     setSelectedVoiceId,
     rate,
@@ -341,7 +340,7 @@ export function FlashcardReadAloudControls({
       )}
 
       <SpeechVoiceSelector
-        voices={englishVoices}
+        voices={selectableVoices}
         selectedVoiceId={selectedVoiceId}
         setSelectedVoiceId={setSelectedVoiceId}
         disabled={isSpeaking}
