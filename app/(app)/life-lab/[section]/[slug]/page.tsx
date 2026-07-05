@@ -2,6 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { auth } from "@/auth";
+import { LifeLabMetadataChips } from "@/components/life-lab/life-lab-metadata-chips";
+import { LifeLabNoteCardMeta } from "@/components/life-lab/life-lab-note-card-meta";
+import { LifeLabNoteReadAloud } from "@/components/life-lab/life-lab-note-read-aloud";
 import { LifeLabNoteDevInfoPanel } from "@/components/life-lab/life-lab-note-dev-info-panel";
 import { LifeLabNoteDevToolbar } from "@/components/life-lab/life-lab-note-dev-toolbar";
 import { MarkdownContent } from "@/components/life-lab/markdown-content";
@@ -47,7 +50,15 @@ export default async function LifeLabNotePage({
         title={note.title}
         subtitle={note.sectionLabel}
         action={
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            {note.flashcards && note.flashcards.length > 0 ? (
+              <Link
+                href={`/life-lab/${note.sectionId}/${note.slug}/study`}
+                className="rounded-full bg-accent-cream px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent-cream/80"
+              >
+                Study ({note.flashcards.length})
+              </Link>
+            ) : null}
             <LifeLabNoteDevToolbar note={note} />
             <Link
               href={`/life-lab/${note.sectionId}`}
@@ -65,10 +76,28 @@ export default async function LifeLabNotePage({
         <>
           <article className="ui-card-padded">
             {note.dateLabel ?? note.modifiedAtLabel ? (
-              <p className="mb-4 text-xs text-muted-light">
+              <p className="mb-2 text-xs text-muted-light">
                 {note.dateLabel ?? note.modifiedAtLabel}
               </p>
             ) : null}
+            <LifeLabMetadataChips
+              metadata={note.metadata}
+              sectionId={note.sectionId}
+              sectionLabel={note.sectionLabel}
+              subfolderLabel={note.subfolderLabel}
+              variant="detail"
+              className="mb-2"
+            />
+            <LifeLabNoteCardMeta
+              sectionId={note.sectionId}
+              note={note}
+              className="mb-3"
+            />
+            <LifeLabNoteReadAloud
+              title={note.title}
+              content={note.content}
+              className="mb-4"
+            />
             <MarkdownContent content={note.content} />
           </article>
           {note.dev ? (

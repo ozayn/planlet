@@ -43,12 +43,31 @@ export const LIFE_LAB_BLOCKED_SECTION_IDS = [
   "health-notes",
   "social-energy",
   "daily-notes",
+  "conversations",
+  "archive",
 ] as const;
 
 export type LifeLabSectionSummary = {
   id: LifeLabSectionId;
   label: string;
   noteCount: number;
+};
+
+export type LifeLabNoteMetadata = {
+  type?: string;
+  section?: string;
+  source?: string;
+  channel?: string;
+  playlist?: string;
+  episode?: string | number;
+  date?: string;
+  topics?: string[];
+  people?: string[];
+  places?: string[];
+  tags?: string[];
+  study_status?: string;
+  reviewed?: boolean;
+  flashcards?: boolean;
 };
 
 export type LifeLabNoteSummary = {
@@ -61,6 +80,10 @@ export type LifeLabNoteSummary = {
   subfolderLabel: string | null;
   fileId: string;
   relativePath: string;
+  metadata?: LifeLabNoteMetadata;
+  searchText?: string;
+  hasFlashcards?: boolean;
+  flashcardCount?: number;
   dev?: LifeLabNoteDevMeta;
 };
 
@@ -94,11 +117,33 @@ export type LifeLabNoteLoadMeta = {
   loadedAt: string;
 };
 
+export type LifeLabFlashcard = {
+  question: string;
+  answer: string;
+};
+
+export type LifeLabStudyCard = LifeLabFlashcard & {
+  noteSlug: string;
+  noteTitle: string;
+  sectionId: LifeLabSectionId;
+  sectionLabel: string;
+  playlist?: string;
+  tags?: string[];
+  topics?: string[];
+  source?: string;
+};
+
 export type LifeLabNote = LifeLabNoteSummary & {
   sectionId: LifeLabSectionId;
   sectionLabel: string;
   content: string;
+  flashcards?: LifeLabFlashcard[];
   dev?: LifeLabNoteDevMeta & LifeLabNoteLoadMeta;
+};
+
+export type LifeLabBrowseNote = LifeLabNoteSummary & {
+  sectionId: LifeLabSectionId;
+  sectionLabel: string;
 };
 
 export type LifeLabDiagnostic = {

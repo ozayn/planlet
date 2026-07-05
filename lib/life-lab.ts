@@ -15,7 +15,17 @@ import {
   type LifeLabNoteSummary,
   type LifeLabSectionId,
   type LifeLabSectionSummary,
+  type LifeLabStudyCard,
+  type LifeLabBrowseNote,
 } from "@/lib/life-lab/constants";
+import {
+  enrichSectionNoteRecords,
+  processLifeLabNoteContent,
+  type LifeLabSectionNoteRecord,
+} from "@/lib/life-lab/enrichment";
+import { collectLifeLabFilterOptions, type LifeLabFilterOptions, type LifeLabNoteFilters, filterLifeLabNotes } from "@/lib/life-lab/filters";
+import { parseLifeLabFrontmatter } from "@/lib/life-lab/frontmatter";
+import { extractFlashcardsFromMarkdown } from "@/lib/life-lab/flashcards";
 import { isLifeLabDevToolsEnabled } from "@/lib/life-lab/dev";
 import {
   downloadDriveFile,
@@ -46,7 +56,6 @@ import {
   relativePathFilename,
   relativePathSubfolder,
   titleFromFilename,
-  titleFromMarkdownHeading,
 } from "@/lib/life-lab/slug";
 import { canAccessLifeLabPage, type UserAccess } from "@/lib/roles";
 
@@ -70,7 +79,17 @@ export type {
   LifeLabNoteSummary,
   LifeLabSectionId,
   LifeLabSectionSummary,
+  LifeLabStudyCard,
+  LifeLabFlashcard,
+  LifeLabNoteMetadata,
+  LifeLabBrowseNote,
 } from "@/lib/life-lab/constants";
+
+export type { LifeLabFilterOptions, LifeLabNoteFilters, LifeLabFilterKey } from "@/lib/life-lab/filters";
+export { collectLifeLabFilterOptions, filterLifeLabNotes, noteMatchesFilters } from "@/lib/life-lab/filters";
+export { noteMatchesSearch, buildNoteSearchText } from "@/lib/life-lab/search";
+export { parseLifeLabFrontmatter } from "@/lib/life-lab/frontmatter";
+export { extractFlashcardsFromMarkdown } from "@/lib/life-lab/flashcards";
 
 export {
   getAllowedLifeLabSectionIds,
@@ -267,13 +286,6 @@ function formatModifiedLabel(modifiedTime: string | null | undefined): string | 
   }).format(new Date(modifiedTime));
 }
 
-type LifeLabSectionNoteRecord = LifeLabNoteSummary & {
-  fileId: string;
-  relativePath: string;
-  mimeType: string | null;
-  fileSizeBytes: number | null;
-};
-
 function driveFileSizeBytes(size: string | undefined): number | null {
   if (!size) {
     return null;
@@ -388,6 +400,10 @@ function toNoteSummary(record: LifeLabSectionNoteRecord): LifeLabNoteSummary {
     subfolderLabel: record.subfolderLabel,
     fileId: record.fileId,
     relativePath: record.relativePath,
+    metadata: record.metadata,
+    searchText: record.searchText,
+    hasFlashcards: record.hasFlashcards,
+    flashcardCount: record.flashcardCount,
   };
 
   if (isLifeLabDevToolsEnabled()) {
@@ -517,11 +533,13 @@ async function loadSectionNotes(
   }
 
   const { entries, stats } = await listSectionMarkdownFiles(credentials, folderId);
+  const baseRecords = dedupeSectionNoteRecords(
+    entries.map((entry) => summarizeMarkdownEntry(entry)),
+  );
+  const records = await enrichSectionNoteRecords(credentials, baseRecords);
 
   return {
-    records: dedupeSectionNoteRecords(
-      entries.map((entry) => summarizeMarkdownEntry(entry)),
-    ),
+    records,
     listingDiagnostic: toListingDiagnostic(stats),
   };
 }
@@ -662,6 +680,8 @@ export async function getLifeLabSectionData(
   sectionLabel: string | null;
   notes: LifeLabNoteSummary[];
   groups: LifeLabNoteGroup[];
+  filterOptions: LifeLabFilterOptions;
+  flashcardNoteCount: number;
   listingDiagnostic: LifeLabListingDiagnostic | null;
 }> {
   const availability = getLifeLabAvailability();
@@ -676,6 +696,8 @@ export async function getLifeLabSectionData(
       sectionLabel: null,
       notes: [],
       groups: [],
+      filterOptions: collectLifeLabFilterOptions([]),
+      flashcardNoteCount: 0,
       listingDiagnostic: null,
     };
   }
@@ -687,6 +709,8 @@ export async function getLifeLabSectionData(
       sectionLabel: getLifeLabSectionLabel(sectionId),
       notes: [],
       groups: [],
+      filterOptions: collectLifeLabFilterOptions([]),
+      flashcardNoteCount: 0,
       listingDiagnostic: null,
     };
   }
@@ -705,6 +729,8 @@ export async function getLifeLabSectionData(
         sectionLabel: getLifeLabSectionLabel(sectionId),
         notes: [],
         groups: [],
+        filterOptions: collectLifeLabFilterOptions([]),
+        flashcardNoteCount: 0,
         listingDiagnostic: null,
       };
     }
@@ -720,6 +746,8 @@ export async function getLifeLabSectionData(
       sectionLabel: getLifeLabSectionLabel(sectionId),
       notes,
       groups: groupLifeLabNotes(notes),
+      filterOptions: collectLifeLabFilterOptions(notes),
+      flashcardNoteCount: notes.filter((note) => note.hasFlashcards).length,
       listingDiagnostic: options.includeListingDiagnostic
         ? listingDiagnostic
         : null,
@@ -737,6 +765,8 @@ export async function getLifeLabSectionData(
       sectionLabel: getLifeLabSectionLabel(sectionId),
       notes: [],
       groups: [],
+      filterOptions: collectLifeLabFilterOptions([]),
+      flashcardNoteCount: 0,
       listingDiagnostic: null,
     };
   }
@@ -829,16 +859,18 @@ function buildLifeLabNote(
   sectionId: LifeLabSectionId,
   content: string,
 ): LifeLabNote {
-  const summary = toNoteSummary(record);
+  const { body } = parseLifeLabFrontmatter(content);
+  const processed = processLifeLabNoteContent(record, content);
+  const summary = toNoteSummary(processed);
   const { dev: _summaryDev, ...baseSummary } = summary;
-  const headingTitle = titleFromMarkdownHeading(content);
+  const flashcards = processed.flashcards ?? extractFlashcardsFromMarkdown(body);
 
   const note: LifeLabNote = {
     ...baseSummary,
-    title: headingTitle ?? baseSummary.title,
     sectionId,
     sectionLabel: getLifeLabSectionLabel(sectionId),
-    content,
+    content: body,
+    flashcards,
   };
 
   if (isLifeLabDevToolsEnabled()) {
@@ -903,5 +935,161 @@ export async function getLifeLabRawMarkdown(
   return {
     content,
     filename: relativePathFilename(record.relativePath),
+  };
+}
+
+function recordsToStudyCards(
+  records: LifeLabSectionNoteRecord[],
+  sectionId: LifeLabSectionId,
+): LifeLabStudyCard[] {
+  const sectionLabel = getLifeLabSectionLabel(sectionId);
+  const cards: LifeLabStudyCard[] = [];
+
+  for (const record of records) {
+    if (!record.flashcards?.length) {
+      continue;
+    }
+
+    for (const flashcard of record.flashcards) {
+      cards.push({
+        ...flashcard,
+        noteSlug: record.slug,
+        noteTitle: record.title,
+        sectionId,
+        sectionLabel,
+        playlist: record.metadata?.playlist,
+        tags: record.metadata?.tags,
+        topics: record.metadata?.topics,
+        source: record.metadata?.source,
+      });
+    }
+  }
+
+  return cards;
+}
+
+export async function getLifeLabStudyData(
+  sectionId: string,
+  filters: LifeLabNoteFilters = {},
+): Promise<{
+  availability: LifeLabAvailability;
+  sectionId: LifeLabSectionId | null;
+  sectionLabel: string | null;
+  cards: LifeLabStudyCard[];
+}> {
+  const sectionData = await getLifeLabSectionData(sectionId);
+
+  if (!sectionData.sectionId || !sectionData.sectionLabel) {
+    return {
+      availability: sectionData.availability,
+      sectionId: null,
+      sectionLabel: null,
+      cards: [],
+    };
+  }
+
+  const filteredNotes = filterLifeLabNotes(sectionData.notes, filters);
+  const filteredSlugs = new Set(filteredNotes.map((note) => note.slug));
+  const { records } = await getSectionNotesCached(sectionData.sectionId);
+  const studyRecords = records.filter(
+    (record) => filteredSlugs.has(record.slug) && record.flashcards?.length,
+  );
+
+  return {
+    availability: sectionData.availability,
+    sectionId: sectionData.sectionId,
+    sectionLabel: sectionData.sectionLabel,
+    cards: recordsToStudyCards(studyRecords, sectionData.sectionId),
+  };
+}
+
+export async function getLifeLabBrowseData(): Promise<{
+  availability: LifeLabAvailability;
+  notes: LifeLabBrowseNote[];
+  filterOptions: LifeLabFilterOptions;
+  flashcardNoteCount: number;
+}> {
+  const availability = getLifeLabAvailability();
+
+  if (availability.status !== "ready") {
+    return {
+      availability,
+      notes: [],
+      filterOptions: collectLifeLabFilterOptions([]),
+      flashcardNoteCount: 0,
+    };
+  }
+
+  const sections = await Promise.all(
+    getAllowedLifeLabSectionIds().map(async (sectionId) => {
+      const { records } = await getSectionNotesCached(sectionId);
+      const sectionLabel = getLifeLabSectionLabel(sectionId);
+
+      return records.map((record) => ({
+        ...toNoteSummary(record),
+        sectionId,
+        sectionLabel,
+      }));
+    }),
+  );
+
+  const notes = sections.flat();
+
+  return {
+    availability,
+    notes,
+    filterOptions: collectLifeLabFilterOptions(notes),
+    flashcardNoteCount: notes.filter((note) => note.hasFlashcards).length,
+  };
+}
+
+export async function getLifeLabAllStudyData(
+  filters: LifeLabNoteFilters = {},
+): Promise<{
+  availability: LifeLabAvailability;
+  cards: LifeLabStudyCard[];
+}> {
+  const browseData = await getLifeLabBrowseData();
+
+  if (browseData.availability.status !== "ready") {
+    return {
+      availability: browseData.availability,
+      cards: [],
+    };
+  }
+
+  const filteredNotes = filterLifeLabNotes(
+    browseData.notes,
+    filters,
+  ) as LifeLabBrowseNote[];
+  const cards: LifeLabStudyCard[] = [];
+
+  await Promise.all(
+    getAllowedLifeLabSectionIds().map(async (sectionId) => {
+      const sectionSlugs = new Set(
+        filteredNotes
+          .filter((note) => note.sectionId === sectionId)
+          .map((note) => note.slug),
+      );
+
+      if (sectionSlugs.size === 0) {
+        return;
+      }
+
+      const { records } = await getSectionNotesCached(sectionId);
+      cards.push(
+        ...recordsToStudyCards(
+          records.filter(
+            (record) => sectionSlugs.has(record.slug) && record.flashcards?.length,
+          ),
+          sectionId,
+        ),
+      );
+    }),
+  );
+
+  return {
+    availability: browseData.availability,
+    cards,
   };
 }

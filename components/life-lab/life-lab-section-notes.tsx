@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { LifeLabMetadataChips } from "@/components/life-lab/life-lab-metadata-chips";
+import { LifeLabNoteCardMeta } from "@/components/life-lab/life-lab-note-card-meta";
 import { LifeLabNoteCardDevMenu } from "@/components/life-lab/life-lab-note-card-dev-menu";
 import type {
   LifeLabListingDiagnostic,
@@ -82,33 +84,48 @@ function LifeLabNoteCard({ sectionId, note, group }: LifeLabNoteCardProps) {
   return (
     <li>
       <div className="ui-card-padded relative transition-colors hover:bg-accent-cream/25">
-        <Link
-          href={`/life-lab/${sectionId}/${note.slug}`}
-          className="block pr-10"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              {shouldShowSubfolderLabel(note, group) ? (
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-light">
-                  {note.subfolderLabel}
-                </p>
-              ) : null}
-              <h3 className="text-base font-semibold text-foreground">
-                {note.title}
-              </h3>
-              {showExcerpt && note.excerpt ? (
-                <p className="mt-1 text-sm leading-relaxed text-muted">
-                  {note.excerpt}
-                </p>
-              ) : null}
-            </div>
-            {note.dateLabel ?? note.modifiedAtLabel ? (
-              <span className="shrink-0 text-xs text-muted-light">
-                {note.dateLabel ?? note.modifiedAtLabel}
-              </span>
+        <div className="flex items-start justify-between gap-3 pr-10">
+          <div className="min-w-0 flex-1">
+            {shouldShowSubfolderLabel(note, group) ? (
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-light">
+                {note.subfolderLabel}
+              </p>
+            ) : null}
+            <Link
+              href={`/life-lab/${sectionId}/${note.slug}`}
+              className="block text-base font-semibold text-foreground transition-colors hover:text-foreground/80"
+            >
+              {note.title}
+            </Link>
+            <LifeLabMetadataChips
+              metadata={note.metadata}
+              sectionId={sectionId}
+              groupId={group.id}
+              groupLabel={group.label}
+              subfolderLabel={note.subfolderLabel}
+              variant="card"
+              className="mt-1.5"
+            />
+            <LifeLabNoteCardMeta
+              sectionId={sectionId}
+              note={note}
+              className="mt-2"
+            />
+            {showExcerpt && note.excerpt ? (
+              <Link
+                href={`/life-lab/${sectionId}/${note.slug}`}
+                className="mt-1 block text-sm leading-relaxed text-muted"
+              >
+                {note.excerpt}
+              </Link>
             ) : null}
           </div>
-        </Link>
+          {note.dateLabel ?? note.modifiedAtLabel ? (
+            <span className="shrink-0 text-xs text-muted-light">
+              {note.dateLabel ?? note.modifiedAtLabel}
+            </span>
+          ) : null}
+        </div>
         <div className="absolute right-3 top-3">
           <LifeLabNoteCardDevMenu sectionId={sectionId} note={note} />
         </div>

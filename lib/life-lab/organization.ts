@@ -10,6 +10,7 @@ const ABOUT_GROUP_ID = "about";
 const ARCHIVE_GROUP_ID = "archive";
 const REFERENCE_GROUP_ID = "reference";
 const VIDEOS_GROUP_ID = "videos";
+const PLAYLIST_GROUP_PREFIX = "playlist:";
 
 const SECONDARY_GROUP_ORDER = [
   REFERENCE_GROUP_ID,
@@ -17,9 +18,25 @@ const SECONDARY_GROUP_ORDER = [
   ABOUT_GROUP_ID,
 ] as const;
 
+export function playlistGroupId(playlist: string): string {
+  return `${PLAYLIST_GROUP_PREFIX}${playlist.toLowerCase()}`;
+}
+
+export function isPlaylistGroupId(groupId: string): boolean {
+  return groupId.startsWith(PLAYLIST_GROUP_PREFIX);
+}
+
+export function playlistGroupLabel(groupId: string): string {
+  return groupId.slice(PLAYLIST_GROUP_PREFIX.length);
+}
+
 export function classifyNoteGroup(note: LifeLabNoteSummary): string {
   if (isReadmeSlug(note.slug)) {
     return ABOUT_GROUP_ID;
+  }
+
+  if (note.metadata?.playlist?.trim()) {
+    return playlistGroupId(note.metadata.playlist.trim());
   }
 
   if (!note.subfolderLabel) {
@@ -46,6 +63,10 @@ export function noteGroupLabel(groupId: string): string {
 
   if (groupId === ARCHIVE_GROUP_ID) {
     return "Archive";
+  }
+
+  if (isPlaylistGroupId(groupId)) {
+    return playlistGroupLabel(groupId);
   }
 
   return groupId.charAt(0).toUpperCase() + groupId.slice(1);
@@ -86,6 +107,10 @@ export function noteAssignmentPriority(groupId: string): number {
     return 0;
   }
 
+  if (isPlaylistGroupId(groupId)) {
+    return 5;
+  }
+
   if (isPrimaryContentGroup(groupId)) {
     return 10;
   }
@@ -118,6 +143,13 @@ function compareGroupIds(left: string, right: string): number {
       return 1;
     }
 
+    const leftPlaylist = isPlaylistGroupId(left);
+    const rightPlaylist = isPlaylistGroupId(right);
+
+    if (leftPlaylist !== rightPlaylist) {
+      return leftPlaylist ? 1 : -1;
+    }
+
     return left.localeCompare(right);
   }
 
@@ -139,6 +171,22 @@ function disclosureSummary(label: string, count: number): string {
 
 export function groupDisclosureSummary(group: LifeLabNoteGroup): string {
   return disclosureSummary(group.label, group.notes.length);
+}
+
+function groupLabelForId(id: string, notes: LifeLabNoteSummary[]): string {
+  if (isPlaylistGroupId(id)) {
+    const playlist = notes.find(
+      (note) =>
+        note.metadata?.playlist &&
+        playlistGroupId(note.metadata.playlist.trim()) === id,
+    )?.metadata?.playlist;
+
+    if (playlist) {
+      return playlist;
+    }
+  }
+
+  return noteGroupLabel(id);
 }
 
 export function groupLifeLabNotes(
@@ -182,7 +230,7 @@ export function groupLifeLabNotes(
   return [...groups.keys()]
     .sort(compareGroupIds)
     .map((id) => {
-      const label = noteGroupLabel(id);
+      const label = groupLabelForId(id, groups.get(id) ?? []);
       const groupNotes = sortNotesInGroup(groups.get(id) ?? []);
       const isPrimary = isPrimaryContentGroup(id);
 

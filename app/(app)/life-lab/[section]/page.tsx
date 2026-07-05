@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { auth } from "@/auth";
-import { LifeLabSectionNotes } from "@/components/life-lab/life-lab-section-notes";
+import { LifeLabSectionBrowser } from "@/components/life-lab/life-lab-section-browser";
 import { LifeLabStatusPanel } from "@/components/life-lab/life-lab-status-panel";
 import { PageHeader } from "@/components/page-header";
 import { getLifeLabSectionData } from "@/lib/life-lab";
@@ -31,7 +31,7 @@ export default async function LifeLabSectionPage({
   const showDiagnostics =
     isAdmin && process.env.NODE_ENV === "development";
 
-  const { availability, sectionId, sectionLabel, groups, listingDiagnostic } =
+  const { availability, sectionId, sectionLabel, notes, filterOptions, flashcardNoteCount, listingDiagnostic } =
     await getLifeLabSectionData(section, {
       refresh: shouldRefresh,
       includeListingDiagnostic: showDiagnostics,
@@ -41,10 +41,7 @@ export default async function LifeLabSectionPage({
     notFound();
   }
 
-  const noteCount = groups.reduce(
-    (total, group) => total + group.notes.length,
-    0,
-  );
+  const noteCount = notes.length;
 
   return (
     <section className="ui-page-stack space-y-6">
@@ -70,9 +67,11 @@ export default async function LifeLabSectionPage({
           emptyMessage="No notes in this section yet."
         />
       ) : (
-        <LifeLabSectionNotes
+        <LifeLabSectionBrowser
           sectionId={sectionId}
-          groups={groups}
+          notes={notes}
+          filterOptions={filterOptions}
+          flashcardNoteCount={flashcardNoteCount}
           listingDiagnostic={listingDiagnostic}
           showDiagnostics={showDiagnostics}
           refreshHref={

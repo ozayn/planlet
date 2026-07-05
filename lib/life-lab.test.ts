@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
@@ -16,6 +19,32 @@ import {
   titleFromMarkdownHeading,
 } from "@/lib/life-lab/slug";
 import { groupDisclosureSummary, groupLifeLabNotes } from "@/lib/life-lab/organization";
+import { parseLifeLabFrontmatter } from "@/lib/life-lab/frontmatter";
+import { extractFlashcardsFromMarkdown } from "@/lib/life-lab/flashcards";
+import { noteMatchesSearch } from "@/lib/life-lab/search";
+import {
+  collectLifeLabFilterOptions,
+  filterLifeLabNotes,
+} from "@/lib/life-lab/filters";
+import { processLifeLabNoteContent } from "@/lib/life-lab/enrichment";
+import {
+  isRedundantMetadataChip,
+  selectVisibleMetadataChips,
+} from "@/lib/life-lab/metadata-chips";
+import {
+  noteShowsFlashcardAction,
+  resolveStudyStatusLabel,
+  studyStatusLabel,
+} from "@/lib/life-lab/study-status";
+import {
+  chunkSpeechText,
+  DEFAULT_SPEECH_LANG,
+  detectSpeechBrowserNameFromUserAgent,
+  markdownToSpeechText,
+  pickSpeechVoice,
+  prepareNoteSpeechText,
+  SPEECH_BROWSER_FALLBACK_MESSAGE,
+} from "@/lib/life-lab/speech";
 import {
   isLifeLabSectionBlocked,
   isLifeLabSectionId,
@@ -453,5 +482,290 @@ describe("life lab markdown file filter", () => {
       }),
       false,
     );
+  });
+});
+
+const sampleFrontmatterNote = readFileSync(
+  join(process.cwd(), "lib/life-lab/fixtures/sample-frontmatter-note.md"),
+  "utf8",
+);
+
+describe("life lab frontmatter", () => {
+  it("parses optional yaml frontmatter and strips it from the body", () => {
+    const parsed = parseLifeLabFrontmatter(sampleFrontmatterNote);
+
+    assert.equal(parsed.metadata.channel, "Lessons from the Past");
+    assert.equal(parsed.metadata.playlist, "The Iranian Revolution");
+    assert.deepEqual(parsed.metadata.tags, ["history", "iran", "revolution"]);
+    assert.equal(parsed.metadata.flashcards, true);
+    assert.equal(parsed.metadata.reviewed, false);
+    assert.match(parsed.body, /^# The Shah's Last Stand/);
+    assert.doesNotMatch(parsed.body, /^---/);
+  });
+
+  it("falls back to the original content when frontmatter is missing", () => {
+    const content = "# Plain note\n\nNo frontmatter here.";
+    const parsed = parseLifeLabFrontmatter(content);
+
+    assert.deepEqual(parsed.metadata, {});
+    assert.equal(parsed.body, content);
+  });
+});
+
+describe("life lab flashcards", () => {
+  it("extracts Q/A cards from an Optional Flashcards section", () => {
+    const { body } = parseLifeLabFrontmatter(sampleFrontmatterNote);
+    const cards = extractFlashcardsFromMarkdown(body);
+
+    assert.equal(cards.length, 3);
+    assert.match(cards[0]?.question ?? "", /Franklin/i);
+    assert.match(cards[1]?.answer ?? "", /accepted right/i);
+    assert.match(cards[2]?.question ?? "", /Mohammad Reza Shah/i);
+  });
+});
+
+describe("life lab search and filters", () => {
+  it("finds notes by title, body text, tag, topic, person, and playlist", () => {
+    const processed = processLifeLabNoteContent(
+      noteSummary({
+        slug: "videos__iran-revolution",
+        title: "Iran Revolution",
+        subfolderLabel: "videos",
+        relativePath: "videos/iran-revolution.md",
+      }),
+      sampleFrontmatterNote,
+    );
+
+    assert.equal(noteMatchesSearch(processed, "iran"), true);
+    assert.equal(noteMatchesSearch(processed, "Khomeini"), true);
+    assert.equal(noteMatchesSearch(processed, "Iranian Revolution"), true);
+    assert.equal(noteMatchesSearch(processed, "Lessons from the Past"), true);
+    assert.equal(noteMatchesSearch(processed, "political legitimacy"), true);
+    assert.equal(noteMatchesSearch(processed, "missing-term"), false);
+  });
+
+  it("filters notes by metadata tags and playlists", () => {
+    const notes = [
+      noteSummary({
+        slug: "one",
+        title: "One",
+        metadata: { tags: ["history"], playlist: "Series A" },
+      }),
+      noteSummary({
+        slug: "two",
+        title: "Two",
+        metadata: { tags: ["art"], playlist: "Series B" },
+      }),
+    ];
+
+    const filtered = filterLifeLabNotes(notes, { tag: "history", playlist: "Series A" });
+
+    assert.deepEqual(filtered.map((note) => note.slug), ["one"]);
+    assert.deepEqual(collectLifeLabFilterOptions(notes).playlist, [
+      "Series A",
+      "Series B",
+    ]);
+  });
+});
+
+describe("life lab metadata grouping", () => {
+  it("groups playlist metadata into playlist sections", () => {
+    const groups = groupLifeLabNotes([
+      noteSummary({
+        slug: "videos__episode-1",
+        title: "Episode 1",
+        subfolderLabel: "videos",
+        metadata: { playlist: "The Iranian Revolution" },
+      }),
+      noteSummary({
+        slug: "videos__episode-2",
+        title: "Episode 2",
+        subfolderLabel: "videos",
+        metadata: { playlist: "The Iranian Revolution" },
+      }),
+      noteSummary({
+        slug: "videos__standalone",
+        title: "Standalone",
+        subfolderLabel: "videos",
+      }),
+    ]);
+
+    assert.deepEqual(
+      groups.map((group) => group.label),
+      ["Videos", "The Iranian Revolution"],
+    );
+    assert.equal(groups[1]?.notes.length, 2);
+  });
+});
+
+describe("life lab blocked sections", () => {
+  it("blocks private folders including conversations and archive", () => {
+    assert.equal(isLifeLabSectionBlocked("conversations"), true);
+    assert.equal(isLifeLabSectionBlocked("archive"), true);
+    assert.equal(isLifeLabSectionBlocked("youtube-learning"), false);
+  });
+});
+
+describe("life lab metadata chips", () => {
+  const franklinMetadata = {
+    type: "youtube-learning",
+    section: "youtube-learning",
+    source: "youtube",
+    channel: "Lessons from the Past",
+    tags: ["history", "youtube", "diplomacy"],
+    topics: ["enlightenment", "diplomacy"],
+  };
+
+  it("hides redundant youtube and section chips in YouTube learning", () => {
+    const chips = selectVisibleMetadataChips(franklinMetadata, {
+      sectionId: "youtube-learning",
+      groupId: "videos",
+      variant: "card",
+    });
+
+    assert.deepEqual(chips.visible, [
+      "enlightenment",
+      "diplomacy",
+      "history",
+    ]);
+    assert.equal(
+      isRedundantMetadataChip("youtube", { sectionId: "youtube-learning" }),
+      true,
+    );
+    assert.equal(
+      isRedundantMetadataChip("video", { groupId: "videos" }),
+      true,
+    );
+  });
+
+  it("hides playlist chips inside the matching playlist group", () => {
+    const chips = selectVisibleMetadataChips(
+      {
+        playlist: "The Iranian Revolution",
+        tags: ["iran", "revolution", "monarchy"],
+        source: "youtube",
+      },
+      {
+        sectionId: "youtube-learning",
+        groupId: "playlist:the iranian revolution",
+        groupLabel: "The Iranian Revolution",
+        variant: "card",
+      },
+    );
+
+    assert.deepEqual(chips.visible, ["iran", "revolution", "monarchy"]);
+  });
+
+  it("shows overflow count when detail chips exceed the visible limit", () => {
+    const chips = selectVisibleMetadataChips(
+      {
+        topics: ["one", "two", "three", "four"],
+        tags: ["five", "six", "seven", "eight"],
+        people: ["nine"],
+      },
+      { variant: "detail" },
+    );
+
+    assert.equal(chips.visible.length, 8);
+    assert.equal(chips.overflowCount, 1);
+  });
+});
+
+describe("life lab study status", () => {
+  it("maps study_status values to readable labels", () => {
+    assert.equal(studyStatusLabel("new"), "New");
+    assert.equal(studyStatusLabel("learned"), "Learned");
+    assert.equal(
+      resolveStudyStatusLabel({ study_status: "studying" }),
+      "Studying",
+    );
+  });
+
+  it("falls back to reviewed when study_status is missing", () => {
+    assert.equal(resolveStudyStatusLabel({ reviewed: true }), "Reviewed");
+    assert.equal(resolveStudyStatusLabel({ reviewed: false }), "New");
+  });
+
+  it("prefers study_status over reviewed", () => {
+    assert.equal(
+      resolveStudyStatusLabel({ study_status: "revisit", reviewed: true }),
+      "Revisit",
+    );
+  });
+
+  it("shows flashcard action only when cards exist", () => {
+    assert.equal(
+      noteShowsFlashcardAction({ hasFlashcards: true, flashcardCount: 3 }),
+      true,
+    );
+    assert.equal(
+      noteShowsFlashcardAction({ hasFlashcards: true, flashcardCount: 0 }),
+      false,
+    );
+    assert.equal(noteShowsFlashcardAction({ hasFlashcards: false }), false);
+  });
+});
+
+describe("life lab speech", () => {
+  it("strips markdown syntax for readable speech text", () => {
+    const spoken = markdownToSpeechText(
+      "# Heading\n\n[Link](https://example.com)\n\n```mermaid\ngraph LR\n```\n\n```js\nconst x = 1\n```\n\nPlain text.",
+    );
+
+    assert.match(spoken, /Heading/);
+    assert.match(spoken, /Link/);
+    assert.match(spoken, /Plain text/);
+    assert.doesNotMatch(spoken, /```/);
+    assert.doesNotMatch(spoken, /graph LR/);
+  });
+
+  it("prepares note speech text with title and cleaned body", () => {
+    const spoken = prepareNoteSpeechText("Benjamin Franklin", "## Notes\n\nDiplomat.");
+
+    assert.equal(spoken, "Benjamin Franklin. Notes. Diplomat.");
+  });
+
+  it("prefers British English female voices when available", () => {
+    const voice = pickSpeechVoice([
+      { name: "Alex", lang: "en-US" } as SpeechSynthesisVoice,
+      { name: "Daniel", lang: "en-GB" } as SpeechSynthesisVoice,
+      { name: "Serena", lang: "en-GB" } as SpeechSynthesisVoice,
+    ]);
+
+    assert.equal(voice?.name, "Serena");
+  });
+
+  it("uses en-GB lang hint without assigning a voice by default", () => {
+    assert.equal(DEFAULT_SPEECH_LANG, "en-GB");
+  });
+
+  it("chunks long note text into readable segments", () => {
+    const longText = `${"Word. ".repeat(400)}End.`;
+    const chunks = chunkSpeechText(longText, 1000);
+
+    assert.ok(chunks.length > 1);
+    assert.ok(chunks.every((chunk) => chunk.length <= 1000));
+    assert.match(chunks.join(" "), /^Word\./);
+    assert.match(chunks.at(-1) ?? "", /End\.$/);
+  });
+
+  it("detects common browser names from user agent strings", () => {
+    assert.equal(
+      detectSpeechBrowserNameFromUserAgent(
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+      ),
+      "Safari",
+    );
+    assert.equal(
+      detectSpeechBrowserNameFromUserAgent(
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+      ),
+      "Chrome",
+    );
+  });
+
+  it("includes a calm browser fallback message for speech failures", () => {
+    assert.match(SPEECH_BROWSER_FALLBACK_MESSAGE, /Safari on macOS/);
+    assert.match(SPEECH_BROWSER_FALLBACK_MESSAGE, /may not work/);
   });
 });
