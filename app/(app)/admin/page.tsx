@@ -1,16 +1,20 @@
 import { AdminCoachingReflectionLimitSetting } from "@/components/admin/admin-coaching-reflection-limit-setting";
 import { AdminFeedbackSummary } from "@/components/admin/admin-feedback-summary";
+import { AdminLifeLabDebug } from "@/components/admin/admin-life-lab-debug";
 import { AdminRecentLogins } from "@/components/admin/admin-recent-logins";
 import { AdminSummaryLine } from "@/components/admin/admin-summary-line";
 import { AdminTechnicalInfo } from "@/components/admin/admin-technical-info";
 import { AdminUserStats } from "@/components/admin/admin-user-stats";
 import { PageHeader } from "@/components/page-header";
+import { auth } from "@/auth";
 import {
   getAdminEmails,
   getAllowedEmails,
   getFeedbackEmails,
+  getLifeLabEmails,
   getReflectorEmails,
 } from "@/lib/auth-allowlist";
+import { isAdminRole } from "@/lib/auth-roles";
 import { getAdminUserStats } from "@/lib/admin-stats";
 import {
   getTextParserProviderLabel,
@@ -21,8 +25,10 @@ import {
 } from "@/lib/env";
 import { getAdminFeedbackCounts } from "@/lib/feedback";
 import { getCoachingReflectionWeeklyLimit } from "@/lib/app-settings";
+import { canUseLifeLabFeatures } from "@/lib/roles";
 
 export default async function AdminPage() {
+  const session = await auth();
   const [
     { users, totals, recentLogins },
     allowedEmails,
@@ -31,6 +37,7 @@ export default async function AdminPage() {
     feedbackEmails,
     feedbackCounts,
     coachingReflectionWeeklyLimit,
+    lifeLabEmails,
   ] = await Promise.all([
     getAdminUserStats(),
     Promise.resolve(getAllowedEmails()),
@@ -39,6 +46,7 @@ export default async function AdminPage() {
     Promise.resolve(getFeedbackEmails()),
     getAdminFeedbackCounts(),
     getCoachingReflectionWeeklyLimit(),
+    Promise.resolve(getLifeLabEmails()),
   ]);
 
   const textParserConfigured = isTextParserConfigured();
@@ -91,6 +99,12 @@ export default async function AdminPage() {
           pushNotifications={
             isWebPushConfigured() ? "Available" : "Not configured"
           }
+        />
+        <AdminLifeLabDebug
+          signedInEmail={session?.user?.email}
+          isAdmin={isAdminRole(session?.user?.role)}
+          canUseLifeLabFeatures={canUseLifeLabFeatures(session?.user ?? {})}
+          lifeLabEmails={lifeLabEmails}
         />
         <AdminRecentLogins logins={recentLogins} />
       </div>

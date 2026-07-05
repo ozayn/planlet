@@ -13,14 +13,63 @@ import {
   sectionIdFromFolderName,
 } from "@/lib/life-lab/sections";
 import { isMarkdownDriveFile } from "@/lib/life-lab/google-drive";
+import {
+  lifeLabFolderEntriesToMap,
+  normalizeLifeLabFolderMapResult,
+  resolveLifeLabFolderMap,
+} from "@/lib/life-lab";
 import { canUseLifeLabFeatures, canAccessLifeLabPage } from "@/lib/roles";
 
+describe("life lab folder map handling", () => {
+  it("reconstructs a Map from cached entries", () => {
+    const folderMap = lifeLabFolderEntriesToMap([
+      ["youtube-learning", "folder-1"],
+      ["photography", "folder-2"],
+    ]);
+
+    assert.equal(folderMap.get("youtube-learning"), "folder-1");
+    assert.equal(folderMap.get("photography"), "folder-2");
+  });
+
+  it("normalizes successful cache payloads", () => {
+    const result = normalizeLifeLabFolderMapResult({
+      ok: true,
+      entries: [["art-history", "folder-3"]],
+    });
+
+    assert.equal(result?.ok, true);
+    assert.deepEqual(
+      resolveLifeLabFolderMap(result)?.get("art-history"),
+      "folder-3",
+    );
+  });
+
+  it("normalizes failed cache payloads without throwing", () => {
+    const result = normalizeLifeLabFolderMapResult({
+      ok: false,
+      error: {
+        name: "LifeLabDriveError",
+        message: "Google Drive request failed (404).",
+      },
+    });
+
+    assert.equal(result?.ok, false);
+    assert.equal(resolveLifeLabFolderMap(result), null);
+  });
+
+  it("rejects invalid cache payloads", () => {
+    assert.equal(normalizeLifeLabFolderMapResult(undefined), null);
+    assert.equal(normalizeLifeLabFolderMapResult({ ok: true }), null);
+    assert.equal(normalizeLifeLabFolderMapResult({}), null);
+  });
+});
+
 describe("life lab access", () => {
-  it("allows only the Personal role for product features", () => {
+  it("allows Personal users and admins", () => {
     assert.equal(canUseLifeLabFeatures({ role: "PERSONAL" }), true);
+    assert.equal(canUseLifeLabFeatures({ role: "ADMIN" }), true);
     assert.equal(canUseLifeLabFeatures({ role: "USER" }), false);
     assert.equal(canUseLifeLabFeatures({ role: "REFLECTOR" }), false);
-    assert.equal(canUseLifeLabFeatures({ role: "ADMIN" }), false);
     assert.equal(
       canUseLifeLabFeatures({
         role: "USER",
@@ -30,7 +79,7 @@ describe("life lab access", () => {
     );
   });
 
-  it("allows admins to open Life Lab routes for setup/debug", () => {
+  it("keeps route access aligned with feature access", () => {
     assert.equal(canAccessLifeLabPage({ role: "PERSONAL" }), true);
     assert.equal(canAccessLifeLabPage({ role: "ADMIN" }), true);
     assert.equal(canAccessLifeLabPage({ role: "USER" }), false);

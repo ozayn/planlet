@@ -130,7 +130,9 @@ async function driveRequest<T>(
   });
 
   if (!response.ok) {
-    throw new LifeLabDriveError("Google Drive request failed.");
+    throw new LifeLabDriveError(
+      `Google Drive request failed (${response.status}).`,
+    );
   }
 
   return (await response.json()) as T;

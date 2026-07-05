@@ -51,15 +51,25 @@ export type LifeLabNote = LifeLabNoteSummary & {
   content: string;
 };
 
+export type LifeLabDiagnostic = {
+  driveCredentialsPresent: boolean;
+  rootFolderIdPresent: boolean;
+  folderMapLoaded: boolean;
+  errorName?: string;
+  errorMessage?: string;
+};
+
 export type LifeLabAvailability =
   | { status: "ready" }
   | {
       status: "unconfigured";
       adminMessage: string;
+      diagnostic: LifeLabDiagnostic;
     }
   | {
       status: "unavailable";
       message: string;
+      diagnostic: LifeLabDiagnostic;
     };
 
 export const LIFE_LAB_UNAVAILABLE_MESSAGE =

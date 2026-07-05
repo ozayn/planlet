@@ -86,12 +86,16 @@ export function canUseLearningJourneyFeatures(user: UserAccess): boolean {
 }
 
 export function canUseLifeLabFeatures(user: UserAccess): boolean {
+  if (isAdmin(user)) {
+    return true;
+  }
+
   return isPersonalRole(user);
 }
 
-/** Route access: Personal users plus admins (for local setup/debug). */
+/** @deprecated Use canUseLifeLabFeatures */
 export function canAccessLifeLabPage(user: UserAccess): boolean {
-  return canUseLifeLabFeatures(user) || isAdmin(user);
+  return canUseLifeLabFeatures(user);
 }
 
 export function canUseTherapyThoughts(user: UserAccess | RoleInput): boolean {

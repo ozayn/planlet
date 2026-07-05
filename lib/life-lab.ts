@@ -5,6 +5,7 @@ import {
   LIFE_LAB_UNAVAILABLE_MESSAGE,
   LIFE_LAB_UNCONFIGURED_ADMIN_MESSAGE,
   type LifeLabAvailability,
+  type LifeLabDiagnostic,
   type LifeLabNote,
   type LifeLabNoteSummary,
   type LifeLabSectionId,
@@ -45,6 +46,7 @@ export {
 
 export type {
   LifeLabAvailability,
+  LifeLabDiagnostic,
   LifeLabNote,
   LifeLabNoteSummary,
   LifeLabSectionId,
@@ -71,6 +73,119 @@ export function requireLifeLabUser(access: UserAccess): void {
   }
 }
 
+type LifeLabFolderMapEntries = Array<[LifeLabSectionId, string]>;
+
+type LifeLabFolderMapError = {
+  name: string;
+  message: string;
+};
+
+export type LifeLabFolderMapResult =
+  | { ok: true; entries: LifeLabFolderMapEntries }
+  | { ok: false; error: LifeLabFolderMapError };
+
+export function lifeLabFolderEntriesToMap(
+  entries: LifeLabFolderMapEntries,
+): Map<LifeLabSectionId, string> {
+  return new Map(entries);
+}
+
+function serializeLifeLabError(error: Error): LifeLabFolderMapError {
+  return {
+    name: error.name,
+    message: error.message,
+  };
+}
+
+function logLifeLabFolderMapFailure(error: Error): void {
+  if (process.env.NODE_ENV === "development") {
+    console.error("[life-lab] failed to load folder map", error);
+  }
+}
+
+function buildLifeLabDiagnostic(
+  options: {
+    folderMapLoaded?: boolean;
+    error?: Error | LifeLabFolderMapError;
+  } = {},
+): LifeLabDiagnostic {
+  const credentials = getLifeLabDriveCredentials();
+
+  return {
+    driveCredentialsPresent: credentials !== null,
+    rootFolderIdPresent: Boolean(process.env.LIFE_LAB_DRIVE_FOLDER_ID?.trim()),
+    folderMapLoaded: options.folderMapLoaded ?? false,
+    errorName: options.error?.name,
+    errorMessage: options.error?.message,
+  };
+}
+
+function unavailableAvailability(
+  error?: Error | LifeLabFolderMapError,
+  folderMapLoaded = false,
+): LifeLabAvailability {
+  return {
+    status: "unavailable",
+    message: LIFE_LAB_UNAVAILABLE_MESSAGE,
+    diagnostic: buildLifeLabDiagnostic({ error, folderMapLoaded }),
+  };
+}
+
+export function normalizeLifeLabFolderMapResult(
+  value: unknown,
+): LifeLabFolderMapResult | null {
+  if (!value || typeof value !== "object") {
+    return null;
+  }
+
+  if ("ok" in value && value.ok === true && "entries" in value) {
+    const entries = value.entries;
+
+    if (!Array.isArray(entries)) {
+      return null;
+    }
+
+    return {
+      ok: true,
+      entries: entries as LifeLabFolderMapEntries,
+    };
+  }
+
+  if (
+    "ok" in value &&
+    value.ok === false &&
+    "error" in value &&
+    value.error &&
+    typeof value.error === "object" &&
+    "message" in value.error
+  ) {
+    const error = value.error as LifeLabFolderMapError;
+
+    return {
+      ok: false,
+      error: {
+        name: typeof error.name === "string" ? error.name : "Error",
+        message:
+          typeof error.message === "string"
+            ? error.message
+            : "Failed to load Life Lab folder map.",
+      },
+    };
+  }
+
+  return null;
+}
+
+export function resolveLifeLabFolderMap(
+  result: LifeLabFolderMapResult | null | undefined,
+): Map<LifeLabSectionId, string> | null {
+  if (!result?.ok || !Array.isArray(result.entries)) {
+    return null;
+  }
+
+  return lifeLabFolderEntriesToMap(result.entries);
+}
+
 export function getLifeLabAvailability(): LifeLabAvailability {
   const credentials = getLifeLabDriveCredentials();
 
@@ -78,10 +193,47 @@ export function getLifeLabAvailability(): LifeLabAvailability {
     return {
       status: "unconfigured",
       adminMessage: LIFE_LAB_UNCONFIGURED_ADMIN_MESSAGE,
+      diagnostic: buildLifeLabDiagnostic(),
     };
   }
 
   return { status: "ready" };
+}
+
+async function loadSectionFolderMap(): Promise<LifeLabFolderMapResult> {
+  try {
+    const credentials = getLifeLabDriveCredentials();
+
+    if (!credentials) {
+      const error = new LifeLabDriveError(
+        "Life Lab Drive credentials are missing.",
+      );
+      logLifeLabFolderMapFailure(error);
+
+      return {
+        ok: false,
+        error: serializeLifeLabError(error),
+      };
+    }
+
+    const folderMap = await listSectionFolders(credentials);
+
+    return {
+      ok: true,
+      entries: [...folderMap.entries()],
+    };
+  } catch (error) {
+    const normalized =
+      error instanceof Error
+        ? error
+        : new LifeLabDriveError("Failed to load Life Lab folder map.");
+    logLifeLabFolderMapFailure(normalized);
+
+    return {
+      ok: false,
+      error: serializeLifeLabError(normalized),
+    };
+  }
 }
 
 function formatModifiedLabel(modifiedTime: string | null | undefined): string | null {
@@ -165,27 +317,44 @@ async function listMarkdownFilesInFolder(
 }
 
 const getSectionFolderMapCached = unstable_cache(
-  async () => {
-    const credentials = getLifeLabDriveCredentials();
-    if (!credentials) {
-      throw new LifeLabDriveError("Life Lab Drive credentials are missing.");
-    }
-
-    return listSectionFolders(credentials);
-  },
+  loadSectionFolderMap,
   ["life-lab-section-folder-map"],
   { revalidate: LIFE_LAB_CACHE_SECONDS },
 );
 
+async function getSectionFolderMap(): Promise<LifeLabFolderMapResult> {
+  const cached = normalizeLifeLabFolderMapResult(await getSectionFolderMapCached());
+
+  if (cached) {
+    return cached;
+  }
+
+  const error = new LifeLabDriveError(
+    "Life Lab folder map cache returned an invalid result.",
+  );
+  logLifeLabFolderMapFailure(error);
+
+  return {
+    ok: false,
+    error: serializeLifeLabError(error),
+  };
+}
+
 const getSectionNotesCached = unstable_cache(
   async (sectionId: LifeLabSectionId) => {
-    const credentials = getLifeLabDriveCredentials();
-    if (!credentials) {
-      throw new LifeLabDriveError("Life Lab Drive credentials are missing.");
+    const mapResult = await getSectionFolderMap();
+
+    if (!mapResult.ok) {
+      return [] as LifeLabNoteSummary[];
     }
 
-    const folderMap = await listSectionFolders(credentials);
-    const folderId = folderMap.get(sectionId);
+    const credentials = getLifeLabDriveCredentials();
+    if (!credentials) {
+      return [] as LifeLabNoteSummary[];
+    }
+
+    const folderMap = resolveLifeLabFolderMap(mapResult);
+    const folderId = folderMap?.get(sectionId);
 
     if (!folderId) {
       return [] as LifeLabNoteSummary[];
@@ -203,13 +372,19 @@ const getSectionNotesCached = unstable_cache(
 
 const getNoteContentCached = unstable_cache(
   async (sectionId: LifeLabSectionId, slug: string) => {
-    const credentials = getLifeLabDriveCredentials();
-    if (!credentials) {
-      throw new LifeLabDriveError("Life Lab Drive credentials are missing.");
+    const mapResult = await getSectionFolderMap();
+
+    if (!mapResult.ok) {
+      return null;
     }
 
-    const folderMap = await listSectionFolders(credentials);
-    const folderId = folderMap.get(sectionId);
+    const credentials = getLifeLabDriveCredentials();
+    if (!credentials) {
+      return null;
+    }
+
+    const folderMap = resolveLifeLabFolderMap(mapResult);
+    const folderId = folderMap?.get(sectionId);
 
     if (!folderId) {
       return null;
@@ -246,8 +421,29 @@ export async function getLifeLabHomeData(): Promise<{
     return { availability, sections: [] };
   }
 
+  const mapResult = await getSectionFolderMap();
+
+  if (!mapResult.ok) {
+    return {
+      availability: unavailableAvailability(mapResult.error),
+      sections: [],
+    };
+  }
+
+  const folderMap = resolveLifeLabFolderMap(mapResult);
+
+  if (!folderMap) {
+    const error = new LifeLabDriveError(
+      "Life Lab folder map could not be reconstructed.",
+    );
+
+    return {
+      availability: unavailableAvailability(error),
+      sections: [],
+    };
+  }
+
   try {
-    const folderMap = await getSectionFolderMapCached();
     const sections = await Promise.all(
       getAllowedLifeLabSectionIds().map(async (sectionId) => {
         const folderId = folderMap.get(sectionId);
@@ -269,14 +465,21 @@ export async function getLifeLabHomeData(): Promise<{
       }),
     );
 
-    return { availability, sections };
-  } catch (error) {
-    console.warn("[planlet] life lab home load failed:", error);
     return {
       availability: {
-        status: "unavailable",
-        message: LIFE_LAB_UNAVAILABLE_MESSAGE,
+        status: "ready",
       },
+      sections,
+    };
+  } catch (error) {
+    const normalized =
+      error instanceof Error
+        ? error
+        : new LifeLabDriveError("Failed to load Life Lab sections.");
+    logLifeLabFolderMapFailure(normalized);
+
+    return {
+      availability: unavailableAvailability(normalized, true),
       sections: [],
     };
   }
@@ -314,6 +517,17 @@ export async function getLifeLabSectionData(
   }
 
   try {
+    const mapResult = await getSectionFolderMap();
+
+    if (!mapResult.ok) {
+      return {
+        availability: unavailableAvailability(mapResult.error),
+        sectionId,
+        sectionLabel: getLifeLabSectionLabel(sectionId),
+        notes: [],
+      };
+    }
+
     const notes = await getSectionNotesCached(sectionId);
     return {
       availability,
@@ -322,12 +536,14 @@ export async function getLifeLabSectionData(
       notes,
     };
   } catch (error) {
-    console.warn("[planlet] life lab section load failed:", error);
+    const normalized =
+      error instanceof Error
+        ? error
+        : new LifeLabDriveError("Failed to load Life Lab section notes.");
+    logLifeLabFolderMapFailure(normalized);
+
     return {
-      availability: {
-        status: "unavailable",
-        message: LIFE_LAB_UNAVAILABLE_MESSAGE,
-      },
+      availability: unavailableAvailability(normalized, true),
       sectionId,
       sectionLabel: getLifeLabSectionLabel(sectionId),
       notes: [],
@@ -356,15 +572,26 @@ export async function getLifeLabNoteData(
   }
 
   try {
+    const mapResult = await getSectionFolderMap();
+
+    if (!mapResult.ok) {
+      return {
+        availability: unavailableAvailability(mapResult.error),
+        note: null,
+      };
+    }
+
     const note = await getNoteContentCached(sectionId, slug);
     return { availability, note };
   } catch (error) {
-    console.warn("[planlet] life lab note load failed:", error);
+    const normalized =
+      error instanceof Error
+        ? error
+        : new LifeLabDriveError("Failed to load Life Lab note.");
+    logLifeLabFolderMapFailure(normalized);
+
     return {
-      availability: {
-        status: "unavailable",
-        message: LIFE_LAB_UNAVAILABLE_MESSAGE,
-      },
+      availability: unavailableAvailability(normalized, true),
       note: null,
     };
   }

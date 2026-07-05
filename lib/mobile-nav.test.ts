@@ -6,6 +6,7 @@ import {
   DEFAULT_MOBILE_NAV_ITEMS,
   buildMobileNavRenderItems,
   getMobileDrawerItems,
+  getMobileDrawerSections,
   resolveMobileNavItems,
   sanitizeMobileNavItems,
 } from "@/lib/mobile-nav";
@@ -141,5 +142,36 @@ describe("getMobileDrawerItems", () => {
 
     assert.equal(drawerItems.length, 1);
     assert.equal(drawerItems[0]?.title, "Planning");
+  });
+});
+
+describe("Life Lab nav visibility", () => {
+  it("shows Life Lab in drawer sections for admins", () => {
+    const sections = getMobileDrawerSections(
+      { ...baseAccess, isAdmin: true, canUseLifeLabFeatures: true },
+      [],
+    );
+    const reflection = sections.find((section) => section.title === "Reflection");
+
+    assert.ok(reflection?.items.some((item) => item.key === "life-lab"));
+  });
+
+  it("hides Life Lab for users without access", () => {
+    const sections = getMobileDrawerSections(
+      {
+        ...baseAccess,
+        isAdmin: false,
+        canUseLifeLabFeatures: false,
+        canUseCoachingFeatures: false,
+        canUseBodyJourneyFeatures: false,
+      },
+      [],
+    );
+    const reflection = sections.find((section) => section.title === "Reflection");
+
+    assert.equal(
+      reflection?.items.some((item) => item.key === "life-lab"),
+      false,
+    );
   });
 });

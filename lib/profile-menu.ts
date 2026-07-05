@@ -69,5 +69,5 @@ export function canShowLearningJourneyInProfileMenu(
 export function canShowLifeLabInProfileMenu(
   access: ProfileMenuAccess,
 ): boolean {
-  return Boolean(access.canUseLifeLabFeatures);
+  return Boolean(access.canUseLifeLabFeatures || access.isAdmin);
 }
