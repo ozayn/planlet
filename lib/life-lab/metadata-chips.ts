@@ -200,14 +200,11 @@ function maxVisibleChips(context: LifeLabChipContext): number {
     return 3;
   }
 
-  if (context.sectionId === "reading-briefs" && context.variant === "detail-mobile") {
+  if (context.variant === "detail-mobile") {
     return 3;
   }
 
-  if (
-    context.sectionId === "reading-briefs" &&
-    context.variant === "detail-compact"
-  ) {
+  if (context.variant === "detail-compact") {
     return 5;
   }
 
@@ -305,9 +302,9 @@ export function selectVisibleMetadataChips(
   const visible = deduped.slice(0, limit);
   const hideOverflow =
     context.variant === "card" ||
+    context.variant === "detail-mobile" ||
     (context.sectionId === "reading-briefs" &&
-      (context.variant === "detail-compact" ||
-        context.variant === "detail-mobile"));
+      context.variant === "detail-compact");
 
   return {
     visible,

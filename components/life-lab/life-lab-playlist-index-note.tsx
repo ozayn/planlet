@@ -3,8 +3,8 @@ import Link from "next/link";
 import { MarkdownContent } from "@/components/life-lab/markdown-content";
 import type { LifeLabNote } from "@/lib/life-lab/constants";
 import {
-  formatPlaylistProcessingSummary,
   parsePlaylistIndexNote,
+  type PlaylistIndexSummary,
   type PlaylistVideoRow,
   type PlaylistVideoStatus,
 } from "@/lib/life-lab/playlist-index";
@@ -12,6 +12,17 @@ import {
 type LifeLabPlaylistIndexNoteProps = {
   note: LifeLabNote;
 };
+
+function stripUrlsForFallback(content: string): string {
+  return content
+    .replace(
+      /https?:\/\/(?:www\.)?(?:youtube\.com\/[^\s)|]+|youtu\.be\/[^\s)|]+)/gi,
+      "",
+    )
+    .replace(/\|\s*https?:\/\/[^\|]+\s*\|/g, "| — |")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
 
 function StatusBadge({ status }: { status: PlaylistVideoStatus }) {
   const label = status.charAt(0).toUpperCase() + status.slice(1);
@@ -24,10 +35,48 @@ function StatusBadge({ status }: { status: PlaylistVideoStatus }) {
 
   return (
     <span
-      className={`shrink-0 rounded-full border px-2 py-0.5 text-[0.6875rem] font-medium ${className}`}
+      className={`inline-flex shrink-0 rounded-full border px-2 py-0.5 text-[0.6875rem] font-medium ${className}`}
     >
       {label}
     </span>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  emphasis = false,
+}: {
+  label: string;
+  value: number;
+  emphasis?: boolean;
+}) {
+  return (
+    <div
+      className={`rounded-xl border px-3 py-2.5 ${
+        emphasis
+          ? "border-border/80 bg-accent-cream/40"
+          : "border-border/60 bg-surface"
+      }`}
+    >
+      <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-light">
+        {label}
+      </p>
+      <p className="mt-0.5 text-lg font-semibold tabular-nums text-foreground">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function SummaryCards({ summary }: { summary: PlaylistIndexSummary }) {
+  return (
+    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <StatCard label="Total videos" value={summary.total} emphasis />
+      <StatCard label="Processed" value={summary.processed} />
+      <StatCard label="Pending" value={summary.pending} />
+      <StatCard label="Errors" value={summary.error} />
+    </div>
   );
 }
 
@@ -44,7 +93,7 @@ function ProgressRow({
     <div className="space-y-1.5">
       <div className="flex items-center justify-between gap-3 text-xs text-muted">
         <span>
-          Processed {processed} of {total}
+          {processed} of {total} processed
         </span>
         <span>{percent}%</span>
       </div>
@@ -65,53 +114,141 @@ function ProgressRow({
   );
 }
 
-function VideoRow({ video }: { video: PlaylistVideoRow }) {
+function YoutubeLink({ href }: { href: string }) {
   return (
-    <li className="rounded-xl border border-border/60 bg-surface p-3">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1 space-y-1">
-          <div className="flex flex-wrap items-center gap-2">
-            {video.episode ? (
-              <span className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted-light">
-                Ep {video.episode}
-              </span>
-            ) : null}
-            <StatusBadge status={video.status} />
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex shrink-0 items-center justify-center rounded-full border border-border/70 p-1.5 text-muted transition-colors hover:bg-accent-cream/50 hover:text-foreground"
+      aria-label="Open on YouTube"
+      title="Open on YouTube"
+    >
+      <svg
+        viewBox="0 0 24 24"
+        className="h-3.5 w-3.5"
+        fill="currentColor"
+        aria-hidden="true"
+      >
+        <path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.75 15.02V8.98L15.5 12l-5.75 3.02Z" />
+      </svg>
+    </a>
+  );
+}
+
+function NoteAction({ video }: { video: PlaylistVideoRow }) {
+  if (video.noteHref) {
+    return (
+      <Link
+        href={video.noteHref}
+        className="inline-flex rounded-full bg-accent-cream px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent-cream/80"
+      >
+        Open note
+      </Link>
+    );
+  }
+
+  if (video.status === "pending") {
+    return (
+      <span className="text-xs font-medium text-muted">Pending</span>
+    );
+  }
+
+  return (
+    <span className="text-xs font-medium text-muted">No note yet</span>
+  );
+}
+
+function VideoTitle({ video }: { video: PlaylistVideoRow }) {
+  if (video.noteHref) {
+    return (
+      <Link
+        href={video.noteHref}
+        className="font-medium text-foreground transition-colors hover:text-muted"
+      >
+        {video.title}
+      </Link>
+    );
+  }
+
+  return <span className="font-medium text-foreground">{video.title}</span>;
+}
+
+function VideoTable({ videos }: { videos: PlaylistVideoRow[] }) {
+  return (
+    <div className="hidden overflow-x-auto md:block">
+      <table className="w-full min-w-[36rem] border-separate border-spacing-0 text-sm">
+        <thead>
+          <tr className="text-left text-[0.6875rem] font-semibold uppercase tracking-wide text-muted-light">
+            <th className="border-b border-border/60 pb-2 pr-3 font-semibold">#</th>
+            <th className="border-b border-border/60 pb-2 pr-3 font-semibold">Title</th>
+            <th className="border-b border-border/60 pb-2 pr-3 font-semibold">Duration</th>
+            <th className="border-b border-border/60 pb-2 pr-3 font-semibold">Status</th>
+            <th className="border-b border-border/60 pb-2 font-semibold">Note</th>
+          </tr>
+        </thead>
+        <tbody>
+          {videos.map((video, index) => (
+            <tr key={`${video.episode ?? index}-${video.title}`} className="align-top">
+              <td className="border-b border-border/40 py-3 pr-3 text-muted">
+                {video.episode ?? index + 1}
+              </td>
+              <td className="border-b border-border/40 py-3 pr-3">
+                <div className="flex min-w-0 items-start gap-2">
+                  <div className="min-w-0 flex-1 leading-snug">
+                    <VideoTitle video={video} />
+                  </div>
+                  {video.videoUrl ? <YoutubeLink href={video.videoUrl} /> : null}
+                </div>
+              </td>
+              <td className="border-b border-border/40 py-3 pr-3 text-muted">
+                {video.duration ?? "—"}
+              </td>
+              <td className="border-b border-border/40 py-3 pr-3">
+                <StatusBadge status={video.status} />
+              </td>
+              <td className="border-b border-border/40 py-3">
+                <NoteAction video={video} />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function VideoCards({ videos }: { videos: PlaylistVideoRow[] }) {
+  return (
+    <ul className="space-y-2 md:hidden">
+      {videos.map((video, index) => (
+        <li
+          key={`${video.episode ?? index}-${video.title}-mobile`}
+          className="rounded-xl border border-border/60 bg-surface p-3"
+        >
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0 flex-1 space-y-1.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted-light">
+                  {video.episode ? `Ep ${video.episode}` : `#${index + 1}`}
+                </span>
+                <StatusBadge status={video.status} />
+                {video.duration ? (
+                  <span className="text-[0.6875rem] text-muted">{video.duration}</span>
+                ) : null}
+              </div>
+              <p className="text-sm leading-snug">
+                <VideoTitle video={video} />
+              </p>
+            </div>
+            <div className="flex shrink-0 flex-col items-end gap-2">
+              <NoteAction video={video} />
+              {video.videoUrl ? <YoutubeLink href={video.videoUrl} /> : null}
+            </div>
           </div>
-          <p className="text-sm font-medium leading-snug text-foreground">
-            {video.title}
-          </p>
-        </div>
-        <div className="flex shrink-0 flex-col items-end gap-1.5">
-          {video.noteHref ? (
-            <Link
-              href={video.noteHref}
-              className="rounded-full bg-accent-cream px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent-cream/80"
-            >
-              Open note
-            </Link>
-          ) : video.status === "pending" ? (
-            <span className="rounded-full border border-border/70 px-3 py-1.5 text-xs font-medium text-muted">
-              Pending
-            </span>
-          ) : video.status === "error" ? (
-            <span className="rounded-full border border-border/70 px-3 py-1.5 text-xs font-medium text-muted">
-              Error
-            </span>
-          ) : null}
-          {video.videoUrl ? (
-            <a
-              href={video.videoUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs font-medium text-muted transition-colors hover:text-foreground"
-            >
-              Open YouTube
-            </a>
-          ) : null}
-        </div>
-      </div>
-    </li>
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -119,42 +256,70 @@ export function LifeLabPlaylistIndexNote({ note }: LifeLabPlaylistIndexNoteProps
   const display = parsePlaylistIndexNote(note);
 
   if (!display.parseSucceeded) {
-    return <MarkdownContent content={note.content} />;
+    return <MarkdownContent content={stripUrlsForFallback(note.content)} />;
   }
 
-  const summaryLine = formatPlaylistProcessingSummary(display.summary);
-
   return (
-    <div className="space-y-4">
-      <header className="space-y-2 border-b border-border/50 pb-4">
+    <div className="space-y-5">
+      <header className="space-y-3 border-b border-border/50 pb-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <Link
             href={`/life-lab/${note.sectionId}`}
-            className="rounded-full border border-border/70 px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:bg-accent-cream/50 hover:text-foreground"
+            className="text-xs font-medium text-muted-light transition-colors hover:text-muted"
           >
-            Back
+            ← Back to section
           </Link>
           {display.playlistUrl ? (
             <a
               href={display.playlistUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs font-medium text-muted transition-colors hover:text-foreground"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-muted transition-colors hover:text-foreground"
             >
               Open playlist
+              <span aria-hidden="true">↗</span>
             </a>
           ) : null}
         </div>
 
-        <div className="space-y-1">
-          <h1 className="text-lg font-semibold tracking-tight text-foreground md:text-xl">
-            {display.playlistTitle}
-          </h1>
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-lg font-semibold tracking-tight text-foreground md:text-xl">
+              {display.playlistTitle}
+            </h1>
+            {display.studyStatus ? (
+              <span className="rounded-full border border-border/70 bg-accent-cream/50 px-2.5 py-0.5 text-[0.6875rem] font-medium text-foreground">
+                {display.studyStatus}
+              </span>
+            ) : null}
+          </div>
+
           <p className="text-xs text-muted">
-            {[display.channel, display.dateLabel].filter(Boolean).join(" · ")}
+            {[
+              display.channel,
+              display.dateLabel,
+              `${display.summary.total} videos`,
+              `${display.summary.processed} processed`,
+              display.summary.pending > 0
+                ? `${display.summary.pending} pending`
+                : null,
+              display.summary.error > 0
+                ? `${display.summary.error} error${display.summary.error === 1 ? "" : "s"}`
+                : null,
+              display.summary.skipped > 0
+                ? `${display.summary.skipped} skipped`
+                : null,
+            ]
+              .filter(Boolean)
+              .join(" · ")}
           </p>
-          <p className="text-sm text-muted">{summaryLine}</p>
+
+          {display.focus ? (
+            <p className="text-sm leading-relaxed text-muted">{display.focus}</p>
+          ) : null}
         </div>
+
+        <SummaryCards summary={display.summary} />
 
         <ProgressRow
           processed={display.summary.processed}
@@ -162,16 +327,10 @@ export function LifeLabPlaylistIndexNote({ note }: LifeLabPlaylistIndexNoteProps
         />
       </header>
 
-      <section className="space-y-2">
+      <section className="space-y-3">
         <h2 className="text-sm font-semibold text-foreground">Videos</h2>
-        <ul className="space-y-2">
-          {display.videos.map((video, index) => (
-            <VideoRow
-              key={`${video.episode ?? index}-${video.title}`}
-              video={video}
-            />
-          ))}
-        </ul>
+        <VideoTable videos={display.videos} />
+        <VideoCards videos={display.videos} />
       </section>
 
       {display.batchNotes.length > 0 ? (
@@ -195,34 +354,52 @@ export function LifeLabPlaylistIndexNote({ note }: LifeLabPlaylistIndexNoteProps
         </section>
       ) : null}
 
-      {display.rawVideosTable ? (
-        <details className="ui-settings-details group">
-          <summary className="ui-settings-details-summary">
-            Technical details
-          </summary>
-          <div className="ui-settings-details-body space-y-3">
-            {display.playlistUrl ? (
-              <div className="space-y-1">
-                <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
-                  Playlist URL
-                </p>
-                <p className="break-all font-mono text-xs text-muted">
-                  {display.playlistUrl}
-                </p>
-              </div>
-            ) : null}
+      <details className="ui-settings-details group">
+        <summary className="ui-settings-details-summary">
+          Technical details
+        </summary>
+        <div className="ui-settings-details-body space-y-3">
+          {display.sourcePath ? (
             <div className="space-y-1">
               <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
-                Note filenames
+                Source path
               </p>
-              <ul className="space-y-1 font-mono text-xs text-muted">
-                {display.videos.map((video) => (
-                  <li key={`${video.title}-filename`}>
-                    {video.noteFilename ?? "—"}
-                  </li>
-                ))}
-              </ul>
+              <p className="break-all font-mono text-xs text-muted">
+                {display.sourcePath}
+              </p>
             </div>
+          ) : null}
+          {display.playlistUrl ? (
+            <div className="space-y-1">
+              <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
+                Playlist URL
+              </p>
+              <p className="break-all font-mono text-xs text-muted">
+                {display.playlistUrl}
+              </p>
+            </div>
+          ) : null}
+          {display.transcriptStatus ? (
+            <div className="space-y-1">
+              <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
+                Transcript / captions
+              </p>
+              <p className="text-xs text-muted">{display.transcriptStatus}</p>
+            </div>
+          ) : null}
+          <div className="space-y-1">
+            <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
+              Note filenames
+            </p>
+            <ul className="space-y-1 font-mono text-xs text-muted">
+              {display.videos.map((video) => (
+                <li key={`${video.title}-filename`}>
+                  {video.noteFilename ?? "—"}
+                </li>
+              ))}
+            </ul>
+          </div>
+          {display.rawVideosTable ? (
             <div className="space-y-1">
               <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
                 Raw table
@@ -231,9 +408,9 @@ export function LifeLabPlaylistIndexNote({ note }: LifeLabPlaylistIndexNoteProps
                 {display.rawVideosTable}
               </pre>
             </div>
-          </div>
-        </details>
-      ) : null}
+          ) : null}
+        </div>
+      </details>
     </div>
   );
 }

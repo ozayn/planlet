@@ -71,10 +71,19 @@ import {
   isFilmLabNote,
 } from "@/lib/life-lab/film-lab";
 import {
+  lifeLabNoteDisplayTitle,
+  lifeLabNoteDisplayTitleDiffers,
+  youtubeVideoDisplayTitle,
+} from "@/lib/life-lab/youtube-learning";
+import { stripLeadingMarkdownH1 } from "@/lib/life-lab/note-content";
+import {
+  buildVideoPlaylistNavigation,
   buildYoutubeVideoNoteHref,
+  findPlaylistIndexSlugForVideo,
   formatPlaylistProcessingSummary,
   hasPlaylistVideosTable,
   isPlaylistIndexNote,
+  isYoutubeVideoNote,
   parsePlaylistIndexNote,
   resolveYoutubeVideoNoteSlug,
   shouldRenderPlaylistIndexUi,
@@ -1863,7 +1872,12 @@ describe("playlist index notes", () => {
     );
     assert.equal(display.batchNotes.length, 3);
     assert.equal(display.videos[0]?.noteHref, "/life-lab/youtube-learning/videos__2026-07-05-shahs-last-stand");
+    assert.equal(display.videos[0]?.duration, "42:18");
     assert.equal(display.videos[3]?.noteHref, null);
+    assert.match(display.focus ?? "", /tracking playlist processing/i);
+    assert.equal(display.studyStatus, "In Progress");
+    assert.equal(display.transcriptStatus, "Captions used · transcripts not included");
+    assert.equal(display.sourcePath, "playlists/the-iranian-revolution.md");
     assert.equal(shouldRenderPlaylistIndexUi({
       ...note,
       sectionId: "youtube-learning",
@@ -1925,5 +1939,246 @@ describe("playlist index notes", () => {
     );
 
     assert.match(processed.excerpt, /3 processed · 1 pending/);
+  });
+
+  it("detects playlist indexes from youtube source metadata and summary sections", () => {
+    assert.equal(isPlaylistIndexNote({
+      sectionId: "youtube-learning",
+      relativePath: "indexes/justice-with-michael-sandel.md",
+      metadata: {
+        source: "youtube",
+        playlist: "Justice with Michael Sandel",
+      },
+    }), true);
+    assert.equal(isPlaylistIndexNote({
+      sectionId: "youtube-learning",
+      content: "## Playlist summary\n\nOverview.\n\n## Video list\n\n| Status | Title |\n| --- | --- |\n| processed | Lecture 1 |",
+    }), true);
+  });
+
+  it("builds previous and next navigation for processed video notes", () => {
+    const { metadata, body } = parseLifeLabFrontmatter(samplePlaylistIndex);
+    const display = parsePlaylistIndexNote({
+      slug: "playlists__the-iranian-revolution",
+      title: "The Iranian Revolution",
+      excerpt: "",
+      modifiedAt: null,
+      modifiedAtLabel: null,
+      dateLabel: "Jul 5, 2026",
+      subfolderLabel: "playlists",
+      fileId: "fixture-playlist",
+      relativePath: "playlists/the-iranian-revolution.md",
+      metadata,
+      sectionId: "youtube-learning",
+      sectionLabel: "YouTube learning",
+      content: body,
+    });
+
+    const navigation = buildVideoPlaylistNavigation(
+      display,
+      "videos__2026-07-05-khomeini-returns",
+      "playlists__the-iranian-revolution",
+      "youtube-learning",
+    );
+
+    assert.ok(navigation);
+    assert.equal(
+      navigation?.previous?.href,
+      "/life-lab/youtube-learning/videos__2026-07-05-shahs-last-stand",
+    );
+    assert.equal(
+      navigation?.next?.href,
+      "/life-lab/youtube-learning/videos__2026-07-05-revolutionary-courts",
+    );
+    assert.equal(
+      navigation?.playlistIndexHref,
+      "/life-lab/youtube-learning/playlists__the-iranian-revolution",
+    );
+    assert.equal(navigation?.next?.title, "Revolutionary Courts");
+  });
+
+  it("marks neighboring pending videos as unavailable in navigation", () => {
+    const { metadata, body } = parseLifeLabFrontmatter(samplePlaylistIndex);
+    const display = parsePlaylistIndexNote({
+      slug: "playlists__the-iranian-revolution",
+      title: "The Iranian Revolution",
+      excerpt: "",
+      modifiedAt: null,
+      modifiedAtLabel: null,
+      dateLabel: null,
+      subfolderLabel: "playlists",
+      fileId: "fixture-playlist",
+      relativePath: "playlists/the-iranian-revolution.md",
+      metadata,
+      sectionId: "youtube-learning",
+      sectionLabel: "YouTube learning",
+      content: body,
+    });
+
+    const navigation = buildVideoPlaylistNavigation(
+      display,
+      "videos__2026-07-05-revolutionary-courts",
+      "playlists__the-iranian-revolution",
+      "youtube-learning",
+    );
+
+    assert.equal(navigation?.next?.href, null);
+    assert.equal(navigation?.next?.status, "pending");
+    assert.equal(navigation?.next?.title, "Aftermath and Memory");
+  });
+
+  it("finds playlist indexes for video notes by playlist metadata or note slug", () => {
+    const { metadata, body } = parseLifeLabFrontmatter(samplePlaylistIndex);
+    const display = parsePlaylistIndexNote({
+      slug: "playlists__the-iranian-revolution",
+      title: "The Iranian Revolution",
+      excerpt: "",
+      modifiedAt: null,
+      modifiedAtLabel: null,
+      dateLabel: null,
+      subfolderLabel: "playlists",
+      fileId: "fixture-playlist",
+      relativePath: "playlists/the-iranian-revolution.md",
+      metadata,
+      sectionId: "youtube-learning",
+      sectionLabel: "YouTube learning",
+      content: body,
+    });
+    const records = [
+      {
+        slug: "playlists__the-iranian-revolution",
+        title: "The Iranian Revolution",
+        excerpt: "",
+        modifiedAt: null,
+        modifiedAtLabel: null,
+        dateLabel: null,
+        subfolderLabel: "playlists",
+        fileId: "fixture-playlist",
+        relativePath: "playlists/the-iranian-revolution.md",
+        metadata,
+      },
+      {
+        slug: "videos__2026-07-05-khomeini-returns",
+        title: "Khomeini Returns",
+        excerpt: "",
+        modifiedAt: null,
+        modifiedAtLabel: null,
+        dateLabel: null,
+        subfolderLabel: "videos",
+        fileId: "fixture-video",
+        relativePath: "videos/2026-07-05-khomeini-returns.md",
+        metadata: {
+          playlist: "The Iranian Revolution",
+          source: "youtube",
+        },
+      },
+    ];
+    const playlistContents = new Map([
+      ["playlists__the-iranian-revolution", display],
+    ]);
+
+    assert.equal(
+      findPlaylistIndexSlugForVideo(records, records[1]!, playlistContents),
+      "playlists__the-iranian-revolution",
+    );
+    assert.equal(isYoutubeVideoNote(records[1]!), true);
+    assert.equal(isYoutubeVideoNote(records[0]!), false);
+  });
+
+  it("lists all playlist videos for large indexes", () => {
+    const rows = Array.from({ length: 19 }, (_, index) => {
+      const episode = index + 1;
+      const status = episode <= 19 ? "processed" : "pending";
+
+      return `| ${status} | ${episode} | Lecture ${episode} | 55:00 | https://www.youtube.com/watch?v=vid${episode} | videos/lecture-${episode}.md |`;
+    }).join("\n");
+    const body = `# Justice with Michael Sandel\n\n## Videos\n\n| Status | Episode | Video title | Duration | Video URL | Note filename |\n| --- | --- | --- | --- | --- | --- |\n${rows}`;
+    const display = parsePlaylistIndexNote({
+      slug: "playlists__justice-with-michael-sandel",
+      title: "Justice with Michael Sandel",
+      excerpt: "",
+      modifiedAt: null,
+      modifiedAtLabel: null,
+      dateLabel: null,
+      subfolderLabel: "playlists",
+      fileId: "fixture-justice",
+      relativePath: "playlists/justice-with-michael-sandel.md",
+      metadata: { type: "playlist-index", playlist: "Justice with Michael Sandel" },
+      sectionId: "youtube-learning",
+      sectionLabel: "YouTube learning",
+      content: body,
+    });
+
+    assert.equal(display.summary.total, 19);
+    assert.equal(display.summary.processed, 19);
+    assert.equal(display.videos[18]?.noteHref, "/life-lab/youtube-learning/videos__lecture-19");
+  });
+});
+
+describe("life lab note detail content", () => {
+  it("strips the leading markdown h1 when the page header shows the title", () => {
+    const content = `# Justice Episode 1
+
+## Short version
+
+Opening lecture on moral philosophy.`;
+
+    assert.equal(
+      stripLeadingMarkdownH1(content),
+      "## Short version\n\nOpening lecture on moral philosophy.",
+    );
+    assert.equal(stripLeadingMarkdownH1("No heading here"), "No heading here");
+  });
+
+  it("shortens long youtube video titles for display only", () => {
+    const fullTitle =
+      'Justice: What\'s The Right Thing To Do? Episode 01 "THE MORAL SIDE OF MURDER"';
+
+    assert.equal(
+      youtubeVideoDisplayTitle(fullTitle),
+      "Justice, Episode 1: The Moral Side of Murder",
+    );
+    assert.equal(
+      lifeLabNoteDisplayTitle({
+        title: fullTitle,
+        sectionId: "youtube-learning",
+        relativePath: "videos/2026-07-06-justice-episode-01.md",
+        subfolderLabel: "videos",
+      }),
+      "Justice, Episode 1: The Moral Side of Murder",
+    );
+    assert.equal(
+      lifeLabNoteDisplayTitleDiffers({
+        title: fullTitle,
+        sectionId: "youtube-learning",
+        relativePath: "videos/2026-07-06-justice-episode-01.md",
+        subfolderLabel: "videos",
+      }),
+      true,
+    );
+    assert.equal(
+      lifeLabNoteDisplayTitle({
+        title: "Short title",
+        sectionId: "film-lab",
+        relativePath: "taste-map.md",
+      }),
+      "Short title",
+    );
+  });
+
+  it("limits mobile detail metadata chips to three without overflow text", () => {
+    const chips = selectVisibleMetadataChips(
+      {
+        tags: ["a", "b", "c", "d", "e"],
+        topics: ["topic"],
+      },
+      {
+        sectionId: "youtube-learning",
+        variant: "detail-mobile",
+      },
+    );
+
+    assert.equal(chips.visible.length, 3);
+    assert.equal(chips.overflowCount, 0);
   });
 });

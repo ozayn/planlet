@@ -6,17 +6,15 @@ import { LifeLabNoteDictionarySections } from "@/components/life-lab/life-lab-no
 import { LifeLabReadingBriefHeader } from "@/components/life-lab/life-lab-reading-brief-header";
 import { LifeLabReadingBriefNote } from "@/components/life-lab/life-lab-reading-brief-note";
 import { LifeLabPlaylistIndexNote } from "@/components/life-lab/life-lab-playlist-index-note";
-import { LifeLabMetadataChips } from "@/components/life-lab/life-lab-metadata-chips";
-import { LifeLabNoteCardMeta } from "@/components/life-lab/life-lab-note-card-meta";
-import { LifeLabNoteReadAloud } from "@/components/life-lab/life-lab-note-read-aloud";
+import { LifeLabPlaylistVideoNav } from "@/components/life-lab/life-lab-playlist-video-nav";
+import { LifeLabNoteDetailHeader } from "@/components/life-lab/life-lab-note-detail-header";
 import { LifeLabNoteDevInfoPanel } from "@/components/life-lab/life-lab-note-dev-info-panel";
-import { LifeLabNoteDevToolbar } from "@/components/life-lab/life-lab-note-dev-toolbar";
 import { MarkdownContent } from "@/components/life-lab/markdown-content";
 import { LifeLabStatusPanel } from "@/components/life-lab/life-lab-status-panel";
-import { PageHeader } from "@/components/page-header";
-import { getLifeLabNoteData } from "@/lib/life-lab";
+import { getLifeLabNoteData, getYoutubeVideoPlaylistNavigation } from "@/lib/life-lab";
 import { isLifeLabDevToolsEnabled } from "@/lib/life-lab/dev";
 import { hasDictionaryStudySections } from "@/lib/life-lab/dictionary-candidates";
+import { stripLeadingMarkdownH1 } from "@/lib/life-lab/note-content";
 import { isReadingBriefNote } from "@/lib/life-lab/reading-briefs";
 import { shouldRenderPlaylistIndexUi } from "@/lib/life-lab/playlist-index";
 import { isAdminRole } from "@/lib/auth-roles";
@@ -57,13 +55,18 @@ export default async function LifeLabNotePage({
   });
   const isPlaylistIndex = shouldRenderPlaylistIndexUi(note);
   const hasDictionarySections = hasDictionaryStudySections(note.content);
+  const playlistNav =
+    note.sectionId === "youtube-learning" && !isPlaylistIndex
+      ? await getYoutubeVideoPlaylistNavigation(note.sectionId, note.slug)
+      : null;
+  const noteBodyContent = stripLeadingMarkdownH1(note.content);
 
   return (
     <section
       className={`ui-page-stack ${
         isReadingBrief || isPlaylistIndex
           ? "space-y-3 md:space-y-4"
-          : "space-y-6"
+          : "space-y-4 md:space-y-6"
       }`}
     >
       {isReadingBrief ? (
@@ -73,30 +76,16 @@ export default async function LifeLabNotePage({
           note={note}
         />
       ) : isPlaylistIndex ? null : (
-        <PageHeader
-          title={note.title}
-          subtitle={note.sectionLabel}
-          action={
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              {note.flashcards && note.flashcards.length > 0 ? (
-                <Link
-                  href={`/life-lab/${note.sectionId}/${note.slug}/study`}
-                  className="rounded-full bg-accent-cream px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent-cream/80"
-                >
-                  Study · {note.flashcards.length} cards
-                </Link>
-              ) : null}
-              <LifeLabNoteDevToolbar note={note} />
-              <Link
-                href={`/life-lab/${note.sectionId}`}
-                className="text-sm font-medium text-muted transition-colors hover:text-foreground"
-              >
-                Back to section
-              </Link>
-            </div>
-          }
+        <LifeLabNoteDetailHeader
+          note={note}
+          sectionId={note.sectionId}
+          sectionLabel={note.sectionLabel}
         />
       )}
+
+      {playlistNav ? (
+        <LifeLabPlaylistVideoNav navigation={playlistNav} variant="compact" />
+      ) : null}
 
       {availability.status !== "ready" ? (
         <LifeLabStatusPanel availability={availability} isAdmin={isAdmin} />
@@ -121,37 +110,22 @@ export default async function LifeLabNotePage({
               <LifeLabPlaylistIndexNote note={note} />
             ) : (
               <>
-                {note.dateLabel ?? note.modifiedAtLabel ? (
-                  <p className="mb-2 text-xs text-muted-light">
-                    {note.dateLabel ?? note.modifiedAtLabel}
-                  </p>
-                ) : null}
-                <LifeLabMetadataChips
-                  metadata={note.metadata}
-                  sectionId={note.sectionId}
-                  sectionLabel={note.sectionLabel}
-                  subfolderLabel={note.subfolderLabel}
-                  variant="detail"
-                  className="mb-2"
-                />
-                <LifeLabNoteCardMeta
-                  sectionId={note.sectionId}
-                  note={note}
-                  className="mb-3"
-                />
-                <LifeLabNoteReadAloud
-                  title={note.title}
-                  content={note.content}
-                  className="mb-4"
-                />
                 {hasDictionarySections ? (
                   <LifeLabNoteDictionarySections
-                    content={note.content}
+                    content={noteBodyContent}
                     noteTitle={note.title}
                   />
                 ) : (
-                  <MarkdownContent content={note.content} />
+                  <MarkdownContent content={noteBodyContent} />
                 )}
+                {playlistNav ? (
+                  <div className="mt-6 border-t border-border/50 pt-5">
+                    <LifeLabPlaylistVideoNav
+                      navigation={playlistNav}
+                      variant="footer"
+                    />
+                  </div>
+                ) : null}
               </>
             )}
           </article>

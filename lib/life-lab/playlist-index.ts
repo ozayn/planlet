@@ -1,10 +1,13 @@
 import type {
   LifeLabNote,
   LifeLabNoteMetadata,
+  LifeLabNoteSummary,
   LifeLabSectionId,
 } from "@/lib/life-lab/constants";
 import {
   driveRelativePathToSlug,
+  markdownExcerpt,
+  relativePathFilename,
   titleFromMarkdownHeading,
 } from "@/lib/life-lab/slug";
 
@@ -14,6 +17,7 @@ export type PlaylistVideoRow = {
   episode: string | null;
   title: string;
   status: PlaylistVideoStatus;
+  duration: string | null;
   videoUrl: string | null;
   noteFilename: string | null;
   noteSlug: string | null;
@@ -33,11 +37,30 @@ export type PlaylistIndexDisplay = {
   channel: string | null;
   dateLabel: string | null;
   playlistUrl: string | null;
+  focus: string | null;
+  studyStatus: string | null;
+  transcriptStatus: string | null;
+  sourcePath: string | null;
   summary: PlaylistIndexSummary;
   videos: PlaylistVideoRow[];
   batchNotes: string[];
   rawVideosTable: string | null;
   parseSucceeded: boolean;
+};
+
+export type PlaylistVideoNavLink = {
+  href: string | null;
+  title: string;
+  status: PlaylistVideoStatus;
+  episode: string | null;
+};
+
+export type PlaylistVideoNavigation = {
+  playlistIndexHref: string;
+  playlistTitle: string;
+  previous: PlaylistVideoNavLink | null;
+  next: PlaylistVideoNavLink | null;
+  currentEpisode: string | null;
 };
 
 const PLAYLIST_VIDEO_STATUSES = new Set<PlaylistVideoStatus>([
@@ -47,7 +70,8 @@ const PLAYLIST_VIDEO_STATUSES = new Set<PlaylistVideoStatus>([
   "error",
 ]);
 
-const VIDEOS_HEADING_PATTERN = /^##\s+videos\s*$/im;
+const VIDEOS_HEADING_PATTERN = /^##\s+(?:videos|video list)\s*$/im;
+const PLAYLIST_SUMMARY_HEADING_PATTERN = /^##\s+playlist summary\s*$/im;
 
 const BATCH_NOTES_HEADING_PATTERN = /^##\s+batch notes\s*$/im;
 
@@ -220,7 +244,10 @@ export function hasPlaylistVideosTable(body: string): boolean {
   return Boolean(table && tableHasPlaylistColumns(table));
 }
 
-function parsePlaylistVideosTable(tableMarkdown: string): PlaylistVideoRow[] {
+function parsePlaylistVideosTable(
+  tableMarkdown: string,
+  sectionId: LifeLabSectionId,
+): PlaylistVideoRow[] {
   const lines = tableMarkdown.split("\n").filter((line) => isTableRow(line));
   const headerLine = lines[0];
 
@@ -233,6 +260,7 @@ function parsePlaylistVideosTable(tableMarkdown: string): PlaylistVideoRow[] {
   const episodeIndex = findColumnIndex(headers, ["episode", "ep", "#"]);
   const titleIndex = findColumnIndex(headers, ["video title", "title"]);
   const urlIndex = findColumnIndex(headers, ["video url", "url", "youtube"]);
+  const durationIndex = findColumnIndex(headers, ["duration", "length", "runtime"]);
   const noteIndex = findColumnIndex(headers, [
     "note filename",
     "note file",
@@ -271,12 +299,13 @@ function parsePlaylistVideosTable(tableMarkdown: string): PlaylistVideoRow[] {
       episode: cleanCellValue(cells[episodeIndex]),
       title,
       status,
+      duration: cleanCellValue(cells[durationIndex]),
       videoUrl: cleanCellValue(cells[urlIndex]),
       noteFilename,
       noteSlug,
       noteHref:
         status === "processed" && noteSlug
-          ? `/life-lab/youtube-learning/${noteSlug}`
+          ? `/life-lab/${sectionId}/${noteSlug}`
           : null,
     });
   }
@@ -295,6 +324,90 @@ function extractBatchNotes(body: string): string[] {
     .split("\n")
     .map((line) => line.replace(/^[-*•]\s*/, "").trim())
     .filter(Boolean);
+}
+
+function extractPlaylistFocus(
+  body: string,
+  metadata?: LifeLabNoteMetadata,
+): string | null {
+  if (metadata?.summary?.trim()) {
+    return markdownExcerpt(metadata.summary, 220);
+  }
+
+  const summarySection = extractSectionByHeading(
+    body,
+    PLAYLIST_SUMMARY_HEADING_PATTERN,
+  );
+
+  if (summarySection) {
+    return markdownExcerpt(summarySection, 220);
+  }
+
+  const labeledMatch = body.match(
+    /^\*\*Playlist summary\*\*\s*\n+([\s\S]*?)(?=\n##\s+|\n\*\*[A-Za-z ]+\*\*|\n---\s*$|$)/im,
+  );
+
+  if (labeledMatch?.[1]?.trim()) {
+    return markdownExcerpt(labeledMatch[1].trim(), 220);
+  }
+
+  const withoutHeading = body.replace(/^#\s+.+\n+/, "").trim();
+  const firstParagraph = withoutHeading
+    .split(/\n\s*\n/)
+    .map((block) => block.trim())
+    .find(
+      (block) =>
+        block &&
+        !block.startsWith("#") &&
+        !/^\*\*[A-Za-z ]+\*\*\s*$/.test(block),
+    );
+
+  return firstParagraph ? markdownExcerpt(firstParagraph, 220) : null;
+}
+
+function formatStudyStatusLabel(value: string): string {
+  return value
+    .trim()
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+function extractTranscriptStatus(batchNotes: string[]): string | null {
+  if (batchNotes.length === 0) {
+    return null;
+  }
+
+  const joined = batchNotes.join(" ").toLowerCase();
+
+  if (joined.includes("transcript") && joined.includes("caption")) {
+    if (joined.includes("not included") || joined.includes("no transcript")) {
+      return "Captions used · transcripts not included";
+    }
+
+    return "Captions and transcripts noted";
+  }
+
+  if (joined.includes("caption")) {
+    return "Captions used";
+  }
+
+  if (joined.includes("transcript")) {
+    return joined.includes("not included")
+      ? "Transcripts not included"
+      : "Transcripts included";
+  }
+
+  return null;
+}
+
+function hasPlaylistSummaryAndVideoList(body: string): boolean {
+  const hasPlaylistSummary =
+    PLAYLIST_SUMMARY_HEADING_PATTERN.test(body) ||
+    /\*\*Playlist summary\*\*/i.test(body);
+  const hasVideoList =
+    VIDEOS_HEADING_PATTERN.test(body) || /\*\*Video list\*\*/i.test(body);
+
+  return hasPlaylistSummary && hasVideoList;
 }
 
 function extractPlaylistUrl(
@@ -385,9 +498,20 @@ export function isPlaylistIndexNote(input: {
     ) {
       return true;
     }
+
+    if (
+      input.metadata?.source === "youtube" &&
+      input.metadata.playlist?.trim()
+    ) {
+      return true;
+    }
   }
 
   if (input.content && hasPlaylistVideosTable(input.content)) {
+    return true;
+  }
+
+  if (input.content && hasPlaylistSummaryAndVideoList(input.content)) {
     return true;
   }
 
@@ -395,7 +519,7 @@ export function isPlaylistIndexNote(input: {
 }
 
 export function parsePlaylistIndexNote(note: LifeLabNote): PlaylistIndexDisplay {
-  const { metadata, content, title, dateLabel } = note;
+  const { metadata, content, title, dateLabel, relativePath, sectionId } = note;
   const playlistTitle =
     metadata?.playlist?.trim() ??
     titleFromMarkdownHeading(content) ??
@@ -405,8 +529,9 @@ export function parsePlaylistIndexNote(note: LifeLabNote): PlaylistIndexDisplay 
     ? extractFirstMarkdownTable(videosSection)
     : null;
   const videos = rawVideosTable
-    ? parsePlaylistVideosTable(rawVideosTable)
+    ? parsePlaylistVideosTable(rawVideosTable, sectionId)
     : [];
+  const batchNotes = extractBatchNotes(content);
   const summary = summarizePlaylistVideos(videos);
 
   return {
@@ -414,9 +539,15 @@ export function parsePlaylistIndexNote(note: LifeLabNote): PlaylistIndexDisplay 
     channel: metadata?.channel?.trim() ?? null,
     dateLabel,
     playlistUrl: extractPlaylistUrl(content, metadata),
+    focus: extractPlaylistFocus(content, metadata),
+    studyStatus: metadata?.study_status?.trim()
+      ? formatStudyStatusLabel(metadata.study_status)
+      : null,
+    transcriptStatus: extractTranscriptStatus(batchNotes),
+    sourcePath: relativePath ?? null,
     summary,
     videos,
-    batchNotes: extractBatchNotes(content),
+    batchNotes,
     rawVideosTable,
     parseSucceeded: videos.length > 0,
   };
@@ -432,4 +563,105 @@ export function shouldRenderPlaylistIndexUi(note: LifeLabNote): boolean {
       content: note.content,
     }) && parsePlaylistIndexNote(note).parseSucceeded
   );
+}
+
+export function isYoutubeVideoNote(note: Pick<
+  LifeLabNoteSummary,
+  "relativePath" | "subfolderLabel" | "metadata"
+>): boolean {
+  if (note.metadata?.type === "playlist-index") {
+    return false;
+  }
+
+  const relativePath = note.relativePath ?? "";
+
+  return (
+    note.subfolderLabel === "videos" ||
+    relativePath.startsWith("videos/") ||
+    relativePath.includes("/videos/")
+  );
+}
+
+function toNavLink(video: PlaylistVideoRow): PlaylistVideoNavLink {
+  return {
+    href: video.noteHref,
+    title: video.title,
+    status: video.status,
+    episode: video.episode,
+  };
+}
+
+export function buildVideoPlaylistNavigation(
+  display: PlaylistIndexDisplay,
+  currentSlug: string,
+  playlistIndexSlug: string,
+  sectionId: LifeLabSectionId,
+): PlaylistVideoNavigation | null {
+  const currentIndex = display.videos.findIndex(
+    (video) => video.noteSlug === currentSlug,
+  );
+
+  if (currentIndex === -1) {
+    return null;
+  }
+
+  const previousVideo =
+    currentIndex > 0 ? display.videos[currentIndex - 1] : null;
+  const nextVideo =
+    currentIndex < display.videos.length - 1
+      ? display.videos[currentIndex + 1]
+      : null;
+
+  return {
+    playlistIndexHref: `/life-lab/${sectionId}/${playlistIndexSlug}`,
+    playlistTitle: display.playlistTitle,
+    previous: previousVideo ? toNavLink(previousVideo) : null,
+    next: nextVideo ? toNavLink(nextVideo) : null,
+    currentEpisode: display.videos[currentIndex]?.episode ?? null,
+  };
+}
+
+export function findPlaylistIndexSlugForVideo(
+  records: LifeLabNoteSummary[],
+  videoNote: LifeLabNoteSummary,
+  playlistContents: Map<string, PlaylistIndexDisplay>,
+): string | null {
+  const playlistName = videoNote.metadata?.playlist?.trim().toLowerCase();
+
+  if (playlistName) {
+    for (const record of records) {
+      if (
+        !isPlaylistIndexNote({
+          sectionId: "youtube-learning",
+          relativePath: record.relativePath,
+          subfolderLabel: record.subfolderLabel,
+          metadata: record.metadata,
+        })
+      ) {
+        continue;
+      }
+
+      const recordPlaylist = record.metadata?.playlist?.trim().toLowerCase();
+
+      if (recordPlaylist === playlistName) {
+        return record.slug;
+      }
+
+      const display = playlistContents.get(record.slug);
+
+      if (
+        display?.playlistTitle.trim().toLowerCase() === playlistName
+      ) {
+        return record.slug;
+      }
+    }
+  }
+
+  for (const [slug, display] of playlistContents.entries()) {
+    if (display.videos.some((video) => video.noteSlug === videoNote.slug)) {
+      return slug;
+    }
+  }
+
+  return null;
 }

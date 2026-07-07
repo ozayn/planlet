@@ -61,6 +61,15 @@ import {
   relativePathSubfolder,
   titleFromFilename,
 } from "@/lib/life-lab/slug";
+import {
+  buildVideoPlaylistNavigation,
+  findPlaylistIndexSlugForVideo,
+  isPlaylistIndexNote,
+  isYoutubeVideoNote,
+  parsePlaylistIndexNote,
+  type PlaylistIndexDisplay,
+  type PlaylistVideoNavigation,
+} from "@/lib/life-lab/playlist-index";
 import { canAccessLifeLabPage, type UserAccess } from "@/lib/roles";
 
 export {
@@ -89,7 +98,7 @@ export type {
   LifeLabBrowseNote,
 } from "@/lib/life-lab/constants";
 
-export type { LifeLabFilterOptions, LifeLabNoteFilters, LifeLabFilterKey } from "@/lib/life-lab/filters";
+export type { PlaylistVideoNavigation } from "@/lib/life-lab/playlist-index";
 export { collectLifeLabFilterOptions, filterLifeLabNotes, noteMatchesFilters } from "@/lib/life-lab/filters";
 export { noteMatchesSearch, buildNoteSearchText } from "@/lib/life-lab/search";
 export { parseLifeLabFrontmatter } from "@/lib/life-lab/frontmatter";
@@ -857,6 +866,70 @@ export async function getLifeLabNoteData(
       note: null,
     };
   }
+}
+
+export async function getYoutubeVideoPlaylistNavigation(
+  sectionId: LifeLabSectionId,
+  slug: string,
+): Promise<PlaylistVideoNavigation | null> {
+  if (sectionId !== "youtube-learning") {
+    return null;
+  }
+
+  const { records } = await getSectionNotesCached(sectionId);
+  const videoRecord = records.find((record) => record.slug === slug);
+
+  if (!videoRecord || !isYoutubeVideoNote(videoRecord)) {
+    return null;
+  }
+
+  const playlistIndexRecords = records.filter((record) =>
+    isPlaylistIndexNote({
+      sectionId,
+      relativePath: record.relativePath,
+      subfolderLabel: record.subfolderLabel,
+      metadata: record.metadata,
+    }),
+  );
+
+  if (playlistIndexRecords.length === 0) {
+    return null;
+  }
+
+  const playlistContents = new Map<string, PlaylistIndexDisplay>();
+
+  for (const record of playlistIndexRecords) {
+    const playlistNote = await getNoteContentCached(sectionId, record.slug);
+
+    if (!playlistNote) {
+      continue;
+    }
+
+    playlistContents.set(record.slug, parsePlaylistIndexNote(playlistNote));
+  }
+
+  const playlistIndexSlug = findPlaylistIndexSlugForVideo(
+    records,
+    videoRecord,
+    playlistContents,
+  );
+
+  if (!playlistIndexSlug) {
+    return null;
+  }
+
+  const display = playlistContents.get(playlistIndexSlug);
+
+  if (!display?.parseSucceeded) {
+    return null;
+  }
+
+  return buildVideoPlaylistNavigation(
+    display,
+    slug,
+    playlistIndexSlug,
+    sectionId,
+  );
 }
 
 async function loadNoteContent(
