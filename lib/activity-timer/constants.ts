@@ -7,13 +7,48 @@ export {
 } from "@/lib/activity-timer/session-notes";
 
 export const DEFAULT_ACTIVITY_TIMER_PRESETS = [
-  { title: "Foot tapping — right foot", category: "Movement", targetDurationSeconds: null },
-  { title: "Foot tapping — left foot", category: "Movement", targetDurationSeconds: null },
-  { title: "Wash face", category: "Care", targetDurationSeconds: null },
-  { title: "Walk apartment stairs", category: "Movement", targetDurationSeconds: 600 },
-  { title: "Tidy room", category: "Chores", targetDurationSeconds: null },
-  { title: "Learning session", category: "Focus", targetDurationSeconds: null },
-  { title: "Stretching", category: "Movement", targetDurationSeconds: 300 },
+  {
+    title: "Foot tapping — right foot",
+    category: "Movement",
+    targetDurationSeconds: null,
+    iconName: "foot",
+  },
+  {
+    title: "Foot tapping — left foot",
+    category: "Movement",
+    targetDurationSeconds: null,
+    iconName: "foot",
+  },
+  {
+    title: "Wash face",
+    category: "Care",
+    targetDurationSeconds: null,
+    iconName: "droplets",
+  },
+  {
+    title: "Walk apartment stairs",
+    category: "Movement",
+    targetDurationSeconds: 600,
+    iconName: "stairs",
+  },
+  {
+    title: "Tidy room",
+    category: "Chores",
+    targetDurationSeconds: null,
+    iconName: "home",
+  },
+  {
+    title: "Learning session",
+    category: "Focus",
+    targetDurationSeconds: null,
+    iconName: "book-open",
+  },
+  {
+    title: "Stretching",
+    category: "Movement",
+    targetDurationSeconds: 300,
+    iconName: "stretch",
+  },
 ] as const;
 
 export const MAX_ACTIVITY_TITLE_LENGTH = 120;
@@ -35,6 +70,7 @@ export type SerializedActivityTimerPreset = {
   category: string | null;
   targetDurationSeconds: number | null;
   targetDurationLabel: string | null;
+  iconName: string | null;
   sortOrder: number;
 };
 
@@ -127,4 +163,5 @@ export type CreateActivityTimerPresetInput = {
   title: string;
   category?: string | null;
   targetDurationSeconds?: number | null;
+  iconName?: string | null;
 };

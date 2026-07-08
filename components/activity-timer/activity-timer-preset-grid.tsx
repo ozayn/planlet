@@ -1,5 +1,6 @@
 "use client";
 
+import { ActivityPresetIcon } from "@/components/activity-timer/activity-preset-icon";
 import type { SerializedActivityTimerPreset } from "@/lib/activity-timer/constants";
 
 type ActivityTimerPresetGridProps = {
@@ -11,6 +12,7 @@ type ActivityTimerPresetGridProps = {
 
 function PresetCard({
   title,
+  iconName,
   subtitle,
   meta,
   disabled,
@@ -18,6 +20,7 @@ function PresetCard({
   dashed = false,
 }: {
   title: string;
+  iconName?: string | null;
   subtitle?: string | null;
   meta?: string | null;
   disabled?: boolean;
@@ -35,13 +38,18 @@ function PresetCard({
           : "border-border-soft hover:bg-accent-cream/20"
       }`}
     >
-      <span className="block text-sm font-medium text-foreground">{title}</span>
-      {meta ? (
-        <span className="mt-1 block text-xs text-muted">{meta}</span>
-      ) : null}
-      {subtitle ? (
-        <span className="mt-1 block text-xs text-muted-light">{subtitle}</span>
-      ) : null}
+      <span className="flex items-start gap-2.5">
+        <ActivityPresetIcon iconName={iconName} />
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-medium text-foreground">{title}</span>
+          {meta ? (
+            <span className="mt-1 block text-xs text-muted">{meta}</span>
+          ) : null}
+          {subtitle ? (
+            <span className="mt-1 block text-xs text-muted-light">{subtitle}</span>
+          ) : null}
+        </span>
+      </span>
     </button>
   );
 }
@@ -60,6 +68,7 @@ export function ActivityTimerPresetGrid({
           <PresetCard
             key={preset.id}
             title={preset.title}
+            iconName={preset.iconName}
             meta={preset.targetDurationLabel}
             subtitle={preset.category}
             disabled={disabled}
@@ -67,7 +76,8 @@ export function ActivityTimerPresetGrid({
           />
         ))}
         <PresetCard
-          title="+ New activity"
+          title="New activity"
+          iconName="sparkles"
           disabled={disabled}
           onClick={onNewActivity}
           dashed

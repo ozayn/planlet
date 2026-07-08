@@ -32,6 +32,7 @@ import {
   MAX_SESSION_NOTE_LENGTH,
   serializeActivityTimerSessionNote,
 } from "@/lib/activity-timer/session-notes";
+import { normalizePresetIconName } from "@/lib/activity-timer/preset-icons";
 import {
   formatActivityDuration,
   formatActivityDurationShort,
@@ -218,6 +219,7 @@ function serializePreset(preset: ActivityTimerPreset): SerializedActivityTimerPr
     targetDurationLabel: preset.targetDurationSeconds
       ? formatTargetDurationLabel(preset.targetDurationSeconds)
       : null,
+    iconName: preset.iconName,
     sortOrder: preset.sortOrder,
   };
 }
@@ -468,9 +470,29 @@ async function ensureDefaultPresets(userId: string): Promise<void> {
       title: preset.title,
       category: preset.category,
       targetDurationSeconds: preset.targetDurationSeconds,
+      iconName: preset.iconName,
       sortOrder: index,
     })),
   });
+}
+
+async function ensureDefaultPresetIcons(userId: string): Promise<void> {
+  await Promise.all(
+    DEFAULT_ACTIVITY_TIMER_PRESETS.filter((preset) => preset.iconName).map(
+      (preset) =>
+        prisma.activityTimerPreset.updateMany({
+          where: {
+            userId,
+            title: preset.title,
+            isArchived: false,
+            iconName: null,
+          },
+          data: {
+            iconName: preset.iconName,
+          },
+        }),
+    ),
+  );
 }
 
 async function getActiveSession(userId: string) {
@@ -495,6 +517,7 @@ export async function getActivityTimerPageData(
   userId: string,
 ): Promise<ActivityTimerPageData> {
   await ensureDefaultPresets(userId);
+  await ensureDefaultPresetIcons(userId);
 
   const timezone = await getUserTimezone(userId);
   const now = new Date();
@@ -738,6 +761,7 @@ export async function createActivityTimerPreset(
   const targetDurationSeconds = normalizeOptionalTargetDuration(
     input.targetDurationSeconds,
   );
+  const iconName = normalizePresetIconName(input.iconName);
   const maxSort = await prisma.activityTimerPreset.aggregate({
     where: { userId, isArchived: false },
     _max: { sortOrder: true },
@@ -749,6 +773,7 @@ export async function createActivityTimerPreset(
       title,
       category,
       targetDurationSeconds,
+      iconName,
       sortOrder: (maxSort._max.sortOrder ?? -1) + 1,
     },
   });
