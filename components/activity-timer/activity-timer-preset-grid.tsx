@@ -12,12 +12,14 @@ type ActivityTimerPresetGridProps = {
 function PresetCard({
   title,
   subtitle,
+  meta,
   disabled,
   onClick,
   dashed = false,
 }: {
   title: string;
   subtitle?: string | null;
+  meta?: string | null;
   disabled?: boolean;
   onClick: () => void;
   dashed?: boolean;
@@ -34,6 +36,9 @@ function PresetCard({
       }`}
     >
       <span className="block text-sm font-medium text-foreground">{title}</span>
+      {meta ? (
+        <span className="mt-1 block text-xs text-muted">{meta}</span>
+      ) : null}
       {subtitle ? (
         <span className="mt-1 block text-xs text-muted-light">{subtitle}</span>
       ) : null}
@@ -55,6 +60,7 @@ export function ActivityTimerPresetGrid({
           <PresetCard
             key={preset.id}
             title={preset.title}
+            meta={preset.targetDurationLabel}
             subtitle={preset.category}
             disabled={disabled}
             onClick={() => onSelectPreset(preset)}

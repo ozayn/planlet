@@ -1,12 +1,10 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useId } from "react";
 
+import { useWallClockElapsed } from "@/components/activity-timer/use-wall-clock-elapsed";
 import type { ActivityTimerTargetDuration } from "@/lib/activity-timer/constants";
-import {
-  elapsedSecondsFromStartedAt,
-  formatActivityClock,
-} from "@/lib/activity-timer/format";
+import { formatActivityClock } from "@/lib/activity-timer/format";
 
 type ActivityTimerRingProps = {
   startedAt?: string | null;
@@ -28,33 +26,7 @@ export function ActivityTimerRing({
   className = "",
 }: ActivityTimerRingProps) {
   const gradientId = useId();
-  const [nowMs, setNowMs] = useState(() => Date.now());
-
-  useEffect(() => {
-    if (!running || !startedAt) {
-      return;
-    }
-
-    const tick = () => setNowMs(Date.now());
-    const interval = window.setInterval(tick, 1000);
-
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible") {
-        tick();
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibility);
-
-    return () => {
-      window.clearInterval(interval);
-      document.removeEventListener("visibilitychange", handleVisibility);
-    };
-  }, [running, startedAt]);
-
-  const elapsedSeconds = startedAt
-    ? elapsedSecondsFromStartedAt(startedAt, nowMs)
-    : 0;
+  const elapsedSeconds = useWallClockElapsed(startedAt, running);
   const hasTarget =
     targetDurationSeconds != null && targetDurationSeconds > 0;
   const progress = hasTarget

@@ -1,23 +1,28 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 import {
   startActivityTimerAction,
   stopActivityTimerAction,
 } from "@/app/(app)/timer/actions";
 import { useActivityTimer } from "@/components/activity-timer/activity-timer-context";
+import { ActivityTimerAddNote } from "@/components/activity-timer/activity-timer-add-note";
 import { ActivityTimerCustomSheet } from "@/components/activity-timer/activity-timer-custom-sheet";
 import { ActivityTimerPresetGrid } from "@/components/activity-timer/activity-timer-preset-grid";
 import { ActivityTimerRecentSessions } from "@/components/activity-timer/activity-timer-recent-sessions";
 import { ActivityTimerRing } from "@/components/activity-timer/activity-timer-ring";
 import { ActivityTimerSessionEditSheet } from "@/components/activity-timer/activity-timer-session-edit-sheet";
+import { ActivityTimerSessionNotesList } from "@/components/activity-timer/activity-timer-session-notes-list";
+import { ActivityTimerTargetStatus } from "@/components/activity-timer/activity-timer-target-status";
 import { ActivityTimerTimeline } from "@/components/activity-timer/activity-timer-timeline";
+import { useWallClockElapsed } from "@/components/activity-timer/use-wall-clock-elapsed";
 import type {
   ActivityTimerPageData,
   SerializedActivityTimerPreset,
   SerializedActivityTimerSession,
+  SerializedActivityTimerSessionNote,
 } from "@/lib/activity-timer/constants";
 
 type ActivityTimerPageProps = {
@@ -26,21 +31,56 @@ type ActivityTimerPageProps = {
 
 export function ActivityTimerPage({ data }: ActivityTimerPageProps) {
   const router = useRouter();
-  const { activeSession, setActiveSession } = useActivityTimer();
+  const { activeSession: contextSession, setActiveSession } = useActivityTimer();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [customSheetOpen, setCustomSheetOpen] = useState(false);
   const [editingSession, setEditingSession] =
     useState<SerializedActivityTimerSession | null>(null);
+  const [sessionNotes, setSessionNotes] = useState<
+    SerializedActivityTimerSessionNote[]
+  >(data.activeSession?.sessionNotes ?? []);
 
+  useEffect(() => {
+    setActiveSession(data.activeSession);
+  }, [data.activeSession, setActiveSession]);
+
+  useEffect(() => {
+    setSessionNotes(
+      data.activeSession?.sessionNotes ?? contextSession?.sessionNotes ?? [],
+    );
+  }, [
+    contextSession?.sessionNotes,
+    data.activeSession?.id,
+    data.activeSession?.sessionNotes,
+  ]);
+
+  const activeSession = data.activeSession ?? contextSession;
   const isRunning = Boolean(activeSession);
   const displayTitle = activeSession?.title ?? "";
+  const elapsedSeconds = useWallClockElapsed(
+    activeSession?.startedAt ?? null,
+    isRunning,
+  );
 
   function refresh() {
     router.refresh();
   }
 
+  function restoreActiveSession(
+    session: NonNullable<ActivityTimerPageData["activeSession"]>,
+  ) {
+    setActiveSession(session);
+    setSessionNotes(session.sessionNotes);
+    refresh();
+  }
+
   function handleSelectPreset(preset: SerializedActivityTimerPreset) {
+    if (activeSession) {
+      restoreActiveSession(activeSession);
+      return;
+    }
+
     setError(null);
 
     startTransition(async () => {
@@ -55,6 +95,7 @@ export function ActivityTimerPage({ data }: ActivityTimerPageProps) {
       }
 
       setActiveSession(result.activeSession);
+      setSessionNotes(result.activeSession.sessionNotes);
       refresh();
     });
   }
@@ -69,7 +110,6 @@ export function ActivityTimerPage({ data }: ActivityTimerPageProps) {
     startTransition(async () => {
       const result = await stopActivityTimerAction({
         sessionId: activeSession.id,
-        notes: activeSession.notes,
       });
 
       if (!result.success) {
@@ -78,6 +118,7 @@ export function ActivityTimerPage({ data }: ActivityTimerPageProps) {
       }
 
       setActiveSession(null);
+      setSessionNotes([]);
       refresh();
     });
   }
@@ -96,7 +137,15 @@ export function ActivityTimerPage({ data }: ActivityTimerPageProps) {
         <ActivityTimerRing
           startedAt={activeSession?.startedAt ?? null}
           running={isRunning}
+          targetDurationSeconds={activeSession?.targetDurationSeconds ?? null}
         />
+
+        {isRunning ? (
+          <ActivityTimerTargetStatus
+            elapsedSeconds={elapsedSeconds}
+            targetDurationSeconds={activeSession?.targetDurationSeconds}
+          />
+        ) : null}
 
         {isRunning ? (
           <button
@@ -107,6 +156,18 @@ export function ActivityTimerPage({ data }: ActivityTimerPageProps) {
           >
             Stop
           </button>
+        ) : null}
+
+        {isRunning ? (
+          <ActivityTimerAddNote
+            sessionId={activeSession!.id}
+            disabled={isPending}
+            onNoteAdded={refresh}
+          />
+        ) : null}
+
+        {isRunning ? (
+          <ActivityTimerSessionNotesList notes={sessionNotes} />
         ) : null}
       </section>
 

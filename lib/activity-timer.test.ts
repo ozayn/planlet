@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   buildActivityTimerInsights,
+  durationSecondsBetween,
   elapsedSecondsFromStartedAt,
 } from "@/lib/activity-timer";
 import {
@@ -10,7 +11,11 @@ import {
   formatActivityDuration,
   formatActivityDurationShort,
   formatActivityTotalMinutes,
+  formatRemainingTime,
   formatSessionTimeRange,
+  formatTargetDurationLabel,
+  isActivityTimerTargetReached,
+  remainingSecondsFromTarget,
   truncateActivityNotesPreview,
 } from "@/lib/activity-timer/format";
 import { canUseActivityTimerFeatures } from "@/lib/roles";
@@ -30,6 +35,21 @@ describe("activity timer formatting", () => {
     const nowMs = new Date("2026-07-08T12:05:30.000Z").getTime();
 
     assert.equal(elapsedSecondsFromStartedAt(startedAt, nowMs), 330);
+  });
+
+  it("calculates stopped duration from persisted timestamps", () => {
+    const startedAt = new Date("2026-07-08T12:00:00.000Z");
+    const stoppedAt = new Date("2026-07-08T12:03:00.000Z");
+
+    assert.equal(durationSecondsBetween(startedAt, stoppedAt), 180);
+  });
+
+  it("formats target and remaining labels from wall-clock elapsed time", () => {
+    assert.equal(formatTargetDurationLabel(600), "10 min");
+    assert.equal(formatRemainingTime(204), "3:24 left");
+    assert.equal(remainingSecondsFromTarget(396, 600), 204);
+    assert.equal(isActivityTimerTargetReached(600, 600), true);
+    assert.equal(isActivityTimerTargetReached(599, 600), false);
   });
 
   it("truncates notes previews without exposing full text", () => {

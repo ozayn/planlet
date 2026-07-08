@@ -2,49 +2,25 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
 
 import { useOptionalActivityTimer } from "@/components/activity-timer/activity-timer-context";
-import {
-  elapsedSecondsFromStartedAt,
-  formatActivityClock,
-} from "@/lib/activity-timer/format";
+import { useWallClockElapsed } from "@/components/activity-timer/use-wall-clock-elapsed";
+import { formatActivityClock } from "@/lib/activity-timer/format";
 
 export function ActivityTimerFloatingPill() {
   const pathname = usePathname();
   const context = useOptionalActivityTimer();
   const activeSession = context?.activeSession ?? null;
-  const [nowMs, setNowMs] = useState(() => Date.now());
-
-  useEffect(() => {
-    if (!activeSession) {
-      return;
-    }
-
-    const tick = () => setNowMs(Date.now());
-    const interval = window.setInterval(tick, 1000);
-
-    const handleVisibility = () => {
-      if (document.visibilityState === "visible") {
-        tick();
-      }
-    };
-
-    document.addEventListener("visibilitychange", handleVisibility);
-
-    return () => {
-      window.clearInterval(interval);
-      document.removeEventListener("visibilitychange", handleVisibility);
-    };
-  }, [activeSession]);
+  const elapsedSeconds = useWallClockElapsed(
+    activeSession?.startedAt,
+    Boolean(activeSession),
+  );
 
   if (!activeSession || pathname === "/timer" || pathname.startsWith("/timer/")) {
     return null;
   }
 
-  const elapsed = formatActivityClock(
-    elapsedSecondsFromStartedAt(activeSession.startedAt, nowMs),
-  );
+  const elapsed = formatActivityClock(elapsedSeconds);
 
   return (
     <Link

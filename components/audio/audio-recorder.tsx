@@ -4,6 +4,14 @@ import { useEffect, useRef, useState } from "react";
 
 type AudioRecorderProps = {
   onTranscript: (transcript: string) => void;
+  recordLabel?: string;
+  successMessage?: string;
+  /** Discard the in-memory recording after a successful transcription. */
+  discardAfterTranscribe?: boolean;
+  /** Transcribe automatically when recording stops. */
+  autoTranscribeOnStop?: boolean;
+  /** Hide playback controls after transcription is discarded. */
+  compact?: boolean;
 };
 
 type RecorderStatus = "idle" | "recording" | "recorded" | "transcribing";
@@ -26,7 +34,14 @@ function getPreferredMimeType(): string | undefined {
   return undefined;
 }
 
-export function AudioRecorder({ onTranscript }: AudioRecorderProps) {
+export function AudioRecorder({
+  onTranscript,
+  recordLabel = "Record plan",
+  successMessage = "Transcript added. You can edit it before structuring.",
+  discardAfterTranscribe = false,
+  autoTranscribeOnStop = false,
+  compact = false,
+}: AudioRecorderProps) {
   const [status, setStatus] = useState<RecorderStatus>("idle");
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -108,6 +123,10 @@ export function AudioRecorder({ onTranscript }: AudioRecorderProps) {
         setPlaybackUrl(url);
         setStatus("recorded");
         cleanupStream();
+
+        if (autoTranscribeOnStop) {
+          void transcribeRecording();
+        }
       };
 
       mediaRecorderRef.current = recorder;
@@ -175,7 +194,13 @@ export function AudioRecorder({ onTranscript }: AudioRecorderProps) {
       }
 
       onTranscript(data.transcript.trim());
-      setSuccess("Transcript added. You can edit it before structuring.");
+
+      if (discardAfterTranscribe) {
+        resetRecording();
+        return;
+      }
+
+      setSuccess(successMessage);
       setStatus("recorded");
     } catch (transcribeError) {
       setError(
@@ -186,6 +211,9 @@ export function AudioRecorder({ onTranscript }: AudioRecorderProps) {
       setStatus("recorded");
     }
   }
+
+  const showPlaybackControls =
+    playbackUrl && !discardAfterTranscribe && !compact;
 
   return (
     <div className="space-y-4 rounded-2xl border border-border-soft bg-accent-cream/30 p-4">
@@ -201,11 +229,11 @@ export function AudioRecorder({ onTranscript }: AudioRecorderProps) {
             disabled={status === "transcribing"}
             className="ui-btn-primary"
           >
-            Record plan
+            {recordLabel}
           </button>
         )}
 
-        {playbackUrl ? (
+        {showPlaybackControls ? (
           <>
             <button
               type="button"
@@ -235,7 +263,7 @@ export function AudioRecorder({ onTranscript }: AudioRecorderProps) {
         ) : null}
       </div>
 
-      {playbackUrl ? (
+      {showPlaybackControls ? (
         <audio ref={audioRef} src={playbackUrl} className="hidden" preload="metadata" />
       ) : null}
 

@@ -2,7 +2,12 @@
 
 import { useEffect, useState, useTransition } from "react";
 
-import { updateActivityTimerSessionAction } from "@/app/(app)/timer/actions";
+import {
+  updateActivityTimerSessionAction,
+  updateActivityTimerSessionNoteAction,
+} from "@/app/(app)/timer/actions";
+import { ActivityTimerAddNote } from "@/components/activity-timer/activity-timer-add-note";
+import { VoiceTextField } from "@/components/audio/voice-text-field";
 import { SimpleSheet } from "@/components/ui/simple-sheet";
 import type { SerializedActivityTimerSession } from "@/lib/activity-timer/constants";
 import { formatActivityDuration } from "@/lib/activity-timer/format";
@@ -20,7 +25,7 @@ export function ActivityTimerSessionEditSheet({
 }: ActivityTimerSessionEditSheetProps) {
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
-  const [notes, setNotes] = useState("");
+  const [noteTexts, setNoteTexts] = useState<Record<string, string>>({});
   const [durationMinutes, setDurationMinutes] = useState("");
   const [durationSecondsPart, setDurationSecondsPart] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +39,11 @@ export function ActivityTimerSessionEditSheet({
     const total = session.durationSeconds ?? 0;
     setTitle(session.title);
     setCategory(session.category ?? "");
-    setNotes(session.notes ?? "");
+    setNoteTexts(
+      Object.fromEntries(
+        session.sessionNotes.map((note) => [note.id, note.text]),
+      ),
+    );
     setDurationMinutes(String(Math.floor(total / 60)));
     setDurationSecondsPart(String(total % 60).padStart(2, "0"));
     setError(null);
@@ -54,17 +63,34 @@ export function ActivityTimerSessionEditSheet({
     }
 
     startTransition(async () => {
-      const result = await updateActivityTimerSessionAction({
+      const sessionResult = await updateActivityTimerSessionAction({
         sessionId: session.id,
         title: title.trim(),
         category: category.trim() || null,
-        notes: notes.trim() || null,
         durationSeconds: minutes * 60 + seconds,
       });
 
-      if (!result.success) {
-        setError(result.error);
+      if (!sessionResult.success) {
+        setError(sessionResult.error);
         return;
+      }
+
+      for (const note of session.sessionNotes) {
+        const nextText = noteTexts[note.id]?.trim() ?? "";
+
+        if (!nextText || nextText === note.text.trim()) {
+          continue;
+        }
+
+        const noteResult = await updateActivityTimerSessionNoteAction({
+          noteId: note.id,
+          text: nextText,
+        });
+
+        if (!noteResult.success) {
+          setError(noteResult.error);
+          return;
+        }
       }
 
       onClose();
@@ -98,17 +124,13 @@ export function ActivityTimerSessionEditSheet({
       }
     >
       <div className="space-y-4">
-        <div className="space-y-1">
-          <label htmlFor="session-title" className="text-sm font-medium">
-            Title
-          </label>
-          <input
-            id="session-title"
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            className="ui-input w-full"
-          />
-        </div>
+        <VoiceTextField
+          id="session-title"
+          label="Title"
+          value={title}
+          onChange={setTitle}
+          disabled={isPending}
+        />
 
         <div className="space-y-1">
           <label htmlFor="session-category" className="text-sm font-medium">
@@ -150,19 +172,38 @@ export function ActivityTimerSessionEditSheet({
           ) : null}
         </div>
 
-        <div className="space-y-1">
-          <label htmlFor="session-notes" className="text-sm font-medium">
-            Notes
-          </label>
-          <textarea
-            id="session-notes"
-            value={notes}
-            onChange={(event) => setNotes(event.target.value)}
-            rows={4}
-            className="ui-input w-full resize-y"
-            placeholder="Optional"
+        {session?.sessionNotes.length ? (
+          <div className="space-y-3">
+            <h3 className="text-sm font-medium text-foreground">Notes</h3>
+            {session.sessionNotes.map((note) => (
+              <div key={note.id} className="space-y-1">
+                <p className="text-xs text-muted-light">{note.timeLabel}</p>
+                <VoiceTextField
+                  id={`edit-note-${note.id}`}
+                  label="Note"
+                  value={noteTexts[note.id] ?? ""}
+                  onChange={(value) =>
+                    setNoteTexts((current) => ({
+                      ...current,
+                      [note.id]: value,
+                    }))
+                  }
+                  disabled={isPending}
+                  multiline
+                  transcriptMode="replace"
+                />
+              </div>
+            ))}
+          </div>
+        ) : null}
+
+        {session ? (
+          <ActivityTimerAddNote
+            sessionId={session.id}
+            disabled={isPending}
+            onNoteAdded={onClose}
           />
-        </div>
+        ) : null}
 
         {error ? (
           <p className="text-sm text-accent-red" role="alert">

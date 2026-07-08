@@ -1,21 +1,40 @@
+import type { SerializedActivityTimerSessionNote } from "@/lib/activity-timer/session-notes";
+
+export type { SerializedActivityTimerSessionNote } from "@/lib/activity-timer/session-notes";
+export {
+  MAX_SESSION_NOTE_LENGTH,
+  VOICE_TRANSCRIPTION_PRIVACY_TEXT,
+} from "@/lib/activity-timer/session-notes";
+
 export const DEFAULT_ACTIVITY_TIMER_PRESETS = [
-  { title: "Foot tapping — right foot", category: "Movement" },
-  { title: "Foot tapping — left foot", category: "Movement" },
-  { title: "Wash face", category: "Care" },
-  { title: "Tidy room", category: "Chores" },
-  { title: "Learning session", category: "Focus" },
-  { title: "Stretching", category: "Movement" },
+  { title: "Foot tapping — right foot", category: "Movement", targetDurationSeconds: null },
+  { title: "Foot tapping — left foot", category: "Movement", targetDurationSeconds: null },
+  { title: "Wash face", category: "Care", targetDurationSeconds: null },
+  { title: "Walk apartment stairs", category: "Movement", targetDurationSeconds: 600 },
+  { title: "Tidy room", category: "Chores", targetDurationSeconds: null },
+  { title: "Learning session", category: "Focus", targetDurationSeconds: null },
+  { title: "Stretching", category: "Movement", targetDurationSeconds: 300 },
 ] as const;
 
 export const MAX_ACTIVITY_TITLE_LENGTH = 120;
 export const MAX_ACTIVITY_NOTES_LENGTH = 2000;
 export const MAX_ACTIVITY_CATEGORY_LENGTH = 60;
+export const MAX_TARGET_DURATION_SECONDS = 24 * 60 * 60;
 export const RECENT_ACTIVITY_SESSION_LIMIT = 20;
+
+export const QUICK_TARGET_DURATION_OPTIONS = [
+  { label: "No target", seconds: null },
+  { label: "5 min", seconds: 300 },
+  { label: "10 min", seconds: 600 },
+  { label: "15 min", seconds: 900 },
+] as const;
 
 export type SerializedActivityTimerPreset = {
   id: string;
   title: string;
   category: string | null;
+  targetDurationSeconds: number | null;
+  targetDurationLabel: string | null;
   sortOrder: number;
 };
 
@@ -26,6 +45,8 @@ export type SerializedActiveActivityTimerSession = {
   category: string | null;
   startedAt: string;
   notes: string | null;
+  targetDurationSeconds: number | null;
+  sessionNotes: SerializedActivityTimerSessionNote[];
 };
 
 export type SerializedActivityTimerSession = {
@@ -34,6 +55,7 @@ export type SerializedActivityTimerSession = {
   title: string;
   category: string | null;
   notes: string | null;
+  targetDurationSeconds: number | null;
   startedAt: string;
   stoppedAt: string | null;
   durationSeconds: number | null;
@@ -43,6 +65,7 @@ export type SerializedActivityTimerSession = {
   clockTimeLabel: string;
   durationShortLabel: string;
   notesPreview: string | null;
+  sessionNotes: SerializedActivityTimerSessionNote[];
 };
 
 export type ActivityTimerTimelineEntry = {
@@ -61,7 +84,6 @@ export type ActivityTimerInsights = {
   todayTotalMinutesLabel: string;
 };
 
-/** Optional target duration for progress-ring mode (future). */
 export type ActivityTimerTargetDuration = number | null;
 
 export type ActivityTimerPageData = {
@@ -75,6 +97,7 @@ export type StartActivityTimerInput = {
   title: string;
   presetId?: string | null;
   notes?: string | null;
+  targetDurationSeconds?: number | null;
 };
 
 export type StopActivityTimerInput = {
@@ -90,7 +113,18 @@ export type UpdateActivityTimerSessionInput = {
   durationSeconds?: number | null;
 };
 
+export type AddActivityTimerSessionNoteInput = {
+  sessionId: string;
+  text: string;
+};
+
+export type UpdateActivityTimerSessionNoteInput = {
+  noteId: string;
+  text: string;
+};
+
 export type CreateActivityTimerPresetInput = {
   title: string;
   category?: string | null;
+  targetDurationSeconds?: number | null;
 };

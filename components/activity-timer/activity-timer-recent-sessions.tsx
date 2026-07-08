@@ -78,6 +78,18 @@ export function ActivityTimerRecentSessions({
                         {session.notesPreview}
                       </p>
                     ) : null}
+                    {session.sessionNotes.length > 0 ? (
+                      <ul className="mt-2 space-y-1">
+                        {session.sessionNotes.slice(0, 2).map((note) => (
+                          <li
+                            key={note.id}
+                            className="text-xs leading-relaxed text-muted-light"
+                          >
+                            {note.displayLabel}
+                          </li>
+                        ))}
+                      </ul>
+                    ) : null}
                   </button>
                 </li>
               ))}

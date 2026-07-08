@@ -7,7 +7,8 @@ import {
   startActivityTimerAction,
 } from "@/app/(app)/timer/actions";
 import { useActivityTimer } from "@/components/activity-timer/activity-timer-context";
-import { VoiceTextField } from "@/components/activity-timer/voice-text-field";
+import { ActivityTimerDurationPicker } from "@/components/activity-timer/activity-timer-duration-picker";
+import { VoiceTextField } from "@/components/audio/voice-text-field";
 import { SimpleSheet } from "@/components/ui/simple-sheet";
 
 type ActivityTimerCustomSheetProps = {
@@ -21,10 +22,14 @@ export function ActivityTimerCustomSheet({
   onClose,
   onStarted,
 }: ActivityTimerCustomSheetProps) {
-  const { setActiveSession } = useActivityTimer();
+  const { activeSession, setActiveSession } = useActivityTimer();
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [notes, setNotes] = useState("");
+  const [targetDurationSeconds, setTargetDurationSeconds] = useState<
+    number | null
+  >(null);
+  const [customMinutes, setCustomMinutes] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -36,10 +41,18 @@ export function ActivityTimerCustomSheet({
     setTitle("");
     setCategory("");
     setNotes("");
+    setTargetDurationSeconds(null);
+    setCustomMinutes("");
     setError(null);
   }, [open]);
 
   function handleStart(saveAsPreset: boolean) {
+    if (activeSession) {
+      onClose();
+      onStarted();
+      return;
+    }
+
     setError(null);
 
     startTransition(async () => {
@@ -47,6 +60,7 @@ export function ActivityTimerCustomSheet({
         const presetResult = await createActivityTimerPresetAction({
           title: title.trim(),
           category: category.trim() || null,
+          targetDurationSeconds,
         });
 
         if (!presetResult.success) {
@@ -58,6 +72,7 @@ export function ActivityTimerCustomSheet({
       const result = await startActivityTimerAction({
         title: title.trim(),
         notes: notes.trim() || null,
+        targetDurationSeconds,
       });
 
       if (!result.success) {
@@ -112,6 +127,14 @@ export function ActivityTimerCustomSheet({
           value={title}
           onChange={setTitle}
           placeholder="e.g. Tidy room — closet"
+          disabled={isPending}
+        />
+
+        <ActivityTimerDurationPicker
+          targetDurationSeconds={targetDurationSeconds}
+          customMinutes={customMinutes}
+          onTargetChange={setTargetDurationSeconds}
+          onCustomMinutesChange={setCustomMinutes}
           disabled={isPending}
         />
 

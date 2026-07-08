@@ -11,6 +11,20 @@ export function elapsedSecondsFromStartedAt(
   return Math.max(0, Math.floor((nowMs - startedMs) / 1000));
 }
 
+export function durationSecondsBetween(
+  startedAt: string | Date,
+  stoppedAt: string | Date,
+): number {
+  const startedMs = new Date(startedAt).getTime();
+  const stoppedMs = new Date(stoppedAt).getTime();
+
+  if (!Number.isFinite(startedMs) || !Number.isFinite(stoppedMs)) {
+    return 0;
+  }
+
+  return Math.max(0, Math.floor((stoppedMs - startedMs) / 1000));
+}
+
 export function formatActivityDuration(seconds: number): string {
   const safe = Math.max(0, Math.floor(seconds));
   const hours = Math.floor(safe / 3600);
@@ -82,6 +96,39 @@ export function formatSessionTimeRange(
   const endLabel = formatSessionClockTime(stoppedAt, timezone);
 
   return `${startLabel}–${endLabel}`;
+}
+
+export function formatTargetDurationLabel(seconds: number): string {
+  const safe = Math.max(0, Math.floor(seconds));
+  const minutes = Math.round(safe / 60);
+
+  return minutes === 1 ? "1 min" : `${minutes} min`;
+}
+
+export function remainingSecondsFromTarget(
+  elapsedSeconds: number,
+  targetDurationSeconds: number,
+): number {
+  return Math.max(0, Math.floor(targetDurationSeconds - elapsedSeconds));
+}
+
+export function isActivityTimerTargetReached(
+  elapsedSeconds: number,
+  targetDurationSeconds: number | null | undefined,
+): boolean {
+  return (
+    targetDurationSeconds != null &&
+    targetDurationSeconds > 0 &&
+    elapsedSeconds >= targetDurationSeconds
+  );
+}
+
+export function formatRemainingTime(seconds: number): string {
+  const safe = Math.max(0, Math.floor(seconds));
+  const minutes = Math.floor(safe / 60);
+  const remainingSeconds = safe % 60;
+
+  return `${minutes}:${remainingSeconds.toString().padStart(2, "0")} left`;
 }
 
 export function truncateActivityNotesPreview(

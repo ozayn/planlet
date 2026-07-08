@@ -4,19 +4,28 @@ import { revalidatePath } from "next/cache";
 
 import { auth } from "@/auth";
 import {
+  addActivityTimerSessionNote,
   archiveActivityTimerPreset,
   ActivityTimerError,
   createActivityTimerPreset,
-  serializeActiveActivityTimerSession,
+  serializeActiveActivityTimerSessionWithNotes,
   startActivityTimerSession,
   stopActivityTimerSession,
   updateActivityTimerSession,
+  updateActivityTimerSessionNote,
   type CreateActivityTimerPresetInput,
   type StartActivityTimerInput,
   type StopActivityTimerInput,
   type UpdateActivityTimerSessionInput,
+  type AddActivityTimerSessionNoteInput,
+  type UpdateActivityTimerSessionNoteInput,
 } from "@/lib/activity-timer";
-import type { SerializedActiveActivityTimerSession } from "@/lib/activity-timer/constants";
+import type {
+  SerializedActiveActivityTimerSession,
+  SerializedActivityTimerSessionNote,
+} from "@/lib/activity-timer/constants";
+import { serializeActivityTimerSessionNote } from "@/lib/activity-timer/session-notes";
+import { getUserTimezone } from "@/lib/user-timezone";
 import { canUseActivityTimerFeatures } from "@/lib/roles";
 
 export type ActivityTimerActionResult =
@@ -25,6 +34,10 @@ export type ActivityTimerActionResult =
 
 export type ActivityTimerStartResult =
   | { success: true; activeSession: SerializedActiveActivityTimerSession }
+  | { success: false; error: string };
+
+export type ActivityTimerSessionNoteResult =
+  | { success: true; note: SerializedActivityTimerSessionNote }
   | { success: false; error: string };
 
 async function requireActivityTimerSession() {
@@ -51,7 +64,10 @@ export async function startActivityTimerAction(
     revalidateTimer();
     return {
       success: true,
-      activeSession: serializeActiveActivityTimerSession(created),
+      activeSession: await serializeActiveActivityTimerSessionWithNotes(
+        created,
+        session.user.id,
+      ),
     };
   } catch (error) {
     return {
@@ -79,6 +95,52 @@ export async function stopActivityTimerAction(
         error instanceof ActivityTimerError
           ? error.message
           : "Failed to stop timer.",
+    };
+  }
+}
+
+export async function addActivityTimerSessionNoteAction(
+  input: AddActivityTimerSessionNoteInput,
+): Promise<ActivityTimerSessionNoteResult> {
+  try {
+    const session = await requireActivityTimerSession();
+    const note = await addActivityTimerSessionNote(session.user.id, input);
+    const timezone = await getUserTimezone(session.user.id);
+    revalidateTimer();
+    return {
+      success: true,
+      note: serializeActivityTimerSessionNote(note, timezone),
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof ActivityTimerError
+          ? error.message
+          : "Failed to save note.",
+    };
+  }
+}
+
+export async function updateActivityTimerSessionNoteAction(
+  input: UpdateActivityTimerSessionNoteInput,
+): Promise<ActivityTimerSessionNoteResult> {
+  try {
+    const session = await requireActivityTimerSession();
+    const note = await updateActivityTimerSessionNote(session.user.id, input);
+    const timezone = await getUserTimezone(session.user.id);
+    revalidateTimer();
+    return {
+      success: true,
+      note: serializeActivityTimerSessionNote(note, timezone),
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof ActivityTimerError
+          ? error.message
+          : "Failed to update note.",
     };
   }
 }

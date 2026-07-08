@@ -1,6 +1,7 @@
 import type {
   ActivityTimerPreset,
   ActivityTimerSession,
+  ActivityTimerSessionNote,
 } from "@/app/generated/prisma/client";
 import { getTodayRange, getWeekRange } from "@/lib/dates";
 import {
@@ -8,24 +9,37 @@ import {
   MAX_ACTIVITY_CATEGORY_LENGTH,
   MAX_ACTIVITY_NOTES_LENGTH,
   MAX_ACTIVITY_TITLE_LENGTH,
+  MAX_TARGET_DURATION_SECONDS,
   RECENT_ACTIVITY_SESSION_LIMIT,
   type ActivityTimerInsights,
   type ActivityTimerPageData,
   type ActivityTimerTimelineEntry,
+  type AddActivityTimerSessionNoteInput,
   type CreateActivityTimerPresetInput,
   type SerializedActiveActivityTimerSession,
   type SerializedActivityTimerPreset,
   type SerializedActivityTimerSession,
+  type SerializedActivityTimerSessionNote,
   type StartActivityTimerInput,
   type StopActivityTimerInput,
   type UpdateActivityTimerSessionInput,
+  type UpdateActivityTimerSessionNoteInput,
 } from "@/lib/activity-timer/constants";
+import {
+  buildSessionNotesPreview,
+  computeSessionNoteOffsetSeconds,
+  formatSyncedSessionNotes,
+  MAX_SESSION_NOTE_LENGTH,
+  serializeActivityTimerSessionNote,
+} from "@/lib/activity-timer/session-notes";
 import {
   formatActivityDuration,
   formatActivityDurationShort,
   formatActivityTotalMinutes,
   formatSessionClockTime,
   formatSessionTimeRange,
+  formatTargetDurationLabel,
+  durationSecondsBetween,
   truncateActivityNotesPreview,
 } from "@/lib/activity-timer/format";
 import { prisma } from "@/lib/prisma";
@@ -34,16 +48,20 @@ import { getUserTimezone } from "@/lib/user-timezone";
 export type {
   ActivityTimerInsights,
   ActivityTimerPageData,
+  AddActivityTimerSessionNoteInput,
   CreateActivityTimerPresetInput,
   SerializedActiveActivityTimerSession,
   SerializedActivityTimerPreset,
   SerializedActivityTimerSession,
+  SerializedActivityTimerSessionNote,
   StartActivityTimerInput,
   StopActivityTimerInput,
   UpdateActivityTimerSessionInput,
+  UpdateActivityTimerSessionNoteInput,
 } from "@/lib/activity-timer/constants";
 
 export {
+  durationSecondsBetween,
   elapsedSecondsFromStartedAt,
   formatActivityClock,
   formatActivityDuration,
@@ -104,6 +122,28 @@ function normalizeOptionalCategory(
   }
 
   return trimmed;
+}
+
+function normalizeOptionalTargetDuration(
+  value: number | null | undefined,
+): number | null {
+  if (value == null) {
+    return null;
+  }
+
+  const normalized = Math.floor(value);
+
+  if (!Number.isFinite(normalized) || normalized <= 0) {
+    return null;
+  }
+
+  if (normalized > MAX_TARGET_DURATION_SECONDS) {
+    throw new ActivityTimerError(
+      `Target duration must be ${MAX_TARGET_DURATION_SECONDS} seconds or fewer.`,
+    );
+  }
+
+  return normalized;
 }
 
 function formatSessionDayLabel(
@@ -174,12 +214,61 @@ function serializePreset(preset: ActivityTimerPreset): SerializedActivityTimerPr
     id: preset.id,
     title: preset.title,
     category: preset.category,
+    targetDurationSeconds: preset.targetDurationSeconds,
+    targetDurationLabel: preset.targetDurationSeconds
+      ? formatTargetDurationLabel(preset.targetDurationSeconds)
+      : null,
     sortOrder: preset.sortOrder,
   };
 }
 
+function normalizeSessionNoteText(value: string): string {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    throw new ActivityTimerError("Add note text before saving.");
+  }
+
+  if (trimmed.length > MAX_SESSION_NOTE_LENGTH) {
+    throw new ActivityTimerError(
+      `Notes must be ${MAX_SESSION_NOTE_LENGTH} characters or fewer.`,
+    );
+  }
+
+  return trimmed;
+}
+
+async function syncSessionNotesField(
+  sessionId: string,
+  userId: string,
+): Promise<void> {
+  const [session, notes, timezone] = await Promise.all([
+    prisma.activityTimerSession.findFirst({
+      where: { id: sessionId, userId },
+    }),
+    prisma.activityTimerSessionNote.findMany({
+      where: { sessionId, userId },
+      orderBy: { recordedAt: "asc" },
+    }),
+    getUserTimezone(userId),
+  ]);
+
+  if (!session) {
+    return;
+  }
+
+  await prisma.activityTimerSession.update({
+    where: { id: session.id },
+    data: {
+      notes: formatSyncedSessionNotes(notes, timezone),
+    },
+  });
+}
+
 function serializeSession(
-  session: ActivityTimerSession,
+  session: ActivityTimerSession & {
+    sessionNotes?: ActivityTimerSessionNote[];
+  },
   timezone: string,
   now = new Date(),
 ): SerializedActivityTimerSession {
@@ -187,13 +276,13 @@ function serializeSession(
   const durationSeconds =
     session.durationSeconds ??
     (stoppedAt
-      ? Math.max(
-          0,
-          Math.floor((stoppedAt.getTime() - session.startedAt.getTime()) / 1000),
-        )
+      ? durationSecondsBetween(session.startedAt, stoppedAt)
       : null);
 
   const displayDate = stoppedAt ?? session.startedAt;
+  const sessionNotes = (session.sessionNotes ?? []).map((note) =>
+    serializeActivityTimerSessionNote(note, timezone),
+  );
 
   return {
     id: session.id,
@@ -201,6 +290,7 @@ function serializeSession(
     title: session.title,
     category: session.category,
     notes: session.notes,
+    targetDurationSeconds: session.targetDurationSeconds,
     startedAt: session.startedAt.toISOString(),
     stoppedAt: stoppedAt?.toISOString() ?? null,
     durationSeconds,
@@ -209,12 +299,38 @@ function serializeSession(
     dayGroupLabel: formatSessionDayLabel(displayDate, timezone, now),
     clockTimeLabel: formatSessionClockTime(displayDate, timezone),
     durationShortLabel: formatActivityDurationShort(durationSeconds ?? 0),
-    notesPreview: truncateActivityNotesPreview(session.notes),
+    notesPreview: buildSessionNotesPreview(sessionNotes),
+    sessionNotes,
+  };
+}
+
+export async function serializeActiveActivityTimerSessionWithNotes(
+  session: ActivityTimerSession,
+  userId: string,
+): Promise<SerializedActiveActivityTimerSession> {
+  const timezone = await getUserTimezone(userId);
+  const sessionNotes = await prisma.activityTimerSessionNote.findMany({
+    where: { sessionId: session.id, userId },
+    orderBy: { recordedAt: "asc" },
+  });
+
+  return {
+    id: session.id,
+    title: session.title,
+    presetId: session.presetId,
+    category: session.category,
+    startedAt: session.startedAt.toISOString(),
+    notes: session.notes,
+    targetDurationSeconds: session.targetDurationSeconds,
+    sessionNotes: sessionNotes.map((note) =>
+      serializeActivityTimerSessionNote(note, timezone),
+    ),
   };
 }
 
 export function serializeActiveActivityTimerSession(
   session: ActivityTimerSession,
+  sessionNotes: SerializedActivityTimerSessionNote[] = [],
 ): SerializedActiveActivityTimerSession {
   return {
     id: session.id,
@@ -223,13 +339,16 @@ export function serializeActiveActivityTimerSession(
     category: session.category,
     startedAt: session.startedAt.toISOString(),
     notes: session.notes,
+    targetDurationSeconds: session.targetDurationSeconds,
+    sessionNotes,
   };
 }
 
 function serializeActiveSession(
   session: ActivityTimerSession,
+  sessionNotes: SerializedActivityTimerSessionNote[] = [],
 ): SerializedActiveActivityTimerSession {
-  return serializeActiveActivityTimerSession(session);
+  return serializeActiveActivityTimerSession(session, sessionNotes);
 }
 
 export function buildActivityTimerTimeline(
@@ -348,6 +467,7 @@ async function ensureDefaultPresets(userId: string): Promise<void> {
       userId,
       title: preset.title,
       category: preset.category,
+      targetDurationSeconds: preset.targetDurationSeconds,
       sortOrder: index,
     })),
   });
@@ -366,7 +486,9 @@ async function getActiveSession(userId: string) {
 export async function getActiveActivityTimerSession(userId: string) {
   const session = await getActiveSession(userId);
 
-  return session ? serializeActiveSession(session) : null;
+  return session
+    ? serializeActiveActivityTimerSessionWithNotes(session, userId)
+    : null;
 }
 
 export async function getActivityTimerPageData(
@@ -388,6 +510,11 @@ export async function getActivityTimerPageData(
         where: {
           userId,
           stoppedAt: { not: null },
+        },
+        include: {
+          sessionNotes: {
+            orderBy: { recordedAt: "asc" },
+          },
         },
         orderBy: { stoppedAt: "desc" },
         take: RECENT_ACTIVITY_SESSION_LIMIT,
@@ -413,7 +540,7 @@ export async function getActivityTimerPageData(
   return {
     presets: presets.map(serializePreset),
     activeSession: activeSession
-      ? serializeActiveSession(activeSession)
+      ? await serializeActiveActivityTimerSessionWithNotes(activeSession, userId)
       : null,
     recentSessions: recentSessions.map((session) =>
       serializeSession(session, timezone, now),
@@ -426,15 +553,17 @@ export async function startActivityTimerSession(
   userId: string,
   input: StartActivityTimerInput,
 ) {
-  const title = normalizeTitle(input.title);
-  const notes = normalizeOptionalNotes(input.notes);
   const active = await getActiveSession(userId);
 
   if (active) {
-    throw new ActivityTimerError(
-      "Stop the current timer before starting another activity.",
-    );
+    return active;
   }
+
+  const title = normalizeTitle(input.title);
+  const notes = normalizeOptionalNotes(input.notes);
+  const targetDurationSeconds = normalizeOptionalTargetDuration(
+    input.targetDurationSeconds,
+  );
 
   let preset: ActivityTimerPreset | null = null;
 
@@ -452,6 +581,11 @@ export async function startActivityTimerSession(
     }
   }
 
+  const sessionTargetDurationSeconds =
+    preset != null
+      ? preset.targetDurationSeconds
+      : targetDurationSeconds;
+
   return prisma.activityTimerSession.create({
     data: {
       userId,
@@ -459,6 +593,7 @@ export async function startActivityTimerSession(
       title: preset?.title ?? title,
       category: preset?.category ?? null,
       notes,
+      targetDurationSeconds: sessionTargetDurationSeconds,
       startedAt: new Date(),
     },
   });
@@ -481,23 +616,78 @@ export async function stopActivityTimerSession(
   }
 
   const stoppedAt = new Date();
-  const durationSeconds = Math.max(
-    0,
-    Math.floor((stoppedAt.getTime() - session.startedAt.getTime()) / 1000),
-  );
-  const notes =
-    input.notes !== undefined
-      ? normalizeOptionalNotes(input.notes)
-      : session.notes;
+  const durationSeconds = durationSecondsBetween(session.startedAt, stoppedAt);
 
   return prisma.activityTimerSession.update({
     where: { id: session.id },
     data: {
       stoppedAt,
       durationSeconds,
-      notes,
     },
   });
+}
+
+export async function addActivityTimerSessionNote(
+  userId: string,
+  input: AddActivityTimerSessionNoteInput,
+) {
+  const text = normalizeSessionNoteText(input.text);
+  const session = await prisma.activityTimerSession.findFirst({
+    where: {
+      id: input.sessionId,
+      userId,
+    },
+  });
+
+  if (!session) {
+    throw new ActivityTimerError("Timer session not found.");
+  }
+
+  const recordedAt = new Date();
+  const offsetSeconds = computeSessionNoteOffsetSeconds(
+    session.startedAt,
+    recordedAt,
+  );
+
+  const note = await prisma.activityTimerSessionNote.create({
+    data: {
+      sessionId: session.id,
+      userId,
+      text,
+      recordedAt,
+      offsetSeconds,
+    },
+  });
+
+  await syncSessionNotesField(session.id, userId);
+
+  return note;
+}
+
+export async function updateActivityTimerSessionNote(
+  userId: string,
+  input: UpdateActivityTimerSessionNoteInput,
+) {
+  const text = normalizeSessionNoteText(input.text);
+  const note = await prisma.activityTimerSessionNote.findFirst({
+    where: {
+      id: input.noteId,
+      userId,
+    },
+  });
+
+  if (!note) {
+    throw new ActivityTimerError("Session note not found.");
+  }
+
+  const updated = await prisma.activityTimerSessionNote.update({
+    where: { id: note.id },
+    data: { text },
+  });
+
+  await syncSessionNotesField(note.sessionId, userId);
+
+  return updated;
 }
 
 export async function updateActivityTimerSession(
@@ -545,6 +735,9 @@ export async function createActivityTimerPreset(
 ) {
   const title = normalizeTitle(input.title);
   const category = normalizeOptionalCategory(input.category);
+  const targetDurationSeconds = normalizeOptionalTargetDuration(
+    input.targetDurationSeconds,
+  );
   const maxSort = await prisma.activityTimerPreset.aggregate({
     where: { userId, isArchived: false },
     _max: { sortOrder: true },
@@ -555,6 +748,7 @@ export async function createActivityTimerPreset(
       userId,
       title,
       category,
+      targetDurationSeconds,
       sortOrder: (maxSort._max.sortOrder ?? -1) + 1,
     },
   });
