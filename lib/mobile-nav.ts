@@ -151,6 +151,7 @@ export function getSelectableMobileNavSections(access: AppNavAccess) {
           "plans",
           "insights",
           "themes",
+          "timer",
         ] as AppNavItemKey[]
       )
         .filter((key) => canAccessAppNavItem(key, access))

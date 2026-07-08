@@ -195,6 +195,20 @@ function NavIcon({
           <path d="M10.5 21h3" />
         </svg>
       );
+    case "timer":
+      return (
+        <svg
+          className={className}
+          fill="none"
+          viewBox="0 0 24 24"
+          strokeWidth={1.75}
+          aria-hidden="true"
+        >
+          <circle cx="12" cy="13" r="8" />
+          <path d="M12 9v4l2.5 2" />
+          <path d="M9 3h6" />
+        </svg>
+      );
     case "life-lab":
       return (
         <svg

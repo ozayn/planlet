@@ -7,6 +7,7 @@ import {
   buildMobileNavRenderItems,
   getMobileDrawerItems,
   getMobileDrawerSections,
+  getSelectableMobileNavSections,
   resolveMobileNavItems,
   sanitizeMobileNavItems,
 } from "@/lib/mobile-nav";
@@ -66,6 +67,18 @@ describe("sanitizeMobileNavItems", () => {
 
     assert.deepEqual(resolveMobileNavItems(["jobs", "day"], access), ["day"]);
   });
+
+  it("removes timer when activity timer access is revoked", () => {
+    const access: AppNavAccess = {
+      ...baseAccess,
+      canUseActivityTimerFeatures: false,
+    };
+
+    assert.deepEqual(
+      resolveMobileNavItems(["day", "timer", "week"], access),
+      ["day", "week"],
+    );
+  });
 });
 
 describe("buildMobileNavRenderItems", () => {
@@ -78,6 +91,58 @@ describe("buildMobileNavRenderItems", () => {
     assert.equal(items[0]?.label, "Day");
     assert.equal(items[1]?.key, "jobs");
     assert.equal(items[1]?.href, "/jobs");
+  });
+
+  it("builds timer tab for authorized users", () => {
+    const items = buildMobileNavRenderItems(
+      ["timer"],
+      { ...baseAccess, canUseActivityTimerFeatures: true },
+    );
+
+    assert.equal(items.length, 1);
+    assert.equal(items[0]?.key, "timer");
+    assert.equal(items[0]?.href, "/timer");
+    assert.equal(items[0]?.label, "Timer");
+  });
+});
+
+describe("getSelectableMobileNavSections", () => {
+  it("shows Timer in planning options for authorized users", () => {
+    const sections = getSelectableMobileNavSections({
+      ...baseAccess,
+      canUseActivityTimerFeatures: true,
+    });
+    const planning = sections.find((section) => section.title === "Planning");
+
+    assert.ok(planning?.items.some((item) => item.key === "timer"));
+    assert.equal(
+      planning?.items.find((item) => item.key === "timer")?.label,
+      "Timer",
+    );
+  });
+
+  it("hides Timer for users without access", () => {
+    const sections = getSelectableMobileNavSections({
+      ...baseAccess,
+      canUseActivityTimerFeatures: false,
+    });
+    const planning = sections.find((section) => section.title === "Planning");
+
+    assert.equal(
+      planning?.items.some((item) => item.key === "timer"),
+      false,
+    );
+  });
+
+  it("shows Timer for admins without explicit feature flag", () => {
+    const sections = getSelectableMobileNavSections({
+      ...baseAccess,
+      isAdmin: true,
+      canUseActivityTimerFeatures: false,
+    });
+    const planning = sections.find((section) => section.title === "Planning");
+
+    assert.ok(planning?.items.some((item) => item.key === "timer"));
   });
 });
 

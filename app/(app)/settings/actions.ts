@@ -62,6 +62,7 @@ function getAppNavAccessFromSession(session: Session): AppNavAccess {
     canUseLearningJourneyFeatures: session.user.canUseLearningJourneyFeatures,
     canUseLifeLabFeatures: session.user.canUseLifeLabFeatures,
     canUseIdeasFeatures: session.user.canUseIdeasFeatures,
+    canUseActivityTimerFeatures: session.user.canUseActivityTimerFeatures,
     canUseJobTrackerFeatures: session.user.canUseJobTrackerFeatures,
     canUseCareerJourneyFeatures: session.user.canUseCareerJourneyFeatures,
   };
