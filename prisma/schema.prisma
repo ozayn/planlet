@@ -299,6 +299,7 @@ model User {
   canUseLearningJourneyFeatures Boolean @default(false)
   canUseLifeLabFeatures       Boolean   @default(false)
   canUseIdeasFeatures         Boolean   @default(false)
+  canUseActivityTimerFeatures Boolean   @default(false)
   planItemView              PlanItemView @default(CHECKLIST)
   taskOrganizationDisplay   TaskOrganizationDisplay @default(ASSIGNED_ONLY)
   mobileNavItems            String[]    @default([])
@@ -339,6 +340,8 @@ model User {
   bodyEntries                   BodyEntry[]
   learningEntries               LearningEntry[]
   ideas                         Idea[]
+  activityTimerPresets          ActivityTimerPreset[]
+  activityTimerSessions         ActivityTimerSession[]
   planItemReflections           PlanItemReflection[]
   aiUsageLogs                   AiUsageLog[]
   createdAt     DateTime    @default(now())
@@ -911,6 +914,40 @@ model Idea {
 
   @@index([userId, ideaDate])
   @@index([userId, status])
+}
+
+model ActivityTimerPreset {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title      String
+  category   String?
+  isArchived Boolean  @default(false)
+  sortOrder  Int      @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  sessions   ActivityTimerSession[]
+
+  @@index([userId, isArchived, sortOrder])
+}
+
+model ActivityTimerSession {
+  id              String               @id @default(cuid())
+  userId          String
+  user            User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  presetId        String?
+  preset          ActivityTimerPreset? @relation(fields: [presetId], references: [id], onDelete: SetNull)
+  title           String
+  category        String?
+  notes           String?              @db.Text
+  startedAt       DateTime
+  stoppedAt       DateTime?
+  durationSeconds Int?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@index([userId, startedAt])
+  @@index([userId, stoppedAt])
 }
 
 model AppSetting {

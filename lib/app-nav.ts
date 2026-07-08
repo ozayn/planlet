@@ -7,6 +7,7 @@ import {
   canShowLearningJourneyInProfileMenu,
   canShowLifeLabInProfileMenu,
   canShowIdeasInProfileMenu,
+  canShowActivityTimerInProfileMenu,
   type ProfileMenuAccess,
 } from "@/lib/profile-menu";
 
@@ -21,6 +22,7 @@ export type AppNavItemKey =
   | "coaching"
   | "learning-journey"
   | "ideas"
+  | "timer"
   | "life-lab"
   | "body-journey"
   | "nudges"
@@ -39,10 +41,10 @@ export type AppNavSection = {
   items: AppNavItem[];
 };
 
-function planningItems(now = new Date()): AppNavItem[] {
+function planningItems(access: AppNavAccess, now = new Date()): AppNavItem[] {
   const mainItems = getMainNavItems(now);
 
-  return [
+  const items: AppNavItem[] = [
     ...mainItems.map((item) => ({
       key: item.key as AppNavItemKey,
       label: item.label,
@@ -53,6 +55,12 @@ function planningItems(now = new Date()): AppNavItem[] {
     { key: "insights", label: "Insights", href: "/insights" },
     { key: "themes", label: "Themes & projects", href: "/themes" },
   ];
+
+  if (canShowActivityTimerInProfileMenu(access)) {
+    items.push({ key: "timer", label: "Timer", href: "/timer" });
+  }
+
+  return items;
 }
 
 function reflectionItems(access: AppNavAccess): AppNavItem[] {
@@ -133,6 +141,7 @@ export const ALL_APP_NAV_ITEM_KEYS: AppNavItemKey[] = [
   "coaching",
   "learning-journey",
   "ideas",
+  "timer",
   "life-lab",
   "body-journey",
   "nudges",
@@ -165,6 +174,8 @@ export function canAccessAppNavItem(
       return canShowLearningJourneyInProfileMenu(access);
     case "ideas":
       return canShowIdeasInProfileMenu(access);
+    case "timer":
+      return canShowActivityTimerInProfileMenu(access);
     case "life-lab":
       return canShowLifeLabInProfileMenu(access);
     case "body-journey":
@@ -187,7 +198,7 @@ export function getAppNavSections(
   now = new Date(),
 ): AppNavSection[] {
   const sections: AppNavSection[] = [
-    { title: "Planning", items: planningItems(now) },
+    { title: "Planning", items: planningItems(access, now) },
     { title: "Reflection", items: reflectionItems(access) },
     { title: "Career", items: careerItems(access) },
     { title: "Admin", items: adminItems(access) },
@@ -255,6 +266,10 @@ export function isAppNavItemActive(
 
   if (key === "ideas") {
     return pathname === "/ideas" || pathname.startsWith("/ideas/");
+  }
+
+  if (key === "timer") {
+    return pathname === "/timer" || pathname.startsWith("/timer/");
   }
 
   if (key === "life-lab") {

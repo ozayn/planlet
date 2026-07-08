@@ -14,6 +14,7 @@ export type ProfileMenuAccess = {
   canUseLearningJourneyFeatures?: boolean;
   canUseLifeLabFeatures?: boolean;
   canUseIdeasFeatures?: boolean;
+  canUseActivityTimerFeatures?: boolean;
   isAdmin?: boolean;
 };
 
@@ -77,4 +78,10 @@ export function canShowIdeasInProfileMenu(
   access: ProfileMenuAccess,
 ): boolean {
   return Boolean(access.canUseIdeasFeatures || access.isAdmin);
+}
+
+export function canShowActivityTimerInProfileMenu(
+  access: ProfileMenuAccess,
+): boolean {
+  return Boolean(access.canUseActivityTimerFeatures || access.isAdmin);
 }

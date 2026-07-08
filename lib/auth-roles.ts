@@ -9,6 +9,7 @@ import {
   isLearningJourneyEmail,
   isLifeLabEmail,
   isIdeasEmail,
+  isActivityTimerEmail,
   isReflectorEmail,
 } from "@/lib/auth-allowlist";
 import { isAdmin } from "@/lib/roles";
@@ -25,6 +26,7 @@ export type ResolvedUserAccess = {
   canUseLearningJourneyFeatures: boolean;
   canUseLifeLabFeatures: boolean;
   canUseIdeasFeatures: boolean;
+  canUseActivityTimerFeatures: boolean;
 };
 
 type ExistingUserAccess = {
@@ -38,6 +40,7 @@ type ExistingUserAccess = {
   canUseLearningJourneyFeatures?: boolean;
   canUseLifeLabFeatures?: boolean;
   canUseIdeasFeatures?: boolean;
+  canUseActivityTimerFeatures?: boolean;
 };
 
 export function resolveUserAccessFromEmail(
@@ -56,6 +59,7 @@ export function resolveUserAccessFromEmail(
       canUseLearningJourneyFeatures: true,
       canUseLifeLabFeatures: false,
       canUseIdeasFeatures: true,
+      canUseActivityTimerFeatures: true,
     };
   }
 
@@ -76,6 +80,7 @@ export function resolveUserAccessFromEmail(
 
   const canUseLifeLabFeatures = role === "PERSONAL";
   const canUseIdeasFeatures = isIdeasEmail(email);
+  const canUseActivityTimerFeatures = isActivityTimerEmail(email);
 
   return {
     role,
@@ -88,6 +93,7 @@ export function resolveUserAccessFromEmail(
     canUseLearningJourneyFeatures,
     canUseLifeLabFeatures,
     canUseIdeasFeatures,
+    canUseActivityTimerFeatures,
   };
 }
 
@@ -117,6 +123,7 @@ export async function syncUserAccessOnSignIn(
       canUseLearningJourneyFeatures: true,
       canUseLifeLabFeatures: true,
       canUseIdeasFeatures: true,
+      canUseActivityTimerFeatures: true,
     },
   });
 
@@ -132,7 +139,8 @@ export async function syncUserAccessOnSignIn(
     existing?.canUseBodyJourneyFeatures !== access.canUseBodyJourneyFeatures ||
     existing?.canUseLearningJourneyFeatures !== access.canUseLearningJourneyFeatures ||
     existing?.canUseLifeLabFeatures !== access.canUseLifeLabFeatures ||
-    existing?.canUseIdeasFeatures !== access.canUseIdeasFeatures
+    existing?.canUseIdeasFeatures !== access.canUseIdeasFeatures ||
+    existing?.canUseActivityTimerFeatures !== access.canUseActivityTimerFeatures
   ) {
     await prisma.user.update({
       where: { id: userId },

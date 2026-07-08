@@ -1,4 +1,6 @@
 import { auth } from "@/auth";
+import { ActivityTimerFloatingPill } from "@/components/activity-timer/activity-timer-floating-pill";
+import { ActivityTimerProvider } from "@/components/activity-timer/activity-timer-context";
 import { AppLayoutShell } from "@/components/app-layout-shell";
 import { SignOutButton } from "@/components/sign-out-button";
 import { BrowserTimezoneDetector } from "@/components/timezone/browser-timezone-detector";
@@ -12,6 +14,7 @@ import {
   canUseLearningJourneyFeatures,
   canUseLifeLabFeatures,
   canUseIdeasFeatures,
+  canUseActivityTimerFeatures,
 } from "@/lib/roles";
 import { serializeNotification } from "@/lib/notification-serialize";
 import {
@@ -25,6 +28,7 @@ import {
   getHeaderUnreadCount,
 } from "@/lib/poke";
 import { getMobileNavItemsForUser } from "@/lib/user-preferences";
+import { getActiveActivityTimerSession } from "@/lib/activity-timer";
 
 export default async function AppLayout({
   children,
@@ -35,13 +39,16 @@ export default async function AppLayout({
   const userId = session?.user?.id;
   const isAdmin = isAdminRole(session?.user?.role);
 
-  const [unreadNotificationCount, notifications, storedMobileNavItems] = userId
+  const timerAccess = canUseActivityTimerFeatures(session?.user ?? {});
+
+  const [unreadNotificationCount, notifications, storedMobileNavItems, activeTimerSession] = userId
     ? await Promise.all([
         getHeaderUnreadCount(userId),
         getNotificationsForUser(userId),
         getMobileNavItemsForUser(userId),
+        timerAccess ? getActiveActivityTimerSession(userId) : Promise.resolve(null),
       ])
-    : [0, [], []];
+    : [0, [], [], null];
 
   const serializedNotifications = notifications.map(serializeNotification);
   const access = {
@@ -53,6 +60,9 @@ export default async function AppLayout({
     ),
     canUseLifeLabFeatures: canUseLifeLabFeatures(session?.user ?? {}),
     canUseIdeasFeatures: canUseIdeasFeatures(session?.user ?? {}),
+    canUseActivityTimerFeatures: canUseActivityTimerFeatures(
+      session?.user ?? {},
+    ),
     canUseJobTrackerFeatures: canUseJobTrackerFeatures(session?.user ?? {}),
     canUseCareerJourneyFeatures: canUseCareerJourneyFeatures(
       session?.user ?? {},
@@ -68,22 +78,25 @@ export default async function AppLayout({
       {session?.user?.timezoneMode === "AUTOMATIC" ? (
         <BrowserTimezoneDetector enabled />
       ) : null}
-      <AppLayoutShell
-        access={access}
-        mobileNavItems={mobileNavItems}
-        userName={session?.user?.name}
-        userEmail={session?.user?.email}
-        userImage={session?.user?.image}
-        isAdmin={isAdmin}
-        canGiveFeedback={canGiveFeedback(session?.user ?? {})}
-        signOutButton={
-          <SignOutButton variant="quiet" className="ui-profile-menu-sign-out" />
-        }
-        unreadNotificationCount={unreadNotificationCount}
-        notifications={serializedNotifications}
-      >
-        {children}
-      </AppLayoutShell>
+      <ActivityTimerProvider initialActiveSession={activeTimerSession}>
+        <AppLayoutShell
+          access={access}
+          mobileNavItems={mobileNavItems}
+          userName={session?.user?.name}
+          userEmail={session?.user?.email}
+          userImage={session?.user?.image}
+          isAdmin={isAdmin}
+          canGiveFeedback={canGiveFeedback(session?.user ?? {})}
+          signOutButton={
+            <SignOutButton variant="quiet" className="ui-profile-menu-sign-out" />
+          }
+          unreadNotificationCount={unreadNotificationCount}
+          notifications={serializedNotifications}
+        >
+          {children}
+        </AppLayoutShell>
+        {timerAccess ? <ActivityTimerFloatingPill /> : null}
+      </ActivityTimerProvider>
     </>
   );
 }

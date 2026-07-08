@@ -59,6 +59,10 @@ export function getIdeasEmails(): string[] {
   return parseEmailList(process.env.IDEAS_EMAILS);
 }
 
+export function getActivityTimerEmails(): string[] {
+  return parseEmailList(process.env.ACTIVITY_TIMER_EMAILS);
+}
+
 export function isAdminEmail(email?: string | null): boolean {
   if (!email?.trim()) {
     return false;
@@ -137,6 +141,14 @@ export function isIdeasEmail(email?: string | null): boolean {
   }
 
   return getIdeasEmails().includes(email.trim().toLowerCase());
+}
+
+export function isActivityTimerEmail(email?: string | null): boolean {
+  if (!email?.trim()) {
+    return false;
+  }
+
+  return getActivityTimerEmails().includes(email.trim().toLowerCase());
 }
 
 export function isEmailAllowed(email?: string | null): boolean {

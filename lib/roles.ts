@@ -11,6 +11,7 @@ export type UserAccess = {
   canUseLearningJourneyFeatures?: boolean | null;
   canUseLifeLabFeatures?: boolean | null;
   canUseIdeasFeatures?: boolean | null;
+  canUseActivityTimerFeatures?: boolean | null;
 };
 
 type RoleInput = UserRole | string | null | undefined;
@@ -105,6 +106,14 @@ export function canUseIdeasFeatures(user: UserAccess): boolean {
   }
 
   return user.canUseIdeasFeatures === true;
+}
+
+export function canUseActivityTimerFeatures(user: UserAccess): boolean {
+  if (isAdmin(user)) {
+    return true;
+  }
+
+  return user.canUseActivityTimerFeatures === true;
 }
 
 export function canUseTherapyThoughts(user: UserAccess | RoleInput): boolean {

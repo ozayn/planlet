@@ -1376,6 +1376,16 @@ body {
     }
   }
 
+  @keyframes activity-timer-ring-spin {
+    from {
+      transform: rotate(0deg);
+    }
+
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
   .ui-simple-sheet-drag-zone {
     flex-shrink: 0;
     touch-action: none;
