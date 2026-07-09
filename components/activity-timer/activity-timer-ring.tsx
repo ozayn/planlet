@@ -39,7 +39,7 @@ export function ActivityTimerRing({
 
   return (
     <div
-      className={`relative mx-auto aspect-square w-[min(240px,78vw)] max-w-[240px] sm:w-[248px] sm:max-w-none md:w-[272px] ${className}`}
+      className={`relative mx-auto aspect-square w-[clamp(180px,42vw,220px)] md:w-[clamp(260px,28vw,320px)] ${className}`}
     >
       <svg
         className="block h-full w-full"
@@ -96,7 +96,7 @@ export function ActivityTimerRing({
       </svg>
 
       <p
-        className="absolute inset-0 flex items-center justify-center font-mono text-[2.5rem] font-semibold leading-none tracking-tight text-foreground sm:text-5xl md:text-[3.25rem]"
+        className="absolute inset-0 flex items-center justify-center font-mono text-[clamp(1.75rem,9vw,2.25rem)] font-semibold leading-none tracking-tight text-foreground md:text-[clamp(2.25rem,5vw,3rem)]"
         aria-live="polite"
         aria-atomic="true"
       >

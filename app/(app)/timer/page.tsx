@@ -17,7 +17,7 @@ export default async function TimerRoutePage() {
   const data = await getActivityTimerPageData(userId);
 
   return (
-    <section className="ui-page-stack space-y-4 sm:space-y-6 [&_.ui-page-header]:mb-3 sm:[&_.ui-page-header]:mb-6">
+    <section className="ui-page-stack space-y-3 sm:space-y-5 [&_.ui-page-header]:mb-2 sm:[&_.ui-page-header]:mb-5">
       <PageHeader title="Timer" />
       <ActivityTimerPage data={data} />
     </section>

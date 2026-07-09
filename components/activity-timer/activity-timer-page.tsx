@@ -159,8 +159,8 @@ export function ActivityTimerPage({ data }: ActivityTimerPageProps) {
   }
 
   return (
-    <div className="space-y-6 sm:space-y-10">
-      <section className="flex flex-col items-center space-y-4 py-0 text-center sm:space-y-6 sm:py-2">
+    <div className="space-y-5 sm:space-y-8">
+      <section className="flex flex-col items-center space-y-3 py-0 text-center sm:space-y-4">
         {isRunning ? (
           <h2 className="max-w-md px-2 text-base font-medium text-foreground sm:text-lg">
             {displayTitle}
