@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 
 import {
+  deleteActivityTimerSessionAction,
   startActivityTimerAction,
   stopActivityTimerAction,
 } from "@/app/(app)/timer/actions";
@@ -17,7 +18,9 @@ import { ActivityTimerSessionEditSheet } from "@/components/activity-timer/activ
 import { ActivityTimerSessionNotesList } from "@/components/activity-timer/activity-timer-session-notes-list";
 import { ActivityTimerTargetStatus } from "@/components/activity-timer/activity-timer-target-status";
 import { ActivityTimerTimeline } from "@/components/activity-timer/activity-timer-timeline";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useWallClockElapsed } from "@/components/activity-timer/use-wall-clock-elapsed";
+import { ACTION_LABELS } from "@/lib/action-labels";
 import type {
   ActivityTimerPageData,
   SerializedActivityTimerPreset,
@@ -37,6 +40,7 @@ export function ActivityTimerPage({ data }: ActivityTimerPageProps) {
   const [customSheetOpen, setCustomSheetOpen] = useState(false);
   const [editingSession, setEditingSession] =
     useState<SerializedActivityTimerSession | null>(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [sessionNotes, setSessionNotes] = useState<
     SerializedActivityTimerSessionNote[]
   >(data.activeSession?.sessionNotes ?? []);
@@ -123,16 +127,45 @@ export function ActivityTimerPage({ data }: ActivityTimerPageProps) {
     });
   }
 
+  function handleRequestDelete(sessionId: string) {
+    if (activeSession?.id === sessionId) {
+      setError("Stop the timer before deleting this entry.");
+      return;
+    }
+
+    setError(null);
+    setConfirmDeleteId(sessionId);
+  }
+
+  function handleDelete(sessionId: string) {
+    setError(null);
+
+    startTransition(async () => {
+      const result = await deleteActivityTimerSessionAction(sessionId);
+
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
+
+      setConfirmDeleteId(null);
+
+      if (editingSession?.id === sessionId) {
+        setEditingSession(null);
+      }
+
+      refresh();
+    });
+  }
+
   return (
-    <div className="space-y-10">
-      <section className="flex flex-col items-center space-y-6 py-2 text-center">
+    <div className="space-y-6 sm:space-y-10">
+      <section className="flex flex-col items-center space-y-4 py-0 text-center sm:space-y-6 sm:py-2">
         {isRunning ? (
-          <h2 className="max-w-md text-lg font-medium text-foreground">
+          <h2 className="max-w-md px-2 text-base font-medium text-foreground sm:text-lg">
             {displayTitle}
           </h2>
-        ) : (
-          <div className="h-7" aria-hidden="true" />
-        )}
+        ) : null}
 
         <ActivityTimerRing
           startedAt={activeSession?.startedAt ?? null}
@@ -148,22 +181,22 @@ export function ActivityTimerPage({ data }: ActivityTimerPageProps) {
         ) : null}
 
         {isRunning ? (
-          <button
-            type="button"
-            onClick={handleStop}
-            disabled={isPending}
-            className="ui-btn-primary min-h-14 min-w-40 rounded-2xl px-8 text-base"
-          >
-            Stop
-          </button>
-        ) : null}
+          <div className="flex w-full max-w-sm flex-col items-stretch gap-3 px-2 sm:max-w-none sm:items-center">
+            <button
+              type="button"
+              onClick={handleStop}
+              disabled={isPending}
+              className="ui-btn-primary min-h-12 w-full rounded-2xl px-8 text-base sm:min-h-14 sm:min-w-40 sm:w-auto"
+            >
+              Stop
+            </button>
 
-        {isRunning ? (
-          <ActivityTimerAddNote
-            sessionId={activeSession!.id}
-            disabled={isPending}
-            onNoteAdded={refresh}
-          />
+            <ActivityTimerAddNote
+              sessionId={activeSession!.id}
+              disabled={isPending}
+              onNoteAdded={refresh}
+            />
+          </div>
         ) : null}
 
         {isRunning ? (
@@ -182,10 +215,16 @@ export function ActivityTimerPage({ data }: ActivityTimerPageProps) {
 
           <ActivityTimerRecentSessions
             sessions={data.recentSessions}
+            disabled={isPending}
             onSelect={setEditingSession}
+            onDelete={handleRequestDelete}
           />
 
-          <ActivityTimerTimeline insights={data.insights} />
+          <ActivityTimerTimeline
+            insights={data.insights}
+            disabled={isPending}
+            onDelete={handleRequestDelete}
+          />
         </>
       ) : null}
 
@@ -209,6 +248,26 @@ export function ActivityTimerPage({ data }: ActivityTimerPageProps) {
           refresh();
         }}
       />
+
+      <ConfirmDialog
+        open={confirmDeleteId !== null}
+        title="Delete this timer entry?"
+        confirmLabel={ACTION_LABELS.deleteActivityTimerSession.title}
+        onConfirm={() => {
+          if (confirmDeleteId) {
+            handleDelete(confirmDeleteId);
+          }
+        }}
+        onCancel={() => {
+          if (!isPending) {
+            setConfirmDeleteId(null);
+          }
+        }}
+        isConfirming={isPending && confirmDeleteId !== null}
+        confirmDanger
+      >
+        <span className="sr-only">Confirm deletion of this timer entry.</span>
+      </ConfirmDialog>
     </div>
   );
 }

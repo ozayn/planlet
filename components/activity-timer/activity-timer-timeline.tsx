@@ -1,12 +1,19 @@
 "use client";
 
+import { ActivityTimerSessionDeleteButton } from "@/components/activity-timer/activity-timer-session-delete-button";
 import type { ActivityTimerInsights } from "@/lib/activity-timer/constants";
 
 type ActivityTimerTimelineProps = {
   insights: ActivityTimerInsights;
+  disabled?: boolean;
+  onDelete: (sessionId: string) => void;
 };
 
-export function ActivityTimerTimeline({ insights }: ActivityTimerTimelineProps) {
+export function ActivityTimerTimeline({
+  insights,
+  disabled = false,
+  onDelete,
+}: ActivityTimerTimelineProps) {
   const { todayTimeline, todayTotalMinutesLabel } = insights;
 
   return (
@@ -20,12 +27,18 @@ export function ActivityTimerTimeline({ insights }: ActivityTimerTimelineProps) 
           {todayTimeline.map((entry) => (
             <li
               key={entry.id}
-              className="rounded-2xl border border-border-soft bg-surface px-4 py-3 shadow-sm"
+              className="flex items-start gap-1 rounded-2xl border border-border-soft bg-surface px-4 py-3 shadow-sm"
             >
-              <p className="text-xs text-muted-light">{entry.timeRangeLabel}</p>
-              <p className="mt-0.5 text-sm font-medium text-foreground">
-                {entry.title}
-              </p>
+              <div className="min-w-0 flex-1">
+                <p className="text-xs text-muted-light">{entry.timeRangeLabel}</p>
+                <p className="mt-0.5 text-sm font-medium text-foreground">
+                  {entry.title}
+                </p>
+              </div>
+              <ActivityTimerSessionDeleteButton
+                disabled={disabled}
+                onClick={() => onDelete(entry.id)}
+              />
             </li>
           ))}
         </ol>

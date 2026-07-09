@@ -148,6 +148,10 @@ export const ACTION_LABELS = {
     title: "Delete",
     ariaLabel: "Delete learning entry",
   },
+  deleteActivityTimerSession: {
+    title: "Delete",
+    ariaLabel: "Delete timer entry",
+  },
   notifications: {
     title: "Notifications",
     ariaLabel: "Notifications",

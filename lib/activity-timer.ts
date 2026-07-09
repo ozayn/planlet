@@ -6,6 +6,7 @@ import type {
 import { getTodayRange, getWeekRange } from "@/lib/dates";
 import {
   DEFAULT_ACTIVITY_TIMER_PRESETS,
+  LEGACY_DEFAULT_ACTIVITY_TIMER_PRESET_TITLES,
   MAX_ACTIVITY_CATEGORY_LENGTH,
   MAX_ACTIVITY_NOTES_LENGTH,
   MAX_ACTIVITY_TITLE_LENGTH,
@@ -495,6 +496,23 @@ async function ensureDefaultPresetIcons(userId: string): Promise<void> {
   );
 }
 
+async function ensureLegacyDefaultPresetTitles(userId: string): Promise<void> {
+  await Promise.all(
+    LEGACY_DEFAULT_ACTIVITY_TIMER_PRESET_TITLES.map(({ from, to }) =>
+      prisma.activityTimerPreset.updateMany({
+        where: {
+          userId,
+          title: from,
+          isArchived: false,
+        },
+        data: {
+          title: to,
+        },
+      }),
+    ),
+  );
+}
+
 async function getActiveSession(userId: string) {
   return prisma.activityTimerSession.findFirst({
     where: {
@@ -517,6 +535,7 @@ export async function getActivityTimerPageData(
   userId: string,
 ): Promise<ActivityTimerPageData> {
   await ensureDefaultPresets(userId);
+  await ensureLegacyDefaultPresetTitles(userId);
   await ensureDefaultPresetIcons(userId);
 
   const timezone = await getUserTimezone(userId);
@@ -749,6 +768,34 @@ export async function updateActivityTimerSession(
             : Math.max(0, Math.floor(input.durationSeconds))
           : undefined,
     },
+  });
+}
+
+export async function deleteActivityTimerSession(
+  userId: string,
+  sessionId: string,
+): Promise<void> {
+  const session = await prisma.activityTimerSession.findFirst({
+    where: {
+      id: sessionId,
+      userId,
+    },
+    select: {
+      id: true,
+      stoppedAt: true,
+    },
+  });
+
+  if (!session) {
+    throw new ActivityTimerError("Timer session not found.");
+  }
+
+  if (!session.stoppedAt) {
+    throw new ActivityTimerError("Stop the timer before deleting this entry.");
+  }
+
+  await prisma.activityTimerSession.delete({
+    where: { id: session.id },
   });
 }
 

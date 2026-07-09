@@ -8,13 +8,13 @@ export {
 
 export const DEFAULT_ACTIVITY_TIMER_PRESETS = [
   {
-    title: "Foot tapping — right foot",
+    title: "Foot tapping (R)",
     category: "Movement",
     targetDurationSeconds: null,
     iconName: "foot",
   },
   {
-    title: "Foot tapping — left foot",
+    title: "Foot tapping (L)",
     category: "Movement",
     targetDurationSeconds: null,
     iconName: "foot",
@@ -48,6 +48,18 @@ export const DEFAULT_ACTIVITY_TIMER_PRESETS = [
     category: "Movement",
     targetDurationSeconds: 300,
     iconName: "stretch",
+  },
+] as const;
+
+/** Built-in defaults renamed in place; matched by exact legacy title only. */
+export const LEGACY_DEFAULT_ACTIVITY_TIMER_PRESET_TITLES = [
+  {
+    from: "Foot tapping — right foot",
+    to: "Foot tapping (R)",
+  },
+  {
+    from: "Foot tapping — left foot",
+    to: "Foot tapping (L)",
   },
 ] as const;
 

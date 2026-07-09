@@ -14,10 +14,12 @@ type ActivityTimerRingProps = {
   className?: string;
 };
 
-const RING_SIZE = 248;
+/** Fixed SVG coordinate space; the ring scales via responsive container width. */
+const VIEWBOX_SIZE = 248;
 const STROKE_WIDTH = 3;
-const RADIUS = (RING_SIZE - STROKE_WIDTH) / 2;
+const RADIUS = (VIEWBOX_SIZE - STROKE_WIDTH) / 2;
 const CIRCUMFERENCE = 2 * Math.PI * RADIUS;
+const CENTER = VIEWBOX_SIZE / 2;
 
 export function ActivityTimerRing({
   startedAt = null,
@@ -37,14 +39,11 @@ export function ActivityTimerRing({
 
   return (
     <div
-      className={`relative mx-auto flex items-center justify-center ${className}`}
-      style={{ width: RING_SIZE, height: RING_SIZE }}
+      className={`relative mx-auto aspect-square w-[min(240px,78vw)] max-w-[240px] sm:w-[248px] sm:max-w-none md:w-[272px] ${className}`}
     >
       <svg
-        width={RING_SIZE}
-        height={RING_SIZE}
-        viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}
-        className="block"
+        className="block h-full w-full"
+        viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}
         aria-hidden="true"
       >
         <defs>
@@ -55,8 +54,8 @@ export function ActivityTimerRing({
         </defs>
 
         <circle
-          cx={RING_SIZE / 2}
-          cy={RING_SIZE / 2}
+          cx={CENTER}
+          cy={CENTER}
           r={RADIUS}
           fill="none"
           stroke="var(--border-soft)"
@@ -66,8 +65,8 @@ export function ActivityTimerRing({
 
         {hasTarget ? (
           <circle
-            cx={RING_SIZE / 2}
-            cy={RING_SIZE / 2}
+            cx={CENTER}
+            cy={CENTER}
             r={RADIUS}
             fill="none"
             stroke={`url(#${gradientId})`}
@@ -75,24 +74,21 @@ export function ActivityTimerRing({
             strokeLinecap="round"
             strokeDasharray={CIRCUMFERENCE}
             strokeDashoffset={progressOffset}
-            transform={`rotate(-90 ${RING_SIZE / 2} ${RING_SIZE / 2})`}
+            transform={`rotate(-90 ${CENTER} ${CENTER})`}
             className="transition-[stroke-dashoffset] duration-700 ease-out"
           />
         ) : (
-          <g
-            className="origin-center animate-[activity-timer-ring-spin_18s_linear_infinite]"
-            style={{ transformOrigin: `${RING_SIZE / 2}px ${RING_SIZE / 2}px` }}
-          >
+          <g className="origin-center animate-[activity-timer-ring-spin_18s_linear_infinite]">
             <circle
-              cx={RING_SIZE / 2}
-              cy={RING_SIZE / 2}
+              cx={CENTER}
+              cy={CENTER}
               r={RADIUS}
               fill="none"
               stroke={`url(#${gradientId})`}
               strokeWidth={STROKE_WIDTH}
               strokeLinecap="round"
               strokeDasharray={`${CIRCUMFERENCE * 0.18} ${CIRCUMFERENCE * 0.82}`}
-              transform={`rotate(-90 ${RING_SIZE / 2} ${RING_SIZE / 2})`}
+              transform={`rotate(-90 ${CENTER} ${CENTER})`}
               className={running ? "opacity-90" : "opacity-45"}
             />
           </g>
@@ -100,7 +96,7 @@ export function ActivityTimerRing({
       </svg>
 
       <p
-        className="absolute inset-0 flex items-center justify-center font-mono text-5xl font-semibold tracking-tight text-foreground sm:text-[3.25rem]"
+        className="absolute inset-0 flex items-center justify-center font-mono text-[2.5rem] font-semibold leading-none tracking-tight text-foreground sm:text-5xl md:text-[3.25rem]"
         aria-live="polite"
         aria-atomic="true"
       >

@@ -8,6 +8,7 @@ import {
   archiveActivityTimerPreset,
   ActivityTimerError,
   createActivityTimerPreset,
+  deleteActivityTimerSession,
   serializeActiveActivityTimerSessionWithNotes,
   startActivityTimerSession,
   stopActivityTimerSession,
@@ -160,6 +161,25 @@ export async function updateActivityTimerSessionAction(
         error instanceof ActivityTimerError
           ? error.message
           : "Failed to update session.",
+    };
+  }
+}
+
+export async function deleteActivityTimerSessionAction(
+  sessionId: string,
+): Promise<ActivityTimerActionResult> {
+  try {
+    const session = await requireActivityTimerSession();
+    await deleteActivityTimerSession(session.user.id, sessionId);
+    revalidateTimer();
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof ActivityTimerError
+          ? error.message
+          : "Failed to delete session.",
     };
   }
 }

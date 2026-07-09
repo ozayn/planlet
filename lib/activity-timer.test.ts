@@ -71,7 +71,7 @@ describe("activity timer insights", () => {
       [
         {
           id: "session-1",
-          title: "Foot tapping — right foot",
+          title: "Foot tapping (R)",
           durationSeconds: 754,
           startedAt: new Date("2026-07-08T12:00:00.000Z"),
           stoppedAt: new Date("2026-07-08T12:14:00.000Z"),
@@ -85,7 +85,7 @@ describe("activity timer insights", () => {
         },
         {
           id: "session-3",
-          title: "Foot tapping — right foot",
+          title: "Foot tapping (R)",
           durationSeconds: 400,
           startedAt: new Date("2026-07-07T10:00:00.000Z"),
           stoppedAt: new Date("2026-07-07T10:06:40.000Z"),
@@ -97,7 +97,7 @@ describe("activity timer insights", () => {
 
     assert.equal(insights.todayTotalSeconds, 754 + 1082);
     assert.equal(insights.weekTotalSeconds, 754 + 1082 + 400);
-    assert.equal(insights.mostTimedActivity, "Foot tapping — right foot");
+    assert.equal(insights.mostTimedActivity, "Foot tapping (R)");
     assert.equal(insights.todayTotalLabel, "30m 36s");
     assert.equal(insights.todayTotalMinutesLabel, "31 minutes");
     assert.equal(insights.todayTimeline.length, 2);
