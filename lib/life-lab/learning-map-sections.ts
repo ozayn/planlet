@@ -1,10 +1,13 @@
 /**
  * Headings whose Mermaid flowcharts should default to top-down layout.
  *
- * Authoring contract (Ava / OpenClaw): use `flowchart TD` or `graph TD` for
- * Learning Map diagrams unless horizontal layout is intentional — then add
- * `<!-- planlet:mermaid-direction=preserve -->` before the fence or
- * `%% planlet-direction: preserve` inside the diagram source.
+ * Authoring contract (Ava / OpenClaw):
+ * - Use `flowchart TD` or `graph TD` unless horizontal layout is intentional.
+ *   Add `<!-- planlet:mermaid-direction=preserve -->` before the fence or
+ *   `%% planlet-direction: preserve` inside the diagram source when keeping LR/RL.
+ * - Keep node labels concise — roughly 5–7 words when possible.
+ * - Use `<br/>` only for a deliberate semantic line break inside a label.
+ * - Avoid full explanatory sentences inside nodes; put longer context in Markdown.
  */
 export const LEARNING_MAP_SECTIONS = [
   "Learning Map",

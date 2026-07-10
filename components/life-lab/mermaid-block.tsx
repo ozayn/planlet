@@ -59,8 +59,6 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
         open={expanded}
         onClose={() => setExpanded(false)}
         code={code}
-        preparedSvg={preparedSvg}
-        failed={failed}
         returnFocusRef={expandButtonRef}
       />
     </>

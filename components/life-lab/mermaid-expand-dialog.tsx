@@ -6,13 +6,14 @@ import {
   useId,
   useRef,
   useState,
+  type CSSProperties,
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
 import { Minus, Plus, X } from "lucide-react";
 
+import { useMermaidRender } from "@/components/life-lab/use-mermaid-render";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
-import type { PreparedMermaidSvg } from "@/lib/life-lab/mermaid-svg";
 
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 2;
@@ -22,8 +23,6 @@ type MermaidExpandDialogProps = {
   open: boolean;
   onClose: () => void;
   code: string;
-  preparedSvg: PreparedMermaidSvg | null;
-  failed: boolean;
   returnFocusRef?: RefObject<HTMLElement | null>;
 };
 
@@ -35,8 +34,6 @@ export function MermaidExpandDialog({
   open,
   onClose,
   code,
-  preparedSvg,
-  failed,
   returnFocusRef,
 }: MermaidExpandDialogProps) {
   const titleId = useId();
@@ -46,6 +43,10 @@ export function MermaidExpandDialog({
   const panelRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const wasOpenRef = useRef(false);
+  const { preparedSvg, failed } = useMermaidRender(code, {
+    variant: "dialog",
+    enabled: open,
+  });
 
   useEffect(() => {
     setMounted(true);
@@ -220,13 +221,22 @@ export function MermaidExpandDialog({
             >
               <div
                 className="ui-mermaid-svg"
+                style={
+                  preparedSvg.minWidth
+                    ? ({
+                        "--mermaid-min-width": `${preparedSvg.minWidth}px`,
+                      } as CSSProperties)
+                    : undefined
+                }
                 dangerouslySetInnerHTML={{ __html: preparedSvg.html }}
               />
             </div>
-          ) : (
+          ) : failed ? (
             <pre className="ui-mermaid-fallback">
               <code>{code}</code>
             </pre>
+          ) : (
+            <p className="ui-mermaid-loading">Rendering diagram…</p>
           )}
         </div>
       </div>
