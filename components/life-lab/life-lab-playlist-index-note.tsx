@@ -162,7 +162,13 @@ function NoteAction({ video }: { video: PlaylistVideoRow }) {
   );
 }
 
-function VideoThumbnail({ video }: { video: PlaylistVideoRow }) {
+function VideoThumbnail({
+  video,
+  className,
+}: {
+  video: PlaylistVideoRow;
+  className?: string;
+}) {
   if (!video.thumbnail) {
     return null;
   }
@@ -172,7 +178,67 @@ function VideoThumbnail({ video }: { video: PlaylistVideoRow }) {
       image={video.thumbnail}
       variant="thumbnail"
       fallbackTitle={video.title}
+      className={className}
     />
+  );
+}
+
+function formatMobileVideoMetadata(
+  video: PlaylistVideoRow,
+  index: number,
+): string {
+  const parts = [
+    video.episode ? `EP ${video.episode}` : `#${index + 1}`,
+    video.duration,
+    video.status.charAt(0).toUpperCase() + video.status.slice(1),
+  ].filter(Boolean);
+
+  return parts.join(" · ");
+}
+
+function MobileVideoCard({
+  video,
+  index,
+}: {
+  video: PlaylistVideoRow;
+  index: number;
+}) {
+  const metadata = formatMobileVideoMetadata(video, index);
+  const content = (
+    <div className="flex items-start gap-2.5">
+      <VideoThumbnail
+        video={video}
+        className="h-12 w-12 sm:h-14 sm:w-14"
+      />
+      <div className="min-w-0 flex-1 space-y-0.5">
+        <p className="text-[0.6875rem] leading-snug text-muted-light">
+          {metadata}
+        </p>
+        <p className="line-clamp-2 text-sm font-medium leading-snug text-foreground">
+          {video.title}
+        </p>
+      </div>
+    </div>
+  );
+
+  if (video.noteHref) {
+    return (
+      <li>
+        <Link
+          href={video.noteHref}
+          aria-label={`Open note: ${video.title}`}
+          className="block rounded-xl border border-border/60 bg-surface p-2.5 transition-colors hover:bg-accent-cream/20 active:bg-accent-cream/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
+        >
+          {content}
+        </Link>
+      </li>
+    );
+  }
+
+  return (
+    <li className="rounded-xl border border-border/60 bg-surface p-2.5">
+      {content}
+    </li>
   );
 }
 
@@ -240,32 +306,11 @@ function VideoCards({ videos }: { videos: PlaylistVideoRow[] }) {
   return (
     <ul className="space-y-2 md:hidden">
       {videos.map((video, index) => (
-        <li
+        <MobileVideoCard
           key={`${video.episode ?? index}-${video.title}-mobile`}
-          className="rounded-xl border border-border/60 bg-surface p-3"
-        >
-          <div className="flex items-start justify-between gap-3">
-            <VideoThumbnail video={video} />
-            <div className="min-w-0 flex-1 space-y-1.5">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted-light">
-                  {video.episode ? `Ep ${video.episode}` : `#${index + 1}`}
-                </span>
-                <StatusBadge status={video.status} />
-                {video.duration ? (
-                  <span className="text-[0.6875rem] text-muted">{video.duration}</span>
-                ) : null}
-              </div>
-              <p className="text-sm leading-snug">
-                <VideoTitle video={video} />
-              </p>
-            </div>
-            <div className="flex shrink-0 flex-col items-end gap-2">
-              <NoteAction video={video} />
-              {video.videoUrl ? <YoutubeLink href={video.videoUrl} /> : null}
-            </div>
-          </div>
-        </li>
+          video={video}
+          index={index}
+        />
       ))}
     </ul>
   );
