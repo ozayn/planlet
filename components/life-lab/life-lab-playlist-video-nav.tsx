@@ -1,180 +1,170 @@
+"use client";
+
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 import type { PlaylistVideoNavigation } from "@/lib/life-lab/playlist-index";
 
 type LifeLabPlaylistVideoNavProps = {
   navigation: PlaylistVideoNavigation;
-  variant?: "compact" | "footer";
+  variant?: "footer" | "header-icons";
+  enableKeyboardShortcuts?: boolean;
 };
 
-function NavButton({
+function isNavLinkAvailable(
+  link: PlaylistVideoNavigation["previous"],
+): link is NonNullable<PlaylistVideoNavigation["previous"]> & { href: string } {
+  return Boolean(link?.href && link.status === "processed");
+}
+
+function NavCard({
   href,
   label,
   title,
-  disabled,
-  pending,
+  ariaLabel,
 }: {
-  href: string | null;
+  href: string;
   label: string;
   title: string;
-  disabled?: boolean;
-  pending?: boolean;
+  ariaLabel: string;
 }) {
-  const className =
-    variantClassName(disabled, pending);
-
-  if (href && !disabled) {
-    return (
-      <Link href={href} className={className}>
-        <span className="block text-[0.6875rem] font-medium uppercase tracking-wide text-muted-light">
-          {label}
-        </span>
-        <span className="block truncate text-sm font-medium">{title}</span>
-      </Link>
-    );
-  }
-
   return (
-    <span
-      className={className}
-      aria-disabled="true"
+    <Link
+      href={href}
+      aria-label={ariaLabel}
+      className="min-w-0 flex-1 rounded-xl border border-border/70 bg-surface px-3 py-3 transition-colors hover:border-border hover:bg-accent-cream/30"
     >
-      <span className="block text-[0.6875rem] font-medium uppercase tracking-wide text-muted-light">
-        {label}
+      <span className="block text-xs font-medium text-muted">{label}</span>
+      <span className="mt-1 block line-clamp-2 text-sm font-medium leading-snug text-foreground">
+        {title}
       </span>
-      <span className="block truncate text-sm font-medium text-muted">
-        {pending ? "Pending" : title}
-      </span>
-    </span>
+    </Link>
   );
 }
 
-function variantClassName(disabled?: boolean, pending?: boolean): string {
-  const base =
-    "min-w-0 flex-1 rounded-xl border px-3 py-2.5 transition-colors";
-
-  if (disabled || pending) {
-    return `${base} border-border/50 bg-surface/50 text-muted`;
-  }
-
-  return `${base} border-border/70 bg-surface hover:border-border hover:bg-accent-cream/30`;
-}
-
-function CompactNavButton({
+function HeaderIconLink({
   href,
-  label,
-  disabled,
-  pending,
+  ariaLabel,
+  direction,
 }: {
-  href: string | null;
-  label: string;
-  disabled?: boolean;
-  pending?: boolean;
+  href: string;
+  ariaLabel: string;
+  direction: "previous" | "next";
 }) {
-  const className = disabled || pending || !href
-    ? "rounded-full border border-border/50 px-3 py-1.5 text-xs font-medium text-muted"
-    : "rounded-full border border-border/70 px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent-cream/50";
-
-  if (href && !disabled && !pending) {
-    return (
-      <Link href={href} className={className}>
-        {label}
-      </Link>
-    );
-  }
+  const Icon = direction === "previous" ? ChevronLeft : ChevronRight;
 
   return (
-    <span className={className} aria-disabled="true">
-      {pending ? `${label} · Pending` : label}
-    </span>
+    <Link
+      href={href}
+      aria-label={ariaLabel}
+      className="hidden rounded-full border border-border/70 p-2 text-muted transition-colors hover:bg-accent-cream/50 hover:text-foreground md:inline-flex"
+    >
+      <Icon className="h-4 w-4" aria-hidden="true" />
+    </Link>
   );
 }
 
 export function LifeLabPlaylistVideoNav({
   navigation,
-  variant = "compact",
+  variant = "footer",
+  enableKeyboardShortcuts = variant === "footer",
 }: LifeLabPlaylistVideoNavProps) {
-  const previousPending =
-    navigation.previous != null &&
-    (navigation.previous.status !== "processed" || !navigation.previous.href);
-  const nextPending =
-    navigation.next != null &&
-    (navigation.next.status !== "processed" || !navigation.next.href);
+  const router = useRouter();
+  const previous = isNavLinkAvailable(navigation.previous)
+    ? navigation.previous
+    : null;
+  const next = isNavLinkAvailable(navigation.next) ? navigation.next : null;
 
-  if (variant === "compact") {
+  useEffect(() => {
+    if (!enableKeyboardShortcuts) {
+      return;
+    }
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (!event.altKey || event.metaKey || event.ctrlKey || event.shiftKey) {
+        return;
+      }
+
+      if (event.key === "ArrowLeft" && previous?.href) {
+        event.preventDefault();
+        router.push(previous.href);
+        return;
+      }
+
+      if (event.key === "ArrowRight" && next?.href) {
+        event.preventDefault();
+        router.push(next.href);
+      }
+    }
+
+    window.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [enableKeyboardShortcuts, next?.href, previous?.href, router]);
+
+  if (variant === "header-icons") {
+    if (!previous && !next) {
+      return null;
+    }
+
     return (
-      <nav
-        aria-label="Playlist navigation"
-        className="flex flex-wrap items-center gap-2"
-      >
-        {navigation.previous ? (
-          <CompactNavButton
-            href={navigation.previous.href}
-            label="Previous"
-            disabled={!navigation.previous.href}
-            pending={previousPending}
+      <>
+        {previous ? (
+          <HeaderIconLink
+            href={previous.href}
+            ariaLabel={`Previous note: ${previous.title}`}
+            direction="previous"
           />
-        ) : (
-          <CompactNavButton href={null} label="Previous" disabled />
-        )}
-        <Link
-          href={navigation.playlistIndexHref}
-          className="rounded-full bg-accent-cream px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent-cream/80"
-        >
-          Back to playlist
-        </Link>
-        {navigation.next ? (
-          <CompactNavButton
-            href={navigation.next.href}
-            label="Next"
-            disabled={!navigation.next.href}
-            pending={nextPending}
+        ) : null}
+        {next ? (
+          <HeaderIconLink
+            href={next.href}
+            ariaLabel={`Next note: ${next.title}`}
+            direction="next"
           />
-        ) : (
-          <CompactNavButton href={null} label="Next" disabled />
-        )}
-      </nav>
+        ) : null}
+      </>
     );
   }
 
+  if (!previous && !next) {
+    return null;
+  }
+
   return (
-    <nav
-      aria-label="Playlist navigation"
-      className="grid gap-2 sm:grid-cols-3"
-    >
-      {navigation.previous ? (
-        <NavButton
-          href={navigation.previous.href}
-          label="Previous"
-          title={navigation.previous.title}
-          disabled={!navigation.previous.href}
-          pending={previousPending}
-        />
-      ) : (
-        <NavButton href={null} label="Previous" title="—" disabled />
-      )}
+    <nav aria-label="Playlist navigation" className="space-y-3">
+      <div
+        className={`grid gap-2 ${
+          previous && next ? "sm:grid-cols-2" : "grid-cols-1"
+        }`}
+      >
+        {previous ? (
+          <NavCard
+            href={previous.href}
+            label="Previous"
+            title={previous.title}
+            ariaLabel={`Previous note: ${previous.title}`}
+          />
+        ) : null}
+        {next ? (
+          <NavCard
+            href={next.href}
+            label="Next"
+            title={next.title}
+            ariaLabel={`Next note: ${next.title}`}
+          />
+        ) : null}
+      </div>
       <Link
         href={navigation.playlistIndexHref}
-        className="flex min-w-0 flex-col justify-center rounded-xl border border-border/70 bg-accent-cream/40 px-3 py-2.5 text-center transition-colors hover:bg-accent-cream/60"
+        className="inline-flex text-xs font-medium text-muted transition-colors hover:text-foreground"
       >
-        <span className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-light">
-          Playlist
-        </span>
-        <span className="truncate text-sm font-medium">
-          {navigation.playlistTitle}
-        </span>
+        Back to {navigation.playlistTitle}
       </Link>
-      {navigation.next ? (
-        <NavButton
-          href={navigation.next.href}
-          label="Next"
-          title={navigation.next.title}
-          disabled={!navigation.next.href}
-          pending={nextPending}
-        />
-      ) : (
-        <NavButton href={null} label="Next" title="—" disabled />
-      )}
     </nav>
   );
 }

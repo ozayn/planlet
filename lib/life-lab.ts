@@ -62,11 +62,11 @@ import {
   titleFromFilename,
 } from "@/lib/life-lab/slug";
 import {
-  buildVideoPlaylistNavigation,
-  findPlaylistIndexSlugForVideo,
   isPlaylistIndexNote,
+  isPlaylistIndexSummaryRecord,
   isYoutubeVideoNote,
   parsePlaylistIndexNote,
+  resolveYoutubeVideoPlaylistNavigation,
   type PlaylistIndexDisplay,
   type PlaylistVideoNavigation,
 } from "@/lib/life-lab/playlist-index";
@@ -884,17 +884,8 @@ export async function getYoutubeVideoPlaylistNavigation(
   }
 
   const playlistIndexRecords = records.filter((record) =>
-    isPlaylistIndexNote({
-      sectionId,
-      relativePath: record.relativePath,
-      subfolderLabel: record.subfolderLabel,
-      metadata: record.metadata,
-    }),
+    isPlaylistIndexSummaryRecord(record),
   );
-
-  if (playlistIndexRecords.length === 0) {
-    return null;
-  }
 
   const playlistContents = new Map<string, PlaylistIndexDisplay>();
 
@@ -908,27 +899,11 @@ export async function getYoutubeVideoPlaylistNavigation(
     playlistContents.set(record.slug, parsePlaylistIndexNote(playlistNote));
   }
 
-  const playlistIndexSlug = findPlaylistIndexSlugForVideo(
+  return resolveYoutubeVideoPlaylistNavigation(
     records,
     videoRecord,
-    playlistContents,
-  );
-
-  if (!playlistIndexSlug) {
-    return null;
-  }
-
-  const display = playlistContents.get(playlistIndexSlug);
-
-  if (!display?.parseSucceeded) {
-    return null;
-  }
-
-  return buildVideoPlaylistNavigation(
-    display,
-    slug,
-    playlistIndexSlug,
     sectionId,
+    playlistContents,
   );
 }
 

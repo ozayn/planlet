@@ -4,6 +4,7 @@ import type {
   LifeLabNoteSummary,
   LifeLabSectionId,
 } from "@/lib/life-lab/constants";
+import { noteContentDateValue } from "@/lib/life-lab/browse";
 import {
   driveRelativePathToSlug,
   markdownExcerpt,
@@ -477,6 +478,25 @@ export function formatPlaylistProcessingSummary(
   return parts.join(" · ");
 }
 
+export function isPlaylistIndexSummaryRecord(
+  record: Pick<
+    LifeLabNoteSummary,
+    "relativePath" | "subfolderLabel" | "metadata"
+  >,
+): boolean {
+  if (record.metadata?.type === "playlist-index") {
+    return true;
+  }
+
+  const relativePath = record.relativePath ?? "";
+
+  return (
+    record.subfolderLabel === "playlists" ||
+    relativePath.startsWith("playlists/") ||
+    relativePath.includes("/playlists/")
+  );
+}
+
 export function isPlaylistIndexNote(input: {
   sectionId?: LifeLabSectionId;
   relativePath?: string;
@@ -582,6 +602,124 @@ export function isYoutubeVideoNote(note: Pick<
   );
 }
 
+export function comparePlaylistVideoNotes(
+  left: LifeLabNoteSummary,
+  right: LifeLabNoteSummary,
+): number {
+  const dateDelta = noteContentDateValue(left) - noteContentDateValue(right);
+
+  if (dateDelta !== 0) {
+    return dateDelta;
+  }
+
+  return left.title.localeCompare(right.title);
+}
+
+function summaryToNavLink(
+  note: LifeLabNoteSummary,
+  sectionId: LifeLabSectionId,
+): PlaylistVideoNavLink {
+  return {
+    href: `/life-lab/${sectionId}/${note.slug}`,
+    title: note.title,
+    status: "processed",
+    episode: note.metadata?.episode != null ? String(note.metadata.episode) : null,
+  };
+}
+
+export function buildPlaylistNavigationFromVideoNotes(
+  records: LifeLabNoteSummary[],
+  videoNote: LifeLabNoteSummary,
+  sectionId: LifeLabSectionId,
+): PlaylistVideoNavigation | null {
+  const playlistName = videoNote.metadata?.playlist?.trim();
+
+  if (!playlistName) {
+    return null;
+  }
+
+  const playlistKey = playlistName.toLowerCase();
+  const playlistVideos = records
+    .filter(
+      (record) =>
+        isYoutubeVideoNote(record) &&
+        record.metadata?.playlist?.trim().toLowerCase() === playlistKey,
+    )
+    .sort(comparePlaylistVideoNotes);
+
+  if (playlistVideos.length <= 1) {
+    return null;
+  }
+
+  const currentIndex = playlistVideos.findIndex(
+    (record) => record.slug === videoNote.slug,
+  );
+
+  if (currentIndex === -1) {
+    return null;
+  }
+
+  const playlistIndexRecord = records.find(
+    (record) =>
+      isPlaylistIndexSummaryRecord(record) &&
+      record.metadata?.playlist?.trim().toLowerCase() === playlistKey,
+  );
+
+  const playlistIndexHref = playlistIndexRecord
+    ? `/life-lab/${sectionId}/${playlistIndexRecord.slug}`
+    : `/life-lab/${sectionId}?playlist=${encodeURIComponent(playlistName)}`;
+
+  const previousVideo =
+    currentIndex > 0 ? playlistVideos[currentIndex - 1] : null;
+  const nextVideo =
+    currentIndex < playlistVideos.length - 1
+      ? playlistVideos[currentIndex + 1]
+      : null;
+
+  return {
+    playlistIndexHref,
+    playlistTitle: playlistName,
+    previous: previousVideo ? summaryToNavLink(previousVideo, sectionId) : null,
+    next: nextVideo ? summaryToNavLink(nextVideo, sectionId) : null,
+    currentEpisode:
+      videoNote.metadata?.episode != null
+        ? String(videoNote.metadata.episode)
+        : null,
+  };
+}
+
+export function resolveYoutubeVideoPlaylistNavigation(
+  records: LifeLabNoteSummary[],
+  videoNote: LifeLabNoteSummary,
+  sectionId: LifeLabSectionId,
+  playlistContents: Map<string, PlaylistIndexDisplay>,
+): PlaylistVideoNavigation | null {
+  const playlistIndexSlug = findPlaylistIndexSlugForVideo(
+    records,
+    videoNote,
+    playlistContents,
+  );
+
+  if (playlistIndexSlug) {
+    const display = playlistContents.get(playlistIndexSlug);
+
+    if (display?.parseSucceeded) {
+      const indexedNavigation = buildVideoPlaylistNavigation(
+        display,
+        videoNote.slug,
+        playlistIndexSlug,
+        sectionId,
+      );
+
+      if (indexedNavigation) {
+        return indexedNavigation;
+      }
+    }
+  }
+
+  return buildPlaylistNavigationFromVideoNotes(records, videoNote, sectionId);
+}
+
 function toNavLink(video: PlaylistVideoRow): PlaylistVideoNavLink {
   return {
     href: video.noteHref,
@@ -631,12 +769,7 @@ export function findPlaylistIndexSlugForVideo(
   if (playlistName) {
     for (const record of records) {
       if (
-        !isPlaylistIndexNote({
-          sectionId: "youtube-learning",
-          relativePath: record.relativePath,
-          subfolderLabel: record.subfolderLabel,
-          metadata: record.metadata,
-        })
+        !isPlaylistIndexSummaryRecord(record)
       ) {
         continue;
       }

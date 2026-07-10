@@ -29,6 +29,14 @@ export const LIFE_LAB_SORT_LABELS: Record<LifeLabSortKey, string> = {
   recent: "Recently added",
 };
 
+export const LIFE_LAB_SORT_SHORT_LABELS: Record<LifeLabSortKey, string> = {
+  newest: "Newest",
+  oldest: "Oldest",
+  title: "Title",
+  status: "Status",
+  recent: "Recent",
+};
+
 export function isLifeLabSortKey(value: string): value is LifeLabSortKey {
   return (LIFE_LAB_SORT_KEYS as readonly string[]).includes(value);
 }

@@ -80,12 +80,9 @@ export default async function LifeLabNotePage({
           note={note}
           sectionId={note.sectionId}
           sectionLabel={note.sectionLabel}
+          playlistNav={playlistNav}
         />
       )}
-
-      {playlistNav ? (
-        <LifeLabPlaylistVideoNav navigation={playlistNav} variant="compact" />
-      ) : null}
 
       {availability.status !== "ready" ? (
         <LifeLabStatusPanel availability={availability} isAdmin={isAdmin} />

@@ -77,6 +77,7 @@ import {
 } from "@/lib/life-lab/youtube-learning";
 import { stripLeadingMarkdownH1 } from "@/lib/life-lab/note-content";
 import {
+  buildPlaylistNavigationFromVideoNotes,
   buildVideoPlaylistNavigation,
   buildYoutubeVideoNoteHref,
   findPlaylistIndexSlugForVideo,
@@ -862,11 +863,8 @@ describe("life lab metadata chips", () => {
       variant: "card",
     });
 
-    assert.deepEqual(chips.visible, [
-      "enlightenment",
-      "diplomacy",
-      "history",
-    ]);
+    assert.deepEqual(chips.visible, []);
+    assert.equal(chips.overflowCount, 0);
     assert.equal(
       isRedundantMetadataChip("youtube", { sectionId: "youtube-learning" }),
       true,
@@ -892,7 +890,7 @@ describe("life lab metadata chips", () => {
       },
     );
 
-    assert.deepEqual(chips.visible, ["iran", "revolution", "monarchy"]);
+    assert.deepEqual(chips.visible, []);
   });
 
   it("shows overflow count when detail chips exceed the visible limit", () => {
@@ -909,7 +907,7 @@ describe("life lab metadata chips", () => {
     assert.equal(chips.overflowCount, 1);
   });
 
-  it("hides card overflow counts and limits cards to three chips", () => {
+  it("hides card chips on list surfaces", () => {
     const chips = selectVisibleMetadataChips(
       {
         topics: ["one", "two", "three", "four"],
@@ -918,7 +916,7 @@ describe("life lab metadata chips", () => {
       { sectionId: "youtube-learning", variant: "card" },
     );
 
-    assert.equal(chips.visible.length, 3);
+    assert.equal(chips.visible.length, 0);
     assert.equal(chips.overflowCount, 0);
   });
 });
@@ -1365,20 +1363,15 @@ describe("reading briefs", () => {
     assert.equal(groups[1]?.id, "maybe");
   });
 
-  it("shows only a few topic chips on reading brief cards", () => {
+  it("hides reading brief tags on list cards", () => {
     const { metadata } = parseLifeLabFrontmatter(sampleBrief);
     const chips = selectVisibleMetadataChips(metadata, {
       sectionId: "reading-briefs",
       variant: "card",
     });
 
-    assert.equal(chips.visible.length, 3);
+    assert.equal(chips.visible.length, 0);
     assert.equal(chips.overflowCount, 0);
-    assert.deepEqual(chips.visible, [
-      "political legitimacy",
-      "succession",
-      "migration",
-    ]);
   });
 });
 
@@ -1497,18 +1490,15 @@ describe("learning dictionary", () => {
     assert.equal(noteMatchesSearch(processed, "gateway islands"), false);
   });
 
-  it("shows compact dictionary card chips without overflow noise", () => {
+  it("hides dictionary tags on list cards", () => {
     const { metadata } = parseLifeLabFrontmatter(conceptFixture);
     const chips = selectVisibleMetadataChips(metadata, {
       sectionId: "learning-dictionary",
       variant: "card",
     });
 
-    assert.equal(chips.visible.length, 3);
+    assert.equal(chips.visible.length, 0);
     assert.equal(chips.overflowCount, 0);
-    assert.ok(chips.visible.includes("institutions"));
-    assert.ok(chips.visible.includes("state power"));
-    assert.ok(chips.visible.includes("authority"));
   });
 });
 
@@ -1688,7 +1678,7 @@ describe("film lab", () => {
     assert.equal(processed.title, "What to watch next");
   });
 
-  it("shows compact film lab card chips without section noise", () => {
+  it("hides film lab tags on list cards", () => {
     const { metadata } = parseLifeLabFrontmatter(tasteMapFixture);
     const chips = selectVisibleMetadataChips(metadata, {
       sectionId: "film-lab",
@@ -1696,10 +1686,8 @@ describe("film lab", () => {
       groupLabel: "Taste Map",
     });
 
-    assert.equal(chips.visible.length, 3);
+    assert.equal(chips.visible.length, 0);
     assert.equal(chips.overflowCount, 0);
-    assert.ok(chips.visible.includes("arthouse"));
-    assert.ok(chips.visible.includes("slow cinema"));
   });
 });
 
@@ -2033,6 +2021,86 @@ describe("playlist index notes", () => {
     assert.equal(navigation?.next?.href, null);
     assert.equal(navigation?.next?.status, "pending");
     assert.equal(navigation?.next?.title, "Aftermath and Memory");
+  });
+
+  it("builds playlist navigation from video notes when no index note exists", () => {
+    const records = [
+      noteSummary({
+        slug: "videos__2026-07-04-part-one",
+        title: "Arguments for the Soul, Part I",
+        subfolderLabel: "videos",
+        relativePath: "videos/2026-07-04-part-one.md",
+        metadata: { playlist: "Death with Shelly Kagan", source: "youtube" },
+      }),
+      noteSummary({
+        slug: "videos__2026-07-05-part-two",
+        title: "Arguments for the Soul, Part II",
+        subfolderLabel: "videos",
+        relativePath: "videos/2026-07-05-part-two.md",
+        metadata: { playlist: "Death with Shelly Kagan", source: "youtube" },
+      }),
+      noteSummary({
+        slug: "videos__2026-07-06-part-three",
+        title: "Arguments for the Soul, Part III",
+        subfolderLabel: "videos",
+        relativePath: "videos/2026-07-06-part-three.md",
+        metadata: { playlist: "Death with Shelly Kagan", source: "youtube" },
+      }),
+    ];
+
+    const navigation = buildPlaylistNavigationFromVideoNotes(
+      records,
+      records[1]!,
+      "youtube-learning",
+    );
+
+    assert.ok(navigation);
+    assert.equal(
+      navigation?.previous?.href,
+      "/life-lab/youtube-learning/videos__2026-07-04-part-one",
+    );
+    assert.equal(
+      navigation?.next?.href,
+      "/life-lab/youtube-learning/videos__2026-07-06-part-three",
+    );
+    assert.match(navigation?.playlistIndexHref ?? "", /playlist=Death/);
+    assert.equal(navigation?.previous?.title, "Arguments for the Soul, Part I");
+    assert.equal(navigation?.next?.title, "Arguments for the Soul, Part III");
+  });
+
+  it("omits previous on the first playlist video and next on the last", () => {
+    const records = [
+      noteSummary({
+        slug: "videos__2026-07-04-part-one",
+        title: "Part I",
+        subfolderLabel: "videos",
+        relativePath: "videos/2026-07-04-part-one.md",
+        metadata: { playlist: "Sample Playlist", source: "youtube" },
+      }),
+      noteSummary({
+        slug: "videos__2026-07-06-part-three",
+        title: "Part III",
+        subfolderLabel: "videos",
+        relativePath: "videos/2026-07-06-part-three.md",
+        metadata: { playlist: "Sample Playlist", source: "youtube" },
+      }),
+    ];
+
+    const first = buildPlaylistNavigationFromVideoNotes(
+      records,
+      records[0]!,
+      "youtube-learning",
+    );
+    const last = buildPlaylistNavigationFromVideoNotes(
+      records,
+      records[1]!,
+      "youtube-learning",
+    );
+
+    assert.equal(first?.previous, null);
+    assert.ok(first?.next);
+    assert.ok(last?.previous);
+    assert.equal(last?.next, null);
   });
 
   it("finds playlist indexes for video notes by playlist metadata or note slug", () => {

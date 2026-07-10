@@ -6,6 +6,8 @@ import { LifeLabMetadataChips } from "@/components/life-lab/life-lab-metadata-ch
 import { LifeLabNoteDevToolbar } from "@/components/life-lab/life-lab-note-dev-toolbar";
 import { LifeLabNoteReadAloud } from "@/components/life-lab/life-lab-note-read-aloud";
 import type { LifeLabNote, LifeLabSectionId } from "@/lib/life-lab/constants";
+import type { PlaylistVideoNavigation } from "@/lib/life-lab/playlist-index";
+import { LifeLabPlaylistVideoNav } from "@/components/life-lab/life-lab-playlist-video-nav";
 import {
   collectAllMetadataChips,
   selectVisibleMetadataChips,
@@ -20,6 +22,7 @@ type LifeLabNoteDetailHeaderProps = {
   note: LifeLabNote;
   sectionId: LifeLabSectionId;
   sectionLabel: string;
+  playlistNav?: PlaylistVideoNavigation | null;
 };
 
 function MetadataChip({ label }: { label: string }) {
@@ -42,6 +45,7 @@ export function LifeLabNoteDetailHeader({
   note,
   sectionId,
   sectionLabel,
+  playlistNav = null,
 }: LifeLabNoteDetailHeaderProps) {
   const displayTitle = lifeLabNoteDisplayTitle(note);
   const showFullTitle = lifeLabNoteDisplayTitleDiffers(note);
@@ -82,6 +86,13 @@ export function LifeLabNoteDetailHeader({
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
+        {playlistNav ? (
+          <LifeLabPlaylistVideoNav
+            navigation={playlistNav}
+            variant="header-icons"
+            enableKeyboardShortcuts={false}
+          />
+        ) : null}
         {showStudy ? (
           <Link
             href={`/life-lab/${sectionId}/${note.slug}/study`}

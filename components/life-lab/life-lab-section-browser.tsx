@@ -12,16 +12,15 @@ import type {
 import type { LifeLabFilterKey, LifeLabFilterOptions, LifeLabNoteFilters } from "@/lib/life-lab/filters";
 import { filterLifeLabNotes } from "@/lib/life-lab/filters";
 import {
-  buildLifeLabHighlights,
   isLifeLabSortKey,
   LIFE_LAB_DEFAULT_SORT,
   LIFE_LAB_SORT_KEYS,
-  LIFE_LAB_SORT_LABELS,
-  shouldShowLifeLabHighlights,
+  LIFE_LAB_SORT_SHORT_LABELS,
   type LifeLabSortKey,
 } from "@/lib/life-lab/browse";
 import { groupLifeLabNotes } from "@/lib/life-lab/organization";
 import { noteMatchesSearch } from "@/lib/life-lab/search";
+import { buildLifeLabSectionView } from "@/lib/life-lab/section-view";
 import { LifeLabSectionNotes } from "@/components/life-lab/life-lab-section-notes";
 
 const FILTER_PARAM_KEYS: LifeLabFilterKey[] = [
@@ -106,6 +105,7 @@ export function LifeLabSectionBrowser({
   const [searchInput, setSearchInput] = useState(
     () => searchParams.get("q")?.trim() ?? "",
   );
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const searchQuery = searchParams.get("q")?.trim() ?? "";
   const rawSort = searchParams.get("sort")?.trim() ?? "";
@@ -131,12 +131,15 @@ export function LifeLabSectionBrowser({
 
   const hasActiveQuery = Boolean(searchQuery) || Object.keys(filters).length > 0;
 
-  const highlights = useMemo(
+  const sectionView = useMemo(
     () =>
-      shouldShowLifeLabHighlights(notes.length, hasActiveQuery)
-        ? buildLifeLabHighlights(notes)
-        : null,
-    [hasActiveQuery, notes],
+      buildLifeLabSectionView({
+        sectionId,
+        notes: filteredNotes,
+        groups,
+        hasActiveQuery,
+      }),
+    [filteredNotes, groups, hasActiveQuery, sectionId],
   );
 
   const flashcardStats = useMemo(() => {
@@ -182,10 +185,10 @@ export function LifeLabSectionBrowser({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-3">
+    <div className="space-y-6">
+      <div className="space-y-2">
         <form
-          className="flex gap-2 md:max-w-xl"
+          className="flex flex-col gap-2 sm:flex-row sm:items-center"
           onSubmit={(event) => {
             event.preventDefault();
             submitSearch();
@@ -195,121 +198,106 @@ export function LifeLabSectionBrowser({
             type="search"
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
-            placeholder="Search notes in this section"
+            placeholder="Search notes"
             className="ui-input min-w-0 flex-1"
             aria-label="Search Life Lab notes"
           />
-          <button
-            type="submit"
-            className="ui-btn-secondary shrink-0 px-3 text-sm md:hidden"
-          >
-            Search
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <label className="inline-flex items-center gap-1.5 text-xs text-muted">
+              <span className="sr-only">Sort</span>
+              <select
+                value={sort}
+                onChange={(event) => setSort(event.target.value)}
+                className="rounded-full border border-border/70 bg-transparent px-3 py-2 text-xs text-foreground"
+                aria-label="Sort notes"
+              >
+                {LIFE_LAB_SORT_KEYS.map((key) => (
+                  <option key={key} value={key}>
+                    {LIFE_LAB_SORT_SHORT_LABELS[key]}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {availableFilters.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => setFiltersOpen((current) => !current)}
+                className="rounded-full border border-border/70 px-3 py-2 text-xs font-medium text-muted transition-colors hover:border-border hover:text-foreground"
+              >
+                Filters
+                {activeFilterEntries.length > 0
+                  ? ` · ${activeFilterEntries.length}`
+                  : ""}
+              </button>
+            ) : null}
+          </div>
         </form>
 
-        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-          <label className="inline-flex items-center gap-1.5 text-xs text-muted">
-            <span className="shrink-0">Sort</span>
-            <select
-              value={sort}
-              onChange={(event) => setSort(event.target.value)}
-              className="rounded-full border border-border/70 bg-transparent px-2 py-1.5 text-xs text-foreground"
-            >
-              {LIFE_LAB_SORT_KEYS.map((key) => (
-                <option key={key} value={key}>
-                  {LIFE_LAB_SORT_LABELS[key]}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          {showSectionStudyLink ? (
+        {showSectionStudyLink ? (
+          <div>
             <Link
               href={`/life-lab/${sectionId}/study${searchParams.toString() ? `?${searchParams.toString()}` : ""}`}
-              className="rounded-full bg-accent-cream px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent-cream/80"
+              className="inline-flex rounded-full bg-accent-cream px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent-cream/80"
             >
               Study all · {flashcardStats.totalCards} cards
             </Link>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
 
-        {availableFilters.length > 0 ? (
-          <details className="ui-settings-details group">
-            <summary className="ui-settings-details-summary">
-              Filters
-              {activeFilterEntries.length > 0
-                ? ` · ${activeFilterEntries.length} active`
-                : ""}
-            </summary>
-            <div className="ui-settings-details-body space-y-3">
-              {availableFilters.map((key) => (
-                <div key={key} className="space-y-1.5">
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-light">
-                    {FILTER_LABELS[key]}
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
+        {filtersOpen && availableFilters.length > 0 ? (
+          <div className="rounded-xl border border-border/60 bg-surface/70 p-3 space-y-3">
+            {availableFilters.map((key) => (
+              <div key={key} className="space-y-1.5">
+                <p className="text-xs font-medium text-muted-light">
+                  {FILTER_LABELS[key]}
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  <Link
+                    href={buildHref(pathname, searchParams, { [key]: null })}
+                    className={`rounded-full px-2.5 py-1 text-xs ${
+                      !filters[key]
+                        ? "bg-accent-cream text-foreground"
+                        : "text-muted hover:bg-accent-cream/50"
+                    }`}
+                  >
+                    All
+                  </Link>
+                  {filterOptions[key].map((option) => (
                     <Link
-                      href={buildHref(pathname, searchParams, { [key]: null })}
+                      key={`${key}-${option.value}`}
+                      href={buildHref(pathname, searchParams, {
+                        [key]: option.value,
+                      })}
                       className={`rounded-full px-2.5 py-1 text-xs ${
-                        !filters[key]
+                        filters[key] === option.value
                           ? "bg-accent-cream text-foreground"
                           : "text-muted hover:bg-accent-cream/50"
                       }`}
                     >
-                      All
+                      {option.label}
                     </Link>
-                    {filterOptions[key].map((option) => (
-                      <Link
-                        key={`${key}-${option.value}`}
-                        href={buildHref(pathname, searchParams, {
-                          [key]: option.value,
-                        })}
-                        className={`rounded-full px-2.5 py-1 text-xs ${
-                          filters[key] === option.value
-                            ? "bg-accent-cream text-foreground"
-                            : "text-muted hover:bg-accent-cream/50"
-                        }`}
-                      >
-                        {option.label}
-                      </Link>
-                    ))}
-                  </div>
+                  ))}
                 </div>
-              ))}
-              {activeFilterEntries.length > 0 ? (
-                <Link
-                  href={pathname}
-                  className="text-xs font-medium text-muted transition-colors hover:text-foreground"
-                >
-                  Clear filters
-                </Link>
-              ) : null}
-            </div>
-          </details>
+              </div>
+            ))}
+            {activeFilterEntries.length > 0 ? (
+              <Link
+                href={pathname}
+                className="text-xs font-medium text-muted transition-colors hover:text-foreground"
+              >
+                Clear filters
+              </Link>
+            ) : null}
+          </div>
         ) : null}
       </div>
-
-      {highlights?.latest[0] ? (
-        <p className="text-xs text-muted">
-          Latest{" "}
-          <Link
-            href={`/life-lab/${sectionId}/${highlights.latest[0].slug}`}
-            className="font-medium text-foreground transition-colors hover:text-foreground/80"
-          >
-            {highlights.latest[0].title}
-          </Link>
-          {highlights.latest[0].dateLabel ?? highlights.latest[0].modifiedAtLabel
-            ? ` · ${highlights.latest[0].dateLabel ?? highlights.latest[0].modifiedAtLabel}`
-            : ""}
-        </p>
-      ) : null}
 
       {filteredNotes.length === 0 ? (
         <p className="text-sm text-muted">No notes match your search or filters.</p>
       ) : (
         <LifeLabSectionNotes
           sectionId={sectionId}
-          groups={groups}
+          sectionView={sectionView}
           listingDiagnostic={listingDiagnostic}
           showDiagnostics={showDiagnostics}
           refreshHref={refreshHref}

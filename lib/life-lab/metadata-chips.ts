@@ -197,7 +197,7 @@ export function isRedundantMetadataChip(
 
 function maxVisibleChips(context: LifeLabChipContext): number {
   if (context.variant === "card") {
-    return 3;
+    return 0;
   }
 
   if (context.variant === "detail-mobile") {
