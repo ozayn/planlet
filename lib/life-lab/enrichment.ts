@@ -32,6 +32,10 @@ import {
   filmLabDisplayTitle,
   isFilmLabNote,
 } from "@/lib/life-lab/film-lab";
+import {
+  extractSourceUrlFromBody,
+  extractSourceUrlFromMetadata,
+} from "@/lib/life-lab/source-url";
 import type { DriveCredentials } from "@/lib/life-lab/google-drive";
 import { downloadDriveFile } from "@/lib/life-lab/google-drive";
 
@@ -79,26 +83,39 @@ export function processLifeLabNoteContent(
   const headingTitle = titleFromMarkdownHeading(body);
   const filename = relativePathFilename(record.relativePath);
   const normalizedMetadata = hasLifeLabMetadata(metadata) ? metadata : undefined;
+  let mergedMetadata = normalizedMetadata;
+
+  if (!extractSourceUrlFromMetadata(normalizedMetadata)) {
+    const sourceFromBody = extractSourceUrlFromBody(body);
+
+    if (sourceFromBody) {
+      mergedMetadata = {
+        ...(normalizedMetadata ?? {}),
+        source_url: sourceFromBody,
+        video_url: sourceFromBody,
+      };
+    }
+  }
   const isReadingBrief = isReadingBriefNote({
     relativePath: record.relativePath,
     subfolderLabel: record.subfolderLabel,
-    metadata: normalizedMetadata,
+    metadata: mergedMetadata,
   });
   const isDictionaryEntry = isDictionaryEntryNote({
     relativePath: record.relativePath,
     subfolderLabel: record.subfolderLabel,
-    metadata: normalizedMetadata,
+    metadata: mergedMetadata,
   });
   const isFilmLab = isFilmLabNote({
     relativePath: record.relativePath,
     subfolderLabel: record.subfolderLabel,
-    metadata: normalizedMetadata,
+    metadata: mergedMetadata,
   });
   const isPlaylistIndex = isPlaylistIndexNote({
     sectionId: "youtube-learning",
     relativePath: record.relativePath,
     subfolderLabel: record.subfolderLabel,
-    metadata: normalizedMetadata,
+    metadata: mergedMetadata,
     content: body,
   });
   let excerpt = isReadingBrief
@@ -106,7 +123,7 @@ export function processLifeLabNoteContent(
     : isDictionaryEntry
       ? extractDictionaryDefinition(body)
       : isFilmLab
-        ? extractFilmLabPreview(body, normalizedMetadata)
+        ? extractFilmLabPreview(body, mergedMetadata)
         : markdownExcerpt(body);
 
   if (isPlaylistIndex) {
@@ -115,7 +132,7 @@ export function processLifeLabNoteContent(
       sectionId: "youtube-learning",
       sectionLabel: "YouTube learning",
       content: body,
-      metadata: normalizedMetadata,
+      metadata: mergedMetadata,
     });
 
     if (playlistDisplay.parseSucceeded) {
@@ -125,13 +142,13 @@ export function processLifeLabNoteContent(
   const title = isDictionaryEntry
     ? dictionaryDisplayTitle({
         title: headingTitle ?? record.title,
-        metadata: normalizedMetadata,
+        metadata: mergedMetadata,
         body,
       })
     : isFilmLab
       ? filmLabDisplayTitle({
           title: headingTitle ?? record.title,
-          metadata: normalizedMetadata,
+          metadata: mergedMetadata,
           body,
         })
       : (headingTitle ?? record.title);
@@ -141,10 +158,10 @@ export function processLifeLabNoteContent(
     title,
     excerpt,
     dateLabel:
-      (normalizedMetadata?.date
-        ? formatDateLabelFromIso(normalizedMetadata.date)
+      (mergedMetadata?.date
+        ? formatDateLabelFromIso(mergedMetadata.date)
         : null) ?? record.dateLabel ?? formatDateLabelFromFilename(filename),
-    metadata: normalizedMetadata,
+    metadata: hasLifeLabMetadata(mergedMetadata ?? {}) ? mergedMetadata : undefined,
     searchText: buildBodySearchText(body),
     hasFlashcards: noteHasFlashcards(metadata, body),
     flashcardCount: flashcards.length,

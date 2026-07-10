@@ -594,6 +594,10 @@ describe("life lab frontmatter", () => {
     assert.deepEqual(parsed.metadata.tags, ["history", "iran", "revolution"]);
     assert.equal(parsed.metadata.flashcards, true);
     assert.equal(parsed.metadata.reviewed, false);
+    assert.equal(
+      parsed.metadata.source_url,
+      "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+    );
     assert.match(parsed.body, /^# The Shah's Last Stand/);
     assert.doesNotMatch(parsed.body, /^---/);
   });

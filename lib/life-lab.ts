@@ -26,6 +26,10 @@ import {
 import { collectLifeLabFilterOptions, type LifeLabFilterOptions, type LifeLabNoteFilters, filterLifeLabNotes } from "@/lib/life-lab/filters";
 import { parseLifeLabFrontmatter } from "@/lib/life-lab/frontmatter";
 import { extractFlashcardsFromMarkdown } from "@/lib/life-lab/flashcards";
+import {
+  resolveLifeLabSourceUrl,
+  stripSourceUrlLineFromMarkdown,
+} from "@/lib/life-lab/source-url";
 import { isLifeLabDevToolsEnabled } from "@/lib/life-lab/dev";
 import {
   downloadDriveFile,
@@ -939,13 +943,20 @@ function buildLifeLabNote(
   const processed = processLifeLabNoteContent(record, content);
   const summary = toNoteSummary(processed);
   const { dev: _summaryDev, ...baseSummary } = summary;
+  const sourceUrl = resolveLifeLabSourceUrl({
+    metadata: processed.metadata,
+    body,
+  });
+  const displayContent = sourceUrl
+    ? stripSourceUrlLineFromMarkdown(body, sourceUrl)
+    : body;
   const flashcards = processed.flashcards ?? extractFlashcardsFromMarkdown(body);
 
   const note: LifeLabNote = {
     ...baseSummary,
     sectionId,
     sectionLabel: getLifeLabSectionLabel(sectionId),
-    content: body,
+    content: displayContent,
     flashcards,
   };
 

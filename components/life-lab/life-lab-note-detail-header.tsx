@@ -5,14 +5,17 @@ import Link from "next/link";
 import { LifeLabMetadataChips } from "@/components/life-lab/life-lab-metadata-chips";
 import { LifeLabNoteDevToolbar } from "@/components/life-lab/life-lab-note-dev-toolbar";
 import { LifeLabNoteReadAloud } from "@/components/life-lab/life-lab-note-read-aloud";
+import { LifeLabSourceLink } from "@/components/life-lab/life-lab-source-link";
 import type { LifeLabNote, LifeLabSectionId } from "@/lib/life-lab/constants";
 import type { PlaylistVideoNavigation } from "@/lib/life-lab/playlist-index";
+import { isYoutubeVideoNote } from "@/lib/life-lab/playlist-index";
 import { LifeLabPlaylistVideoNav } from "@/components/life-lab/life-lab-playlist-video-nav";
 import {
   collectAllMetadataChips,
   selectVisibleMetadataChips,
 } from "@/lib/life-lab/metadata-chips";
 import { resolveStudyStatusLabel } from "@/lib/life-lab/study-status";
+import { resolveLifeLabSourceUrl } from "@/lib/life-lab/source-url";
 import {
   lifeLabNoteDisplayTitle,
   lifeLabNoteDisplayTitleDiffers,
@@ -70,6 +73,11 @@ export function LifeLabNoteDetailHeader({
     note.metadata,
     mobileChipContext,
   );
+  const resolvedSourceUrl = isYoutubeVideoNote(note)
+    ? resolveLifeLabSourceUrl({ metadata: note.metadata })
+    : null;
+  const showDetails =
+    allChips.length > 0 || showFullTitle || Boolean(resolvedSourceUrl);
 
   return (
     <header className="mb-3 space-y-2 border-b border-border/50 pb-3 md:mb-4 md:space-y-3 md:pb-4">
@@ -83,6 +91,7 @@ export function LifeLabNoteDetailHeader({
         <p className="text-xs text-muted" dir="auto">
           {[sectionLabel, dateLine].filter(Boolean).join(" · ")}
         </p>
+        {resolvedSourceUrl ? <LifeLabSourceLink href={resolvedSourceUrl} /> : null}
       </div>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -132,7 +141,7 @@ export function LifeLabNoteDetailHeader({
         </div>
       ) : null}
 
-      {allChips.length > 0 ? (
+      {showDetails ? (
         <details className="ui-settings-details group">
           <summary className="ui-settings-details-summary">
             Details
@@ -149,25 +158,21 @@ export function LifeLabNoteDetailHeader({
                 </p>
               </div>
             ) : null}
-            <div className="flex flex-wrap gap-1.5">
-              {allChips.map((label) => (
-                <MetadataChip key={label} label={label} />
-              ))}
-            </div>
-          </div>
-        </details>
-      ) : showFullTitle ? (
-        <details className="ui-settings-details group">
-          <summary className="ui-settings-details-summary">Details</summary>
-          <div className="ui-settings-details-body">
-            <div className="space-y-1">
-              <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
-                Full title
-              </p>
-              <p className="text-sm leading-relaxed text-foreground" dir="auto">
-                {note.title}
-              </p>
-            </div>
+            {resolvedSourceUrl ? (
+              <div className="space-y-1">
+                <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
+                  Source URL
+                </p>
+                <p className="break-all text-sm text-muted">{resolvedSourceUrl}</p>
+              </div>
+            ) : null}
+            {allChips.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5">
+                {allChips.map((label) => (
+                  <MetadataChip key={label} label={label} />
+                ))}
+              </div>
+            ) : null}
           </div>
         </details>
       ) : null}

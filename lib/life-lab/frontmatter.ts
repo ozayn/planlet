@@ -1,4 +1,5 @@
 import type { LifeLabNoteMetadata } from "@/lib/life-lab/constants";
+import { pickSourceUrlFromFrontmatterRaw } from "@/lib/life-lab/source-url";
 
 export type ParsedLifeLabMarkdown = {
   metadata: LifeLabNoteMetadata;
@@ -128,6 +129,17 @@ function normalizeMetadata(raw: Record<string, unknown>): LifeLabNoteMetadata {
     metadata.reviewed = true;
   } else if (raw.reviewed === false) {
     metadata.reviewed = false;
+  }
+
+  if (typeof raw.sourceType === "string" && raw.sourceType.trim()) {
+    metadata.source = metadata.source ?? raw.sourceType.trim();
+  }
+
+  const sourceUrl = pickSourceUrlFromFrontmatterRaw(raw);
+
+  if (sourceUrl) {
+    metadata.source_url = sourceUrl;
+    metadata.video_url = sourceUrl;
   }
 
   return metadata;
