@@ -25,6 +25,30 @@ export const ACTIVITY_PRESET_ICON_NAMES = [
 export type ActivityPresetIconName =
   (typeof ACTIVITY_PRESET_ICON_NAMES)[number];
 
+export const PRESET_ICON_OPTIONS: Array<{
+  value: ActivityPresetIconName | null;
+  label: string;
+}> = [
+  { value: null, label: "None" },
+  { value: "foot", label: "Foot" },
+  { value: "stairs", label: "Stairs" },
+  { value: "stretch", label: "Stretch" },
+  { value: "book-open", label: "Book" },
+  { value: "brain", label: "Brain" },
+  { value: "camera", label: "Camera" },
+  { value: "droplets", label: "Water" },
+  { value: "lotus", label: "Calm" },
+  { value: "home", label: "Home" },
+  { value: "utensils", label: "Kitchen" },
+  { value: "shirt", label: "Laundry" },
+  { value: "pencil", label: "Write" },
+  { value: "laptop", label: "Computer" },
+  { value: "search", label: "Search" },
+  { value: "map", label: "Map" },
+  { value: "dumbbell", label: "Exercise" },
+  { value: "sparkles", label: "Custom" },
+];
+
 export function normalizePresetIconName(
   value: string | null | undefined,
 ): string | null {

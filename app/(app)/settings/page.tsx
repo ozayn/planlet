@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/page-header";
 import { SettingsAppNotifications } from "@/components/settings/settings-app-notifications";
 import { getNotificationPreferencesForUser } from "@/lib/notification-preferences";
 import { MobileNavSettings } from "@/components/settings/mobile-nav-settings";
+import { ActivityTimerPresetSettings } from "@/components/settings/activity-timer-preset-settings";
 import { PlanItemViewSettings } from "@/components/settings/plan-item-view-settings";
 import { SettingsInstallPlanlet } from "@/components/settings/settings-install-planlet";
 import { SettingsProfile } from "@/components/settings/settings-profile";
@@ -32,6 +33,7 @@ import {
   canUseReflectionFeatures,
   canUseTherapyThoughts,
 } from "@/lib/roles";
+import { getActivityTimerPresetSettingsData } from "@/lib/activity-timer";
 import { getPlanningPreferencesForUser, getMobileNavItemsForUser } from "@/lib/user-preferences";
 import { resolveMobileNavItems } from "@/lib/mobile-nav";
 import { getUserTimezone } from "@/lib/user-timezone";
@@ -82,6 +84,13 @@ export default async function SettingsPage() {
     canUseReflectionFeatures(user) ||
     canUseTherapyThoughts(user);
 
+  const showActivityTimerPresets =
+    Boolean(session?.user?.id) &&
+    (canUseActivityTimerFeatures(user) || isAdmin);
+  const activityTimerPresetSettings = showActivityTimerPresets
+    ? await getActivityTimerPresetSettingsData(session!.user!.id)
+    : null;
+
   return (
     <section className="ui-settings-page mx-auto max-w-lg space-y-5">
       <PageHeader title="Settings" subtitle="Account and preferences." />
@@ -106,6 +115,10 @@ export default async function SettingsPage() {
 
       {session?.user?.id ? (
         <MobileNavSettings value={mobileNavItems} access={access} />
+      ) : null}
+
+      {activityTimerPresetSettings ? (
+        <ActivityTimerPresetSettings data={activityTimerPresetSettings} />
       ) : null}
 
       {session?.user?.id ? (

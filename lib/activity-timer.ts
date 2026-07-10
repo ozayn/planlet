@@ -14,15 +14,18 @@ import {
   RECENT_ACTIVITY_SESSION_LIMIT,
   type ActivityTimerInsights,
   type ActivityTimerPageData,
+  type ActivityTimerPresetSettingsData,
   type ActivityTimerTimelineEntry,
   type AddActivityTimerSessionNoteInput,
   type CreateActivityTimerPresetInput,
   type SerializedActiveActivityTimerSession,
   type SerializedActivityTimerPreset,
+  type SerializedActivityTimerPresetManagement,
   type SerializedActivityTimerSession,
   type SerializedActivityTimerSessionNote,
   type StartActivityTimerInput,
   type StopActivityTimerInput,
+  type UpdateActivityTimerPresetInput,
   type UpdateActivityTimerSessionInput,
   type UpdateActivityTimerSessionNoteInput,
 } from "@/lib/activity-timer/constants";
@@ -50,14 +53,17 @@ import { getUserTimezone } from "@/lib/user-timezone";
 export type {
   ActivityTimerInsights,
   ActivityTimerPageData,
+  ActivityTimerPresetSettingsData,
   AddActivityTimerSessionNoteInput,
   CreateActivityTimerPresetInput,
   SerializedActiveActivityTimerSession,
   SerializedActivityTimerPreset,
+  SerializedActivityTimerPresetManagement,
   SerializedActivityTimerSession,
   SerializedActivityTimerSessionNote,
   StartActivityTimerInput,
   StopActivityTimerInput,
+  UpdateActivityTimerPresetInput,
   UpdateActivityTimerSessionInput,
   UpdateActivityTimerSessionNoteInput,
 } from "@/lib/activity-timer/constants";
@@ -222,6 +228,15 @@ function serializePreset(preset: ActivityTimerPreset): SerializedActivityTimerPr
       : null,
     iconName: preset.iconName,
     sortOrder: preset.sortOrder,
+  };
+}
+
+function serializePresetManagement(
+  preset: ActivityTimerPreset,
+): SerializedActivityTimerPresetManagement {
+  return {
+    ...serializePreset(preset),
+    isArchived: preset.isArchived,
   };
 }
 
@@ -496,6 +511,40 @@ async function ensureDefaultPresetIcons(userId: string): Promise<void> {
   );
 }
 
+async function ensureMissingDefaultPresets(userId: string): Promise<void> {
+  const maxSort = await prisma.activityTimerPreset.aggregate({
+    where: { userId, isArchived: false },
+    _max: { sortOrder: true },
+  });
+  let nextSort = (maxSort._max.sortOrder ?? -1) + 1;
+
+  for (const preset of DEFAULT_ACTIVITY_TIMER_PRESETS) {
+    const existing = await prisma.activityTimerPreset.findFirst({
+      where: {
+        userId,
+        title: preset.title,
+      },
+      select: { id: true },
+    });
+
+    if (existing) {
+      continue;
+    }
+
+    await prisma.activityTimerPreset.create({
+      data: {
+        userId,
+        title: preset.title,
+        category: preset.category,
+        targetDurationSeconds: preset.targetDurationSeconds,
+        iconName: preset.iconName,
+        sortOrder: nextSort,
+      },
+    });
+    nextSort += 1;
+  }
+}
+
 async function ensureLegacyDefaultPresetTitles(userId: string): Promise<void> {
   await Promise.all(
     LEGACY_DEFAULT_ACTIVITY_TIMER_PRESET_TITLES.map(({ from, to }) =>
@@ -536,6 +585,7 @@ export async function getActivityTimerPageData(
 ): Promise<ActivityTimerPageData> {
   await ensureDefaultPresets(userId);
   await ensureLegacyDefaultPresetTitles(userId);
+  await ensureMissingDefaultPresets(userId);
   await ensureDefaultPresetIcons(userId);
 
   const timezone = await getUserTimezone(userId);
@@ -796,6 +846,143 @@ export async function deleteActivityTimerSession(
 
   await prisma.activityTimerSession.delete({
     where: { id: session.id },
+  });
+}
+
+export async function getActivityTimerPresetSettingsData(
+  userId: string,
+): Promise<ActivityTimerPresetSettingsData> {
+  await ensureDefaultPresets(userId);
+  await ensureLegacyDefaultPresetTitles(userId);
+  await ensureMissingDefaultPresets(userId);
+  await ensureDefaultPresetIcons(userId);
+
+  const presets = await prisma.activityTimerPreset.findMany({
+    where: { userId },
+    orderBy: [{ isArchived: "asc" }, { sortOrder: "asc" }, { createdAt: "asc" }],
+  });
+
+  const serialized = presets.map(serializePresetManagement);
+
+  return {
+    activePresets: serialized.filter((preset) => !preset.isArchived),
+    archivedPresets: serialized.filter((preset) => preset.isArchived),
+  };
+}
+
+export async function updateActivityTimerPreset(
+  userId: string,
+  input: UpdateActivityTimerPresetInput,
+) {
+  const preset = await prisma.activityTimerPreset.findFirst({
+    where: {
+      id: input.presetId,
+      userId,
+    },
+  });
+
+  if (!preset) {
+    throw new ActivityTimerError("Activity preset not found.");
+  }
+
+  return prisma.activityTimerPreset.update({
+    where: { id: preset.id },
+    data: {
+      title: input.title !== undefined ? normalizeTitle(input.title) : undefined,
+      category:
+        input.category !== undefined
+          ? normalizeOptionalCategory(input.category)
+          : undefined,
+      targetDurationSeconds:
+        input.targetDurationSeconds !== undefined
+          ? normalizeOptionalTargetDuration(input.targetDurationSeconds)
+          : undefined,
+      iconName:
+        input.iconName !== undefined
+          ? normalizePresetIconName(input.iconName)
+          : undefined,
+      isArchived: input.isArchived,
+    },
+  });
+}
+
+export async function restoreActivityTimerPreset(
+  userId: string,
+  presetId: string,
+) {
+  const preset = await prisma.activityTimerPreset.findFirst({
+    where: {
+      id: presetId,
+      userId,
+      isArchived: true,
+    },
+  });
+
+  if (!preset) {
+    throw new ActivityTimerError("Archived activity preset not found.");
+  }
+
+  const maxSort = await prisma.activityTimerPreset.aggregate({
+    where: { userId, isArchived: false },
+    _max: { sortOrder: true },
+  });
+
+  return prisma.activityTimerPreset.update({
+    where: { id: preset.id },
+    data: {
+      isArchived: false,
+      sortOrder: (maxSort._max.sortOrder ?? -1) + 1,
+    },
+  });
+}
+
+export async function reorderActivityTimerPresets(
+  userId: string,
+  presetIds: string[],
+) {
+  const activePresets = await prisma.activityTimerPreset.findMany({
+    where: { userId, isArchived: false },
+    orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
+  });
+
+  const activeIds = activePresets.map((preset) => preset.id);
+  const requestedSet = new Set(presetIds);
+
+  if (
+    presetIds.length !== activeIds.length ||
+    !activeIds.every((id) => requestedSet.has(id))
+  ) {
+    throw new ActivityTimerError("Invalid preset order.");
+  }
+
+  await prisma.$transaction(
+    presetIds.map((presetId, index) =>
+      prisma.activityTimerPreset.update({
+        where: { id: presetId },
+        data: { sortOrder: index },
+      }),
+    ),
+  );
+}
+
+export async function deleteActivityTimerPreset(
+  userId: string,
+  presetId: string,
+): Promise<void> {
+  const preset = await prisma.activityTimerPreset.findFirst({
+    where: {
+      id: presetId,
+      userId,
+    },
+    select: { id: true },
+  });
+
+  if (!preset) {
+    throw new ActivityTimerError("Activity preset not found.");
+  }
+
+  await prisma.activityTimerPreset.delete({
+    where: { id: preset.id },
   });
 }
 

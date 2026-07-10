@@ -8,15 +8,20 @@ import {
   archiveActivityTimerPreset,
   ActivityTimerError,
   createActivityTimerPreset,
+  deleteActivityTimerPreset,
   deleteActivityTimerSession,
+  reorderActivityTimerPresets,
+  restoreActivityTimerPreset,
   serializeActiveActivityTimerSessionWithNotes,
   startActivityTimerSession,
   stopActivityTimerSession,
+  updateActivityTimerPreset,
   updateActivityTimerSession,
   updateActivityTimerSessionNote,
   type CreateActivityTimerPresetInput,
   type StartActivityTimerInput,
   type StopActivityTimerInput,
+  type UpdateActivityTimerPresetInput,
   type UpdateActivityTimerSessionInput,
   type AddActivityTimerSessionNoteInput,
   type UpdateActivityTimerSessionNoteInput,
@@ -53,6 +58,7 @@ async function requireActivityTimerSession() {
 
 function revalidateTimer() {
   revalidatePath("/timer");
+  revalidatePath("/settings");
   revalidatePath("/", "layout");
 }
 
@@ -218,6 +224,82 @@ export async function archiveActivityTimerPresetAction(
         error instanceof ActivityTimerError
           ? error.message
           : "Failed to remove activity.",
+    };
+  }
+}
+
+export async function updateActivityTimerPresetAction(
+  input: UpdateActivityTimerPresetInput,
+): Promise<ActivityTimerActionResult> {
+  try {
+    const session = await requireActivityTimerSession();
+    await updateActivityTimerPreset(session.user.id, input);
+    revalidateTimer();
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof ActivityTimerError
+          ? error.message
+          : "Failed to update activity.",
+    };
+  }
+}
+
+export async function restoreActivityTimerPresetAction(
+  presetId: string,
+): Promise<ActivityTimerActionResult> {
+  try {
+    const session = await requireActivityTimerSession();
+    await restoreActivityTimerPreset(session.user.id, presetId);
+    revalidateTimer();
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof ActivityTimerError
+          ? error.message
+          : "Failed to restore activity.",
+    };
+  }
+}
+
+export async function reorderActivityTimerPresetsAction(
+  presetIds: string[],
+): Promise<ActivityTimerActionResult> {
+  try {
+    const session = await requireActivityTimerSession();
+    await reorderActivityTimerPresets(session.user.id, presetIds);
+    revalidateTimer();
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof ActivityTimerError
+          ? error.message
+          : "Failed to reorder activities.",
+    };
+  }
+}
+
+export async function deleteActivityTimerPresetAction(
+  presetId: string,
+): Promise<ActivityTimerActionResult> {
+  try {
+    const session = await requireActivityTimerSession();
+    await deleteActivityTimerPreset(session.user.id, presetId);
+    revalidateTimer();
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof ActivityTimerError
+          ? error.message
+          : "Failed to delete activity.",
     };
   }
 }

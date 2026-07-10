@@ -20,6 +20,12 @@ export const DEFAULT_ACTIVITY_TIMER_PRESETS = [
     iconName: "foot",
   },
   {
+    title: "Tapping",
+    category: "Movement",
+    targetDurationSeconds: null,
+    iconName: "foot",
+  },
+  {
     title: "Wash face",
     category: "Care",
     targetDurationSeconds: null,
@@ -84,6 +90,16 @@ export type SerializedActivityTimerPreset = {
   targetDurationLabel: string | null;
   iconName: string | null;
   sortOrder: number;
+};
+
+export type SerializedActivityTimerPresetManagement =
+  SerializedActivityTimerPreset & {
+    isArchived: boolean;
+  };
+
+export type ActivityTimerPresetSettingsData = {
+  activePresets: SerializedActivityTimerPresetManagement[];
+  archivedPresets: SerializedActivityTimerPresetManagement[];
 };
 
 export type SerializedActiveActivityTimerSession = {
@@ -176,4 +192,13 @@ export type CreateActivityTimerPresetInput = {
   category?: string | null;
   targetDurationSeconds?: number | null;
   iconName?: string | null;
+};
+
+export type UpdateActivityTimerPresetInput = {
+  presetId: string;
+  title?: string;
+  category?: string | null;
+  targetDurationSeconds?: number | null;
+  iconName?: string | null;
+  isArchived?: boolean;
 };
