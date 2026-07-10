@@ -6,6 +6,7 @@ import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 
 import { MermaidBlock } from "@/components/life-lab/mermaid-block";
+import { prepareLifeLabMarkdownForReading } from "@/lib/life-lab/markdown-display";
 import { readingBriefHeadingAnchor } from "@/lib/life-lab/reading-briefs";
 
 type MarkdownContentProps = {
@@ -101,6 +102,8 @@ export function MarkdownContent({
   readingBriefAnchors = false,
   readingBriefMode = false,
 }: MarkdownContentProps) {
+  const preparedContent = prepareLifeLabMarkdownForReading(content);
+
   return (
     <div
       className={`ui-markdown ${compact ? "ui-markdown-compact" : ""} ${
@@ -112,7 +115,7 @@ export function MarkdownContent({
         rehypePlugins={[rehypeSanitize]}
         components={createMarkdownComponents(readingBriefAnchors)}
       >
-        {content}
+        {preparedContent}
       </ReactMarkdown>
     </div>
   );

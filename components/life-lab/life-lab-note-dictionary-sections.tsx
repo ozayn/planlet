@@ -1,4 +1,6 @@
+import { LifeLabCollapsibleTranscript } from "@/components/life-lab/life-lab-collapsible-transcript";
 import { LifeLabDictionaryCandidatesCard } from "@/components/life-lab/life-lab-dictionary-candidates-card";
+import { LifeLabFlashcardList } from "@/components/life-lab/life-lab-flashcard-list";
 import { MarkdownContent } from "@/components/life-lab/markdown-content";
 import {
   buildDictionaryNoteContentBlocks,
@@ -43,6 +45,19 @@ function DictionaryContentBlock({
 }) {
   if (block.kind === "markdown") {
     return <MarkdownContent content={block.content} />;
+  }
+
+  if (block.kind === "flashcards") {
+    return <LifeLabFlashcardList cards={block.cards} title={block.title} />;
+  }
+
+  if (block.kind === "transcript") {
+    return (
+      <LifeLabCollapsibleTranscript
+        title={block.title}
+        content={block.content}
+      />
+    );
   }
 
   if (block.section.kind === "candidates") {

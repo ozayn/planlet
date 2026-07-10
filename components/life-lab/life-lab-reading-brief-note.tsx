@@ -1,3 +1,4 @@
+import { LifeLabCollapsibleTranscript } from "@/components/life-lab/life-lab-collapsible-transcript";
 import { LifeLabDictionaryCandidatesCard } from "@/components/life-lab/life-lab-dictionary-candidates-card";
 import { LifeLabReadingBriefFlashcards } from "@/components/life-lab/life-lab-reading-brief-flashcards";
 import { LifeLabReadingBriefGlance } from "@/components/life-lab/life-lab-reading-brief-glance";
@@ -120,6 +121,13 @@ function ReadingBriefSegmentBlock({
           sectionId={sectionId}
           slug={slug}
           cards={segment.cards}
+        />
+      );
+    case "transcript":
+      return (
+        <LifeLabCollapsibleTranscript
+          title={segment.title}
+          content={segment.content}
         />
       );
     case "save-worthy":

@@ -1,13 +1,37 @@
 import type { LifeLabFlashcard, LifeLabNoteMetadata } from "@/lib/life-lab/constants";
 
-const FLASHCARD_SECTION_HEADINGS = [
+export const FLASHCARD_SECTION_HEADINGS = [
   "optional flashcards",
   "flashcards",
   "study cards",
 ] as const;
 
+const FLASHCARD_SECTION_TITLES = new Set<string>(FLASHCARD_SECTION_HEADINGS);
+
 function normalizeCardText(value: string): string {
   return value.replace(/\s+/g, " ").trim();
+}
+
+function stripListMarker(line: string): string {
+  return line.trim().replace(/^[-*•]\s+/, "");
+}
+
+function parseInlineQaPair(line: string): LifeLabFlashcard | null {
+  const normalized = stripListMarker(line);
+  const match = normalized.match(/^Q:\s*(.+?)\s+A:\s*(.+)$/i);
+
+  if (!match) {
+    return null;
+  }
+
+  const question = normalizeCardText(match[1]);
+  const answer = normalizeCardText(match[2]);
+
+  if (!question || !answer) {
+    return null;
+  }
+
+  return { question, answer };
 }
 
 function extractQaPairs(text: string): LifeLabFlashcard[] {
@@ -44,12 +68,16 @@ function extractQaPairs(text: string): LifeLabFlashcard[] {
       continue;
     }
 
-    const questionMatch = trimmed.match(
-      /^(?:-\s*)?Q:\s*(.+)$/i,
-    );
-    const answerMatch = trimmed.match(
-      /^(?:-\s*)?A:\s*(.+)$/i,
-    );
+    const inlineCard = parseInlineQaPair(trimmed);
+
+    if (inlineCard) {
+      pushCard();
+      cards.push(inlineCard);
+      continue;
+    }
+
+    const questionMatch = trimmed.match(/^(?:-\s*)?Q:\s*(.+)$/i);
+    const answerMatch = trimmed.match(/^(?:-\s*)?A:\s*(.+)$/i);
 
     if (questionMatch) {
       pushCard();
@@ -64,7 +92,7 @@ function extractQaPairs(text: string): LifeLabFlashcard[] {
     }
 
     if (currentQuestion && currentAnswerLines.length > 0) {
-      currentAnswerLines.push(trimmed);
+      currentAnswerLines.push(stripListMarker(trimmed));
     }
   }
 
@@ -85,11 +113,7 @@ function extractFlashcardSection(body: string): string | null {
     if (headingMatch) {
       const heading = headingMatch[1].trim().toLowerCase();
 
-      if (
-        FLASHCARD_SECTION_HEADINGS.includes(
-          heading as (typeof FLASHCARD_SECTION_HEADINGS)[number],
-        )
-      ) {
+      if (FLASHCARD_SECTION_TITLES.has(heading)) {
         inSection = true;
         sectionLines = [];
         continue;
@@ -110,6 +134,16 @@ function extractFlashcardSection(body: string): string | null {
   }
 
   return sectionLines.join("\n");
+}
+
+export function isFlashcardSectionTitle(title: string): boolean {
+  return FLASHCARD_SECTION_TITLES.has(title.trim().toLowerCase());
+}
+
+export function extractFlashcardsFromSectionText(
+  sectionText: string,
+): LifeLabFlashcard[] {
+  return extractQaPairs(sectionText);
 }
 
 export function extractFlashcardsFromMarkdown(

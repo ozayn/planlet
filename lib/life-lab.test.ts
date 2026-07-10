@@ -616,6 +616,16 @@ describe("life lab flashcards", () => {
     assert.match(cards[1]?.answer ?? "", /accepted right/i);
     assert.match(cards[2]?.question ?? "", /Mohammad Reza Shah/i);
   });
+
+  it("extracts inline Q/A pairs from the same line", () => {
+    const cards = extractFlashcardsFromMarkdown(
+      "## Optional Flashcards\n\nQ: What is a P-functioning body? A: A body with the capacities that make it count as a person.",
+    );
+
+    assert.equal(cards.length, 1);
+    assert.match(cards[0]?.question ?? "", /P-functioning body/i);
+    assert.match(cards[0]?.answer ?? "", /capacities/i);
+  });
 });
 
 describe("life lab search and filters", () => {
@@ -1300,15 +1310,13 @@ describe("reading briefs", () => {
     assert.equal(readingBriefHeadingAnchor("Optional Flashcards"), "flashcards");
     assert.equal(readingBriefHeadingAnchor("Follow-up questions"), "follow-ups");
 
-    const sourceNote = contentSegments.find(
-      (segment) =>
-        segment.kind === "markdown" &&
-        segment.heading === "Source note" &&
-        segment.collapsible,
+    assert.equal(
+      contentSegments.some(
+        (segment) =>
+          segment.kind === "markdown" && segment.heading === "Source note",
+      ),
+      false,
     );
-    assert.ok(sourceNote && sourceNote.kind === "markdown");
-    assert.match(sourceNote.preview ?? "", /Built from BBC World Service RSS/);
-    assert.doesNotMatch(sourceNote.content, /^##\s+Source note/m);
   });
 
   it("formats reading brief display title without trailing date", () => {

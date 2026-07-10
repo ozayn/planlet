@@ -1,5 +1,15 @@
 import { markdownExcerpt } from "@/lib/life-lab/slug";
+import {
+  extractFlashcardsFromSectionText,
+  isFlashcardSectionTitle,
+} from "@/lib/life-lab/flashcards";
+import { isHiddenMarkdownSection } from "@/lib/life-lab/hidden-markdown-sections";
 import { transformMarkdownTables } from "@/lib/life-lab/reading-briefs";
+import {
+  isFullTranscriptSectionTitle,
+  isTranscriptMetadataOnly,
+} from "@/lib/life-lab/transcript-sections";
+import type { LifeLabFlashcard } from "@/lib/life-lab/constants";
 
 export const DICTIONARY_CANDIDATES_SECTION_TITLE = "Dictionary candidates";
 
@@ -23,7 +33,9 @@ export type DictionaryStudySection = {
 
 export type DictionaryNoteContentBlock =
   | { kind: "markdown"; content: string }
-  | { kind: "dictionary-section"; section: DictionaryStudySection };
+  | { kind: "dictionary-section"; section: DictionaryStudySection }
+  | { kind: "flashcards"; cards: LifeLabFlashcard[]; title: string }
+  | { kind: "transcript"; content: string; title: string };
 
 function normalizeSectionTitle(title: string): string {
   return title.trim().toLowerCase();
@@ -206,7 +218,26 @@ export function buildDictionaryNoteContentBlocks(
           kind: classifyDictionaryStudySection(section.title),
         },
       });
-    } else {
+    } else if (
+      isFullTranscriptSectionTitle(section.title) &&
+      !isTranscriptMetadataOnly(section.content)
+    ) {
+      blocks.push({
+        kind: "transcript",
+        title: section.title,
+        content: transformMarkdownTables(section.content),
+      });
+    } else if (isFlashcardSectionTitle(section.title)) {
+      const cards = extractFlashcardsFromSectionText(section.content);
+
+      if (cards.length > 0) {
+        blocks.push({
+          kind: "flashcards",
+          title: section.title,
+          cards,
+        });
+      }
+    } else if (!isHiddenMarkdownSection(section.title)) {
       blocks.push({
         kind: "markdown",
         content: transformMarkdownTables(

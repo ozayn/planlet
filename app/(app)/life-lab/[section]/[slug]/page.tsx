@@ -3,13 +3,13 @@ import { notFound } from "next/navigation";
 
 import { auth } from "@/auth";
 import { LifeLabNoteDictionarySections } from "@/components/life-lab/life-lab-note-dictionary-sections";
+import { LifeLabNoteContent } from "@/components/life-lab/life-lab-note-content";
 import { LifeLabReadingBriefHeader } from "@/components/life-lab/life-lab-reading-brief-header";
 import { LifeLabReadingBriefNote } from "@/components/life-lab/life-lab-reading-brief-note";
 import { LifeLabPlaylistIndexNote } from "@/components/life-lab/life-lab-playlist-index-note";
 import { LifeLabPlaylistVideoNav } from "@/components/life-lab/life-lab-playlist-video-nav";
 import { LifeLabNoteDetailHeader } from "@/components/life-lab/life-lab-note-detail-header";
 import { LifeLabNoteDevInfoPanel } from "@/components/life-lab/life-lab-note-dev-info-panel";
-import { MarkdownContent } from "@/components/life-lab/markdown-content";
 import { LifeLabStatusPanel } from "@/components/life-lab/life-lab-status-panel";
 import { getLifeLabNoteData, getYoutubeVideoPlaylistNavigation } from "@/lib/life-lab";
 import { isLifeLabDevToolsEnabled } from "@/lib/life-lab/dev";
@@ -116,7 +116,7 @@ export default async function LifeLabNotePage({
                     noteTitle={note.title}
                   />
                 ) : (
-                  <MarkdownContent content={noteBodyContent} />
+                  <LifeLabNoteContent content={noteBodyContent} />
                 )}
                 {playlistNav ? (
                   <div className="mt-6 border-t border-border/50 pt-5">

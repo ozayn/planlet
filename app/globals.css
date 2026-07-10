@@ -2163,6 +2163,28 @@ body {
   padding-inline-start: 1.25rem;
 }
 
+.ui-markdown ul {
+  list-style-type: disc;
+}
+
+.ui-markdown ol {
+  list-style-type: decimal;
+}
+
+.ui-markdown li {
+  display: list-item;
+}
+
+.ui-markdown li > ul {
+  list-style-type: circle;
+  margin-top: 0.25rem;
+}
+
+.ui-markdown li > ol {
+  list-style-type: lower-alpha;
+  margin-top: 0.25rem;
+}
+
 .ui-markdown a {
   color: inherit;
   text-decoration: underline;
@@ -2218,4 +2240,33 @@ body {
 .ui-markdown .ui-mermaid-fallback {
   margin-top: 0.75rem;
   margin-bottom: 0.75rem;
+}
+
+.ui-life-lab-flashcard {
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--border-soft);
+}
+
+.ui-life-lab-flashcard:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.ui-life-lab-question {
+  margin: 0;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--foreground);
+}
+
+.ui-life-lab-answer {
+  margin: 0.5rem 0 0;
+  font-size: 0.9375rem;
+  line-height: 1.65;
+  color: var(--foreground);
+}
+
+.ui-life-lab-question strong,
+.ui-life-lab-answer strong {
+  font-weight: 600;
 }

@@ -1,5 +1,10 @@
 import { extractFlashcardsFromMarkdown } from "@/lib/life-lab/flashcards";
 import type { LifeLabFlashcard, LifeLabNoteMetadata } from "@/lib/life-lab/constants";
+import { isHiddenMarkdownSection } from "@/lib/life-lab/hidden-markdown-sections";
+import {
+  isFullTranscriptSectionTitle,
+  isTranscriptMetadataOnly,
+} from "@/lib/life-lab/transcript-sections";
 import { markdownExcerpt } from "@/lib/life-lab/slug";
 
 const OPENING_SYNTHESIS_PATTERN =
@@ -179,7 +184,6 @@ export type SaveWorthyGroup = {
 };
 
 const COLLAPSIBLE_READING_BRIEF_HEADINGS = new Set([
-  "source note",
   "better than bbc",
   "vocabulary and phrasing",
   "names and concepts to remember",
@@ -196,6 +200,7 @@ export type ReadingBriefSegment =
     }
   | { kind: "glance"; title: string; content: string }
   | { kind: "flashcards"; cards: LifeLabFlashcard[] }
+  | { kind: "transcript"; title: string; content: string }
   | { kind: "save-worthy"; groups: SaveWorthyGroup[] };
 
 function escapeRegExp(value: string): string {
@@ -537,6 +542,10 @@ function isSaveWorthySectionTitle(title: string): boolean {
   return title.trim().toLowerCase() === "save-worthy articles";
 }
 
+function isFullTranscriptSection(title: string): boolean {
+  return isFullTranscriptSectionTitle(title);
+}
+
 export function prepareReadingBriefSegments(
   body: string,
   flashcards: LifeLabFlashcard[] = extractFlashcardsFromMarkdown(body),
@@ -578,6 +587,10 @@ export function prepareReadingBriefSegments(
       continue;
     }
 
+    if (isHiddenMarkdownSection(section.title)) {
+      continue;
+    }
+
     if (isGlanceSectionTitle(section.title)) {
       segments.push({
         kind: "glance",
@@ -591,6 +604,19 @@ export function prepareReadingBriefSegments(
       segments.push({
         kind: "flashcards",
         cards: flashcards,
+      });
+      continue;
+    }
+
+    if (isFullTranscriptSection(section.title)) {
+      if (isTranscriptMetadataOnly(section.content)) {
+        continue;
+      }
+
+      segments.push({
+        kind: "transcript",
+        title: section.title,
+        content: transformMarkdownTables(section.content),
       });
       continue;
     }
