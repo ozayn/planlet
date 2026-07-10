@@ -554,6 +554,17 @@ describe("life lab mermaid sizing", () => {
       "#f8f5ef",
     );
   });
+
+  it("uses smaller mermaid layout on compact profiles", () => {
+    assert.equal(
+      getMermaidInitializeOptions("light", "compact").themeVariables.fontSize,
+      "13px",
+    );
+    assert.equal(
+      getMermaidInitializeOptions("light", "landscape").flowchart.wrappingWidth,
+      208,
+    );
+  });
 });
 
 describe("life lab markdown file filter", () => {

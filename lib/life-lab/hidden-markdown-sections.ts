@@ -2,11 +2,14 @@
 export const HIDDEN_MARKDOWN_SECTIONS = [
   "Source notes",
   "Source note",
+  "Visual anchor",
   "Developer information",
   "Processing notes",
   "Internal metadata",
   "Extraction metadata",
 ] as const;
+
+export const VISUAL_ANCHOR_SECTION_TITLE = "Visual anchor";
 
 function normalizeSectionTitle(title: string): string {
   return title.trim().toLowerCase();

@@ -6,13 +6,13 @@ import {
   useId,
   useRef,
   useState,
-  type CSSProperties,
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
 import { Minus, Plus, X } from "lucide-react";
 
 import { useMermaidRender } from "@/components/life-lab/use-mermaid-render";
+import { useMermaidViewport } from "@/components/life-lab/use-mermaid-viewport";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 
 const MIN_ZOOM = 0.5;
@@ -41,11 +41,17 @@ export function MermaidExpandDialog({
   const [mounted, setMounted] = useState(false);
   const [zoom, setZoom] = useState(1);
   const panelRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const wasOpenRef = useRef(false);
-  const { preparedSvg, failed } = useMermaidRender(code, {
+  const { sizeProfile } = useMermaidViewport(viewportRef, {
     variant: "dialog",
     enabled: open,
+  });
+  const { preparedSvg, failed } = useMermaidRender(code, {
+    sizeProfile,
+    enabled: open,
+    renderKey: sizeProfile,
   });
 
   useEffect(() => {
@@ -136,6 +142,7 @@ export function MermaidExpandDialog({
         aria-labelledby={titleId}
         aria-describedby={subtitleId}
         className="ui-mermaid-dialog-panel"
+        data-profile={sizeProfile}
       >
         <div className="ui-mermaid-dialog-header">
           <div className="min-w-0 flex-1">
@@ -146,17 +153,14 @@ export function MermaidExpandDialog({
             >
               Learning Map Diagram
             </h2>
-            <p
-              id={subtitleId}
-              className="mt-0.5 text-sm text-muted"
-            >
-              Use scroll to explore the full diagram.
+            <p id={subtitleId} className="mt-0.5 text-sm text-muted">
+              Scroll or pinch to explore the full diagram.
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-1">
             {showDiagram ? (
               <div
-                className="ui-mermaid-dialog-zoom hidden sm:flex"
+                className="ui-mermaid-dialog-zoom"
                 role="group"
                 aria-label="Diagram zoom"
               >
@@ -168,15 +172,6 @@ export function MermaidExpandDialog({
                   onClick={() => setZoom(1)}
                 >
                   Fit
-                </button>
-                <button
-                  type="button"
-                  className="ui-mermaid-dialog-zoom-btn"
-                  aria-label="100% zoom"
-                  title="100%"
-                  onClick={() => setZoom(1)}
-                >
-                  100%
                 </button>
                 <button
                   type="button"
@@ -213,21 +208,11 @@ export function MermaidExpandDialog({
             </button>
           </div>
         </div>
-        <div className="ui-mermaid-dialog-body">
+        <div ref={viewportRef} className="ui-mermaid-dialog-body">
           {showDiagram ? (
-            <div
-              className="ui-mermaid-dialog-canvas"
-              style={{ zoom }}
-            >
+            <div className="ui-mermaid-dialog-canvas" style={{ zoom }}>
               <div
                 className="ui-mermaid-svg"
-                style={
-                  preparedSvg.minWidth
-                    ? ({
-                        "--mermaid-min-width": `${preparedSvg.minWidth}px`,
-                      } as CSSProperties)
-                    : undefined
-                }
                 dangerouslySetInnerHTML={{ __html: preparedSvg.html }}
               />
             </div>

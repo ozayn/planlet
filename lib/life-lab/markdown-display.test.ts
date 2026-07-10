@@ -12,7 +12,32 @@ describe("life lab markdown display", () => {
   it("recognizes hidden section titles case-insensitively", () => {
     assert.equal(isHiddenMarkdownSection("Source note"), true);
     assert.equal(isHiddenMarkdownSection("DEVELOPER INFORMATION"), true);
+    assert.equal(isHiddenMarkdownSection("Visual anchor"), true);
     assert.equal(isHiddenMarkdownSection("Core argument"), false);
+  });
+
+  it("strips Visual anchor sections from markdown bodies", () => {
+    const body = [
+      "## At a glance",
+      "",
+      "- Key point",
+      "",
+      "## Visual anchor",
+      "",
+      "- Image: The Two Fridas",
+      "- Why this image: shows duality",
+      "",
+      "## Short version",
+      "",
+      "Summary text",
+    ].join("\n");
+
+    const stripped = stripHiddenMarkdownSections(body);
+
+    assert.doesNotMatch(stripped, /Visual anchor/);
+    assert.doesNotMatch(stripped, /Why this image/);
+    assert.match(stripped, /## At a glance/);
+    assert.match(stripped, /## Short version/);
   });
 
   it("strips hidden h2 sections from markdown bodies", () => {

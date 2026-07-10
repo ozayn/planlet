@@ -17,6 +17,11 @@ import {
 import { resolveStudyStatusLabel } from "@/lib/life-lab/study-status";
 import { resolveLifeLabSourceUrl } from "@/lib/life-lab/source-url";
 import {
+  collectLifeLabImageDetailRows,
+  extractVisualAnchorSection,
+  resolveLifeLabNoteImage,
+} from "@/lib/life-lab/note-image";
+import {
   lifeLabNoteDisplayTitle,
   lifeLabNoteDisplayTitleDiffers,
 } from "@/lib/life-lab/youtube-learning";
@@ -76,8 +81,15 @@ export function LifeLabNoteDetailHeader({
   const resolvedSourceUrl = isYoutubeVideoNote(note)
     ? resolveLifeLabSourceUrl({ metadata: note.metadata })
     : null;
+  const imageDetailRows = collectLifeLabImageDetailRows({
+    metadata: note.metadata,
+    visualAnchorContent: extractVisualAnchorSection(note.content),
+  });
   const showDetails =
-    allChips.length > 0 || showFullTitle || Boolean(resolvedSourceUrl);
+    allChips.length > 0 ||
+    showFullTitle ||
+    Boolean(resolvedSourceUrl) ||
+    imageDetailRows.length > 0;
 
   return (
     <header className="mb-3 space-y-2 border-b border-border/50 pb-3 md:mb-4 md:space-y-3 md:pb-4">
@@ -164,6 +176,23 @@ export function LifeLabNoteDetailHeader({
                   Source URL
                 </p>
                 <p className="break-all text-sm text-muted">{resolvedSourceUrl}</p>
+              </div>
+            ) : null}
+            {imageDetailRows.length > 0 ? (
+              <div className="space-y-2">
+                <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
+                  Image
+                </p>
+                {imageDetailRows.map((row) => (
+                  <div key={row.label} className="space-y-0.5">
+                    <p className="text-[0.6875rem] font-medium text-muted-light">
+                      {row.label}
+                    </p>
+                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted">
+                      {row.value}
+                    </p>
+                  </div>
+                ))}
               </div>
             ) : null}
             {allChips.length > 0 ? (

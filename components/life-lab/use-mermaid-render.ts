@@ -7,8 +7,6 @@ import {
   getMermaidInitializeOptions,
   getMermaidLabelWrapOptions,
   getMermaidThemeMode,
-  type MermaidRenderVariant,
-  type MermaidThemeMode,
 } from "@/lib/life-lab/mermaid-config";
 import { isLifeLabDevToolsEnabled } from "@/lib/life-lab/dev";
 import { prepareMermaidSourceForRender } from "@/lib/life-lab/mermaid-label-wrap";
@@ -17,44 +15,44 @@ import {
   prepareMermaidSvg,
   type PreparedMermaidSvg,
 } from "@/lib/life-lab/mermaid-svg";
+import type { MermaidSizeProfile } from "@/lib/life-lab/mermaid-viewport";
 
 type UseMermaidRenderOptions = {
-  variant?: MermaidRenderVariant;
+  sizeProfile?: MermaidSizeProfile;
   enabled?: boolean;
+  renderKey?: string;
 };
 
 let initializedConfigKey: string | null = null;
 
 async function loadMermaid(
-  theme: MermaidThemeMode,
-  variant: MermaidRenderVariant,
+  theme: ReturnType<typeof getMermaidThemeMode>,
+  sizeProfile: MermaidSizeProfile,
 ) {
   const mermaid = (await import("mermaid")).default;
-  const configKey = `${theme}:${variant}`;
+  const configKey = `${theme}:${sizeProfile}`;
 
   if (initializedConfigKey !== configKey) {
-    mermaid.initialize(getMermaidInitializeOptions(theme, variant));
+    mermaid.initialize(getMermaidInitializeOptions(theme, sizeProfile));
     initializedConfigKey = configKey;
   }
 
   return mermaid;
 }
 
-function mermaidElementId(reactId: string, variant: MermaidRenderVariant): string {
-  const suffix = variant === "dialog" ? "-dialog" : "";
-
-  return `mermaid-${reactId.replace(/[^a-zA-Z0-9_-]/g, "")}${suffix}`;
+function mermaidElementId(reactId: string, sizeProfile: MermaidSizeProfile): string {
+  return `mermaid-${reactId.replace(/[^a-zA-Z0-9_-]/g, "")}-${sizeProfile}`;
 }
 
 export function useMermaidRender(
   code: string,
   options: UseMermaidRenderOptions = {},
 ) {
-  const { variant = "inline", enabled = true } = options;
+  const { sizeProfile = "comfortable", enabled = true, renderKey = "" } = options;
   const { resolvedTheme } = useTheme();
   const themeMode = getMermaidThemeMode(resolvedTheme);
   const reactId = useId();
-  const elementId = mermaidElementId(reactId, variant);
+  const elementId = mermaidElementId(reactId, sizeProfile);
   const [preparedSvg, setPreparedSvg] = useState<PreparedMermaidSvg | null>(null);
   const [failed, setFailed] = useState(false);
 
@@ -70,10 +68,10 @@ export function useMermaidRender(
       setPreparedSvg(null);
 
       try {
-        const mermaid = await loadMermaid(themeMode, variant);
+        const mermaid = await loadMermaid(themeMode, sizeProfile);
         const renderSource = prepareMermaidSourceForRender(
           code,
-          getMermaidLabelWrapOptions(variant),
+          getMermaidLabelWrapOptions(sizeProfile),
         );
         const { svg: renderedSvg } = await mermaid.render(
           elementId,
@@ -107,7 +105,7 @@ export function useMermaidRender(
     return () => {
       cancelled = true;
     };
-  }, [code, elementId, enabled, themeMode, variant]);
+  }, [code, elementId, enabled, renderKey, sizeProfile, themeMode]);
 
   return { preparedSvg, failed };
 }

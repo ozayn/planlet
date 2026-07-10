@@ -30,7 +30,7 @@ export function LifeLabNoteImageFigure({
 
   const alt = lifeLabNoteImageAlt(image, {
     fallbackTitle,
-    isYoutubeThumbnail: image.source === "youtube_thumbnail",
+    isYoutubeThumbnail: image.kind === "youtube_thumbnail",
   });
   const caption = variant === "detail" ? buildLifeLabImageCaption(image) : null;
 
@@ -55,7 +55,7 @@ export function LifeLabNoteImageFigure({
   }
 
   return (
-    <figure className={className ?? "space-y-1.5"}>
+    <figure className={className ?? "space-y-1"}>
       <div className="overflow-hidden rounded-xl border border-border/60 bg-accent-cream/10">
         {/* eslint-disable-next-line @next/next/no-img-element -- external representative URLs vary by note */}
         <img
@@ -63,11 +63,11 @@ export function LifeLabNoteImageFigure({
           alt={alt}
           decoding="async"
           onError={() => setFailed(true)}
-          className="mx-auto max-h-[min(40dvh,280px)] w-full object-contain"
+          className="mx-auto max-h-[min(38dvh,260px)] w-full object-contain"
         />
       </div>
       {caption ? (
-        <figcaption className="text-xs leading-relaxed text-muted-light">
+        <figcaption className="line-clamp-1 text-[0.6875rem] leading-snug text-muted-light">
           {caption}
         </figcaption>
       ) : null}
