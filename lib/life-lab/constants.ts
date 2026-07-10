@@ -61,6 +61,15 @@ export type LifeLabSectionSummary = {
   noteCount: number;
 };
 
+export type LifeLabNoteImage = {
+  url: string;
+  title?: string;
+  source?: string;
+  license?: string;
+  credit?: string;
+  alt?: string;
+};
+
 export type LifeLabNoteMetadata = {
   type?: string;
   section?: string;
@@ -83,6 +92,8 @@ export type LifeLabNoteMetadata = {
   study_status?: string;
   reviewed?: boolean;
   flashcards?: boolean;
+  image?: LifeLabNoteImage;
+  youtube_thumbnail?: LifeLabNoteImage;
 };
 
 export type LifeLabNoteSummary = {

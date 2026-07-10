@@ -1,5 +1,8 @@
 import type { LifeLabNoteMetadata } from "@/lib/life-lab/constants";
+import { normalizeLifeLabNoteImage } from "@/lib/life-lab/note-image";
 import { pickSourceUrlFromFrontmatterRaw } from "@/lib/life-lab/source-url";
+
+const NESTED_FRONTMATTER_OBJECT_KEYS = new Set(["image", "youtube_thumbnail"]);
 
 export type ParsedLifeLabMarkdown = {
   metadata: LifeLabNoteMetadata;
@@ -29,11 +32,39 @@ function parseYamlValue(value: string): string | boolean | number {
 function parseYamlFrontmatter(yaml: string): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   let currentArrayKey: string | null = null;
+  let currentNestedKey: string | null = null;
+  let currentNested: Record<string, unknown> | null = null;
+
+  function flushNestedObject(): void {
+    if (currentNestedKey && currentNested) {
+      result[currentNestedKey] = currentNested;
+    }
+
+    currentNestedKey = null;
+    currentNested = null;
+  }
 
   for (const line of yaml.split("\n")) {
+    if (!line.trim()) {
+      continue;
+    }
+
+    const indent = line.length - line.trimStart().length;
     const trimmed = line.trim();
 
-    if (!trimmed) {
+    if (indent > 0 && currentNested) {
+      const nestedMatch = trimmed.match(/^([a-z_]+):\s*(.*)$/i);
+
+      if (!nestedMatch) {
+        continue;
+      }
+
+      const [, key, rawValue] = nestedMatch;
+
+      if (rawValue !== "") {
+        currentNested[key] = parseYamlValue(rawValue);
+      }
+
       continue;
     }
 
@@ -55,15 +86,25 @@ function parseYamlFrontmatter(yaml: string): Record<string, unknown> {
 
     const [, key, rawValue] = colonMatch;
 
+    flushNestedObject();
+    currentArrayKey = null;
+
     if (rawValue === "") {
-      currentArrayKey = key;
-      result[key] = [];
+      if (NESTED_FRONTMATTER_OBJECT_KEYS.has(key)) {
+        currentNestedKey = key;
+        currentNested = {};
+      } else {
+        currentArrayKey = key;
+        result[key] = [];
+      }
+
       continue;
     }
 
-    currentArrayKey = null;
     result[key] = parseYamlValue(rawValue);
   }
+
+  flushNestedObject();
 
   return result;
 }
@@ -140,6 +181,18 @@ function normalizeMetadata(raw: Record<string, unknown>): LifeLabNoteMetadata {
   if (sourceUrl) {
     metadata.source_url = sourceUrl;
     metadata.video_url = sourceUrl;
+  }
+
+  const image = normalizeLifeLabNoteImage(raw.image);
+
+  if (image) {
+    metadata.image = image;
+  }
+
+  const youtubeThumbnail = normalizeLifeLabNoteImage(raw.youtube_thumbnail);
+
+  if (youtubeThumbnail) {
+    metadata.youtube_thumbnail = youtubeThumbnail;
   }
 
   return metadata;

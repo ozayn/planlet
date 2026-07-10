@@ -5,11 +5,13 @@ import { useState } from "react";
 
 import { LifeLabNoteCardMeta } from "@/components/life-lab/life-lab-note-card-meta";
 import { LifeLabNoteCardDevMenu } from "@/components/life-lab/life-lab-note-card-dev-menu";
+import { LifeLabNoteImageFigure } from "@/components/life-lab/life-lab-note-image";
 import { LifeLabPlaylistCardList } from "@/components/life-lab/life-lab-playlist-card-list";
 import {
   LifeLabContinueLearning,
   LifeLabRecentlyAdded,
 } from "@/components/life-lab/life-lab-section-highlights";
+import { LifeLabStandaloneVideos } from "@/components/life-lab/life-lab-standalone-videos";
 import type {
   LifeLabListingDiagnostic,
   LifeLabNoteGroup,
@@ -22,8 +24,15 @@ import {
   resolveDictionaryCategory,
 } from "@/lib/life-lab/learning-dictionary";
 import { groupDisclosureSummary } from "@/lib/life-lab/organization";
+import { resolveLifeLabNoteImage } from "@/lib/life-lab/note-image";
 import { isPlaylistIndexNote } from "@/lib/life-lab/playlist-index";
 import type { LifeLabSectionView } from "@/lib/life-lab/section-view";
+
+const YOUTUBE_LIBRARY_DISCLOSURE_GROUPS = new Set([
+  "reference",
+  "archive",
+  "about",
+]);
 
 type LifeLabSectionNotesProps = {
   sectionId: LifeLabSectionId;
@@ -63,9 +72,7 @@ function LifeLabListingDiagnosticPanel({
 
   return (
     <details className="ui-settings-details group">
-      <summary className="ui-settings-details-summary">
-        Developer information
-      </summary>
+      <summary className="ui-settings-details-summary">Debug</summary>
       <dl className="ui-settings-details-body">
         {rows.map((row) => (
           <div key={row.label} className="ui-settings-info-row">
@@ -162,22 +169,22 @@ function LifeLabDictionaryNoteCard({
       <div className="relative rounded-lg border border-border/50 px-3 py-2.5 transition-colors hover:bg-accent-cream/20">
         <div className="flex items-start justify-between gap-3 pr-8">
           <div className="min-w-0 flex-1 space-y-1">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              {categoryLabel ? <CategoryBadge label={categoryLabel} /> : null}
-              {note.dateLabel ?? note.modifiedAtLabel ? (
-                <span className="text-[0.6875rem] text-muted-light">
-                  {note.dateLabel ?? note.modifiedAtLabel}
-                </span>
-              ) : null}
-            </div>
-            <Link
-              href={`/life-lab/${sectionId}/${note.slug}`}
-              className="block line-clamp-2 text-sm font-medium leading-snug text-foreground transition-colors hover:text-foreground/80"
-            >
-              {note.title}
-            </Link>
-            <CompactNoteMeta sectionId={sectionId} note={note} />
-            <CardPreview note={note} searchQuery={searchQuery} />
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                {categoryLabel ? <CategoryBadge label={categoryLabel} /> : null}
+                {note.dateLabel ?? note.modifiedAtLabel ? (
+                  <span className="text-[0.6875rem] text-muted-light">
+                    {note.dateLabel ?? note.modifiedAtLabel}
+                  </span>
+                ) : null}
+              </div>
+              <Link
+                href={`/life-lab/${sectionId}/${note.slug}`}
+                className="block line-clamp-2 text-sm font-medium leading-snug text-foreground transition-colors hover:text-foreground/80"
+              >
+                {note.title}
+              </Link>
+              <CompactNoteMeta sectionId={sectionId} note={note} />
+              <CardPreview note={note} searchQuery={searchQuery} />
           </div>
         </div>
         <div className="absolute right-2.5 top-2.5">
@@ -207,6 +214,8 @@ function LifeLabNoteCard({
     return null;
   }
 
+  const noteImage = resolveLifeLabNoteImage(note.metadata);
+
   return (
     <li>
       <div
@@ -215,20 +224,27 @@ function LifeLabNoteCard({
         }`}
       >
         <div className="flex items-start justify-between gap-3 pr-8">
+          {sectionId === "youtube-learning" && noteImage ? (
+            <LifeLabNoteImageFigure
+              image={noteImage}
+              variant="thumbnail"
+              fallbackTitle={note.title}
+            />
+          ) : null}
           <div className="min-w-0 flex-1 space-y-1">
-            {!compact && shouldShowSubfolderLabel(note, group) ? (
-              <p className="text-[0.6875rem] font-medium text-muted-light">
-                {note.subfolderLabel}
-              </p>
-            ) : null}
-            <Link
-              href={`/life-lab/${sectionId}/${note.slug}`}
-              className="block line-clamp-2 text-sm font-medium leading-snug text-foreground transition-colors hover:text-foreground/80 md:line-clamp-1"
-            >
-              {note.title}
-            </Link>
-            <CompactNoteMeta sectionId={sectionId} note={note} />
-            <CardPreview note={note} searchQuery={searchQuery} />
+              {!compact && shouldShowSubfolderLabel(note, group) ? (
+                <p className="text-[0.6875rem] font-medium text-muted-light">
+                  {note.subfolderLabel}
+                </p>
+              ) : null}
+              <Link
+                href={`/life-lab/${sectionId}/${note.slug}`}
+                className="block line-clamp-2 text-sm font-medium leading-snug text-foreground transition-colors hover:text-foreground/80 md:line-clamp-1"
+              >
+                {note.title}
+              </Link>
+              <CompactNoteMeta sectionId={sectionId} note={note} />
+              <CardPreview note={note} searchQuery={searchQuery} />
           </div>
           {note.dateLabel ?? note.modifiedAtLabel ? (
             <span className="shrink-0 pt-0.5 text-[0.6875rem] text-muted-light">
@@ -296,6 +312,32 @@ function LifeLabNoteList({
   );
 }
 
+function LifeLabLibraryDisclosureList({
+  sectionId,
+  group,
+}: {
+  sectionId: LifeLabSectionId;
+  group: LifeLabNoteGroup;
+}) {
+  return (
+    <ul className="space-y-1.5">
+      {group.notes.map((note) => (
+        <li key={note.slug}>
+          <Link
+            href={`/life-lab/${sectionId}/${note.slug}`}
+            className="flex items-start gap-2 text-sm text-foreground transition-colors hover:text-foreground/80"
+          >
+            <span className="text-muted" aria-hidden="true">
+              •
+            </span>
+            <span className="min-w-0 [overflow-wrap:anywhere]">{note.title}</span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function LifeLabNoteGroupSection({
   sectionId,
   group,
@@ -311,6 +353,10 @@ function LifeLabNoteGroupSection({
     sectionId === "reading-briefs" &&
     group.variant === "primary" &&
     group.notes.length === 1;
+  const isYoutubeLibraryDisclosure =
+    sectionId === "youtube-learning" &&
+    group.variant === "disclosure" &&
+    YOUTUBE_LIBRARY_DISCLOSURE_GROUPS.has(group.id);
 
   if (group.variant === "primary") {
     return (
@@ -333,14 +379,22 @@ function LifeLabNoteGroupSection({
       open={defaultOpen ? true : undefined}
     >
       <summary className="ui-settings-details-summary !text-sm !normal-case !tracking-normal">
-        <span className="font-medium text-muted">{groupDisclosureSummary(group)}</span>
+        <span className="font-medium text-muted">
+          {isYoutubeLibraryDisclosure
+            ? group.label
+            : groupDisclosureSummary(group)}
+        </span>
       </summary>
       <div className="ui-settings-details-body">
-        <LifeLabNoteList
-          sectionId={sectionId}
-          group={group}
-          searchQuery={searchQuery}
-        />
+        {isYoutubeLibraryDisclosure ? (
+          <LifeLabLibraryDisclosureList sectionId={sectionId} group={group} />
+        ) : (
+          <LifeLabNoteList
+            sectionId={sectionId}
+            group={group}
+            searchQuery={searchQuery}
+          />
+        )}
       </div>
     </details>
   );
@@ -390,6 +444,16 @@ export function LifeLabSectionNotes({
               <LifeLabPlaylistCardList
                 key={`playlists-${index}`}
                 items={block.items}
+              />
+            );
+          case "standalone-videos":
+            return (
+              <LifeLabStandaloneVideos
+                key={`standalone-${index}`}
+                sectionId={sectionId}
+                previewNotes={block.previewNotes}
+                allNotes={block.allNotes}
+                totalCount={block.totalCount}
               />
             );
           case "group":

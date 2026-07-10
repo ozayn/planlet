@@ -1,8 +1,10 @@
 import Link from "next/link";
 
+import { LifeLabNoteImageFigure } from "@/components/life-lab/life-lab-note-image";
 import { MarkdownContent } from "@/components/life-lab/markdown-content";
-import type { LifeLabNote } from "@/lib/life-lab/constants";
+import type { LifeLabNote, LifeLabNoteSummary } from "@/lib/life-lab/constants";
 import {
+  enrichPlaylistVideoRows,
   parsePlaylistIndexNote,
   type PlaylistIndexSummary,
   type PlaylistVideoRow,
@@ -11,6 +13,7 @@ import {
 
 type LifeLabPlaylistIndexNoteProps = {
   note: LifeLabNote;
+  relatedNotes?: LifeLabNoteSummary[];
 };
 
 function stripUrlsForFallback(content: string): string {
@@ -159,6 +162,20 @@ function NoteAction({ video }: { video: PlaylistVideoRow }) {
   );
 }
 
+function VideoThumbnail({ video }: { video: PlaylistVideoRow }) {
+  if (!video.thumbnail) {
+    return null;
+  }
+
+  return (
+    <LifeLabNoteImageFigure
+      image={video.thumbnail}
+      variant="thumbnail"
+      fallbackTitle={video.title}
+    />
+  );
+}
+
 function VideoTitle({ video }: { video: PlaylistVideoRow }) {
   if (video.noteHref) {
     return (
@@ -195,6 +212,7 @@ function VideoTable({ videos }: { videos: PlaylistVideoRow[] }) {
               </td>
               <td className="border-b border-border/40 py-3 pr-3">
                 <div className="flex min-w-0 items-start gap-2">
+                  <VideoThumbnail video={video} />
                   <div className="min-w-0 flex-1 leading-snug">
                     <VideoTitle video={video} />
                   </div>
@@ -227,6 +245,7 @@ function VideoCards({ videos }: { videos: PlaylistVideoRow[] }) {
           className="rounded-xl border border-border/60 bg-surface p-3"
         >
           <div className="flex items-start justify-between gap-3">
+            <VideoThumbnail video={video} />
             <div className="min-w-0 flex-1 space-y-1.5">
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted-light">
@@ -252,8 +271,12 @@ function VideoCards({ videos }: { videos: PlaylistVideoRow[] }) {
   );
 }
 
-export function LifeLabPlaylistIndexNote({ note }: LifeLabPlaylistIndexNoteProps) {
+export function LifeLabPlaylistIndexNote({
+  note,
+  relatedNotes = [],
+}: LifeLabPlaylistIndexNoteProps) {
   const display = parsePlaylistIndexNote(note);
+  const videos = enrichPlaylistVideoRows(display.videos, relatedNotes);
 
   if (!display.parseSucceeded) {
     return <MarkdownContent content={stripUrlsForFallback(note.content)} />;
@@ -329,8 +352,8 @@ export function LifeLabPlaylistIndexNote({ note }: LifeLabPlaylistIndexNoteProps
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-foreground">Videos</h2>
-        <VideoTable videos={display.videos} />
-        <VideoCards videos={display.videos} />
+        <VideoTable videos={videos} />
+        <VideoCards videos={videos} />
       </section>
 
       {display.batchNotes.length > 0 ? (

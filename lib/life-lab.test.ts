@@ -18,7 +18,7 @@ import {
   titleFromFilename,
   titleFromMarkdownHeading,
 } from "@/lib/life-lab/slug";
-import { groupDisclosureSummary, groupLifeLabNotes } from "@/lib/life-lab/organization";
+import { groupDisclosureSummary, groupLifeLabNotes, noteGroupLabel } from "@/lib/life-lab/organization";
 import { parseLifeLabFrontmatter } from "@/lib/life-lab/frontmatter";
 import { extractFlashcardsFromMarkdown } from "@/lib/life-lab/flashcards";
 import { noteMatchesSearch } from "@/lib/life-lab/search";
@@ -395,6 +395,14 @@ describe("life lab note organization", () => {
       groups[1]?.notes.map((note) => note.title),
       ["Channels", "Concepts", "Questions"],
     );
+  });
+
+  it("renames the about group for youtube learning", () => {
+    assert.equal(
+      noteGroupLabel("about", "youtube-learning"),
+      "About YouTube Learning",
+    );
+    assert.equal(noteGroupLabel("about"), "About this section");
   });
 
   it("dedupes duplicate file ids using videos over archive priority", () => {

@@ -11,6 +11,10 @@ import {
   relativePathFilename,
   titleFromMarkdownHeading,
 } from "@/lib/life-lab/slug";
+import {
+  resolveLifeLabNoteImage,
+  type ResolvedLifeLabNoteImage,
+} from "@/lib/life-lab/note-image";
 
 export type PlaylistVideoStatus = "processed" | "pending" | "skipped" | "error";
 
@@ -23,6 +27,7 @@ export type PlaylistVideoRow = {
   noteFilename: string | null;
   noteSlug: string | null;
   noteHref: string | null;
+  thumbnail?: ResolvedLifeLabNoteImage;
 };
 
 export type PlaylistIndexSummary = {
@@ -312,6 +317,25 @@ function parsePlaylistVideosTable(
   }
 
   return videos;
+}
+
+export function enrichPlaylistVideoRows(
+  videos: PlaylistVideoRow[],
+  notes: LifeLabNoteSummary[],
+): PlaylistVideoRow[] {
+  const notesBySlug = new Map(notes.map((note) => [note.slug, note]));
+
+  return videos.map((video) => {
+    if (!video.noteSlug) {
+      return video;
+    }
+
+    const thumbnail = resolveLifeLabNoteImage(
+      notesBySlug.get(video.noteSlug)?.metadata,
+    );
+
+    return thumbnail ? { ...video, thumbnail } : video;
+  });
 }
 
 function extractBatchNotes(body: string): string[] {

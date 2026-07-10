@@ -23,6 +23,33 @@ export type LifeLabFilterOption = {
 
 export type LifeLabFilterOptions = Record<LifeLabFilterKey, LifeLabFilterOption[]>;
 
+export const LIFE_LAB_MULTI_VALUE_FILTER_KEYS = [
+  "tag",
+  "topic",
+  "person",
+  "place",
+] as const satisfies readonly LifeLabFilterKey[];
+
+export type LifeLabMultiValueFilterKey =
+  (typeof LIFE_LAB_MULTI_VALUE_FILTER_KEYS)[number];
+
+export function parseLifeLabFilterValues(value: string): string[] {
+  return [...new Set(value.split(",").map((item) => item.trim()).filter(Boolean))];
+}
+
+export function serializeLifeLabFilterValues(values: string[]): string | undefined {
+  const unique = [...new Set(values.map((item) => item.trim()).filter(Boolean))];
+
+  return unique.length > 0 ? unique.join(",") : undefined;
+}
+
+export function lifeLabFilterOptionLabel(
+  options: LifeLabFilterOption[],
+  value: string,
+): string {
+  return options.find((option) => option.value === value)?.label ?? value;
+}
+
 type MetadataFilterKey = Exclude<LifeLabFilterKey, "subfolder" | "status" | "month">;
 
 const FILTER_METADATA_KEYS: Record<MetadataFilterKey, keyof LifeLabNoteMetadata> = {
@@ -160,8 +187,17 @@ export function noteMatchesFilters(
     const values = metadataValues(metadata, key).map((item) =>
       item.toLowerCase(),
     );
+    const selectedValues = (
+      LIFE_LAB_MULTI_VALUE_FILTER_KEYS as readonly string[]
+    ).includes(key)
+      ? parseLifeLabFilterValues(value)
+      : [value];
 
-    if (!values.includes(value.toLowerCase())) {
+    const matches = selectedValues.some((selected) =>
+      values.includes(selected.toLowerCase()),
+    );
+
+    if (!matches) {
       return false;
     }
   }

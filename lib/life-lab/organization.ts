@@ -27,11 +27,13 @@ import {
   relativePathFilename,
   slugToRelativePath,
 } from "@/lib/life-lab/slug";
+import { classifyYoutubeLibraryNote } from "@/lib/life-lab/youtube-library";
 
 const ABOUT_GROUP_ID = "about";
 const ARCHIVE_GROUP_ID = "archive";
 const REFERENCE_GROUP_ID = "reference";
 const VIDEOS_GROUP_ID = "videos";
+const STANDALONE_GROUP_ID = "standalone";
 const PLAYLIST_GROUP_PREFIX = "playlist:";
 
 const SECONDARY_GROUP_ORDER = [
@@ -68,15 +70,42 @@ export function classifyNoteGroup(note: LifeLabNoteSummary): string {
   return note.subfolderLabel.toLowerCase();
 }
 
+function classifyYoutubeNoteGroup(note: LifeLabNoteSummary): string {
+  const role = classifyYoutubeLibraryNote(note);
+
+  switch (role) {
+    case "playlist-video": {
+      const playlist = note.metadata?.playlist?.trim();
+
+      return playlist ? playlistGroupId(playlist) : VIDEOS_GROUP_ID;
+    }
+    case "standalone-video":
+      return STANDALONE_GROUP_ID;
+    case "reference":
+      return REFERENCE_GROUP_ID;
+    case "archive":
+      return ARCHIVE_GROUP_ID;
+    case "about":
+      return ABOUT_GROUP_ID;
+    default:
+      return classifyNoteGroup(note);
+  }
+}
+
 function isPrimaryContentGroup(groupId: string): boolean {
   return !SECONDARY_GROUP_ORDER.includes(
     groupId as (typeof SECONDARY_GROUP_ORDER)[number],
   );
 }
 
-export function noteGroupLabel(groupId: string): string {
+export function noteGroupLabel(
+  groupId: string,
+  sectionId?: LifeLabSectionId,
+): string {
   if (groupId === ABOUT_GROUP_ID) {
-    return "About this section";
+    return sectionId === "youtube-learning"
+      ? "About YouTube Learning"
+      : "About this section";
   }
 
   if (groupId === REFERENCE_GROUP_ID) {
@@ -125,11 +154,11 @@ function sortNotesInGroup(notes: LifeLabNoteSummary[]): LifeLabNoteSummary[] {
 }
 
 export function noteAssignmentPriority(groupId: string): number {
-  if (groupId === VIDEOS_GROUP_ID) {
+  if (isPlaylistGroupId(groupId)) {
     return 0;
   }
 
-  if (isPlaylistGroupId(groupId)) {
+  if (groupId === STANDALONE_GROUP_ID || groupId === VIDEOS_GROUP_ID) {
     return 5;
   }
 
@@ -195,7 +224,11 @@ export function groupDisclosureSummary(group: LifeLabNoteGroup): string {
   return disclosureSummary(group.label, group.notes.length);
 }
 
-function groupLabelForId(id: string, notes: LifeLabNoteSummary[]): string {
+function groupLabelForId(
+  id: string,
+  notes: LifeLabNoteSummary[],
+  sectionId?: LifeLabSectionId,
+): string {
   if (isPlaylistGroupId(id)) {
     const playlist = notes.find(
       (note) =>
@@ -208,7 +241,7 @@ function groupLabelForId(id: string, notes: LifeLabNoteSummary[]): string {
     }
   }
 
-  return noteGroupLabel(id);
+  return noteGroupLabel(id, sectionId);
 }
 
 export type GroupLifeLabNotesOptions = {
@@ -323,6 +356,10 @@ function classifyNoteGroupForSection(
   note: LifeLabNoteSummary,
   sectionId?: LifeLabSectionId,
 ): string {
+  if (sectionId === "youtube-learning") {
+    return classifyYoutubeNoteGroup(note);
+  }
+
   if (sectionId === "learning-dictionary") {
     return classifyDictionaryNoteGroup(note);
   }
@@ -363,7 +400,7 @@ function groupLabelForSectionId(
     return filmLabGroupLabel(id);
   }
 
-  return groupLabelForId(id, notes);
+  return groupLabelForId(id, notes, sectionId);
 }
 
 function isPrimaryFilmLabGroup(groupId: string): boolean {

@@ -9,14 +9,16 @@ import { LifeLabReadingBriefNote } from "@/components/life-lab/life-lab-reading-
 import { LifeLabPlaylistIndexNote } from "@/components/life-lab/life-lab-playlist-index-note";
 import { LifeLabPlaylistVideoNav } from "@/components/life-lab/life-lab-playlist-video-nav";
 import { LifeLabNoteDetailHeader } from "@/components/life-lab/life-lab-note-detail-header";
+import { LifeLabNoteImageFigure } from "@/components/life-lab/life-lab-note-image";
 import { LifeLabNoteDevInfoPanel } from "@/components/life-lab/life-lab-note-dev-info-panel";
 import { LifeLabStatusPanel } from "@/components/life-lab/life-lab-status-panel";
-import { getLifeLabNoteData, getYoutubeVideoPlaylistNavigation } from "@/lib/life-lab";
+import { getLifeLabNoteData, getLifeLabSectionData, getYoutubeVideoPlaylistNavigation } from "@/lib/life-lab";
 import { isLifeLabDevToolsEnabled } from "@/lib/life-lab/dev";
 import { hasDictionaryStudySections } from "@/lib/life-lab/dictionary-candidates";
 import { stripLeadingMarkdownH1 } from "@/lib/life-lab/note-content";
 import { isReadingBriefNote } from "@/lib/life-lab/reading-briefs";
 import { shouldRenderPlaylistIndexUi } from "@/lib/life-lab/playlist-index";
+import { resolveLifeLabNoteImage } from "@/lib/life-lab/note-image";
 import { isAdminRole } from "@/lib/auth-roles";
 import { canAccessLifeLabPage } from "@/lib/roles";
 
@@ -60,6 +62,13 @@ export default async function LifeLabNotePage({
       ? await getYoutubeVideoPlaylistNavigation(note.sectionId, note.slug)
       : null;
   const noteBodyContent = stripLeadingMarkdownH1(note.content);
+  const noteImage = resolveLifeLabNoteImage(note.metadata);
+  const showNoteImage =
+    !isReadingBrief && !isPlaylistIndex && noteImage !== null;
+  const relatedNotes =
+    isPlaylistIndex && note.sectionId === "youtube-learning"
+      ? (await getLifeLabSectionData(note.sectionId)).notes
+      : [];
 
   return (
     <section
@@ -84,6 +93,14 @@ export default async function LifeLabNotePage({
         />
       )}
 
+      {showNoteImage ? (
+        <LifeLabNoteImageFigure
+          image={noteImage}
+          variant="detail"
+          fallbackTitle={note.title}
+        />
+      ) : null}
+
       {availability.status !== "ready" ? (
         <LifeLabStatusPanel availability={availability} isAdmin={isAdmin} />
       ) : (
@@ -104,7 +121,7 @@ export default async function LifeLabNotePage({
                 flashcards={note.flashcards}
               />
             ) : isPlaylistIndex ? (
-              <LifeLabPlaylistIndexNote note={note} />
+              <LifeLabPlaylistIndexNote note={note} relatedNotes={relatedNotes} />
             ) : (
               <>
                 {hasDictionarySections ? (

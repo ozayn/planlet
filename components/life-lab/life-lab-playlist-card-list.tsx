@@ -19,13 +19,13 @@ export function LifeLabPlaylistCardList({ items }: LifeLabPlaylistCardListProps)
           <li key={item.slug}>
             <div className="rounded-xl border border-border/70 bg-surface/80 p-4 transition-colors hover:bg-accent-cream/20">
               <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0 space-y-1.5">
+                <div className="min-w-0 space-y-1">
                   <h3 className="text-base font-semibold leading-snug text-foreground">
                     {item.title}
                   </h3>
                   <p className="text-sm text-muted">
-                    {item.videoCount}{" "}
-                    {item.videoCount === 1 ? "video" : "videos"}
+                    {item.noteCount}{" "}
+                    {item.noteCount === 1 ? "note" : "notes"}
                   </p>
                   {item.progressSummary ? (
                     <p className="text-xs text-muted-light">

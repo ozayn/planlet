@@ -28,6 +28,8 @@ type SimpleSheetProps = {
   backdropLabel?: string;
   returnFocusRef?: RefObject<HTMLElement | null>;
   enableSwipeDismiss?: boolean;
+  overlayClassName?: string;
+  panelClassName?: string;
 };
 
 export function SimpleSheet({
@@ -43,6 +45,8 @@ export function SimpleSheet({
   backdropLabel = "Close",
   returnFocusRef,
   enableSwipeDismiss = true,
+  overlayClassName,
+  panelClassName,
 }: SimpleSheetProps) {
   const [mounted, setMounted] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
@@ -131,7 +135,7 @@ export function SimpleSheet({
       : undefined;
 
   return createPortal(
-    <div className="ui-simple-sheet-overlay">
+    <div className={`ui-simple-sheet-overlay${overlayClassName ? ` ${overlayClassName}` : ""}`}>
       <button
         type="button"
         aria-label={backdropLabel}
@@ -146,7 +150,7 @@ export function SimpleSheet({
           swipeEnabled && !isDragging && dragOffset === 0
             ? " ui-simple-sheet-panel-enter"
             : ""
-        }`}
+        }${panelClassName ? ` ${panelClassName}` : ""}`}
         style={panelStyle}
       >
         {swipeEnabled ? (

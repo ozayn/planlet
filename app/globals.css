@@ -1436,6 +1436,48 @@ body {
     }
   }
 
+  .ui-life-lab-filter-sheet-overlay {
+    align-items: flex-end;
+    justify-content: center;
+  }
+
+  @media (min-width: 768px) {
+    .ui-life-lab-filter-sheet-overlay {
+      align-items: stretch;
+      justify-content: flex-end;
+      padding: 0;
+    }
+  }
+
+  .ui-life-lab-filter-sheet-panel {
+    max-height: min(92dvh, 100%);
+  }
+
+  @media (min-width: 768px) {
+    .ui-life-lab-filter-sheet-panel {
+      width: min(22rem, 100%);
+      max-width: none;
+      height: 100%;
+      max-height: 100dvh;
+      border-radius: 0;
+      animation: none;
+    }
+
+    .ui-life-lab-filter-sheet-panel.ui-simple-sheet-panel-enter {
+      animation: ui-filter-drawer-enter 0.22s ease-out;
+    }
+  }
+
+  @keyframes ui-filter-drawer-enter {
+    from {
+      transform: translateX(100%);
+    }
+
+    to {
+      transform: translateX(0);
+    }
+  }
+
   .ui-share-preview-textarea {
     max-height: min(34dvh, 280px);
     overflow-y: auto;

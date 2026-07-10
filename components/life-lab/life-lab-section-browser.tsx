@@ -2,15 +2,15 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 
+import { LifeLabFilterPanel } from "@/components/life-lab/life-lab-filter-panel";
+import { LifeLabSectionNotes } from "@/components/life-lab/life-lab-section-notes";
 import type {
   LifeLabListingDiagnostic,
   LifeLabNoteSummary,
   LifeLabSectionId,
 } from "@/lib/life-lab/constants";
-import type { LifeLabFilterKey, LifeLabFilterOptions, LifeLabNoteFilters } from "@/lib/life-lab/filters";
-import { filterLifeLabNotes } from "@/lib/life-lab/filters";
 import {
   isLifeLabSortKey,
   LIFE_LAB_DEFAULT_SORT,
@@ -18,10 +18,21 @@ import {
   LIFE_LAB_SORT_SHORT_LABELS,
   type LifeLabSortKey,
 } from "@/lib/life-lab/browse";
+import {
+  countActiveLifeLabFilters,
+  LIFE_LAB_FILTER_LABELS,
+  sanitizeLifeLabFilterOptions,
+} from "@/lib/life-lab/filter-ui";
+import type { LifeLabFilterKey, LifeLabFilterOptions, LifeLabNoteFilters } from "@/lib/life-lab/filters";
+import {
+  filterLifeLabNotes,
+  LIFE_LAB_MULTI_VALUE_FILTER_KEYS,
+  lifeLabFilterOptionLabel,
+  parseLifeLabFilterValues,
+} from "@/lib/life-lab/filters";
 import { groupLifeLabNotes } from "@/lib/life-lab/organization";
 import { noteMatchesSearch } from "@/lib/life-lab/search";
 import { buildLifeLabSectionView } from "@/lib/life-lab/section-view";
-import { LifeLabSectionNotes } from "@/components/life-lab/life-lab-section-notes";
 
 const FILTER_PARAM_KEYS: LifeLabFilterKey[] = [
   "subfolder",
@@ -35,19 +46,6 @@ const FILTER_PARAM_KEYS: LifeLabFilterKey[] = [
   "status",
   "month",
 ];
-
-const FILTER_LABELS: Record<LifeLabFilterKey, string> = {
-  subfolder: "Folder",
-  tag: "Tag",
-  topic: "Topic",
-  source: "Source",
-  channel: "Channel",
-  playlist: "Playlist",
-  person: "Person",
-  place: "Place",
-  status: "Study status",
-  month: "Month",
-};
 
 function readFilters(searchParams: URLSearchParams): LifeLabNoteFilters {
   const filters: LifeLabNoteFilters = {};
@@ -82,6 +80,43 @@ function buildHref(
   return query ? `${pathname}?${query}` : pathname;
 }
 
+function buildFiltersHref(
+  pathname: string,
+  current: URLSearchParams,
+  filters: LifeLabNoteFilters,
+): string {
+  const updates: Record<string, string | null> = {};
+
+  for (const key of FILTER_PARAM_KEYS) {
+    updates[key] = filters[key] ?? null;
+  }
+
+  return buildHref(pathname, current, updates);
+}
+
+type ActiveFilterChip = {
+  key: LifeLabFilterKey;
+  value: string;
+};
+
+function buildActiveFilterChips(filters: LifeLabNoteFilters): ActiveFilterChip[] {
+  return FILTER_PARAM_KEYS.flatMap((key) => {
+    const rawValue = filters[key];
+
+    if (!rawValue) {
+      return [];
+    }
+
+    if (
+      (LIFE_LAB_MULTI_VALUE_FILTER_KEYS as readonly string[]).includes(key)
+    ) {
+      return parseLifeLabFilterValues(rawValue).map((value) => ({ key, value }));
+    }
+
+    return [{ key, value: rawValue }];
+  });
+}
+
 type LifeLabSectionBrowserProps = {
   sectionId: LifeLabSectionId;
   notes: LifeLabNoteSummary[];
@@ -102,6 +137,7 @@ export function LifeLabSectionBrowser({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
+  const filtersButtonRef = useRef<HTMLButtonElement>(null);
   const [searchInput, setSearchInput] = useState(
     () => searchParams.get("q")?.trim() ?? "",
   );
@@ -113,6 +149,14 @@ export function LifeLabSectionBrowser({
     ? rawSort
     : LIFE_LAB_DEFAULT_SORT;
   const filters = useMemo(() => readFilters(searchParams), [searchParams]);
+
+  const sanitizedFilterOptions = useMemo(
+    () =>
+      sanitizeLifeLabFilterOptions(filterOptions, {
+        includeFolderFilter: showDiagnostics,
+      }),
+    [filterOptions, showDiagnostics],
+  );
 
   const filteredNotes = useMemo(() => {
     const metadataFiltered = filterLifeLabNotes(notes, filters);
@@ -129,7 +173,7 @@ export function LifeLabSectionBrowser({
     [filteredNotes, sectionId, sort],
   );
 
-  const hasActiveQuery = Boolean(searchQuery) || Object.keys(filters).length > 0;
+  const hasActiveQuery = Boolean(searchQuery) || countActiveLifeLabFilters(filters) > 0;
 
   const sectionView = useMemo(
     () =>
@@ -157,15 +201,10 @@ export function LifeLabSectionBrowser({
   }, [filteredNotes]);
 
   const showSectionStudyLink = flashcardStats.noteCount > 1;
+  const activeFilterChips = buildActiveFilterChips(filters);
 
-  const activeFilterEntries = FILTER_PARAM_KEYS.flatMap((key) => {
-    const value = filters[key];
-
-    return value ? [{ key, value }] : [];
-  });
-
-  const availableFilters = FILTER_PARAM_KEYS.filter(
-    (key) => filterOptions[key].length > 0,
+  const hasFilterOptions = FILTER_PARAM_KEYS.some(
+    (key) => sanitizedFilterOptions[key].length > 0,
   );
 
   function submitSearch(): void {
@@ -182,6 +221,41 @@ export function LifeLabSectionBrowser({
         sort: nextSort === LIFE_LAB_DEFAULT_SORT ? null : nextSort,
       }),
     );
+  }
+
+  function applyFilters(nextFilters: LifeLabNoteFilters): void {
+    router.replace(buildFiltersHref(pathname, searchParams, nextFilters));
+  }
+
+  function clearFilters(): void {
+    router.replace(buildFiltersHref(pathname, searchParams, {}));
+  }
+
+  function removeFilterChip(key: LifeLabFilterKey, value: string): void {
+    const currentValue = filters[key];
+
+    if (!currentValue) {
+      return;
+    }
+
+    if (
+      (LIFE_LAB_MULTI_VALUE_FILTER_KEYS as readonly string[]).includes(key)
+    ) {
+      const remaining = parseLifeLabFilterValues(currentValue).filter(
+        (item) => item !== value,
+      );
+
+      applyFilters({
+        ...filters,
+        [key]: remaining.length > 0 ? remaining.join(",") : undefined,
+      });
+      return;
+    }
+
+    applyFilters({
+      ...filters,
+      [key]: undefined,
+    });
   }
 
   return (
@@ -218,79 +292,77 @@ export function LifeLabSectionBrowser({
                 ))}
               </select>
             </label>
-            {availableFilters.length > 0 ? (
+            {hasFilterOptions ? (
               <button
+                ref={filtersButtonRef}
                 type="button"
-                onClick={() => setFiltersOpen((current) => !current)}
+                onClick={() => setFiltersOpen(true)}
                 className="rounded-full border border-border/70 px-3 py-2 text-xs font-medium text-muted transition-colors hover:border-border hover:text-foreground"
               >
                 Filters
-                {activeFilterEntries.length > 0
-                  ? ` · ${activeFilterEntries.length}`
+                {activeFilterChips.length > 0
+                  ? ` · ${activeFilterChips.length}`
                   : ""}
               </button>
             ) : null}
           </div>
         </form>
 
+        {activeFilterChips.length > 0 ? (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {activeFilterChips.map((chip) => (
+              <button
+                key={`${chip.key}-${chip.value}`}
+                type="button"
+                onClick={() => removeFilterChip(chip.key, chip.value)}
+                className="rounded-full bg-accent-cream px-2.5 py-1 text-xs text-foreground transition-colors hover:bg-accent-cream/70"
+              >
+                {LIFE_LAB_FILTER_LABELS[chip.key]}:{" "}
+                {lifeLabFilterOptionLabel(
+                  sanitizedFilterOptions[chip.key],
+                  chip.value,
+                )}{" "}
+                ×
+              </button>
+            ))}
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="text-xs font-medium text-muted transition-colors hover:text-foreground"
+            >
+              Clear all
+            </button>
+          </div>
+        ) : null}
+
         {showSectionStudyLink ? (
           <div>
             <Link
               href={`/life-lab/${sectionId}/study${searchParams.toString() ? `?${searchParams.toString()}` : ""}`}
-              className="inline-flex rounded-full bg-accent-cream px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent-cream/80"
+              className="inline-flex flex-col rounded-xl border border-border/70 bg-accent-cream/40 px-4 py-3 transition-colors hover:bg-accent-cream/70"
             >
-              Study all · {flashcardStats.totalCards} cards
+              <span className="text-sm font-medium text-foreground">
+                Study all flashcards
+              </span>
+              <span className="text-xs text-muted">
+                {flashcardStats.totalCards} cards
+              </span>
             </Link>
           </div>
         ) : null}
-
-        {filtersOpen && availableFilters.length > 0 ? (
-          <div className="rounded-xl border border-border/60 bg-surface/70 p-3 space-y-3">
-            {availableFilters.map((key) => (
-              <div key={key} className="space-y-1.5">
-                <p className="text-xs font-medium text-muted-light">
-                  {FILTER_LABELS[key]}
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  <Link
-                    href={buildHref(pathname, searchParams, { [key]: null })}
-                    className={`rounded-full px-2.5 py-1 text-xs ${
-                      !filters[key]
-                        ? "bg-accent-cream text-foreground"
-                        : "text-muted hover:bg-accent-cream/50"
-                    }`}
-                  >
-                    All
-                  </Link>
-                  {filterOptions[key].map((option) => (
-                    <Link
-                      key={`${key}-${option.value}`}
-                      href={buildHref(pathname, searchParams, {
-                        [key]: option.value,
-                      })}
-                      className={`rounded-full px-2.5 py-1 text-xs ${
-                        filters[key] === option.value
-                          ? "bg-accent-cream text-foreground"
-                          : "text-muted hover:bg-accent-cream/50"
-                      }`}
-                    >
-                      {option.label}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            ))}
-            {activeFilterEntries.length > 0 ? (
-              <Link
-                href={pathname}
-                className="text-xs font-medium text-muted transition-colors hover:text-foreground"
-              >
-                Clear filters
-              </Link>
-            ) : null}
-          </div>
-        ) : null}
       </div>
+
+      {hasFilterOptions ? (
+        <LifeLabFilterPanel
+          open={filtersOpen}
+          onClose={() => setFiltersOpen(false)}
+          filters={filters}
+          filterOptions={sanitizedFilterOptions}
+          onApply={applyFilters}
+          onClear={clearFilters}
+          showFolderFilter={showDiagnostics}
+        />
+      ) : null}
 
       {filteredNotes.length === 0 ? (
         <p className="text-sm text-muted">No notes match your search or filters.</p>
