@@ -18,6 +18,29 @@ export function lifeLabPlaylistCacheTag(
   return `life-lab:playlist:${sectionId}:${playlistSlug}`;
 }
 
+export function lifeLabPlaylistArtifactCacheTag(
+  sectionId: string,
+  playlistSlug: string,
+  artifactName: string,
+): string {
+  return `life-lab:playlist-artifact:${sectionId}:${playlistSlug}:${artifactName}`;
+}
+
+export function lifeLabPlaylistLearningMapCacheTag(playlistId: string): string {
+  return `life-lab:playlist-learning-map:${playlistId}`;
+}
+
+export function lifeLabPlaylistAssetsCacheTag(playlistId: string): string {
+  return `life-lab:playlist-assets:${playlistId}`;
+}
+
+export function lifeLabPlaylistAssetCacheTag(
+  playlistId: string,
+  assetName: string,
+): string {
+  return `life-lab:playlist-asset:${playlistId}:${assetName}`;
+}
+
 export function getLifeLabListCacheSeconds(): number {
   const fromEnv = Number.parseInt(
     process.env.LIFE_LAB_LIST_CACHE_SECONDS ?? "",

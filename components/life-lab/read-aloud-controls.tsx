@@ -150,6 +150,7 @@ type ReadAloudPanelProps = {
   children: ReactNode;
   playbackFailed: boolean;
   voiceFallbackNotice: string | null;
+  voiceUnavailableNotice?: string | null;
   diagnostics: SpeechDiagnostics;
 };
 
@@ -158,11 +159,13 @@ function ReadAloudPanel({
   children,
   playbackFailed,
   voiceFallbackNotice,
+  voiceUnavailableNotice = null,
   diagnostics,
 }: ReadAloudPanelProps) {
   return (
     <div className={`flex flex-col gap-1.5 ${className}`}>
       <div className="flex flex-wrap items-center gap-2">{children}</div>
+      <SpeechVoiceFallbackNotice message={voiceUnavailableNotice} />
       <SpeechVoiceFallbackNotice message={voiceFallbackNotice} />
       <SpeechPlaybackNotice show={playbackFailed} />
       <SpeechDevDiagnostic diagnostics={diagnostics} />
@@ -181,6 +184,7 @@ export function ReadAloudControls({
     isPaused,
     playbackFailed,
     voiceFallbackNotice,
+    voiceUnavailableNotice,
     diagnostics,
     selectableVoices,
     selectedVoiceId,
@@ -236,6 +240,7 @@ export function ReadAloudControls({
                 setRate={setRate}
                 disabled={isSpeaking}
               />
+              <SpeechVoiceFallbackNotice message={voiceUnavailableNotice} />
               <SpeechVoiceFallbackNotice message={voiceFallbackNotice} />
               <SpeechPlaybackNotice show={playbackFailed} />
               <SpeechDevDiagnostic diagnostics={diagnostics} />
@@ -261,6 +266,7 @@ export function ReadAloudControls({
           className={`hidden md:flex ${className}`}
           playbackFailed={playbackFailed}
           voiceFallbackNotice={voiceFallbackNotice}
+          voiceUnavailableNotice={voiceUnavailableNotice}
           diagnostics={diagnostics}
         >
           {!isSpeaking ? (
@@ -300,6 +306,7 @@ export function ReadAloudControls({
       className={className}
       playbackFailed={playbackFailed}
       voiceFallbackNotice={voiceFallbackNotice}
+      voiceUnavailableNotice={voiceUnavailableNotice}
       diagnostics={diagnostics}
     >
       {!isSpeaking ? (
@@ -356,6 +363,7 @@ export function FlashcardReadAloudControls({
     isPaused,
     playbackFailed,
     voiceFallbackNotice,
+    voiceUnavailableNotice,
     diagnostics,
     selectableVoices,
     selectedVoiceId,
@@ -390,6 +398,7 @@ export function FlashcardReadAloudControls({
       className={className}
       playbackFailed={playbackFailed}
       voiceFallbackNotice={voiceFallbackNotice}
+      voiceUnavailableNotice={voiceUnavailableNotice}
       diagnostics={diagnostics}
     >
       {!isSpeaking ? (

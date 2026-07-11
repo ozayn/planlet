@@ -296,6 +296,12 @@ export function LifeLabListenPlayer({
         </div>
       ) : null}
 
+      {!useOpenAi && deviceSpeech.voiceUnavailableNotice ? (
+        <p className="text-xs text-muted">
+          {deviceSpeech.voiceUnavailableNotice}
+        </p>
+      ) : null}
+
       {!useOpenAi && deviceSpeech.playbackFailed ? (
         <p className="text-xs text-muted">
           Read aloud may not work in this browser. Try Safari on macOS, or switch

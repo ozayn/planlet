@@ -1,8 +1,14 @@
 import type { LifeLabNoteMetadata } from "@/lib/life-lab/constants";
 import { normalizeLifeLabNoteImage } from "@/lib/life-lab/note-image";
 import { pickSourceUrlFromFrontmatterRaw } from "@/lib/life-lab/source-url";
+import { normalizePlaylistImageFields } from "@/lib/life-lab/playlist-thumbnail";
 
-const NESTED_FRONTMATTER_OBJECT_KEYS = new Set(["image", "youtube_thumbnail"]);
+const NESTED_FRONTMATTER_OBJECT_KEYS = new Set([
+  "image",
+  "youtube_thumbnail",
+  "thumbnail",
+  "coverImage",
+]);
 
 export type ParsedLifeLabMarkdown = {
   metadata: LifeLabNoteMetadata;
@@ -131,6 +137,32 @@ function normalizeMetadata(raw: Record<string, unknown>): LifeLabNoteMetadata {
     "channel",
     "playlist",
     "playlist_url",
+    "collectionPath",
+    "playlistPath",
+    "folderPath",
+    "collectionSlug",
+    "playlist_id",
+    "playlistId",
+    "asset_id",
+    "assetId",
+    "assets_path",
+    "assetsPath",
+    "asset_path",
+    "assetPath",
+    "playlistAssetPath",
+    "playlist_asset_path",
+    "assetFolderId",
+    "asset_folder_id",
+    "thumbnailUrl",
+    "thumbnail_url",
+    "imageUrl",
+    "videoId",
+    "youtubeVideoId",
+    "video_id",
+    "youtube_video_id",
+    "youtubeUrl",
+    "youtube_url",
+    "sourceUrl",
     "date",
     "study_status",
     "term",
@@ -194,6 +226,8 @@ function normalizeMetadata(raw: Record<string, unknown>): LifeLabNoteMetadata {
   if (youtubeThumbnail) {
     metadata.youtube_thumbnail = youtubeThumbnail;
   }
+
+  Object.assign(metadata, normalizePlaylistImageFields(raw));
 
   return metadata;
 }

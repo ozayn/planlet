@@ -14,13 +14,21 @@ import {
   READ_ALOUD_PROVIDER_LABELS,
 } from "@/lib/life-lab/narration-config";
 import {
+  createSpeechUtterance,
+  encodeDeviceVoiceId,
   formatSpeechRate,
+  formatSpeechVoiceLabel,
   isSpeechSynthesisSupported,
   listAllDeviceSpeechVoices,
+  loadSpeechSynthesisVoices,
+  resolveDeviceVoiceWithFallback,
   SPEECH_AUTO_VOICE_ID,
   SPEECH_RATE_OPTIONS,
   type SpeechRate,
 } from "@/lib/life-lab/speech";
+
+const VOICE_PREVIEW_TEXT =
+  "Hi, this is a preview of your selected reading voice.";
 
 type SettingsReadAloudProps = {
   preferences: LifeLabReadAloudPreferences;
@@ -38,6 +46,7 @@ export function SettingsReadAloud({
   const [deviceVoices, setDeviceVoices] = useState<
     ReturnType<typeof listAllDeviceSpeechVoices>
   >([]);
+  const [rawVoices, setRawVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -54,6 +63,7 @@ export function SettingsReadAloud({
 
     function loadVoices(): void {
       const voices = window.speechSynthesis.getVoices();
+      setRawVoices(voices);
       setDeviceVoices(listAllDeviceSpeechVoices(voices));
     }
 
@@ -104,6 +114,39 @@ export function SettingsReadAloud({
       }
 
       router.refresh();
+    });
+  }
+
+  const resolved = resolveDeviceVoiceWithFallback(rawVoices, speechVoiceId);
+  const isAutoVoice = speechVoiceId === SPEECH_AUTO_VOICE_ID;
+  // Keep the <select> value aligned with an existing option even when the saved
+  // id is a legacy format, by mapping it back to the resolved voice's stable id.
+  const selectValue = isAutoVoice
+    ? SPEECH_AUTO_VOICE_ID
+    : resolved.voice
+      ? encodeDeviceVoiceId(resolved.voice)
+      : speechVoiceId;
+  const selectedVoiceLabel = resolved.voice
+    ? formatSpeechVoiceLabel(resolved.voice)
+    : null;
+
+  function previewVoice() {
+    if (!isSpeechSynthesisSupported()) {
+      return;
+    }
+
+    void loadSpeechSynthesisVoices().then((voices) => {
+      const { voice } = resolveDeviceVoiceWithFallback(voices, speechVoiceId);
+      const utterance = createSpeechUtterance(VOICE_PREVIEW_TEXT, {
+        rate: speechRate,
+        pitch: 1,
+        volume: 1,
+        lang: voice?.lang,
+        voice,
+      });
+
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(utterance);
     });
   }
 
@@ -177,7 +220,7 @@ export function SettingsReadAloud({
           <label className="flex flex-col gap-1.5 text-sm">
             <span className="font-medium text-foreground">Device voice</span>
             <select
-              value={speechVoiceId}
+              value={selectValue}
               disabled={isPending || deviceVoices.length === 0}
               onChange={(event) => saveVoice(event.target.value)}
               className="rounded-xl border border-border/70 bg-transparent px-3 py-2 text-sm text-foreground"
@@ -190,6 +233,26 @@ export function SettingsReadAloud({
               ))}
             </select>
           </label>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={previewVoice}
+              disabled={deviceVoices.length === 0}
+              className="rounded-full border border-border/70 px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:bg-accent-cream/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Preview voice
+            </button>
+            <span className="text-xs text-muted">
+              {isAutoVoice
+                ? selectedVoiceLabel
+                  ? `Auto — ${selectedVoiceLabel}`
+                  : "Auto"
+                : selectedVoiceLabel
+                  ? `Selected: ${selectedVoiceLabel}`
+                  : "Selected voice unavailable on this device."}
+            </span>
+          </div>
 
           <div className="space-y-2">
             <p className="text-sm font-medium text-foreground">Speaking rate</p>

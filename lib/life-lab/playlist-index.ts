@@ -6,15 +6,17 @@ import type {
 } from "@/lib/life-lab/constants";
 import { noteContentDateValue } from "@/lib/life-lab/browse";
 import {
+  formatCollectionDisplayTitle,
+  listCollectionContentNotes,
+} from "@/lib/life-lab/collection";
+import {
   driveRelativePathToSlug,
   markdownExcerpt,
   relativePathFilename,
   titleFromMarkdownHeading,
 } from "@/lib/life-lab/slug";
-import {
-  resolveLifeLabNoteImage,
-  type ResolvedLifeLabNoteImage,
-} from "@/lib/life-lab/note-image";
+import { resolvePlaylistVideoRowThumbnail } from "@/lib/life-lab/playlist-video-thumbnail";
+import type { ResolvedLifeLabNoteImage } from "@/lib/life-lab/note-image";
 import {
   cleanPlaylistVideoDisplayTitles,
   cleanYoutubePlaylistVideoTitle,
@@ -354,13 +356,12 @@ export function enrichPlaylistVideoRows(
   const notesBySlug = new Map(notes.map((note) => [note.slug, note]));
 
   return videos.map((video) => {
-    if (!video.noteSlug) {
-      return video;
-    }
-
-    const thumbnail = resolveLifeLabNoteImage(
-      notesBySlug.get(video.noteSlug)?.metadata,
-    );
+    const note = video.noteSlug ? notesBySlug.get(video.noteSlug) : undefined;
+    const thumbnail = resolvePlaylistVideoRowThumbnail({
+      metadata: note?.metadata,
+      videoUrl: video.videoUrl,
+      title: video.displayTitle ?? video.title,
+    });
 
     return thumbnail ? { ...video, thumbnail } : video;
   });
@@ -513,6 +514,26 @@ export function summarizePlaylistVideos(
   );
 }
 
+export function formatCompactPlaylistMetadata(
+  summary: PlaylistIndexSummary,
+): string {
+  const parts = [`${summary.total} videos`, `${summary.processed} processed`];
+
+  if (summary.pending > 0) {
+    parts.push(`${summary.pending} pending`);
+  }
+
+  if (summary.error > 0) {
+    parts.push(`${summary.error} error${summary.error === 1 ? "" : "s"}`);
+  }
+
+  if (summary.skipped > 0) {
+    parts.push(`${summary.skipped} skipped`);
+  }
+
+  return parts.join(" · ");
+}
+
 export function formatPlaylistProcessingSummary(
   summary: PlaylistIndexSummary,
 ): string {
@@ -530,6 +551,27 @@ export function formatPlaylistProcessingSummary(
   return parts.join(" · ");
 }
 
+function isCollectionIndexFilename(filename: string): boolean {
+  const lower = filename.toLowerCase();
+
+  return (
+    lower === "index.md" ||
+    lower.endsWith("-index.md") ||
+    lower === "playlist-index.md" ||
+    lower === "collection-index.md"
+  );
+}
+
+function hasCollectionIndexFilename(
+  relativePath: string | undefined,
+): boolean {
+  if (!relativePath) {
+    return false;
+  }
+
+  return isCollectionIndexFilename(relativePathFilename(relativePath));
+}
+
 export function isPlaylistIndexSummaryRecord(
   record: Pick<
     LifeLabNoteSummary,
@@ -537,6 +579,10 @@ export function isPlaylistIndexSummaryRecord(
   >,
 ): boolean {
   if (record.metadata?.type === "playlist-index") {
+    return true;
+  }
+
+  if (hasCollectionIndexFilename(record.relativePath)) {
     return true;
   }
 
@@ -557,6 +603,10 @@ export function isPlaylistIndexNote(input: {
   content?: string;
 }): boolean {
   if (input.metadata?.type === "playlist-index") {
+    return true;
+  }
+
+  if (hasCollectionIndexFilename(input.relativePath)) {
     return true;
   }
 
@@ -684,25 +734,83 @@ function summaryToNavLink(
   };
 }
 
-export function buildPlaylistNavigationFromVideoNotes(
+function findCollectionIndexForNote(
   records: LifeLabNoteSummary[],
-  videoNote: LifeLabNoteSummary,
-  sectionId: LifeLabSectionId,
-): PlaylistVideoNavigation | null {
-  const playlistName = videoNote.metadata?.playlist?.trim();
+  note: LifeLabNoteSummary,
+): LifeLabNoteSummary | null {
+  for (const record of records) {
+    if (!isPlaylistIndexSummaryRecord(record)) {
+      continue;
+    }
+
+    const contentNotes = listCollectionContentNotes(record, records);
+
+    if (contentNotes.some((entry) => entry.slug === note.slug)) {
+      return record;
+    }
+  }
+
+  const playlistName = note.metadata?.playlist?.trim().toLowerCase();
 
   if (!playlistName) {
     return null;
   }
 
+  for (const record of records) {
+    if (!isPlaylistIndexSummaryRecord(record)) {
+      continue;
+    }
+
+    const title = formatCollectionDisplayTitle({
+      title: record.title,
+      metadata: record.metadata,
+    });
+
+    if (title.toLowerCase() === playlistName) {
+      return record;
+    }
+  }
+
+  return null;
+}
+
+function listPlaylistMemberNotes(
+  records: LifeLabNoteSummary[],
+  videoNote: LifeLabNoteSummary,
+): LifeLabNoteSummary[] {
+  const indexNote = findCollectionIndexForNote(records, videoNote);
+
+  if (indexNote) {
+    const contentNotes = listCollectionContentNotes(indexNote, records);
+
+    if (contentNotes.length > 0) {
+      return contentNotes;
+    }
+  }
+
+  const playlistName = videoNote.metadata?.playlist?.trim();
+
+  if (!playlistName) {
+    return [];
+  }
+
   const playlistKey = playlistName.toLowerCase();
-  const playlistVideos = records
-    .filter(
-      (record) =>
-        isYoutubeVideoNote(record) &&
-        record.metadata?.playlist?.trim().toLowerCase() === playlistKey,
-    )
-    .sort(comparePlaylistVideoNotes);
+
+  return records.filter(
+    (record) =>
+      isYoutubeVideoNote(record) &&
+      record.metadata?.playlist?.trim().toLowerCase() === playlistKey,
+  );
+}
+
+export function buildPlaylistNavigationFromVideoNotes(
+  records: LifeLabNoteSummary[],
+  videoNote: LifeLabNoteSummary,
+  sectionId: LifeLabSectionId,
+): PlaylistVideoNavigation | null {
+  const playlistVideos = listPlaylistMemberNotes(records, videoNote).sort(
+    comparePlaylistVideoNotes,
+  );
 
   if (playlistVideos.length <= 1) {
     return null;
@@ -716,11 +824,22 @@ export function buildPlaylistNavigationFromVideoNotes(
     return null;
   }
 
-  const playlistIndexRecord = records.find(
-    (record) =>
-      isPlaylistIndexSummaryRecord(record) &&
-      record.metadata?.playlist?.trim().toLowerCase() === playlistKey,
-  );
+  const playlistName =
+    videoNote.metadata?.playlist?.trim() ??
+    formatCollectionDisplayTitle({
+      title: playlistVideos[0]?.title,
+      metadata: playlistVideos[0]?.metadata,
+    });
+  const playlistIndexRecord =
+    findCollectionIndexForNote(records, videoNote) ??
+    records.find(
+      (record) =>
+        isPlaylistIndexSummaryRecord(record) &&
+        formatCollectionDisplayTitle({
+          title: record.title,
+          metadata: record.metadata,
+        }).toLowerCase() === playlistName.toLowerCase(),
+    );
 
   const playlistIndexHref = playlistIndexRecord
     ? `/life-lab/${sectionId}/${playlistIndexRecord.slug}`

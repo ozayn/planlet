@@ -7,6 +7,7 @@ import {
   fetchFreshLifeLabHome,
   fetchFreshLifeLabNote,
   fetchFreshLifeLabSection,
+  fetchFreshPlaylistAssets,
   refreshLifeLabCache,
   refreshLifeLabNoteCache,
   refreshLifeLabPlaylistCache,
@@ -87,7 +88,31 @@ export async function refreshLifeLabNoteAction(input: {
     });
 
     if (isPlaylist) {
-      refreshLifeLabPlaylistCache(input.sectionId, input.slug, input.fileId);
+      await fetchFreshPlaylistAssets(input.sectionId, {
+        slug: input.slug,
+        title: note.title,
+        excerpt: note.excerpt,
+        fileId: input.fileId,
+        relativePath: input.relativePath ?? note.relativePath,
+        subfolderLabel: input.subfolderLabel ?? note.subfolderLabel,
+        metadata: input.metadata ?? note.metadata,
+        content: note.content,
+      });
+      await refreshLifeLabPlaylistCache(
+        input.sectionId,
+        input.slug,
+        input.fileId,
+        {
+          slug: input.slug,
+          title: note.title,
+          excerpt: note.excerpt,
+          fileId: input.fileId,
+          relativePath: input.relativePath ?? note.relativePath,
+          subfolderLabel: input.subfolderLabel ?? note.subfolderLabel,
+          metadata: input.metadata ?? note.metadata,
+          content: note.content,
+        },
+      );
     } else {
       refreshLifeLabNoteCache(input.sectionId, input.slug, input.fileId);
     }

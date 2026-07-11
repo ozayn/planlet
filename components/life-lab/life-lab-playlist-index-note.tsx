@@ -1,20 +1,33 @@
-import Link from "next/link";
+"use client";
 
-import { LifeLabNoteImageFigure } from "@/components/life-lab/life-lab-note-image";
+import Link from "next/link";
+import { ChevronRight } from "lucide-react";
+
+import {
+  LifeLabPlaylistAnalysis,
+  LifeLabPlaylistDebug,
+} from "@/components/life-lab/life-lab-playlist-artifacts";
+import { PlaylistVideoThumbnail } from "@/components/life-lab/playlist-video-thumbnail";
 import { MarkdownContent } from "@/components/life-lab/markdown-content";
 import type { LifeLabNote, LifeLabNoteSummary } from "@/lib/life-lab/constants";
+import type { PlaylistAssetsBundle } from "@/lib/life-lab/playlist-assets";
 import {
   enrichPlaylistVideoRows,
+  formatCompactPlaylistMetadata,
   parsePlaylistIndexNote,
   playlistVideoRowTitle,
-  type PlaylistIndexSummary,
   type PlaylistVideoRow,
-  type PlaylistVideoStatus,
 } from "@/lib/life-lab/playlist-index";
+import {
+  PLAYLIST_VIDEO_ROW_ICON_CLASS,
+  PlaylistSourceIcon,
+  PlaylistVideoStatusIcon,
+} from "@/lib/life-lab/playlist-video-icons";
 
 type LifeLabPlaylistIndexNoteProps = {
   note: LifeLabNote;
   relatedNotes?: LifeLabNoteSummary[];
+  playlistAssets?: (PlaylistAssetsBundle & { fromCache: boolean }) | null;
 };
 
 function stripUrlsForFallback(content: string): string {
@@ -28,63 +41,79 @@ function stripUrlsForFallback(content: string): string {
     .trim();
 }
 
-function StatusBadge({ status }: { status: PlaylistVideoStatus }) {
-  const label = status.charAt(0).toUpperCase() + status.slice(1);
-  const className =
-    status === "processed"
-      ? "border-border/70 bg-accent-cream/70 text-foreground"
-      : status === "error"
-        ? "border-border/80 text-foreground"
-        : "border-border/70 text-muted";
+function formatDurationLabel(duration: string | null): string | null {
+  if (!duration?.trim()) {
+    return null;
+  }
+
+  const trimmed = duration.trim();
+  const clockMatch = trimmed.match(/^(\d+):(\d{2})$/);
+
+  if (clockMatch) {
+    const minutes = Number.parseInt(clockMatch[1] ?? "0", 10);
+
+    return `${minutes} min`;
+  }
+
+  return trimmed;
+}
+
+function durationAriaLabel(duration: string | null): string | undefined {
+  const label = formatDurationLabel(duration);
+
+  return label ?? undefined;
+}
+
+function DurationCell({ video }: { video: PlaylistVideoRow }) {
+  const label = formatDurationLabel(video.duration);
+  const sourceIsLink = Boolean(video.videoUrl) && !video.noteHref;
+
+  if (!label && !video.videoUrl) {
+    return <span className="text-muted-light">—</span>;
+  }
 
   return (
-    <span
-      className={`inline-flex shrink-0 rounded-full border px-2 py-0.5 text-[0.6875rem] font-medium ${className}`}
-    >
-      {label}
+    <span className="inline-flex items-center gap-1 text-xs text-muted">
+      {video.videoUrl ? (
+        sourceIsLink ? (
+          <a
+            href={video.videoUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Open video source"
+            title="Open video source"
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => event.stopPropagation()}
+            className="inline-flex text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+          >
+            <PlaylistSourceIcon />
+          </a>
+        ) : (
+          <span className="inline-flex text-muted" aria-hidden="true">
+            <PlaylistSourceIcon />
+          </span>
+        )
+      ) : null}
+      {label ? (
+        <span aria-label={durationAriaLabel(video.duration)}>{label}</span>
+      ) : (
+        <span>—</span>
+      )}
     </span>
   );
 }
 
-function StatCard({
-  label,
-  value,
-  emphasis = false,
-}: {
-  label: string;
-  value: number;
-  emphasis?: boolean;
-}) {
+function RowChevron() {
   return (
-    <div
-      className={`rounded-xl border px-3 py-2.5 ${
-        emphasis
-          ? "border-border/80 bg-accent-cream/40"
-          : "border-border/60 bg-surface"
-      }`}
-    >
-      <p className="text-[0.6875rem] font-medium uppercase tracking-wide text-muted-light">
-        {label}
-      </p>
-      <p className="mt-0.5 text-lg font-semibold tabular-nums text-foreground">
-        {value}
-      </p>
-    </div>
+    <ChevronRight
+      className={`${PLAYLIST_VIDEO_ROW_ICON_CLASS} text-muted/0 transition-[color,transform] group-hover:text-muted group-focus-visible:text-muted`}
+      strokeWidth={2}
+      aria-hidden="true"
+    />
   );
 }
 
-function SummaryCards({ summary }: { summary: PlaylistIndexSummary }) {
-  return (
-    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-      <StatCard label="Total videos" value={summary.total} emphasis />
-      <StatCard label="Processed" value={summary.processed} />
-      <StatCard label="Pending" value={summary.pending} />
-      <StatCard label="Errors" value={summary.error} />
-    </div>
-  );
-}
-
-function ProgressRow({
+function IncompleteProgressBar({
   processed,
   total,
 }: {
@@ -94,110 +123,39 @@ function ProgressRow({
   const percent = total > 0 ? Math.round((processed / total) * 100) : 0;
 
   return (
-    <div className="space-y-1.5">
-      <div className="flex items-center justify-between gap-3 text-xs text-muted">
-        <span>
-          {processed} of {total} processed
-        </span>
-        <span>{percent}%</span>
-      </div>
+    <div
+      className="h-1 w-full overflow-hidden rounded-full bg-border/40"
+      role="progressbar"
+      aria-valuenow={processed}
+      aria-valuemin={0}
+      aria-valuemax={total}
+      aria-label={`Processed ${processed} of ${total} videos`}
+    >
       <div
-        className="h-1.5 w-full overflow-hidden rounded-full bg-border/40"
-        role="progressbar"
-        aria-valuenow={processed}
-        aria-valuemin={0}
-        aria-valuemax={total}
-        aria-label={`Processed ${processed} of ${total} videos`}
-      >
-        <div
-          className="h-full rounded-full bg-accent-cream transition-[width]"
-          style={{ width: `${percent}%` }}
-        />
-      </div>
+        className="h-full rounded-full bg-accent-cream transition-[width]"
+        style={{ width: `${percent}%` }}
+      />
     </div>
   );
 }
 
-function YoutubeLink({ href }: { href: string }) {
+function VideoTableHeader() {
   return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="inline-flex shrink-0 items-center justify-center rounded-full border border-border/70 p-1.5 text-muted transition-colors hover:bg-accent-cream/50 hover:text-foreground"
-      aria-label="Open on YouTube"
-      title="Open on YouTube"
+    <div
+      aria-hidden="true"
+      className="grid grid-cols-[2.25rem_6.5rem_minmax(0,1fr)_5.5rem_2.5rem_1rem] items-center gap-x-3 border-b border-border/60 px-2 pb-2 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-light"
     >
-      <svg
-        viewBox="0 0 24 24"
-        className="h-3.5 w-3.5"
-        fill="currentColor"
-        aria-hidden="true"
-      >
-        <path d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.5 12 3.5 12 3.5s-7.5 0-9.4.6A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.75 15.02V8.98L15.5 12l-5.75 3.02Z" />
-      </svg>
-    </a>
+      <span>#</span>
+      <span />
+      <span>Title</span>
+      <span>Duration</span>
+      <span className="text-center">Status</span>
+      <span />
+    </div>
   );
 }
 
-function NoteAction({ video }: { video: PlaylistVideoRow }) {
-  if (video.noteHref) {
-    return (
-      <Link
-        href={video.noteHref}
-        className="inline-flex rounded-full bg-accent-cream px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent-cream/80"
-      >
-        Open note
-      </Link>
-    );
-  }
-
-  if (video.status === "pending") {
-    return (
-      <span className="text-xs font-medium text-muted">Pending</span>
-    );
-  }
-
-  return (
-    <span className="text-xs font-medium text-muted">No note yet</span>
-  );
-}
-
-function VideoThumbnail({
-  video,
-  className,
-}: {
-  video: PlaylistVideoRow;
-  className?: string;
-}) {
-  if (!video.thumbnail) {
-    return null;
-  }
-
-  return (
-    <LifeLabNoteImageFigure
-      image={video.thumbnail}
-      variant="thumbnail"
-      fallbackTitle={video.title}
-      className={className}
-    />
-  );
-}
-
-function formatMobileVideoMetadata(
-  video: PlaylistVideoRow,
-  index: number,
-): string {
-  const parts = [
-    video.episode ? `EP ${video.episode}` : `#${index + 1}`,
-    video.duration,
-    video.status.charAt(0).toUpperCase() + video.status.slice(1),
-  ].filter(Boolean);
-
-  return parts.join(" · ");
-}
-
-function MobileVideoCard({
+function VideoTableRow({
   video,
   index,
 }: {
@@ -205,104 +163,146 @@ function MobileVideoCard({
   index: number;
 }) {
   const title = playlistVideoRowTitle(video);
-  const metadata = formatMobileVideoMetadata(video, index);
+  const episode = video.episode ?? String(index + 1);
+  const clickable = Boolean(video.noteHref);
+
+  const rowClassName = `group grid grid-cols-[2.25rem_6.5rem_minmax(0,1fr)_5.5rem_2.5rem_1rem] items-center gap-x-3 border-b border-border/30 px-2 py-2.5 transition-colors ${
+    clickable
+      ? "cursor-pointer hover:bg-accent-cream/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-border"
+      : ""
+  }`;
+
+  const rowContent = (
+    <>
+      <span className="text-xs tabular-nums text-muted-light">{episode}</span>
+      <PlaylistVideoThumbnail image={video.thumbnail} title={title} />
+      <span className="min-w-0 text-sm font-semibold leading-snug text-foreground">
+        {title}
+      </span>
+      <DurationCell video={video} />
+      <span className="flex justify-center">
+        <PlaylistVideoStatusIcon status={video.status} />
+      </span>
+      <span className="flex justify-end">
+        {clickable ? <RowChevron /> : null}
+      </span>
+    </>
+  );
+
+  if (clickable && video.noteHref) {
+    return (
+      <Link
+        href={video.noteHref}
+        aria-label={`Open note: ${title}`}
+        className={rowClassName}
+      >
+        {rowContent}
+      </Link>
+    );
+  }
+
+  return <div className={rowClassName}>{rowContent}</div>;
+}
+
+function VideoTable({ videos }: { videos: PlaylistVideoRow[] }) {
+  return (
+    <div className="hidden md:block">
+      <VideoTableHeader />
+      <div>
+        {videos.map((video, index) => (
+          <VideoTableRow
+            key={`${video.episode ?? index}-${video.title}`}
+            video={video}
+            index={index}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function MobileVideoRow({ video }: { video: PlaylistVideoRow }) {
+  const title = playlistVideoRowTitle(video);
+  const duration = formatDurationLabel(video.duration);
+  const clickable = Boolean(video.noteHref);
+  const metadata = [
+    video.videoUrl ? (
+      clickable ? (
+        <span key="source" className="inline-flex text-muted" aria-hidden="true">
+          <PlaylistSourceIcon />
+        </span>
+      ) : (
+        <a
+          key="source"
+          href={video.videoUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Open video source"
+          title="Open video source"
+          className="inline-flex text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border focus-visible:ring-offset-1 focus-visible:ring-offset-background"
+        >
+          <PlaylistSourceIcon />
+        </a>
+      )
+    ) : null,
+    duration ? (
+      <span key="duration" aria-label={durationAriaLabel(video.duration)}>
+        {duration}
+      </span>
+    ) : null,
+    <PlaylistVideoStatusIcon key="status" status={video.status} />,
+  ]
+    .filter(Boolean)
+    .map((item, itemIndex) => (
+      <span key={itemIndex} className="inline-flex items-center">
+        {itemIndex > 0 ? (
+          <span aria-hidden="true" className="px-1 text-muted-light">
+            ·
+          </span>
+        ) : null}
+        {item}
+      </span>
+    ));
+
   const content = (
-    <div className="flex items-start gap-2.5">
-      <VideoThumbnail
-        video={video}
-        className="h-12 w-12 sm:h-14 sm:w-14"
+    <div className="flex items-start gap-3">
+      <PlaylistVideoThumbnail
+        image={video.thumbnail}
+        title={title}
+        className="w-[5.5rem]"
       />
-      <div className="min-w-0 flex-1 space-y-0.5">
-        <p className="text-[0.6875rem] leading-snug text-muted-light">
-          {metadata}
-        </p>
-        <p className="line-clamp-2 text-sm font-medium leading-snug text-foreground">
-          {title}
-        </p>
+      <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
+        <div className="min-w-0 flex-1 space-y-1">
+          <p className="text-sm font-semibold leading-snug text-foreground">
+            {title}
+          </p>
+          <p className="inline-flex flex-wrap items-center text-xs text-muted">
+            {metadata}
+          </p>
+        </div>
+        {clickable ? <RowChevron /> : null}
       </div>
     </div>
   );
 
-  if (video.noteHref) {
+  if (!clickable || !video.noteHref) {
     return (
-      <li>
-        <Link
-          href={video.noteHref}
-          aria-label={`Open note: ${title}`}
-          className="block rounded-xl border border-border/60 bg-surface p-2.5 transition-colors hover:bg-accent-cream/20 active:bg-accent-cream/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
-        >
-          {content}
-        </Link>
+      <li className="rounded-lg border border-border/50 px-3 py-2.5">
+        {content}
       </li>
     );
   }
 
   return (
-    <li className="rounded-xl border border-border/60 bg-surface p-2.5">
-      {content}
-    </li>
-  );
-}
-
-function VideoTitle({ video }: { video: PlaylistVideoRow }) {
-  const title = playlistVideoRowTitle(video);
-
-  if (video.noteHref) {
-    return (
+    <li>
       <Link
         href={video.noteHref}
-        className="font-medium text-foreground transition-colors hover:text-muted"
+        aria-label={`Open note: ${title}`}
+        className="group block cursor-pointer rounded-lg border border-border/50 px-3 py-2.5 transition-colors hover:bg-accent-cream/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border"
       >
-        {title}
+        {content}
       </Link>
-    );
-  }
-
-  return <span className="font-medium text-foreground">{title}</span>;
-}
-
-function VideoTable({ videos }: { videos: PlaylistVideoRow[] }) {
-  return (
-    <div className="hidden overflow-x-auto md:block">
-      <table className="w-full min-w-[36rem] border-separate border-spacing-0 text-sm">
-        <thead>
-          <tr className="text-left text-[0.6875rem] font-semibold uppercase tracking-wide text-muted-light">
-            <th className="border-b border-border/60 pb-2 pr-3 font-semibold">#</th>
-            <th className="border-b border-border/60 pb-2 pr-3 font-semibold">Title</th>
-            <th className="border-b border-border/60 pb-2 pr-3 font-semibold">Duration</th>
-            <th className="border-b border-border/60 pb-2 pr-3 font-semibold">Status</th>
-            <th className="border-b border-border/60 pb-2 font-semibold">Note</th>
-          </tr>
-        </thead>
-        <tbody>
-          {videos.map((video, index) => (
-            <tr key={`${video.episode ?? index}-${video.title}`} className="align-top">
-              <td className="border-b border-border/40 py-3 pr-3 text-muted">
-                {video.episode ?? index + 1}
-              </td>
-              <td className="border-b border-border/40 py-3 pr-3">
-                <div className="flex min-w-0 items-start gap-2">
-                  <VideoThumbnail video={video} />
-                  <div className="min-w-0 flex-1 leading-snug">
-                    <VideoTitle video={video} />
-                  </div>
-                  {video.videoUrl ? <YoutubeLink href={video.videoUrl} /> : null}
-                </div>
-              </td>
-              <td className="border-b border-border/40 py-3 pr-3 text-muted">
-                {video.duration ?? "—"}
-              </td>
-              <td className="border-b border-border/40 py-3 pr-3">
-                <StatusBadge status={video.status} />
-              </td>
-              <td className="border-b border-border/40 py-3">
-                <NoteAction video={video} />
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
+    </li>
   );
 }
 
@@ -310,25 +310,96 @@ function VideoCards({ videos }: { videos: PlaylistVideoRow[] }) {
   return (
     <ul className="space-y-2 md:hidden">
       {videos.map((video, index) => (
-        <MobileVideoCard
+        <MobileVideoRow
           key={`${video.episode ?? index}-${video.title}-mobile`}
           video={video}
-          index={index}
         />
       ))}
     </ul>
   );
 }
 
+function PlaylistTechnicalDetails({
+  sourcePath,
+  playlistUrl,
+  transcriptStatus,
+  noteFilenames,
+  rawVideosTable,
+}: {
+  sourcePath: string | null;
+  playlistUrl: string | null;
+  transcriptStatus: string | null;
+  noteFilenames: Array<string | null>;
+  rawVideosTable: string | null;
+}) {
+  return (
+    <div className="space-y-3">
+      {sourcePath ? (
+        <div className="space-y-1">
+          <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
+            Source path
+          </p>
+          <p className="break-all font-mono text-xs text-muted">{sourcePath}</p>
+        </div>
+      ) : null}
+      {playlistUrl ? (
+        <div className="space-y-1">
+          <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
+            Playlist URL
+          </p>
+          <p className="break-all font-mono text-xs text-muted">{playlistUrl}</p>
+        </div>
+      ) : null}
+      {transcriptStatus ? (
+        <div className="space-y-1">
+          <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
+            Transcript / captions
+          </p>
+          <p className="text-xs text-muted">{transcriptStatus}</p>
+        </div>
+      ) : null}
+      <div className="space-y-1">
+        <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
+          Note filenames
+        </p>
+        <ul className="space-y-1 font-mono text-xs text-muted">
+          {noteFilenames.map((filename, index) => (
+            <li key={`${filename ?? "missing"}-${index}`}>{filename ?? "—"}</li>
+          ))}
+        </ul>
+      </div>
+      {rawVideosTable ? (
+        <div className="space-y-1">
+          <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
+            Raw table
+          </p>
+          <pre className="overflow-x-auto whitespace-pre-wrap break-all rounded-lg border border-border/50 bg-surface p-3 font-mono text-[0.6875rem] leading-relaxed text-muted">
+            {rawVideosTable}
+          </pre>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 export function LifeLabPlaylistIndexNote({
   note,
   relatedNotes = [],
+  playlistAssets = null,
 }: LifeLabPlaylistIndexNoteProps) {
   const display = parsePlaylistIndexNote(note);
   const videos = enrichPlaylistVideoRows(display.videos, relatedNotes);
+  const hasSummaryAsset = playlistAssets?.artifacts.some(
+    (asset) => asset.id === "summary" && !asset.unavailable,
+  );
+  const fallbackContent = stripUrlsForFallback(
+    playlistAssets?.strippedIndexBody ?? note.content,
+  );
+  const showIncompleteProgress =
+    display.summary.processed < display.summary.total;
 
   if (!display.parseSucceeded) {
-    return <MarkdownContent content={stripUrlsForFallback(note.content)} />;
+    return <MarkdownContent content={fallbackContent} />;
   }
 
   return (
@@ -367,36 +438,22 @@ export function LifeLabPlaylistIndexNote({
           </div>
 
           <p className="text-xs text-muted">
-            {[
-              display.channel,
-              display.dateLabel,
-              `${display.summary.total} videos`,
-              `${display.summary.processed} processed`,
-              display.summary.pending > 0
-                ? `${display.summary.pending} pending`
-                : null,
-              display.summary.error > 0
-                ? `${display.summary.error} error${display.summary.error === 1 ? "" : "s"}`
-                : null,
-              display.summary.skipped > 0
-                ? `${display.summary.skipped} skipped`
-                : null,
-            ]
+            {[display.channel, display.dateLabel, formatCompactPlaylistMetadata(display.summary)]
               .filter(Boolean)
               .join(" · ")}
           </p>
 
-          {display.focus ? (
+          {display.focus && !hasSummaryAsset ? (
             <p className="text-sm leading-relaxed text-muted">{display.focus}</p>
           ) : null}
+
+          {showIncompleteProgress ? (
+            <IncompleteProgressBar
+              processed={display.summary.processed}
+              total={display.summary.total}
+            />
+          ) : null}
         </div>
-
-        <SummaryCards summary={display.summary} />
-
-        <ProgressRow
-          processed={display.summary.processed}
-          total={display.summary.total}
-        />
       </header>
 
       <section className="space-y-3">
@@ -405,84 +462,23 @@ export function LifeLabPlaylistIndexNote({
         <VideoCards videos={videos} />
       </section>
 
-      {display.batchNotes.length > 0 ? (
-        <section className="rounded-xl border border-border/60 bg-accent-cream/20 p-3 md:p-4">
-          <h2 className="mb-2 text-sm font-semibold text-foreground">
-            Batch notes
-          </h2>
-          <ul className="space-y-1.5">
-            {display.batchNotes.map((item) => (
-              <li
-                key={item}
-                className="flex gap-2 text-sm leading-relaxed text-foreground"
-              >
-                <span className="shrink-0 text-muted" aria-hidden="true">
-                  •
-                </span>
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
+      {playlistAssets ? (
+        <LifeLabPlaylistAnalysis bundle={playlistAssets} />
       ) : null}
 
-      <details className="ui-settings-details group">
-        <summary className="ui-settings-details-summary">
-          Technical details
-        </summary>
-        <div className="ui-settings-details-body space-y-3">
-          {display.sourcePath ? (
-            <div className="space-y-1">
-              <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
-                Source path
-              </p>
-              <p className="break-all font-mono text-xs text-muted">
-                {display.sourcePath}
-              </p>
-            </div>
-          ) : null}
-          {display.playlistUrl ? (
-            <div className="space-y-1">
-              <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
-                Playlist URL
-              </p>
-              <p className="break-all font-mono text-xs text-muted">
-                {display.playlistUrl}
-              </p>
-            </div>
-          ) : null}
-          {display.transcriptStatus ? (
-            <div className="space-y-1">
-              <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
-                Transcript / captions
-              </p>
-              <p className="text-xs text-muted">{display.transcriptStatus}</p>
-            </div>
-          ) : null}
-          <div className="space-y-1">
-            <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
-              Note filenames
-            </p>
-            <ul className="space-y-1 font-mono text-xs text-muted">
-              {display.videos.map((video) => (
-                <li key={`${video.title}-filename`}>
-                  {video.noteFilename ?? "—"}
-                </li>
-              ))}
-            </ul>
-          </div>
-          {display.rawVideosTable ? (
-            <div className="space-y-1">
-              <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
-                Raw table
-              </p>
-              <pre className="overflow-x-auto whitespace-pre-wrap break-all rounded-lg border border-border/50 bg-surface p-3 font-mono text-[0.6875rem] leading-relaxed text-muted">
-                {display.rawVideosTable}
-              </pre>
-            </div>
-          ) : null}
-        </div>
-      </details>
+      <LifeLabPlaylistDebug
+        bundle={playlistAssets}
+        batchNotes={display.batchNotes}
+        technicalDetails={
+          <PlaylistTechnicalDetails
+            sourcePath={display.sourcePath}
+            playlistUrl={display.playlistUrl}
+            transcriptStatus={display.transcriptStatus}
+            noteFilenames={display.videos.map((video) => video.noteFilename)}
+            rawVideosTable={display.rawVideosTable}
+          />
+        }
+      />
     </div>
   );
 }

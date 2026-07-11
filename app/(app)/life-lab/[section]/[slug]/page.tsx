@@ -13,7 +13,7 @@ import { LifeLabNoteImageFigure } from "@/components/life-lab/life-lab-note-imag
 import { LifeLabNoteDevInfoPanel } from "@/components/life-lab/life-lab-note-dev-info-panel";
 import { LifeLabRefreshButton } from "@/components/life-lab/life-lab-refresh-button";
 import { LifeLabStatusPanel } from "@/components/life-lab/life-lab-status-panel";
-import { getLifeLabNoteData, getLifeLabSectionData, getYoutubeVideoPlaylistNavigation } from "@/lib/life-lab";
+import { getLifeLabNoteData, getLifeLabSectionData, getPlaylistAssetsForIndexNote, getYoutubeVideoPlaylistNavigation } from "@/lib/life-lab";
 import { isLifeLabOpenAiTtsEnabled } from "@/lib/env";
 import { getLifeLabReadAloudPreferencesForUser } from "@/lib/life-lab/read-aloud-preferences";
 import { canUseLifeLabRefreshBypass } from "@/lib/life-lab/cache";
@@ -73,6 +73,12 @@ export default async function LifeLabNotePage({
     isPlaylistIndex && note.sectionId === "youtube-learning"
       ? (await getLifeLabSectionData(note.sectionId)).notes
       : [];
+  const playlistAssets =
+    isPlaylistIndex && note.sectionId === "youtube-learning"
+      ? await getPlaylistAssetsForIndexNote(note.sectionId, note, {
+          refresh: shouldRefresh,
+        })
+      : null;
   const readAloudPreferences = await getLifeLabReadAloudPreferencesForUser(
     session.user.id,
   );
@@ -145,7 +151,11 @@ export default async function LifeLabNotePage({
                 flashcards={note.flashcards}
               />
             ) : isPlaylistIndex ? (
-              <LifeLabPlaylistIndexNote note={note} relatedNotes={relatedNotes} />
+              <LifeLabPlaylistIndexNote
+                note={note}
+                relatedNotes={relatedNotes}
+                playlistAssets={playlistAssets}
+              />
             ) : (
               <>
                 {hasDictionarySections ? (

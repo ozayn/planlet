@@ -7,6 +7,9 @@ import {
   getLifeLabNoteCacheSeconds,
   lifeLabCacheExpiresAt,
   lifeLabNoteCacheTag,
+  lifeLabPlaylistAssetCacheTag,
+  lifeLabPlaylistAssetsCacheTag,
+  lifeLabPlaylistLearningMapCacheTag,
   lifeLabPlaylistCacheTag,
   lifeLabRefreshFailureMessage,
   lifeLabSectionCacheTag,
@@ -31,6 +34,14 @@ describe("life lab cache helpers", () => {
     assert.equal(
       lifeLabPlaylistCacheTag("youtube-learning", "playlists__great-art"),
       "life-lab:playlist:youtube-learning:playlists__great-art",
+    );
+    assert.equal(
+      lifeLabPlaylistAssetsCacheTag("plwxnmb28xmpeypjmhfnbj4rafkrtman3p"),
+      "life-lab:playlist-assets:plwxnmb28xmpeypjmhfnbj4rafkrtman3p",
+    );
+    assert.equal(
+      lifeLabPlaylistLearningMapCacheTag("plwxnmb28xmpeypjmhfnbj4rafkrtman3p"),
+      "life-lab:playlist-learning-map:plwxnmb28xmpeypjmhfnbj4rafkrtman3p",
     );
   });
 
@@ -145,6 +156,7 @@ describe("life lab listing cache keys", () => {
   it("uses stable section and note cache keys to avoid duplicate Drive calls", () => {
     const sectionId = "youtube-learning";
     const fileId = "drive-file-1";
+    const playlistId = "plwxnmb28xmpeypjmhfnbj4rafkrtman3p";
 
     assert.equal(
       `life-lab-section-file-index-${sectionId}`,
@@ -153,6 +165,10 @@ describe("life lab listing cache keys", () => {
     assert.equal(
       `life-lab-note-payload-${fileId}`,
       "life-lab-note-payload-drive-file-1",
+    );
+    assert.equal(
+      `life-lab-playlist-assets-${sectionId}-${playlistId}-playlists__western-philosophy-index`,
+      "life-lab-playlist-assets-youtube-learning-plwxnmb28xmpeypjmhfnbj4rafkrtman3p-playlists__western-philosophy-index",
     );
   });
 });

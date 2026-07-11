@@ -72,6 +72,12 @@ export const SPEECH_BROWSER_FALLBACK_MESSAGE =
 export const SPEECH_VOICE_SELECTION_FALLBACK_MESSAGE =
   "That voice didn't work here. Switched back to Auto.";
 
+export const SPEECH_VOICES_LOAD_TIMEOUT_MS = 1500;
+
+export function formatVoiceUnavailableMessage(fallbackLabel: string): string {
+  return `Your selected device voice is unavailable on this device. Using ${fallbackLabel}.`;
+}
+
 export type SpeechRate = (typeof SPEECH_RATE_OPTIONS)[number];
 
 export type SpeechCancelReason = "stop" | "replace" | "unmount" | null;
@@ -215,7 +221,11 @@ export function listAllDeviceSpeechVoices(
 ): ListedSelectableSpeechVoice[] {
   return sortVoicesForDropdown(
     voices.filter((voice) => !isNoveltySpeechVoice(voice)),
-  ).map((voice) => toListedSelectableSpeechVoice(voice));
+  ).map((voice) => ({
+    id: encodeDeviceVoiceId(voice),
+    label: `${voice.name} (${normalizeSpeechLang(voice.lang)})`,
+    voice,
+  }));
 }
 
 export function listSelectableSpeechVoices(
@@ -473,6 +483,173 @@ export function resolveSpeechVoice(
   return findSelectableSpeechVoiceById(voices, selectedVoiceId);
 }
 
+// Voices may be empty on first paint (Chrome/macOS) and arrive later via the
+// "voiceschanged" event. Resolve only once the list is populated, with a short
+// timeout fallback so playback is never blocked indefinitely.
+export function loadSpeechSynthesisVoices(
+  timeoutMs = SPEECH_VOICES_LOAD_TIMEOUT_MS,
+): Promise<SpeechSynthesisVoice[]> {
+  if (!isSpeechSynthesisSupported()) {
+    return Promise.resolve([]);
+  }
+
+  const existing = window.speechSynthesis.getVoices();
+
+  if (existing.length > 0) {
+    return Promise.resolve(existing);
+  }
+
+  return new Promise((resolve) => {
+    let settled = false;
+
+    function finish(voices: SpeechSynthesisVoice[]): void {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      window.speechSynthesis.removeEventListener("voiceschanged", onChange);
+      window.clearTimeout(timer);
+      resolve(voices);
+    }
+
+    function onChange(): void {
+      finish(window.speechSynthesis.getVoices());
+    }
+
+    window.speechSynthesis.addEventListener("voiceschanged", onChange);
+    const timer = window.setTimeout(
+      () => finish(window.speechSynthesis.getVoices()),
+      timeoutMs,
+    );
+  });
+}
+
+// Stable device-voice identity. We store voiceURI, name, and lang (never an
+// array index) so a saved selection survives reloads and voiceschanged
+// reordering. Google/system preference options keep their synthetic ids.
+const DEVICE_VOICE_ID_PREFIX = "device:";
+const DEVICE_VOICE_ID_SEPARATOR = "\u0001";
+
+export type DeviceVoiceIdentity = {
+  voiceURI: string;
+  name: string;
+  lang: string;
+};
+
+export function encodeDeviceVoiceId(voice: SpeechSynthesisVoice): string {
+  const parts = [voice.voiceURI ?? "", voice.name ?? "", voice.lang ?? ""];
+  return `${DEVICE_VOICE_ID_PREFIX}${parts.join(DEVICE_VOICE_ID_SEPARATOR)}`;
+}
+
+export function decodeDeviceVoiceId(
+  voiceId: string,
+): DeviceVoiceIdentity | null {
+  if (!voiceId.startsWith(DEVICE_VOICE_ID_PREFIX)) {
+    return null;
+  }
+
+  const [voiceURI = "", name = "", lang = ""] = voiceId
+    .slice(DEVICE_VOICE_ID_PREFIX.length)
+    .split(DEVICE_VOICE_ID_SEPARATOR);
+
+  return { voiceURI, name, lang };
+}
+
+function pickPreferredVoiceForLang(
+  voices: SpeechSynthesisVoice[],
+  lang: string,
+): SpeechSynthesisVoice | null {
+  const primary = normalizeSpeechLang(lang).split("-")[0];
+
+  if (!primary) {
+    return null;
+  }
+
+  const langVoices = voices.filter(
+    (voice) =>
+      normalizeSpeechLang(voice.lang).startsWith(primary) &&
+      !isNoveltySpeechVoice(voice),
+  );
+
+  if (langVoices.length === 0) {
+    return null;
+  }
+
+  for (const rule of VOICE_PREFERENCE_RULES) {
+    const match = pickFirstMatchingVoice(langVoices, (voice) =>
+      matchesVoicePreferenceRule(voice, rule),
+    );
+
+    if (match) {
+      return match;
+    }
+  }
+
+  return (
+    pickFirstMatchingVoice(langVoices, (voice) => !isRoboticSpeechVoice(voice)) ??
+    langVoices[0]
+  );
+}
+
+export type ResolvedDeviceVoice = {
+  voice: SpeechSynthesisVoice | null;
+  usedFallback: boolean;
+};
+
+// Resolution order (per requirement): exact voiceURI, exact name+lang, same
+// language + preference, then a deterministic device fallback. Returns whether a
+// fallback was used so the UI can surface a clear notice instead of silently
+// switching to an unrelated voice.
+export function resolveDeviceVoiceWithFallback(
+  voices: SpeechSynthesisVoice[],
+  selectedVoiceId: string,
+): ResolvedDeviceVoice {
+  if (selectedVoiceId === SPEECH_AUTO_VOICE_ID) {
+    return { voice: pickSpeechVoice(voices), usedFallback: false };
+  }
+
+  const decoded = decodeDeviceVoiceId(selectedVoiceId);
+
+  if (decoded) {
+    if (decoded.voiceURI) {
+      const byUri = voices.find(
+        (voice) => voice.voiceURI === decoded.voiceURI,
+      );
+
+      if (byUri && !isNoveltySpeechVoice(byUri)) {
+        return { voice: byUri, usedFallback: false };
+      }
+    }
+
+    const byNameLang = voices.find(
+      (voice) =>
+        voice.name === decoded.name &&
+        normalizeSpeechLang(voice.lang) === normalizeSpeechLang(decoded.lang),
+    );
+
+    if (byNameLang && !isNoveltySpeechVoice(byNameLang)) {
+      return { voice: byNameLang, usedFallback: false };
+    }
+
+    const preferred = pickPreferredVoiceForLang(voices, decoded.lang);
+
+    if (preferred) {
+      return { voice: preferred, usedFallback: true };
+    }
+
+    return { voice: pickSpeechVoice(voices), usedFallback: true };
+  }
+
+  const legacy = findSelectableSpeechVoiceById(voices, selectedVoiceId);
+
+  if (legacy) {
+    return { voice: legacy, usedFallback: false };
+  }
+
+  return { voice: pickSpeechVoice(voices), usedFallback: true };
+}
+
 const BARE_HTTPS_URL_PATTERN = /https?:\/\/[^\s<>"')\]]+/gi;
 const BARE_WWW_URL_PATTERN = /\bwww\.[^\s<>"')\]]+/gi;
 const ANGLE_BRACKET_URL_PATTERN = /<https?:\/\/[^>]+>/gi;
@@ -674,6 +851,8 @@ export function formatSpeechRate(rate: SpeechRate): string {
 
 export type SpeechUtteranceOptions = {
   rate?: number;
+  pitch?: number;
+  volume?: number;
   lang?: string;
   voice?: SpeechSynthesisVoice | null;
 };
@@ -683,10 +862,11 @@ export function createSpeechUtterance(
   options: SpeechUtteranceOptions = {},
 ): SpeechSynthesisUtterance {
   const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = options.lang ?? DEFAULT_SPEECH_LANG;
+  // Always assign every property explicitly; never rely on browser defaults.
+  utterance.lang = options.lang ?? options.voice?.lang ?? DEFAULT_SPEECH_LANG;
   utterance.rate = options.rate ?? DEFAULT_SPEECH_RATE;
-  utterance.pitch = 1;
-  utterance.volume = 1;
+  utterance.pitch = options.pitch ?? 1;
+  utterance.volume = options.volume ?? 1;
 
   if (options.voice) {
     utterance.voice = options.voice;

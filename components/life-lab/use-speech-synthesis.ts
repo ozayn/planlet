@@ -7,15 +7,17 @@ import {
   createSpeechUtterance,
   detectSpeechBrowserName,
   DEFAULT_SPEECH_RATE,
+  formatSpeechVoiceLabel,
+  formatVoiceUnavailableMessage,
   getSpeechVoiceCount,
   isSpeechSynthesisSupported,
   listSelectableSpeechVoices,
+  loadSpeechSynthesisVoices,
   logSpeechSynthesisError,
   plainTextToSpeechText,
   primeSpeechSynthesis,
   readStoredSpeechVoiceId,
-  resolveSpeechVoice,
-  findSelectableSpeechVoiceById,
+  resolveDeviceVoiceWithFallback,
   SPEECH_AUTO_VOICE_ID,
   SPEECH_START_TIMEOUT_MS,
   SPEECH_VOICE_SELECTION_FALLBACK_MESSAGE,
@@ -44,6 +46,9 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
   const [voiceFallbackNotice, setVoiceFallbackNotice] = useState<string | null>(
     null,
   );
+  const [voiceUnavailableNotice, setVoiceUnavailableNotice] = useState<
+    string | null
+  >(null);
   const [lastError, setLastError] = useState<string | null>(null);
   const [voiceCount, setVoiceCount] = useState(0);
   const [selectableVoices, setSelectableVoices] = useState<
@@ -61,6 +66,7 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
   );
   const sessionVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
   const sessionUsesVoiceRef = useRef(false);
+  const sessionActiveRef = useRef(false);
   const rateRef = useRef<SpeechRate>(rate);
   const sequenceIndexRef = useRef(0);
   const sequenceRef = useRef<string[]>([]);
@@ -100,6 +106,7 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
     setSelectedVoiceIdState(voiceId);
     writeStoredSpeechVoiceId(voiceId);
     setVoiceFallbackNotice(null);
+    setVoiceUnavailableNotice(null);
   }, []);
 
   const resetToAutoVoice = useCallback(() => {
@@ -133,9 +140,15 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
       setVoiceCount(voices.length);
       setSelectableVoices(listSelectableSpeechVoices(voices));
 
+      // Never disturb the selection or the locked session voice while playback
+      // is active. voiceschanged only refreshes the Settings list mid-session.
+      if (sessionActiveRef.current) {
+        return;
+      }
+
       if (
         selectedVoiceIdRef.current !== SPEECH_AUTO_VOICE_ID &&
-        !findSelectableSpeechVoiceById(voices, selectedVoiceIdRef.current)
+        !resolveDeviceVoiceWithFallback(voices, selectedVoiceIdRef.current).voice
       ) {
         resetToAutoVoice();
       }
@@ -180,6 +193,7 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
     sequenceIndexRef.current = 0;
     sessionVoiceRef.current = null;
     sessionUsesVoiceRef.current = false;
+    sessionActiveRef.current = false;
     activeUtteranceRef.current = null;
 
     if (activeSpeechOwnerId === instanceId) {
@@ -214,6 +228,9 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
 
       const utterance = createSpeechUtterance(text, {
         rate: rateRef.current,
+        pitch: 1,
+        volume: 1,
+        lang: voice?.lang,
         voice,
       });
 
@@ -234,6 +251,7 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
         recordSpeechFailure("Speech did not start");
         activeUtteranceRef.current = null;
         activeSpeechOwnerId = null;
+        sessionActiveRef.current = false;
         window.speechSynthesis.cancel();
         clearSpeakingState();
       }, SPEECH_START_TIMEOUT_MS);
@@ -285,23 +303,39 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
         }
 
         if (voice && allowVoiceRetry) {
-          const usedManualVoice =
-            selectedVoiceIdRef.current !== SPEECH_AUTO_VOICE_ID;
+          const voices = window.speechSynthesis.getVoices();
+          const fallback = resolveDeviceVoiceWithFallback(
+            voices,
+            SPEECH_AUTO_VOICE_ID,
+          ).voice;
 
-          sessionUsesVoiceRef.current = false;
-          sessionVoiceRef.current = null;
+          // Lock a deterministic fallback for the rest of the session instead of
+          // letting each remaining chunk drift to the browser default. Keep the
+          // user's saved selection untouched so it retries next session.
+          sessionVoiceRef.current = fallback;
+          sessionUsesVoiceRef.current = fallback !== null;
 
-          if (usedManualVoice) {
-            resetToAutoVoice();
+          if (
+            selectedVoiceIdRef.current !== SPEECH_AUTO_VOICE_ID &&
+            isMountedRef.current
+          ) {
+            setVoiceUnavailableNotice(
+              formatVoiceUnavailableMessage(
+                fallback
+                  ? formatSpeechVoiceLabel(fallback)
+                  : "the default voice",
+              ),
+            );
           }
 
-          speakChunk(text, generation, false, onComplete, false);
+          speakChunk(text, generation, fallback !== null, onComplete, false);
           return;
         }
 
         recordSpeechFailure(event.error || "Speech failed");
         activeUtteranceRef.current = null;
         activeSpeechOwnerId = null;
+        sessionActiveRef.current = false;
         clearSpeakingState();
       };
 
@@ -313,7 +347,6 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
       instanceId,
       recordSpeechFailure,
       recordSpeechSuccess,
-      resetToAutoVoice,
     ],
   );
 
@@ -331,19 +364,20 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
           activeSpeechOwnerId === instanceId
         ) {
           activeSpeechOwnerId = null;
+          sessionActiveRef.current = false;
           clearSpeakingState();
         }
 
         return;
       }
 
-      const useAssignedVoice =
-        sequenceIndexRef.current === 0 && sessionUsesVoiceRef.current;
-
+      // Assign the locked session voice to EVERY chunk, not just the first.
+      // Otherwise chunks 2..N fall back to the browser default (often a male
+      // voice), which is the cause of the mid-note voice switch.
       speakChunk(
         nextText,
         generation,
-        useAssignedVoice,
+        sessionUsesVoiceRef.current,
         () => {
           sequenceIndexRef.current += 1;
           speakNextInSequence(generation);
@@ -355,7 +389,7 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
   );
 
   const beginSpeechSession = useCallback(
-    (segments: string[]) => {
+    async (segments: string[]) => {
       clearStartTimeout();
       intentionalCancelRef.current = "replace";
 
@@ -363,22 +397,39 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
         window.speechSynthesis.cancel();
       }
 
-      const voices = window.speechSynthesis.getVoices();
-      let voiceId = selectedVoiceIdRef.current;
-      let resolvedVoice = resolveSpeechVoice(voices, voiceId);
+      // Wait for the voice list to populate before resolving the intended voice.
+      // Do not begin playback until the voice is resolved.
+      const voices = await loadSpeechSynthesisVoices();
 
-      if (voiceId !== SPEECH_AUTO_VOICE_ID && !resolvedVoice) {
-        resetToAutoVoice();
-        voiceId = SPEECH_AUTO_VOICE_ID;
-        resolvedVoice = resolveSpeechVoice(voices, voiceId);
+      if (!isMountedRef.current) {
+        return;
       }
 
+      const voiceId = selectedVoiceIdRef.current;
+      const { voice: resolvedVoice, usedFallback } =
+        resolveDeviceVoiceWithFallback(voices, voiceId);
+
+      // Lock the resolved voice for the entire session so every chunk speaks
+      // with the same voice.
       sessionVoiceRef.current = resolvedVoice;
       sessionUsesVoiceRef.current = resolvedVoice !== null;
+
+      if (voiceId !== SPEECH_AUTO_VOICE_ID && usedFallback) {
+        setVoiceUnavailableNotice(
+          formatVoiceUnavailableMessage(
+            resolvedVoice
+              ? formatSpeechVoiceLabel(resolvedVoice)
+              : "the default voice",
+          ),
+        );
+      } else {
+        setVoiceUnavailableNotice(null);
+      }
 
       speakGenerationRef.current += 1;
       const generation = speakGenerationRef.current;
       activeSpeechOwnerId = instanceId;
+      sessionActiveRef.current = true;
       sequenceRef.current = segments;
       sequenceIndexRef.current = 0;
       activeUtteranceRef.current = null;
@@ -389,7 +440,7 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
         speakNextInSequence(generation);
       }, 0);
     },
-    [clearStartTimeout, instanceId, resetToAutoVoice, speakNextInSequence],
+    [clearStartTimeout, instanceId, speakNextInSequence],
   );
 
   const speak = useCallback(
@@ -455,6 +506,7 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
     isPaused,
     playbackFailed,
     voiceFallbackNotice,
+    voiceUnavailableNotice,
     lastError,
     diagnostics,
     selectableVoices,

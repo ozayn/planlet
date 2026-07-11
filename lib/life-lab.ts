@@ -5,6 +5,9 @@ import {
   getLifeLabNoteCacheSeconds,
   lifeLabCacheExpiresAt,
   lifeLabNoteCacheTag,
+  lifeLabPlaylistAssetCacheTag,
+  lifeLabPlaylistAssetsCacheTag,
+  lifeLabPlaylistLearningMapCacheTag,
   lifeLabPlaylistCacheTag,
   lifeLabSectionCacheTag,
   LIFE_LAB_CACHE_TAG,
@@ -12,6 +15,9 @@ import {
 } from "@/lib/life-lab/cache";
 import {
   invalidateLifeLabNoteCaches,
+  invalidateLifeLabPlaylistAssetCache,
+  invalidateLifeLabPlaylistAssetsCache,
+  invalidateLifeLabPlaylistLearningMapCache,
   invalidateLifeLabPlaylistCache,
   invalidateLifeLabSectionCache,
   invalidateLifeLabSectionsCache,
@@ -87,6 +93,18 @@ import {
   type PlaylistIndexDisplay,
   type PlaylistVideoNavigation,
 } from "@/lib/life-lab/playlist-index";
+import {
+  buildPlaylistAssetsBundle,
+  emptyPlaylistAssetDiagnostics,
+  emptyPlaylistAssetsBundle,
+  orderPlaylistAssetsForDisplay,
+  PLAYLIST_ASSET_IDS,
+  playlistAssetsCacheKeyParts,
+  preparePlaylistAssetMarkdown,
+  resolvePlaylistAssetsForIndexNote,
+  suppressDuplicatePlaylistIndexContent,
+  type PlaylistAssetsBundle,
+} from "@/lib/life-lab/playlist-assets";
 import { canAccessLifeLabPage, type UserAccess } from "@/lib/roles";
 
 export {
@@ -716,6 +734,191 @@ async function getNoteContentCached(
   return buildLifeLabNote(payload.record, sectionId, payload.rawContent);
 }
 
+type PlaylistAssetIndexNote = Pick<
+  LifeLabNote,
+  | "slug"
+  | "title"
+  | "excerpt"
+  | "fileId"
+  | "relativePath"
+  | "subfolderLabel"
+  | "metadata"
+  | "content"
+>;
+
+async function loadPlaylistAssetPayloads(
+  sectionId: LifeLabSectionId,
+  indexNote: PlaylistAssetIndexNote,
+  options: { fresh?: boolean } = {},
+): Promise<PlaylistAssetsBundle> {
+  const fileIndex = options.fresh
+    ? await loadSectionFileIndex(sectionId, { useCachedFolderMap: false })
+    : await getSectionFileIndexCached(sectionId);
+  const { body } = parseLifeLabFrontmatter(indexNote.content ?? "");
+  const { folder, resolution, matches } = resolvePlaylistAssetsForIndexNote(
+    indexNote,
+    fileIndex.records,
+    body,
+  );
+
+  if (!resolution) {
+    return emptyPlaylistAssetsBundle(folder);
+  }
+
+  const loaded = await Promise.all(
+    matches.map(async (match) => {
+      try {
+        const payload = options.fresh
+          ? await loadNotePayload(sectionId, match.record)
+          : await getNotePayloadCached(sectionId, match.record);
+
+        if (!payload?.rawContent?.trim()) {
+          return {
+            match,
+            content: null,
+            rawBody: null,
+            fromCache: !options.fresh,
+            error: "Asset file is empty.",
+          };
+        }
+
+        const { body: rawBody } = parseLifeLabFrontmatter(payload.rawContent);
+        const content = preparePlaylistAssetMarkdown(
+          rawBody,
+          match.definition,
+        );
+
+        return {
+          match,
+          content,
+          rawBody,
+          fromCache: !options.fresh,
+          error: null,
+        };
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Asset could not be loaded.";
+
+        return {
+          match,
+          content: null,
+          rawBody: null,
+          fromCache: !options.fresh,
+          error: message,
+        };
+      }
+    }),
+  );
+
+  const interimBundle = buildPlaylistAssetsBundle({
+    folder,
+    resolution,
+    matches,
+    loaded,
+  });
+  const { suppressedDuplicates, body: strippedIndexBody } =
+    suppressDuplicatePlaylistIndexContent({
+      indexBody: body,
+      assets: interimBundle.artifacts,
+    });
+
+  return {
+    ...interimBundle,
+    suppressedDuplicates,
+    strippedIndexBody,
+  };
+}
+
+async function getPlaylistAssetsBundleCached(
+  sectionId: LifeLabSectionId,
+  playlistId: string,
+  indexNote: PlaylistAssetIndexNote,
+): Promise<PlaylistAssetsBundle> {
+  const cacheKeys = playlistAssetsCacheKeyParts({
+    sectionId,
+    playlistId,
+    indexSlug: indexNote.slug,
+  });
+
+  return unstable_cache(
+    async () => loadPlaylistAssetPayloads(sectionId, indexNote),
+    cacheKeys.bundleCacheKey,
+    {
+      revalidate: getLifeLabNoteCacheSeconds(),
+      tags: [
+        lifeLabPlaylistAssetsCacheTag(playlistId),
+        lifeLabPlaylistLearningMapCacheTag(playlistId),
+        lifeLabPlaylistCacheTag(sectionId, indexNote.slug),
+        lifeLabSectionCacheTag(sectionId),
+        LIFE_LAB_CACHE_TAG,
+        ...PLAYLIST_ASSET_IDS.map((assetId) =>
+          lifeLabPlaylistAssetCacheTag(playlistId, assetId),
+        ),
+      ],
+    },
+  )();
+}
+
+export async function getPlaylistAssetsForIndexNote(
+  sectionId: LifeLabSectionId,
+  indexNote: PlaylistAssetIndexNote,
+  options: { refresh?: boolean } = {},
+): Promise<PlaylistAssetsBundle & { fromCache: boolean }> {
+  if (options.refresh) {
+    const bundle = await loadPlaylistAssetPayloads(sectionId, indexNote, {
+      fresh: true,
+    });
+
+    return {
+      ...bundle,
+      artifacts: orderPlaylistAssetsForDisplay(bundle.artifacts),
+      fromCache: false,
+    };
+  }
+
+  const fileIndex = await getSectionFileIndexCached(sectionId);
+  const { body } = parseLifeLabFrontmatter(indexNote.content ?? "");
+  const { folder, resolution } = resolvePlaylistAssetsForIndexNote(
+    indexNote,
+    fileIndex.records,
+    body,
+  );
+
+  if (!resolution) {
+    return {
+      ...emptyPlaylistAssetsBundle(folder),
+      fromCache: true,
+    };
+  }
+
+  const bundle = await getPlaylistAssetsBundleCached(
+    sectionId,
+    resolution.playlistId,
+    indexNote,
+  );
+
+  return {
+    ...bundle,
+    artifacts: orderPlaylistAssetsForDisplay(bundle.artifacts),
+    fromCache: true,
+  };
+}
+
+export async function fetchFreshPlaylistAssets(
+  sectionId: LifeLabSectionId,
+  indexNote: PlaylistAssetIndexNote,
+): Promise<void> {
+  await loadPlaylistAssetPayloads(sectionId, indexNote, { fresh: true });
+}
+
+/** @deprecated Use getPlaylistAssetsForIndexNote */
+export const getPlaylistArtifactsForIndexNote = getPlaylistAssetsForIndexNote;
+
+/** @deprecated Use fetchFreshPlaylistAssets */
+export const fetchFreshPlaylistArtifacts = fetchFreshPlaylistAssets;
+
 export function refreshLifeLabCache(): void {
   invalidateLifeLabSectionsCache();
 }
@@ -738,17 +941,49 @@ export function refreshLifeLabNoteCache(
   revalidatePath(`/life-lab/${sectionId}/${slug}`);
 }
 
-export function refreshLifeLabPlaylistCache(
+export async function refreshLifeLabPlaylistCache(
   sectionId: LifeLabSectionId,
   playlistSlug: string,
   fileId: string,
-): void {
+  indexNote?: PlaylistAssetIndexNote,
+): Promise<void> {
   invalidateLifeLabPlaylistCache(sectionId, playlistSlug);
   invalidateLifeLabNoteCaches({
     fileId,
     sectionId,
     playlistSlug,
   });
+
+  if (indexNote) {
+    const { records } = await getSectionFileIndexCached(sectionId);
+    const { body } = parseLifeLabFrontmatter(indexNote.content ?? "");
+    const { folder, resolution, matches } = resolvePlaylistAssetsForIndexNote(
+      indexNote,
+      records,
+      body,
+    );
+
+    if (resolution) {
+      invalidateLifeLabPlaylistAssetsCache(resolution.playlistId);
+      invalidateLifeLabPlaylistLearningMapCache(resolution.playlistId);
+    }
+
+    for (const match of matches) {
+      invalidateLifeLabNoteCaches({
+        fileId: match.record.fileId,
+        sectionId,
+        playlistSlug,
+      });
+
+      if (resolution) {
+        invalidateLifeLabPlaylistAssetCache(
+          resolution.playlistId,
+          match.definition.id,
+        );
+      }
+    }
+  }
+
   revalidatePath(`/life-lab/${sectionId}/${playlistSlug}`);
 }
 

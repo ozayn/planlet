@@ -57,11 +57,6 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
                   Scroll sideways
                 </p>
               ) : null}
-              {isMobile ? (
-                <p className="ui-mermaid-affordance ui-mermaid-affordance-tap">
-                  Tap to expand
-                </p>
-              ) : null}
               <button
                 ref={expandButtonRef}
                 type="button"

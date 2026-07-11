@@ -49,6 +49,55 @@ describe("life lab section view", () => {
     );
   });
 
+  it("builds playlist cards from collection folders with cleaned titles", () => {
+    const notes = [
+      noteSummary({
+        slug: "playlists__death-with-shelly-kagan-index",
+        title: "Death With Shelly Kagan Index",
+        subfolderLabel: "playlists",
+        relativePath: "playlists/death-with-shelly-kagan-index.md",
+        excerpt: "26 processed · 0 pending · 0 errors",
+        metadata: {
+          type: "playlist-index",
+          playlist: "Death with Shelly Kagan",
+        },
+        dateLabel: "Jul 10, 2026",
+      }),
+      ...Array.from({ length: 26 }, (_, index) =>
+        noteSummary({
+          slug: `death-with-shelly-kagan__lesson-${index + 1}`,
+          title: `Lesson ${index + 1}`,
+          subfolderLabel: "death-with-shelly-kagan",
+          relativePath: `death-with-shelly-kagan/lesson-${index + 1}.md`,
+          metadata: {
+            playlist: "Death with Shelly Kagan",
+            youtube_thumbnail: {
+              url: "https://i.ytimg.com/vi/lessonthumb/hqdefault.jpg",
+            },
+          },
+        }),
+      ),
+    ];
+
+    const view = buildLifeLabSectionView({
+      sectionId: "youtube-learning",
+      notes,
+      groups: [],
+      hasActiveQuery: false,
+    });
+
+    const playlistBlock = view.blocks.find((block) => block.kind === "playlists");
+
+    assert.equal(playlistBlock?.kind, "playlists");
+    assert.equal(playlistBlock?.items[0]?.title, "Death with Shelly Kagan");
+    assert.equal(playlistBlock?.items[0]?.noteCount, 26);
+    assert.equal(
+      playlistBlock?.items[0]?.thumbnail?.url,
+      "https://i.ytimg.com/vi/lessonthumb/hqdefault.jpg",
+    );
+    assert.match(playlistBlock?.items[0]?.href ?? "", /death-with-shelly-kagan-index/);
+  });
+
   it("builds a calm youtube browse view with playlists and collapsed reference", () => {
     const playlistVideos = buildPlaylistVideoNotes(2, "Death with Shelly Kagan");
     playlistVideos[0] = {
@@ -179,6 +228,13 @@ describe("life lab section view", () => {
           type: "playlist-index",
           playlist: "Public Playlist",
         },
+      }),
+      noteSummary({
+        slug: "videos__public-playlist-1",
+        title: "Public video",
+        subfolderLabel: "videos",
+        relativePath: "videos/public-playlist-1.md",
+        metadata: { playlist: "Public Playlist", source: "youtube" },
       }),
     ];
 

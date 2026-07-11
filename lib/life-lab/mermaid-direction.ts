@@ -95,6 +95,22 @@ export function normalizeFlowchartDirectionToVertical(source: string): string {
   return lines.join("\n");
 }
 
+export function normalizeLearningMapArtifactMarkdown(body: string): string {
+  return body.replace(MERMAID_FENCE_PATTERN, (match, source) => {
+    if (hasMermaidDirectionPreserveMarker("", source)) {
+      return match;
+    }
+
+    const normalizedSource = normalizeFlowchartDirectionToVertical(source);
+
+    if (normalizedSource === source) {
+      return match;
+    }
+
+    return `\`\`\`mermaid\n${normalizedSource}\`\`\``;
+  });
+}
+
 export function normalizeLearningMapMermaidInMarkdown(body: string): string {
   const learningMapRanges = listLearningMapContentRanges(body);
 

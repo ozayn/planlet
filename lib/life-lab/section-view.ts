@@ -7,10 +7,15 @@ import {
   sortLifeLabNotes,
 } from "@/lib/life-lab/browse";
 import {
-  groupLifeLabNotes,
   isPlaylistGroupId,
-  playlistGroupLabel,
 } from "@/lib/life-lab/organization";
+import {
+  formatCollectionDisplayTitle,
+  getCollectionNoteCount,
+  listCollectionContentNotes,
+  resolveCollection,
+  type CollectionCardDiagnostic,
+} from "@/lib/life-lab/collection";
 import {
   isPlaylistIndexNote,
   isYoutubeVideoNote,
@@ -24,6 +29,10 @@ import {
   classifyYoutubeLibraryNote,
   isStandaloneYoutubeVideo,
 } from "@/lib/life-lab/youtube-library";
+import {
+  resolvePlaylistCardThumbnail,
+} from "@/lib/life-lab/playlist-thumbnail";
+import type { ResolvedLifeLabNoteImage } from "@/lib/life-lab/note-image";
 
 export const STANDALONE_PREVIEW_LIMIT = 5;
 
@@ -34,6 +43,9 @@ export type LifeLabPlaylistCard = {
   lastUpdatedLabel: string | null;
   progressSummary: string | null;
   href: string;
+  thumbnail: ResolvedLifeLabNoteImage | null;
+  unavailableLabel?: string | null;
+  dev?: CollectionCardDiagnostic;
 };
 
 export type LifeLabSectionViewBlock =
@@ -105,26 +117,39 @@ function playlistKey(value: string): string {
   return playlistTitleKey(value);
 }
 
-function countPlaylistPlayableNotes(
-  title: string,
-  groups: LifeLabNoteGroup[],
+function countCollectionNotes(
+  indexNote: LifeLabNoteSummary,
   notes: LifeLabNoteSummary[],
 ): number {
-  const key = playlistKey(title);
-  const playlistGroup = groups.find(
-    (group) =>
-      isPlaylistGroupId(group.id) && playlistKey(playlistGroupLabel(group.id)) === key,
-  );
+  return getCollectionNoteCount(indexNote, notes);
+}
 
-  if (playlistGroup) {
-    return playlistGroup.notes.filter(isPlayableYoutubeNote).length;
-  }
+function buildPlaylistCard(input: {
+  indexNote: LifeLabNoteSummary;
+  sectionId: LifeLabSectionId;
+  notes: LifeLabNoteSummary[];
+  title: string;
+  noteCount: number;
+  unavailableLabel?: string | null;
+  dev?: CollectionCardDiagnostic;
+}): LifeLabPlaylistCard {
+  const collection = resolveCollection(input.indexNote, input.notes);
 
-  return notes.filter(
-    (note) =>
-      playlistKey(note.metadata?.playlist?.trim() ?? "") === key &&
-      isPlayableYoutubeNote(note),
-  ).length;
+  return {
+    slug: input.indexNote.slug,
+    title: input.title,
+    noteCount: input.noteCount,
+    lastUpdatedLabel: noteLastUpdatedLabel(input.indexNote),
+    progressSummary: formatPlaylistCardProgress(input.indexNote.excerpt),
+    href: `/life-lab/${input.sectionId}/${input.indexNote.slug}`,
+    thumbnail: resolvePlaylistCardThumbnail({
+      indexNote: input.indexNote,
+      contentNotes: collection.contentNotes,
+      playlistUrl: input.indexNote.metadata?.playlist_url,
+    }),
+    unavailableLabel: input.unavailableLabel,
+    dev: input.dev,
+  };
 }
 
 function buildPlaylistCards(
@@ -146,25 +171,52 @@ function buildPlaylistCards(
       continue;
     }
 
-    const title =
-      note.metadata?.playlist?.trim() ||
-      note.title.trim() ||
-      "Untitled playlist";
+    const title = formatCollectionDisplayTitle({
+      title: note.title,
+      metadata: note.metadata,
+    });
 
     if (isInternalPlaylistTitle(title)) {
       continue;
     }
 
     const key = playlistKey(title);
+    const collection = resolveCollection(note, notes);
+    const noteCount = collection.contentNotes.length;
 
-    cards.set(key, {
-      slug: note.slug,
-      title,
-      noteCount: countPlaylistPlayableNotes(title, groups, notes),
-      lastUpdatedLabel: noteLastUpdatedLabel(note),
-      progressSummary: formatPlaylistCardProgress(note.excerpt),
-      href: `/life-lab/${sectionId}/${note.slug}`,
-    });
+    if (!collection.resolved && noteCount === 0) {
+      if (process.env.NODE_ENV === "development") {
+        cards.set(
+          key,
+          buildPlaylistCard({
+            indexNote: note,
+            sectionId,
+            notes,
+            title,
+            noteCount: 0,
+            unavailableLabel: "Collection folder not resolved",
+            dev: collection.diagnostic,
+          }),
+        );
+      }
+
+      continue;
+    }
+
+    cards.set(
+      key,
+      buildPlaylistCard({
+        indexNote: note,
+        sectionId,
+        notes,
+        title,
+        noteCount,
+        dev:
+          process.env.NODE_ENV === "development"
+            ? collection.diagnostic
+            : undefined,
+      }),
+    );
   }
 
   for (const group of groups) {
@@ -181,31 +233,73 @@ function buildPlaylistCards(
     const key = playlistKey(title);
 
     if (cards.has(key)) {
-      const existing = cards.get(key);
-
-      if (existing && existing.noteCount === 0) {
-        cards.set(key, {
-          ...existing,
-          noteCount: countPlaylistPlayableNotes(title, groups, notes),
-        });
-      }
-
       continue;
     }
 
-    const representative = group.notes.find(isPlayableYoutubeNote) ?? group.notes[0];
+    const indexNote = notes.find(
+      (note) =>
+        isPlaylistIndexNote({
+          sectionId,
+          relativePath: note.relativePath,
+          subfolderLabel: note.subfolderLabel,
+          metadata: note.metadata,
+        }) &&
+        playlistKey(
+          formatCollectionDisplayTitle({
+            title: note.title,
+            metadata: note.metadata,
+          }),
+        ) === key,
+    );
+
+    const representative =
+      (indexNote
+        ? listCollectionContentNotes(indexNote, notes).find(isPlayableYoutubeNote)
+        : null) ??
+      group.notes.find(isPlayableYoutubeNote) ??
+      group.notes[0];
+
+    const noteCount = indexNote
+      ? countCollectionNotes(indexNote, notes)
+      : group.notes.filter(isPlayableYoutubeNote).length;
+
+    if (noteCount === 0 && !indexNote) {
+      continue;
+    }
+
+    const contentNotes = indexNote
+      ? listCollectionContentNotes(indexNote, notes)
+      : group.notes;
 
     cards.set(key, {
-      slug: representative?.slug ?? key,
+      slug: indexNote?.slug ?? representative?.slug ?? key,
       title,
-      noteCount: countPlaylistPlayableNotes(title, groups, notes),
+      noteCount,
       lastUpdatedLabel: representative
         ? noteLastUpdatedLabel(representative)
         : null,
-      progressSummary: null,
-      href: representative
-        ? `/life-lab/${sectionId}/${representative.slug}`
-        : `/life-lab/${sectionId}`,
+      progressSummary: indexNote
+        ? formatPlaylistCardProgress(indexNote.excerpt)
+        : null,
+      href: indexNote
+        ? `/life-lab/${sectionId}/${indexNote.slug}`
+        : representative
+          ? `/life-lab/${sectionId}/${representative.slug}`
+          : `/life-lab/${sectionId}`,
+      thumbnail: indexNote
+        ? resolvePlaylistCardThumbnail({
+            indexNote,
+            contentNotes,
+            playlistUrl: indexNote.metadata?.playlist_url,
+          })
+        : resolvePlaylistCardThumbnail({
+            indexNote: representative ?? group.notes[0]!,
+            contentNotes,
+          }),
+      dev:
+        indexNote && process.env.NODE_ENV === "development"
+          ? resolveCollection(indexNote, notes).diagnostic
+          : undefined,
     });
   }
 

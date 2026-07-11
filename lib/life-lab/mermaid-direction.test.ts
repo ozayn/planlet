@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 import {
   hasMermaidDirectionPreserveMarker,
   normalizeFlowchartDirectionToVertical,
+  normalizeLearningMapArtifactMarkdown,
   normalizeLearningMapMermaidInMarkdown,
 } from "@/lib/life-lab/mermaid-direction";
 
@@ -137,5 +138,19 @@ describe("life lab mermaid direction", () => {
     );
 
     assert.equal(normalized, "flowchart TD\n  A --> B");
+  });
+
+  it("rewrites standalone learning-map artifact mermaid blocks", () => {
+    const body = [
+      "```mermaid",
+      "graph LR",
+      "  A --> B",
+      "```",
+    ].join("\n");
+
+    const normalized = normalizeLearningMapArtifactMarkdown(body);
+
+    assert.match(normalized, /graph TD/);
+    assert.doesNotMatch(normalized, /graph LR/);
   });
 });

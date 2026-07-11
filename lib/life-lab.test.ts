@@ -100,12 +100,16 @@ import {
 } from "@/lib/life-lab/study-status";
 import {
   chunkSpeechText,
+  decodeDeviceVoiceId,
   DEFAULT_SPEECH_LANG,
   DEFAULT_SPEECH_RATE,
   detectSpeechBrowserNameFromUserAgent,
+  encodeDeviceVoiceId,
   findSpeechVoiceById,
   findSelectableSpeechVoiceById,
+  formatVoiceUnavailableMessage,
   getSpeechVoiceId,
+  listAllDeviceSpeechVoices,
   listEnglishSpeechVoices,
   listSelectableSpeechVoices,
   markdownToSpeechText,
@@ -113,6 +117,7 @@ import {
   plainTextToSpeechText,
   prepareFlashcardSpeechText,
   prepareNoteSpeechText,
+  resolveDeviceVoiceWithFallback,
   resolveSpeechVoice,
   SPEECH_AUTO_VOICE_ID,
   SPEECH_BROWSER_FALLBACK_MESSAGE,
@@ -1206,6 +1211,104 @@ describe("life lab speech", () => {
     );
     assert.equal(findSpeechVoiceById(voices, "missing"), null);
     assert.equal(resolveSpeechVoice(voices, "google-uk-english-female")?.name, "Google UK English Female");
+  });
+
+  it("encodes and decodes a stable device voice identity", () => {
+    const voice = {
+      name: "Samantha",
+      lang: "en-US",
+      voiceURI: "com.apple.samantha",
+    } as SpeechSynthesisVoice;
+
+    const id = encodeDeviceVoiceId(voice);
+    const decoded = decodeDeviceVoiceId(id);
+
+    assert.deepEqual(decoded, {
+      voiceURI: "com.apple.samantha",
+      name: "Samantha",
+      lang: "en-US",
+    });
+    assert.equal(decodeDeviceVoiceId("google-us-english"), null);
+    assert.equal(decodeDeviceVoiceId(SPEECH_AUTO_VOICE_ID), null);
+  });
+
+  it("persists device voices with the stable composite id", () => {
+    const listed = listAllDeviceSpeechVoices([
+      { name: "Serena", lang: "en-GB", voiceURI: "serena" } as SpeechSynthesisVoice,
+    ]);
+
+    assert.equal(listed.length, 1);
+    assert.deepEqual(decodeDeviceVoiceId(listed[0].id), {
+      voiceURI: "serena",
+      name: "Serena",
+      lang: "en-GB",
+    });
+  });
+
+  it("resolves a saved voice by exact voiceURI without a fallback", () => {
+    const voices = [
+      { name: "Flo", lang: "en-GB", voiceURI: "flo" } as SpeechSynthesisVoice,
+      { name: "Serena", lang: "en-GB", voiceURI: "serena" } as SpeechSynthesisVoice,
+    ];
+    const id = encodeDeviceVoiceId(voices[1]);
+
+    const result = resolveDeviceVoiceWithFallback(voices, id);
+
+    assert.equal(result.voice?.name, "Serena");
+    assert.equal(result.usedFallback, false);
+  });
+
+  it("resolves by name and lang when the voiceURI changed", () => {
+    const savedId = encodeDeviceVoiceId({
+      name: "Serena",
+      lang: "en-GB",
+      voiceURI: "old-serena-uri",
+    } as SpeechSynthesisVoice);
+
+    const voices = [
+      { name: "Serena", lang: "en-GB", voiceURI: "new-serena-uri" } as SpeechSynthesisVoice,
+    ];
+
+    const result = resolveDeviceVoiceWithFallback(voices, savedId);
+
+    assert.equal(result.voice?.voiceURI, "new-serena-uri");
+    assert.equal(result.usedFallback, false);
+  });
+
+  it("uses a deterministic same-language fallback when the saved voice is missing", () => {
+    const savedId = encodeDeviceVoiceId({
+      name: "Serena",
+      lang: "en-GB",
+      voiceURI: "serena",
+    } as SpeechSynthesisVoice);
+
+    const voices = [
+      { name: "Flo", lang: "en-GB", voiceURI: "flo" } as SpeechSynthesisVoice,
+      { name: "Thomas", lang: "fr-FR", voiceURI: "thomas" } as SpeechSynthesisVoice,
+    ];
+
+    const result = resolveDeviceVoiceWithFallback(voices, savedId);
+
+    assert.equal(result.voice?.lang, "en-GB");
+    assert.equal(result.usedFallback, true);
+  });
+
+  it("does not treat auto selection as a fallback", () => {
+    const voices = [
+      { name: "Flo", lang: "en-GB", voiceURI: "flo" } as SpeechSynthesisVoice,
+    ];
+
+    const result = resolveDeviceVoiceWithFallback(voices, SPEECH_AUTO_VOICE_ID);
+
+    assert.equal(result.usedFallback, false);
+    assert.equal(result.voice?.name, "Flo");
+  });
+
+  it("formats a clear voice-unavailable message", () => {
+    assert.equal(
+      formatVoiceUnavailableMessage("Flo (en-gb)"),
+      "Your selected device voice is unavailable on this device. Using Flo (en-gb).",
+    );
   });
 
   it("uses en-GB lang hint without assigning a voice by default", () => {
