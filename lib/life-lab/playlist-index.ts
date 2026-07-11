@@ -4,6 +4,8 @@ import type {
   LifeLabNoteSummary,
   LifeLabSectionId,
 } from "@/lib/life-lab/constants";
+import { isLifeLabPlaylistIndex } from "@/lib/life-lab/file-classification";
+import { isPlaylistAssetRelativePath } from "@/lib/life-lab/playlist-asset-paths";
 import { noteContentDateValue } from "@/lib/life-lab/browse";
 import {
   formatCollectionDisplayTitle,
@@ -17,6 +19,7 @@ import {
 } from "@/lib/life-lab/slug";
 import { resolvePlaylistVideoRowThumbnail } from "@/lib/life-lab/playlist-video-thumbnail";
 import type { ResolvedLifeLabNoteImage } from "@/lib/life-lab/note-image";
+import { isInternalPlaylistTitle } from "@/lib/life-lab/youtube-browse";
 import {
   cleanPlaylistVideoDisplayTitles,
   cleanYoutubePlaylistVideoTitle,
@@ -578,21 +581,13 @@ export function isPlaylistIndexSummaryRecord(
     "relativePath" | "subfolderLabel" | "metadata"
   >,
 ): boolean {
-  if (record.metadata?.type === "playlist-index") {
-    return true;
-  }
-
-  if (hasCollectionIndexFilename(record.relativePath)) {
-    return true;
-  }
-
-  const relativePath = record.relativePath ?? "";
-
-  return (
-    record.subfolderLabel === "playlists" ||
-    relativePath.startsWith("playlists/") ||
-    relativePath.includes("/playlists/")
-  );
+  return isLifeLabPlaylistIndex({
+    sectionId: "youtube-learning",
+    relativePath: record.relativePath ?? "",
+    subfolderLabel: record.subfolderLabel,
+    metadata: record.metadata,
+    title: record.relativePath,
+  });
 }
 
 export function isPlaylistIndexNote(input: {
@@ -602,42 +597,48 @@ export function isPlaylistIndexNote(input: {
   metadata?: LifeLabNoteMetadata;
   content?: string;
 }): boolean {
-  if (input.metadata?.type === "playlist-index") {
-    return true;
+  const relativePath = input.relativePath ?? "";
+
+  if (isPlaylistAssetRelativePath(relativePath)) {
+    return false;
   }
 
-  if (hasCollectionIndexFilename(input.relativePath)) {
-    return true;
-  }
-
-  if (input.sectionId === "youtube-learning") {
-    const relativePath = input.relativePath ?? "";
-
-    if (
-      input.subfolderLabel === "playlists" ||
-      relativePath.startsWith("playlists/") ||
-      relativePath.includes("/playlists/")
-    ) {
+  if (
+    !isLifeLabPlaylistIndex({
+      sectionId: input.sectionId,
+      relativePath,
+      subfolderLabel: input.subfolderLabel,
+      metadata: input.metadata,
+    })
+  ) {
+    if (input.content && hasPlaylistVideosTable(input.content)) {
       return true;
     }
 
+    if (input.content && hasPlaylistSummaryAndVideoList(input.content)) {
+      return true;
+    }
+
+    const playlistTitle = input.metadata?.playlist?.trim();
+
     if (
+      input.sectionId === "youtube-learning" &&
       input.metadata?.source === "youtube" &&
-      input.metadata.playlist?.trim()
+      playlistTitle &&
+      !isInternalPlaylistTitle(playlistTitle) &&
+      !isYoutubeVideoNote({
+        relativePath,
+        subfolderLabel: input.subfolderLabel ?? null,
+        metadata: input.metadata,
+      })
     ) {
       return true;
     }
+
+    return false;
   }
 
-  if (input.content && hasPlaylistVideosTable(input.content)) {
-    return true;
-  }
-
-  if (input.content && hasPlaylistSummaryAndVideoList(input.content)) {
-    return true;
-  }
-
-  return false;
+  return true;
 }
 
 export function parsePlaylistIndexNote(note: LifeLabNote): PlaylistIndexDisplay {

@@ -83,6 +83,10 @@ export type LifeLabNoteMetadata = {
   playlistPath?: string;
   folderPath?: string;
   collectionSlug?: string;
+  videosPath?: string;
+  videos_path?: string;
+  youtubePlaylistId?: string;
+  youtube_playlist_id?: string;
   playlist_id?: string;
   playlistId?: string;
   asset_id?: string;

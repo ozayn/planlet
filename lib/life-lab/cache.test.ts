@@ -84,9 +84,11 @@ describe("life lab cache invalidation scope", () => {
   it("invalidates only section tags for section refresh", () => {
     assert.deepEqual(tagsInvalidatedBySectionRefresh("youtube-learning"), [
       "life-lab:section:youtube-learning",
+      "life-lab:playlists:youtube-learning",
     ]);
     assert.deepEqual(tagsInvalidatedBySectionRefresh("photography"), [
       "life-lab:section:photography",
+      "life-lab:playlists:photography",
     ]);
   });
 

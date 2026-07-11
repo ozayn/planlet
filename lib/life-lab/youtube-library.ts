@@ -80,5 +80,15 @@ export function isPlaylistYoutubeVideo(note: LifeLabNoteSummary): boolean {
 }
 
 export function noteLibraryDedupeKey(note: LifeLabNoteSummary): string {
-  return note.fileId || note.relativePath;
+  const fileId = note.fileId?.trim();
+
+  if (fileId) {
+    return fileId;
+  }
+
+  if (note.relativePath) {
+    return note.relativePath;
+  }
+
+  return note.slug;
 }

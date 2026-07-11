@@ -37,6 +37,10 @@ export type CollectionPathSource =
   | "frontmatter-playlistPath"
   | "frontmatter-folderPath"
   | "frontmatter-collectionSlug"
+  | "frontmatter-videosPath"
+  | "frontmatter-assetPath"
+  | "frontmatter-assetsPath"
+  | "frontmatter-playlistAssetPath"
   | "same-folder"
   | "sibling-folder"
   | "playlist-metadata"
@@ -67,6 +71,13 @@ const FRONTMATTER_FOLDER_FIELDS = [
   { field: "playlistPath", source: "frontmatter-playlistPath" },
   { field: "folderPath", source: "frontmatter-folderPath" },
   { field: "collectionSlug", source: "frontmatter-collectionSlug" },
+  { field: "videosPath", source: "frontmatter-videosPath" },
+  { field: "videos_path", source: "frontmatter-videosPath" },
+  { field: "assetPath", source: "frontmatter-assetPath" },
+  { field: "assetsPath", source: "frontmatter-assetsPath" },
+  { field: "assets_path", source: "frontmatter-assetsPath" },
+  { field: "playlistAssetPath", source: "frontmatter-playlistAssetPath" },
+  { field: "playlist_asset_path", source: "frontmatter-playlistAssetPath" },
 ] as const;
 
 export function isCollectionIndexFilename(filename: string): boolean {

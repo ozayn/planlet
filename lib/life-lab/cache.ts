@@ -3,6 +3,13 @@ import type { LifeLabSectionId } from "@/lib/life-lab/constants";
 export const LIFE_LAB_CACHE_TAG = "life-lab";
 export const LIFE_LAB_SECTIONS_CACHE_TAG = "life-lab:sections";
 
+/** Bump when section listing or playlist browse logic changes materially. */
+export const LIFE_LAB_SECTION_FILE_INDEX_CACHE_VERSION = "v2-partial-playlists";
+
+export function lifeLabSectionPlaylistsCacheTag(sectionId: string): string {
+  return `life-lab:playlists:${sectionId}`;
+}
+
 export function lifeLabSectionCacheTag(sectionId: string): string {
   return `life-lab:section:${sectionId}`;
 }
@@ -110,7 +117,10 @@ export function tagsInvalidatedByHomeRefresh(): string[] {
 export function tagsInvalidatedBySectionRefresh(
   sectionId: LifeLabSectionId,
 ): string[] {
-  return [lifeLabSectionCacheTag(sectionId)];
+  return [
+    lifeLabSectionCacheTag(sectionId),
+    lifeLabSectionPlaylistsCacheTag(sectionId),
+  ];
 }
 
 export function tagsInvalidatedByNoteRefresh(input: {

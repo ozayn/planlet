@@ -5,6 +5,7 @@ import type { LifeLabNoteSummary } from "@/lib/life-lab/constants";
 import {
   buildLifeLabSectionView,
   formatPlaylistCardProgress,
+  type LifeLabPlaylistCard,
 } from "@/lib/life-lab/section-view";
 
 function noteSummary(
@@ -284,11 +285,11 @@ describe("life lab section view", () => {
     );
 
     assert.equal(recentBlock?.kind, "recently-added");
-    assert.equal(recentBlock?.notes.length, 3);
+    assert.equal(recentBlock?.notes.length, 5);
 
     assert.equal(standaloneBlock?.kind, "standalone-videos");
     assert.equal(standaloneBlock?.totalCount, 6);
-    assert.equal(standaloneBlock?.previewNotes.length, 3);
+    assert.equal(standaloneBlock?.previewNotes.length, 1);
 
     const recentSlugs = new Set(
       recentBlock?.kind === "recently-added"
@@ -301,6 +302,138 @@ describe("life lab section view", () => {
       : []) {
       assert.equal(recentSlugs.has(note.slug), false);
     }
+  });
+
+  it("excludes playlist artifacts from browse playlist cards", () => {
+    const notes = [
+      noteSummary({
+        slug: "playlists__assets__sample__playlist-learning-map",
+        title: "Playlist Learning Map",
+        subfolderLabel: "playlists",
+        relativePath:
+          "playlists/assets/sample-playlist/playlist-learning-map.md",
+      }),
+      noteSummary({
+        slug: "playlists__assets__sample__people-index",
+        title: "People",
+        subfolderLabel: "playlists",
+        relativePath: "playlists/assets/sample-playlist/people-index.md",
+      }),
+      noteSummary({
+        slug: "playlists__valid-playlist",
+        title: "Valid Playlist",
+        subfolderLabel: "playlists",
+        relativePath: "playlists/valid-playlist.md",
+        metadata: {
+          type: "playlist-index",
+          playlist: "Valid Playlist",
+        },
+      }),
+      noteSummary({
+        slug: "valid-playlist__lesson-1",
+        title: "Lesson 1",
+        subfolderLabel: "valid-playlist",
+        relativePath: "valid-playlist/lesson-1.md",
+        metadata: { playlist: "Valid Playlist", source: "youtube" },
+      }),
+    ];
+
+    const view = buildLifeLabSectionView({
+      sectionId: "youtube-learning",
+      notes,
+      groups: [],
+      hasActiveQuery: false,
+    });
+
+    const playlistBlock = view.blocks.find((block) => block.kind === "playlists");
+
+    assert.equal(playlistBlock?.kind, "playlists");
+    assert.equal(playlistBlock?.items.length, 1);
+    assert.equal(playlistBlock?.items[0]?.title, "Valid Playlist");
+  });
+
+  it("shows partially resolved playlist indexes as cards and records debug", () => {
+    const notes = [
+      noteSummary({
+        slug: "playlists__broken-index",
+        title: "Broken Playlist Index",
+        subfolderLabel: "playlists",
+        relativePath: "playlists/broken-index.md",
+        excerpt: "12 processed · 2 pending · 0 errors",
+        metadata: {
+          type: "playlist-index",
+          playlist: "Broken Playlist",
+        },
+        dateLabel: "Jul 8, 2026",
+      }),
+    ];
+
+    const view = buildLifeLabSectionView({
+      sectionId: "youtube-learning",
+      notes,
+      groups: [],
+      hasActiveQuery: false,
+    });
+
+    const playlistBlock = view.blocks.find((block) => block.kind === "playlists");
+    const unresolvedBlock = view.blocks.find(
+      (block) => block.kind === "unresolved-playlists",
+    );
+
+    assert.equal(playlistBlock?.kind, "playlists");
+    assert.equal(playlistBlock?.items.length, 1);
+    assert.equal(playlistBlock?.items[0]?.resolutionState, "partiallyResolved");
+    assert.equal(playlistBlock?.items[0]?.noteCount, 12);
+    assert.equal(unresolvedBlock?.kind, "unresolved-playlists");
+    assert.equal(unresolvedBlock?.items.length, 1);
+    assert.equal(unresolvedBlock?.items[0]?.title, "Broken Playlist");
+  });
+
+  it("does not expose debug fields on production playlist cards", () => {
+    const card: LifeLabPlaylistCard = {
+      slug: "playlists__sample",
+      title: "Sample",
+      noteCount: 3,
+      notesLabel: "3 notes",
+      channelLabel: null,
+      resolutionState: "resolved",
+      lastUpdatedLabel: "Jul 8, 2026",
+      progressSummary: null,
+      href: "/life-lab/youtube-learning/playlists__sample",
+      thumbnail: null,
+    };
+
+    assert.equal("dev" in card, false);
+    assert.equal("unavailableLabel" in card, false);
+    assert.ok(card.href.length > 0);
+  });
+
+  it("dedupes duplicate notes by file id when building browse pools", () => {
+    const duplicate = noteSummary({
+      slug: "videos__duplicate",
+      title: "Duplicate",
+      subfolderLabel: "videos",
+      relativePath: "videos/duplicate.md",
+      fileId: "same-file-id",
+      dateLabel: "Jul 10, 2026",
+    });
+    const duplicateAlias = {
+      ...duplicate,
+      slug: "videos__duplicate-alias",
+      relativePath: "videos/duplicate-alias.md",
+    };
+
+    const view = buildLifeLabSectionView({
+      sectionId: "youtube-learning",
+      notes: [duplicate, duplicateAlias],
+      groups: [],
+      hasActiveQuery: false,
+    });
+
+    const recentBlock = view.blocks.find((block) => block.kind === "recently-added");
+
+    assert.equal(recentBlock?.kind, "recently-added");
+    assert.equal(recentBlock?.notes.length, 1);
   });
 
   it("returns grouped search results when a query is active", () => {

@@ -12,6 +12,8 @@ import {
   lifeLabSectionCacheTag,
   LIFE_LAB_CACHE_TAG,
   LIFE_LAB_SECTIONS_CACHE_TAG,
+  LIFE_LAB_SECTION_FILE_INDEX_CACHE_VERSION,
+  lifeLabSectionPlaylistsCacheTag,
 } from "@/lib/life-lab/cache";
 import {
   invalidateLifeLabNoteCaches,
@@ -69,6 +71,7 @@ import {
   groupLifeLabNotes,
   noteAssignmentPriority,
 } from "@/lib/life-lab/organization";
+import { diagnoseYoutubePlaylistBrowse } from "@/lib/life-lab/section-view";
 import {
   getAllowedLifeLabSectionIds,
   getLifeLabSectionLabel,
@@ -616,17 +619,58 @@ async function loadSectionFileIndex(
   };
 }
 
+async function enrichPlaylistIndexRecordsForBrowse(
+  sectionId: LifeLabSectionId,
+  records: LifeLabSectionNoteRecord[],
+): Promise<LifeLabSectionNoteRecord[]> {
+  if (sectionId !== "youtube-learning") {
+    return records;
+  }
+
+  const indexCandidates = records.filter((record) =>
+    isPlaylistIndexNote({
+      sectionId,
+      relativePath: record.relativePath,
+      subfolderLabel: record.subfolderLabel,
+      metadata: record.metadata,
+    }),
+  );
+
+  if (indexCandidates.length === 0) {
+    return records;
+  }
+
+  const enrichedByFileId = new Map<string, LifeLabSectionNoteRecord>();
+
+  await Promise.all(
+    indexCandidates.map(async (record) => {
+      const payload = await getNotePayloadCached(sectionId, record);
+
+      if (payload?.record) {
+        enrichedByFileId.set(record.fileId, payload.record);
+      }
+    }),
+  );
+
+  return records.map((record) => enrichedByFileId.get(record.fileId) ?? record);
+}
+
 async function getSectionFileIndexCached(
   sectionId: LifeLabSectionId,
 ): Promise<LifeLabSectionFileIndex> {
   return unstable_cache(
     async () => loadSectionFileIndex(sectionId),
-    ["life-lab-section-file-index", sectionId],
+    [
+      "life-lab-section-file-index",
+      LIFE_LAB_SECTION_FILE_INDEX_CACHE_VERSION,
+      sectionId,
+    ],
     {
       revalidate: getLifeLabListCacheSeconds(),
       tags: [
         LIFE_LAB_SECTIONS_CACHE_TAG,
         lifeLabSectionCacheTag(sectionId),
+        lifeLabSectionPlaylistsCacheTag(sectionId),
         LIFE_LAB_CACHE_TAG,
       ],
     },
@@ -1123,10 +1167,28 @@ export async function getLifeLabSectionData(
 
     const fromCache = !options.refresh;
     const loadedAt = new Date().toISOString();
-    const { records, listingDiagnostic: listingDiagnosticBase } = options.refresh
-      ? await loadSectionNotes(sectionId, { useCachedFolderMap: false })
-      : await getSectionNotesCached(sectionId);
+    const { records: rawRecords, listingDiagnostic: listingDiagnosticBase } =
+      options.refresh
+        ? await loadSectionNotes(sectionId, { useCachedFolderMap: false })
+        : await getSectionNotesCached(sectionId);
+    const records =
+      sectionId === "youtube-learning"
+        ? await enrichPlaylistIndexRecordsForBrowse(sectionId, rawRecords)
+        : rawRecords;
     const notes = records.map(toNoteSummary);
+    const groups = groupLifeLabNotes(notes, { sectionId });
+    const folderMap = resolveLifeLabFolderMap(mapResult);
+    const driveFolderId = folderMap?.get(sectionId) ?? null;
+
+    if (sectionId === "youtube-learning") {
+      diagnoseYoutubePlaylistBrowse({
+        sectionId,
+        notes,
+        groups,
+        driveFolderId,
+      });
+    }
+
     const listingDiagnostic = options.includeListingDiagnostic
       ? {
           ...listingDiagnosticBase,
@@ -1151,7 +1213,7 @@ export async function getLifeLabSectionData(
       sectionId,
       sectionLabel: getLifeLabSectionLabel(sectionId),
       notes,
-      groups: groupLifeLabNotes(notes, { sectionId }),
+      groups,
       filterOptions: collectLifeLabFilterOptions(notes),
       flashcardNoteCount: notes.filter((note) => note.hasFlashcards).length,
       listingDiagnostic,

@@ -3,12 +3,10 @@
 import Link from "next/link";
 import { useState } from "react";
 
-import { LifeLabNoteCardMeta } from "@/components/life-lab/life-lab-note-card-meta";
-import { LifeLabNoteCardDevMenu } from "@/components/life-lab/life-lab-note-card-dev-menu";
-import { LifeLabNoteImageFigure } from "@/components/life-lab/life-lab-note-image";
+import { PlaylistVideoThumbnail } from "@/components/life-lab/playlist-video-thumbnail";
 import type { LifeLabNoteSummary, LifeLabSectionId } from "@/lib/life-lab/constants";
-import { selectCardPreview } from "@/lib/life-lab/card-preview";
 import { resolveLifeLabNoteImage } from "@/lib/life-lab/note-image";
+import { resolvePlaylistVideoRowThumbnail } from "@/lib/life-lab/playlist-video-thumbnail";
 
 type LifeLabStandaloneVideosProps = {
   sectionId: LifeLabSectionId;
@@ -17,53 +15,48 @@ type LifeLabStandaloneVideosProps = {
   totalCount: number;
 };
 
-function StandaloneVideoCard({
+function standaloneThumbnail(note: LifeLabNoteSummary) {
+  return (
+    resolvePlaylistVideoRowThumbnail({
+      metadata: note.metadata,
+      videoUrl: note.metadata?.sourceUrl ?? null,
+      title: note.title,
+    }) ?? resolveLifeLabNoteImage(note.metadata)
+  );
+}
+
+function StandaloneVideoRow({
   sectionId,
   note,
 }: {
   sectionId: LifeLabSectionId;
   note: LifeLabNoteSummary;
 }) {
-  const preview = selectCardPreview(note);
-  const noteImage = resolveLifeLabNoteImage(note.metadata);
+  const thumbnail = standaloneThumbnail(note);
+  const dateLabel = note.dateLabel ?? note.modifiedAtLabel;
 
   return (
     <li>
-      <div className="relative rounded-lg border border-border/50 px-3 py-2.5 transition-colors hover:bg-accent-cream/20">
-        <div className="flex items-start justify-between gap-3 pr-8">
-          <div className="flex min-w-0 flex-1 items-start gap-3">
-            {noteImage ? (
-              <LifeLabNoteImageFigure
-                image={noteImage}
-                variant="thumbnail"
-                fallbackTitle={note.title}
-              />
-            ) : null}
-            <div className="min-w-0 flex-1 space-y-1">
-              <Link
-                href={`/life-lab/${sectionId}/${note.slug}`}
-                className="block line-clamp-2 text-sm font-medium leading-snug text-foreground transition-colors hover:text-foreground/80 md:line-clamp-1"
-              >
-                {note.title}
-              </Link>
-              <LifeLabNoteCardMeta sectionId={sectionId} note={note} />
-              {preview ? (
-                <p className="line-clamp-1 text-xs leading-relaxed text-muted">
-                  {preview}
-                </p>
-              ) : null}
-            </div>
-          </div>
-          {note.dateLabel ?? note.modifiedAtLabel ? (
-            <span className="shrink-0 pt-0.5 text-[0.6875rem] text-muted-light">
-              {note.dateLabel ?? note.modifiedAtLabel}
-            </span>
+      <Link
+        href={`/life-lab/${sectionId}/${note.slug}`}
+        className="group flex items-start gap-3 rounded-lg px-1 py-2 transition-colors hover:bg-accent-cream/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border"
+      >
+        {thumbnail ? (
+          <PlaylistVideoThumbnail
+            image={thumbnail}
+            title={note.title}
+            className="w-[4.5rem] shrink-0"
+          />
+        ) : null}
+        <div className="min-w-0 flex-1">
+          <p className="line-clamp-2 text-sm font-medium leading-snug text-foreground md:line-clamp-1">
+            {note.title}
+          </p>
+          {dateLabel ? (
+            <p className="mt-0.5 text-xs text-muted-light">{dateLabel}</p>
           ) : null}
         </div>
-        <div className="absolute right-2.5 top-2.5">
-          <LifeLabNoteCardDevMenu sectionId={sectionId} note={note} />
-        </div>
-      </div>
+      </Link>
     </li>
   );
 }
@@ -91,9 +84,9 @@ export function LifeLabStandaloneVideos({
           Videos not currently assigned to a playlist.
         </p>
       </div>
-      <ul className="space-y-2">
+      <ul className="space-y-1">
         {visibleNotes.map((note) => (
-          <StandaloneVideoCard key={note.slug} sectionId={sectionId} note={note} />
+          <StandaloneVideoRow key={note.slug} sectionId={sectionId} note={note} />
         ))}
       </ul>
       {hasOverflow && !expanded ? (
@@ -102,7 +95,7 @@ export function LifeLabStandaloneVideos({
           onClick={() => setExpanded(true)}
           className="text-xs font-medium text-muted transition-colors hover:text-foreground"
         >
-          View all standalone videos →
+          View all
         </button>
       ) : expanded && hasOverflow ? (
         <button

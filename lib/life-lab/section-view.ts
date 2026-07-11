@@ -34,36 +34,86 @@ import {
 } from "@/lib/life-lab/playlist-thumbnail";
 import type { ResolvedLifeLabNoteImage } from "@/lib/life-lab/note-image";
 
+import {
+  buildPlaylistBrowseDiagnosticEntry,
+  isValidPlaylistBrowseIndex,
+  logPlaylistBrowseDiagnostics,
+  resolvePlaylistBrowseState,
+  type PlaylistBrowseDiagnosticEntry,
+  type PlaylistBrowseResolutionState,
+} from "@/lib/life-lab/playlist-browse-resolution";
+import { noteLibraryDedupeKey } from "@/lib/life-lab/youtube-library";
+
 export const STANDALONE_PREVIEW_LIMIT = 5;
+export const RECENTLY_ADDED_LIMIT = 5;
 
 export type LifeLabPlaylistCard = {
   slug: string;
   title: string;
-  noteCount: number;
+  noteCount: number | null;
+  notesLabel: string;
+  channelLabel: string | null;
+  resolutionState: PlaylistBrowseResolutionState;
   lastUpdatedLabel: string | null;
   progressSummary: string | null;
   href: string;
   thumbnail: ResolvedLifeLabNoteImage | null;
-  unavailableLabel?: string | null;
-  dev?: CollectionCardDiagnostic;
+};
+
+export type UnresolvedPlaylistDebug = {
+  slug: string;
+  title: string;
+  relativePath: string;
+  resolutionState: PlaylistBrowseResolutionState;
+  diagnostic: CollectionCardDiagnostic;
+  browseDiagnostic: PlaylistBrowseDiagnosticEntry;
+};
+
+export type PlaylistBrowseDebugInfo = {
+  indexFilesFound: number;
+  cardsShown: number;
+  driveFolderId: string | null;
+  entries: PlaylistBrowseDiagnosticEntry[];
+  noIndexFilesFound: boolean;
 };
 
 export type LifeLabSectionViewBlock =
   | { kind: "continue-learning"; notes: LifeLabNoteSummary[] }
   | { kind: "recently-added"; notes: LifeLabNoteSummary[] }
-  | { kind: "playlists"; items: LifeLabPlaylistCard[] }
-  | {
-      kind: "standalone-videos";
-      previewNotes: LifeLabNoteSummary[];
-      allNotes: LifeLabNoteSummary[];
-      totalCount: number;
-    }
-  | { kind: "group"; group: LifeLabNoteGroup };
+  | { kind: "standalone-videos"; previewNotes: LifeLabNoteSummary[]; allNotes: LifeLabNoteSummary[]; totalCount: number }
+  | { kind: "playlists"; items: LifeLabPlaylistCard[]; debug?: PlaylistBrowseDebugInfo }
+  | { kind: "group"; group: LifeLabNoteGroup }
+  | { kind: "unresolved-playlists"; items: UnresolvedPlaylistDebug[] };
 
 export type LifeLabSectionView = {
   mode: "browse" | "results";
   blocks: LifeLabSectionViewBlock[];
 };
+
+function dedupeNotesByIdentity(notes: LifeLabNoteSummary[]): LifeLabNoteSummary[] {
+  const seen = new Set<string>();
+  const result: LifeLabNoteSummary[] = [];
+
+  for (const note of notes) {
+    const key = noteLibraryDedupeKey(note);
+
+    if (seen.has(key)) {
+      continue;
+    }
+
+    seen.add(key);
+    result.push(note);
+  }
+
+  return result;
+}
+
+function excludeRecentNotes(
+  notes: LifeLabNoteSummary[],
+  recentSlugs: Set<string>,
+): LifeLabNoteSummary[] {
+  return notes.filter((note) => !recentSlugs.has(note.slug));
+}
 
 function isReferenceLikeNote(note: LifeLabNoteSummary): boolean {
   const subfolder = note.subfolderLabel?.toLowerCase();
@@ -124,31 +174,43 @@ function countCollectionNotes(
   return getCollectionNoteCount(indexNote, notes);
 }
 
+function formatPlaylistNotesLabel(noteCount: number | null): string {
+  if (noteCount == null || noteCount < 0) {
+    return "Notes unavailable";
+  }
+
+  return `${noteCount} ${noteCount === 1 ? "note" : "notes"}`;
+}
+
 function buildPlaylistCard(input: {
   indexNote: LifeLabNoteSummary;
   sectionId: LifeLabSectionId;
   notes: LifeLabNoteSummary[];
   title: string;
-  noteCount: number;
-  unavailableLabel?: string | null;
-  dev?: CollectionCardDiagnostic;
+  noteCount: number | null;
+  resolutionState: PlaylistBrowseResolutionState;
 }): LifeLabPlaylistCard {
   const collection = resolveCollection(input.indexNote, input.notes);
+  const progressSummary = formatPlaylistCardProgress(input.indexNote.excerpt);
+  const pendingMatch = input.indexNote.excerpt.match(/(\d+)\s+pending/i);
+  const hasPending = pendingMatch ? Number.parseInt(pendingMatch[1] ?? "0", 10) > 0 : false;
 
   return {
     slug: input.indexNote.slug,
     title: input.title,
     noteCount: input.noteCount,
+    notesLabel: formatPlaylistNotesLabel(input.noteCount),
+    channelLabel: input.indexNote.metadata?.channel?.trim() ?? null,
+    resolutionState: input.resolutionState,
     lastUpdatedLabel: noteLastUpdatedLabel(input.indexNote),
-    progressSummary: formatPlaylistCardProgress(input.indexNote.excerpt),
+    progressSummary:
+      input.resolutionState === "resolved" && hasPending ? progressSummary : null,
     href: `/life-lab/${input.sectionId}/${input.indexNote.slug}`,
     thumbnail: resolvePlaylistCardThumbnail({
       indexNote: input.indexNote,
       contentNotes: collection.contentNotes,
       playlistUrl: input.indexNote.metadata?.playlist_url,
     }),
-    unavailableLabel: input.unavailableLabel,
-    dev: input.dev,
   };
 }
 
@@ -156,51 +218,62 @@ function buildPlaylistCards(
   sectionId: LifeLabSectionId,
   notes: LifeLabNoteSummary[],
   groups: LifeLabNoteGroup[],
-): LifeLabPlaylistCard[] {
+  options: { driveFolderId?: string | null } = {},
+): {
+  cards: LifeLabPlaylistCard[];
+  unresolved: UnresolvedPlaylistDebug[];
+  debug: PlaylistBrowseDebugInfo;
+} {
   const cards = new Map<string, LifeLabPlaylistCard>();
+  const unresolved: UnresolvedPlaylistDebug[] = [];
+  const diagnosticEntries: PlaylistBrowseDiagnosticEntry[] = [];
+  let indexFilesFound = 0;
 
   for (const note of notes) {
-    if (
-      !isPlaylistIndexNote({
-        sectionId,
-        relativePath: note.relativePath,
-        subfolderLabel: note.subfolderLabel,
-        metadata: note.metadata,
-      })
-    ) {
+    if (!isValidPlaylistBrowseIndex(sectionId, note)) {
       continue;
     }
 
-    const title = formatCollectionDisplayTitle({
-      title: note.title,
-      metadata: note.metadata,
+    indexFilesFound += 1;
+
+    const resolution = resolvePlaylistBrowseState({
+      sectionId,
+      indexNote: note,
+      allNotes: notes,
+    });
+    const browseDiagnostic = buildPlaylistBrowseDiagnosticEntry({
+      sectionId,
+      indexNote: note,
+      resolution,
     });
 
-    if (isInternalPlaylistTitle(title)) {
+    diagnosticEntries.push(browseDiagnostic);
+
+    if (resolution.state === "invalid") {
       continue;
     }
 
-    const key = playlistKey(title);
-    const collection = resolveCollection(note, notes);
-    const noteCount = collection.contentNotes.length;
+    const key = playlistKey(resolution.title);
 
-    if (!collection.resolved && noteCount === 0) {
-      if (process.env.NODE_ENV === "development") {
-        cards.set(
-          key,
-          buildPlaylistCard({
-            indexNote: note,
-            sectionId,
-            notes,
-            title,
-            noteCount: 0,
-            unavailableLabel: "Collection folder not resolved",
-            dev: collection.diagnostic,
-          }),
-        );
-      }
-
-      continue;
+    if (resolution.state === "partiallyResolved") {
+      unresolved.push({
+        slug: note.slug,
+        title: resolution.title,
+        relativePath: note.relativePath,
+        resolutionState: resolution.state,
+        diagnostic:
+          resolution.collection?.diagnostic ??
+          ({
+            indexFileId: note.fileId,
+            indexRelativePath: note.relativePath,
+            resolvedFolderPath: null,
+            resolutionSource: null,
+            recursiveFilesFound: 0,
+            excludedMetadataFiles: [],
+            finalContentNoteCount: 0,
+          } satisfies CollectionCardDiagnostic),
+        browseDiagnostic,
+      });
     }
 
     cards.set(
@@ -209,12 +282,9 @@ function buildPlaylistCards(
         indexNote: note,
         sectionId,
         notes,
-        title,
-        noteCount,
-        dev:
-          process.env.NODE_ENV === "development"
-            ? collection.diagnostic
-            : undefined,
+        title: resolution.title,
+        noteCount: resolution.noteCount,
+        resolutionState: resolution.state,
       }),
     );
   }
@@ -275,6 +345,12 @@ function buildPlaylistCards(
       slug: indexNote?.slug ?? representative?.slug ?? key,
       title,
       noteCount,
+      notesLabel: formatPlaylistNotesLabel(noteCount),
+      channelLabel:
+        indexNote?.metadata?.channel?.trim() ??
+        representative?.metadata?.channel?.trim() ??
+        null,
+      resolutionState: "resolved",
       lastUpdatedLabel: representative
         ? noteLastUpdatedLabel(representative)
         : null,
@@ -296,36 +372,69 @@ function buildPlaylistCards(
             indexNote: representative ?? group.notes[0]!,
             contentNotes,
           }),
-      dev:
-        indexNote && process.env.NODE_ENV === "development"
-          ? resolveCollection(indexNote, notes).diagnostic
-          : undefined,
     });
   }
 
-  return [...cards.values()].sort((left, right) => {
-    const leftTime = left.lastUpdatedLabel ?? "";
-    const rightTime = right.lastUpdatedLabel ?? "";
+  const debug: PlaylistBrowseDebugInfo = {
+    indexFilesFound,
+    cardsShown: cards.size,
+    driveFolderId: options.driveFolderId ?? null,
+    entries: diagnosticEntries,
+    noIndexFilesFound: indexFilesFound === 0,
+  };
 
-    if (leftTime !== rightTime) {
-      return rightTime.localeCompare(leftTime);
-    }
-
-    return left.title.localeCompare(right.title);
+  logPlaylistBrowseDiagnostics({
+    sectionId,
+    entries: diagnosticEntries,
+    indexFilesFound,
+    cardsShown: cards.size,
+    driveFolderId: options.driveFolderId,
   });
+
+  return {
+    cards: [...cards.values()].sort((left, right) => {
+      const leftTime = left.lastUpdatedLabel ?? "";
+      const rightTime = right.lastUpdatedLabel ?? "";
+
+      if (leftTime !== rightTime) {
+        return rightTime.localeCompare(leftTime);
+      }
+
+      return left.title.localeCompare(right.title);
+    }),
+    unresolved,
+    debug,
+  };
+}
+
+export function diagnoseYoutubePlaylistBrowse(input: {
+  sectionId: LifeLabSectionId;
+  notes: LifeLabNoteSummary[];
+  groups: LifeLabNoteGroup[];
+  driveFolderId?: string | null;
+}): PlaylistBrowseDebugInfo {
+  return buildPlaylistCards(
+    input.sectionId,
+    input.notes,
+    input.groups,
+    { driveFolderId: input.driveFolderId },
+  ).debug;
 }
 
 function buildYoutubeBrowseView(
   sectionId: LifeLabSectionId,
   notes: LifeLabNoteSummary[],
   groups: LifeLabNoteGroup[],
+  options: { driveFolderId?: string | null } = {},
 ): LifeLabSectionViewBlock[] {
   const blocks: LifeLabSectionViewBlock[] = [];
 
-  const recentPool = sortLifeLabNotes(
-    notes.filter((note) => isBrowseableContentNote(sectionId, note)),
-    "recent",
-  ).slice(0, 3);
+  const recentPool = dedupeNotesByIdentity(
+    sortLifeLabNotes(
+      notes.filter((note) => isBrowseableContentNote(sectionId, note)),
+      "recent",
+    ),
+  ).slice(0, RECENTLY_ADDED_LIMIT);
 
   if (recentPool.length > 0) {
     blocks.push({
@@ -336,18 +445,11 @@ function buildYoutubeBrowseView(
 
   const recentSlugs = new Set(recentPool.map((note) => note.slug));
 
-  const playlistCards = buildPlaylistCards(sectionId, notes, groups);
-
-  if (playlistCards.length > 0) {
-    blocks.push({
-      kind: "playlists",
-      items: playlistCards,
-    });
-  }
-
-  const standaloneNotes = sortLifeLabNotes(
-    notes.filter(isStandaloneYoutubeVideo),
-    "recent",
+  const standaloneNotes = dedupeNotesByIdentity(
+    sortLifeLabNotes(
+      notes.filter(isStandaloneYoutubeVideo),
+      "recent",
+    ),
   );
 
   if (standaloneNotes.length > 0) {
@@ -360,6 +462,33 @@ function buildYoutubeBrowseView(
       previewNotes,
       allNotes: standaloneNotes,
       totalCount: standaloneNotes.length,
+    });
+  }
+
+  const { cards: playlistCards, unresolved, debug } = buildPlaylistCards(
+    sectionId,
+    notes,
+    groups,
+    options,
+  );
+
+  if (playlistCards.length > 0) {
+    blocks.push({
+      kind: "playlists",
+      items: playlistCards,
+      debug,
+    });
+  } else if (debug.indexFilesFound === 0) {
+    blocks.push({
+      kind: "unresolved-playlists",
+      items: [],
+    });
+  }
+
+  if (unresolved.length > 0) {
+    blocks.push({
+      kind: "unresolved-playlists",
+      items: unresolved,
     });
   }
 
@@ -378,8 +507,9 @@ function buildYoutubeBrowseView(
       continue;
     }
 
-    const contentNotes = group.notes.filter((note) =>
-      isBrowseableContentNote(sectionId, note),
+    const contentNotes = excludeRecentNotes(
+      group.notes.filter((note) => isBrowseableContentNote(sectionId, note)),
+      recentSlugs,
     );
 
     if (contentNotes.length === 0) {
@@ -407,6 +537,7 @@ export function buildLifeLabSectionView(input: {
   notes: LifeLabNoteSummary[];
   groups: LifeLabNoteGroup[];
   hasActiveQuery: boolean;
+  driveFolderId?: string | null;
 }): LifeLabSectionView {
   if (input.hasActiveQuery) {
     return {
@@ -418,7 +549,12 @@ export function buildLifeLabSectionView(input: {
   if (input.sectionId === "youtube-learning") {
     return {
       mode: "browse",
-      blocks: buildYoutubeBrowseView(input.sectionId, input.notes, input.groups),
+      blocks: buildYoutubeBrowseView(
+        input.sectionId,
+        input.notes,
+        input.groups,
+        { driveFolderId: input.driveFolderId },
+      ),
     };
   }
 

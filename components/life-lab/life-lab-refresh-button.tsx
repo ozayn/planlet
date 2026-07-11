@@ -24,6 +24,7 @@ type LifeLabRefreshButtonProps = {
   relativePath?: string;
   subfolderLabel?: string | null;
   className?: string;
+  compact?: boolean;
 };
 
 export function LifeLabRefreshButton({
@@ -35,6 +36,7 @@ export function LifeLabRefreshButton({
   relativePath,
   subfolderLabel,
   className,
+  compact = false,
 }: LifeLabRefreshButtonProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -91,9 +93,13 @@ export function LifeLabRefreshButton({
           className={`size-3.5 ${isPending ? "animate-spin" : ""}`}
           aria-hidden="true"
         />
-        <span>Refresh</span>
+        {compact ? (
+          <span className="sr-only">Refresh</span>
+        ) : (
+          <span>Refresh</span>
+        )}
       </button>
-      {statusMessage ? (
+      {statusMessage && !compact ? (
         <span className="text-xs text-muted-light" aria-live="polite">
           {statusMessage}
         </span>

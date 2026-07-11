@@ -53,13 +53,17 @@ export default async function LifeLabSectionPage({
         subtitle="Notes from this Life Lab folder."
         action={
           <div className="flex items-center gap-3">
-            <LifeLabRefreshButton scope="section" sectionId={sectionId} />
             <Link
               href="/life-lab"
               className="text-sm font-medium text-muted transition-colors hover:text-foreground"
             >
-              All sections
+              Back to Life Lab
             </Link>
+            <LifeLabRefreshButton
+              scope="section"
+              sectionId={sectionId}
+              compact
+            />
           </div>
         }
       />

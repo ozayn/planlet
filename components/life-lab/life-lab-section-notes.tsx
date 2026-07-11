@@ -26,7 +26,11 @@ import {
 import { groupDisclosureSummary } from "@/lib/life-lab/organization";
 import { resolveLifeLabNoteImage } from "@/lib/life-lab/note-image";
 import { isPlaylistIndexNote } from "@/lib/life-lab/playlist-index";
-import type { LifeLabSectionView } from "@/lib/life-lab/section-view";
+import type {
+  LifeLabSectionView,
+  PlaylistBrowseDebugInfo,
+  UnresolvedPlaylistDebug,
+} from "@/lib/life-lab/section-view";
 
 const YOUTUBE_LIBRARY_DISCLOSURE_GROUPS = new Set([
   "reference",
@@ -54,8 +58,12 @@ const GROUP_INITIAL_VISIBLE = 5;
 
 function LifeLabListingDiagnosticPanel({
   diagnostic,
+  unresolvedPlaylists = [],
+  playlistBrowseDebug = null,
 }: {
   diagnostic: LifeLabListingDiagnostic;
+  unresolvedPlaylists?: UnresolvedPlaylistDebug[];
+  playlistBrowseDebug?: PlaylistBrowseDebugInfo | null;
 }) {
   const rows = [
     { label: "Files found", value: String(diagnostic.fileCount) },
@@ -86,14 +94,81 @@ function LifeLabListingDiagnosticPanel({
   return (
     <details className="ui-settings-details group">
       <summary className="ui-settings-details-summary">Debug</summary>
-      <dl className="ui-settings-details-body">
-        {rows.map((row) => (
-          <div key={row.label} className="ui-settings-info-row">
-            <dt className="text-muted">{row.label}</dt>
-            <dd className="text-end text-foreground">{row.value}</dd>
+      <div className="ui-settings-details-body space-y-4">
+        <dl className="space-y-2">
+          {rows.map((row) => (
+            <div key={row.label} className="ui-settings-info-row">
+              <dt className="text-muted">{row.label}</dt>
+              <dd className="text-end text-foreground">{row.value}</dd>
+            </div>
+          ))}
+        </dl>
+        {playlistBrowseDebug?.noIndexFilesFound ? (
+          <p className="text-xs text-muted">
+            No playlist index files found
+            {playlistBrowseDebug.driveFolderId
+              ? ` in Drive folder ${playlistBrowseDebug.driveFolderId}`
+              : ""}
+            .
+          </p>
+        ) : null}
+        {playlistBrowseDebug && playlistBrowseDebug.entries.length > 0 ? (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+              Playlist resolution
+            </p>
+            <ul className="space-y-2 text-xs text-muted">
+              {playlistBrowseDebug.entries.map((entry) => (
+                <li
+                  key={entry.indexFileId}
+                  className="rounded-lg border border-border/50 bg-surface px-3 py-2"
+                >
+                  <p className="font-medium text-foreground">{entry.title}</p>
+                  <p>{entry.relativePath}</p>
+                  <p>State: {entry.state}</p>
+                  <p>Playlist ID: {entry.playlistId ?? "none"}</p>
+                  <p>Asset path: {entry.assetPath ?? "none"}</p>
+                  <p>
+                    Folder: {entry.resolvedFolderPath ?? "unresolved"}
+                  </p>
+                  <p>Source: {entry.resolutionSource ?? "none"}</p>
+                  <p>Note count: {entry.noteCount ?? "unknown"}</p>
+                  {entry.hiddenReason ? (
+                    <p>Hidden reason: {entry.hiddenReason}</p>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
           </div>
-        ))}
-      </dl>
+        ) : null}
+        {unresolvedPlaylists.length > 0 ? (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+              Partially resolved playlists
+            </p>
+            <ul className="space-y-2 text-xs text-muted">
+              {unresolvedPlaylists.map((item) => (
+                <li
+                  key={item.slug}
+                  className="rounded-lg border border-border/50 bg-surface px-3 py-2"
+                >
+                  <p className="font-medium text-foreground">{item.title}</p>
+                  <p>{item.relativePath}</p>
+                  <p>State: {item.resolutionState}</p>
+                  <p>
+                    Folder: {item.diagnostic.resolvedFolderPath ?? "unresolved"}
+                  </p>
+                  <p>Source: {item.diagnostic.resolutionSource ?? "none"}</p>
+                  <p>Files found: {item.diagnostic.recursiveFilesFound}</p>
+                  <p>
+                    Excluded: {item.diagnostic.excludedMetadataFiles.length}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </div>
     </details>
   );
 }
@@ -412,6 +487,24 @@ export function LifeLabSectionNotes({
   showDiagnostics,
   searchQuery,
 }: LifeLabSectionNotesProps) {
+  const unresolvedPlaylists = sectionView.blocks.flatMap((block) =>
+    block.kind === "unresolved-playlists" ? block.items : [],
+  );
+  const playlistBrowseDebug = sectionView.blocks.find(
+    (block) => block.kind === "playlists",
+  );
+  const playlistDebugInfo =
+    playlistBrowseDebug?.kind === "playlists"
+      ? (playlistBrowseDebug.debug ?? null)
+      : null;
+  const noPlaylistIndexes =
+    sectionView.blocks.some(
+      (block) =>
+        block.kind === "unresolved-playlists" &&
+        block.items.length === 0 &&
+        playlistDebugInfo?.noIndexFilesFound,
+    ) || playlistDebugInfo?.noIndexFilesFound;
+
   return (
     <div className="space-y-8">
       {sectionView.mode === "results" ? (
@@ -460,6 +553,8 @@ export function LifeLabSectionNotes({
                 totalCount={block.totalCount}
               />
             );
+          case "unresolved-playlists":
+            return null;
           case "group":
             return (
               <LifeLabNoteGroupSection
@@ -475,7 +570,22 @@ export function LifeLabSectionNotes({
       })}
 
       {showDiagnostics && listingDiagnostic ? (
-        <LifeLabListingDiagnosticPanel diagnostic={listingDiagnostic} />
+        <LifeLabListingDiagnosticPanel
+          diagnostic={listingDiagnostic}
+          unresolvedPlaylists={unresolvedPlaylists}
+          playlistBrowseDebug={
+            playlistDebugInfo ??
+            (noPlaylistIndexes
+              ? {
+                  indexFilesFound: 0,
+                  cardsShown: 0,
+                  driveFolderId: null,
+                  entries: [],
+                  noIndexFilesFound: true,
+                }
+              : null)
+          }
+        />
       ) : null}
     </div>
   );
