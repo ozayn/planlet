@@ -460,7 +460,18 @@ export function LifeLabPlaylistIndexNote({
         </div>
       </header>
 
-      {summaryAsset ? <PlaylistSummarySection asset={summaryAsset} /> : null}
+  {summaryAsset ? (
+        <PlaylistSummarySection
+          asset={summaryAsset}
+          availableAssetIds={
+            new Set(
+              playlistAssets?.artifacts
+                .filter((asset) => !asset.unavailable)
+                .map((asset) => asset.id) ?? [],
+            )
+          }
+        />
+      ) : null}
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-foreground">Videos</h2>
@@ -474,6 +485,9 @@ export function LifeLabPlaylistIndexNote({
           sectionId={note.sectionId}
           videos={visibleVideos}
           relatedNotes={relatedNotes}
+          playlistTitle={display.playlistTitle}
+          channelName={display.channel}
+          metadata={note.metadata}
         />
       ) : null}
 

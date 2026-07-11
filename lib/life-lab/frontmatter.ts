@@ -177,6 +177,10 @@ function normalizeMetadata(raw: Record<string, unknown>): LifeLabNoteMetadata {
     "term",
     "category",
     "summary",
+    "presenter",
+    "instructor",
+    "host",
+    "lecturer",
   ] as const;
 
   for (const field of stringFields) {
@@ -193,7 +197,21 @@ function normalizeMetadata(raw: Record<string, unknown>): LifeLabNoteMetadata {
     metadata.episode = raw.episode;
   }
 
-  const arrayFields = ["topics", "people", "places", "tags", "related"] as const;
+  const arrayFields = [
+    "topics",
+    "people",
+    "places",
+    "tags",
+    "related",
+    "presenters",
+    "instructors",
+    "lecturers",
+    "hosts",
+    "cloudStopTerms",
+    "cloud_stop_terms",
+    "cloudBoostTerms",
+    "cloud_boost_terms",
+  ] as const;
 
   for (const field of arrayFields) {
     const value = normalizeStringArray(raw[field]);

@@ -55,12 +55,30 @@ function countDescriptionItems(description: string | null): number | null {
   return parts.length > 0 ? parts.length : null;
 }
 
+function summarizeClusterConcepts(description: string | null): string | null {
+  if (!description?.trim()) {
+    return null;
+  }
+
+  const cleaned = description
+    .replace(/(\d+)\s+(?:related\s+)?concepts?:?\s*/gi, "")
+    .replace(/\s*[·•—–-]\s*$/g, "")
+    .trim();
+
+  const parts = cleaned
+    .split(/[,;•·]/)
+    .map((part) => part.trim())
+    .filter((part) => part && !/^\d+$/.test(part))
+    .slice(0, 5);
+
+  return parts.length > 0 ? parts.join(", ") : null;
+}
+
 export function formatClusterRowMetadata(row: PlaylistClusterRow): {
   conceptsLine: string | null;
   countLine: string | null;
 } {
   const description = row.description?.trim() ?? null;
-  let conceptsLine = description;
   let count = row.count;
 
   if (description) {
@@ -68,14 +86,10 @@ export function formatClusterRowMetadata(row: PlaylistClusterRow): {
 
     if (explicitCount?.[1]) {
       count = Number.parseInt(explicitCount[1], 10);
-      conceptsLine = description
-        .replace(/(\d+)\s+(?:related\s+)?concepts?:?\s*/i, "")
-        .replace(/\s*[·•—–-]\s*$/g, "")
-        .replace(/^[,:;\s]+|[,:;\s]+$/g, "")
-        .trim();
     }
   }
 
+  const conceptsLine = summarizeClusterConcepts(description);
   const countLine =
     count != null && count > 0
       ? count === 1
@@ -84,7 +98,7 @@ export function formatClusterRowMetadata(row: PlaylistClusterRow): {
       : null;
 
   return {
-    conceptsLine: conceptsLine || null,
+    conceptsLine,
     countLine,
   };
 }

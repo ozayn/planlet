@@ -117,6 +117,18 @@ export type LifeLabNoteMetadata = {
   term?: string;
   category?: string;
   related?: string[];
+  presenters?: string[];
+  presenter?: string | string[];
+  instructor?: string | string[];
+  instructors?: string[];
+  host?: string | string[];
+  hosts?: string[];
+  lecturer?: string | string[];
+  lecturers?: string[];
+  cloudStopTerms?: string[];
+  cloud_stop_terms?: string[];
+  cloudBoostTerms?: string[];
+  cloud_boost_terms?: string[];
   summary?: string;
   study_status?: string;
   reviewed?: boolean;

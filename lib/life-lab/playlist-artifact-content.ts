@@ -292,6 +292,24 @@ function stripOrphanMermaidBlocks(body: string): string {
     .trim();
 }
 
+export function preparePlaylistSummaryForDisplay(
+  asset: PlaylistAssetView,
+  availableAssetIds: Set<PlaylistAssetId>,
+): string {
+  const availableMatchers = [...availableAssetIds]
+    .map((id) => ASSET_SECTION_MATCHERS[id])
+    .filter((matcher): matcher is (title: string) => boolean => Boolean(matcher));
+
+  let body = prepareArtifactBodyForDisplay(asset);
+
+  return stripMarkdownSections(body, (title) =>
+    shouldStripSummarySection(title, availableMatchers) ||
+    REDUNDANT_SUMMARY_SECTIONS.some((pattern) =>
+      pattern.test(normalizeSectionTitle(title)),
+    ),
+  ).trim();
+}
+
 export function prepareArtifactBodyForDisplay(
   asset: PlaylistAssetView,
 ): string {

@@ -2,16 +2,18 @@
 
 import {
   frequencyCloudStyle,
-  limitFrequencyCloudItems,
-  parseFrequencyMarkdownList,
   type FrequencyCloudItem,
 } from "@/lib/life-lab/frequency-cloud";
 
+export type FrequencyCloudDisplayItem = FrequencyCloudItem & {
+  weight?: number;
+  rawCount?: number;
+};
+
 type LifeLabFrequencyCloudProps = {
-  items?: FrequencyCloudItem[];
-  content?: string;
+  items: FrequencyCloudDisplayItem[];
+  countItems?: FrequencyCloudItem[];
   ariaLabel: string;
-  maxItems?: number;
   minFontSize?: number;
   maxFontSize?: number;
 };
@@ -29,23 +31,23 @@ function FrequencyCountList({ items }: { items: FrequencyCloudItem[] }) {
 }
 
 export function LifeLabFrequencyCloud({
-  items: itemsProp,
-  content,
+  items,
+  countItems,
   ariaLabel,
-  maxItems = 24,
   minFontSize = 14,
   maxFontSize = 28,
 }: LifeLabFrequencyCloudProps) {
-  const parsedItems =
-    itemsProp ?? (content ? parseFrequencyMarkdownList(content) : []);
-  const items = limitFrequencyCloudItems(parsedItems, maxItems);
-
   if (items.length === 0) {
     return null;
   }
 
-  const minCount = items[items.length - 1]?.count ?? items[0]!.count;
-  const maxCount = items[0]!.count;
+  const weights = items.map((item) => item.weight ?? item.count);
+  const minWeight = weights[weights.length - 1] ?? weights[0] ?? 0;
+  const maxWeight = weights[0] ?? 0;
+  const counts = countItems ?? items.map((item) => ({
+    label: item.label,
+    count: item.rawCount ?? item.count,
+  }));
 
   return (
     <div className="space-y-2">
@@ -55,16 +57,23 @@ export function LifeLabFrequencyCloud({
         aria-label={ariaLabel}
       >
         {items.map((item) => {
-          const style = frequencyCloudStyle(item.count, minCount, maxCount, {
-            minFontSize,
-            maxFontSize,
-          });
+          const sizingCount = item.weight ?? item.count;
+          const mentionCount = item.rawCount ?? item.count;
+          const style = frequencyCloudStyle(
+            sizingCount,
+            minWeight,
+            maxWeight,
+            {
+              minFontSize,
+              maxFontSize,
+            },
+          );
 
           return (
             <span
               key={item.label}
               role="listitem"
-              aria-label={`${item.label}, mentioned ${item.count} times`}
+              aria-label={`${item.label}, mentioned ${mentionCount} times`}
               className="leading-snug text-foreground"
               style={{
                 fontSize: style.fontSize,
@@ -82,7 +91,7 @@ export function LifeLabFrequencyCloud({
           View counts
         </summary>
         <div className="ui-settings-details-body">
-          <FrequencyCountList items={items} />
+          <FrequencyCountList items={counts} />
         </div>
       </details>
     </div>

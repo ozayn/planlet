@@ -8,14 +8,16 @@ import { ChevronRight } from "lucide-react";
 import { LifeLabFrequencyCloud } from "@/components/life-lab/life-lab-frequency-cloud";
 import { MarkdownContent } from "@/components/life-lab/markdown-content";
 import { MermaidExpandDialog } from "@/components/life-lab/mermaid-expand-dialog";
+import { parseFrequencyMarkdownList } from "@/lib/life-lab/frequency-cloud";
 import {
-  limitFrequencyCloudItems,
-  parseFrequencyMarkdownList,
-} from "@/lib/life-lab/frequency-cloud";
+  filterPlaylistCloudItems,
+  type PlaylistCloudFilterType,
+} from "@/lib/life-lab/playlist-cloud-filter";
 import type {
   LifeLabCacheDiagnostic,
   LifeLabNoteDevMeta,
   LifeLabNoteLoadMeta,
+  LifeLabNoteMetadata,
   LifeLabNoteSummary,
   LifeLabSectionId,
 } from "@/lib/life-lab/constants";
@@ -24,9 +26,11 @@ import {
   collapsedArtifactLabel,
   extractMarkdownSection,
   prepareArtifactBodyForDisplay,
+  preparePlaylistSummaryForDisplay,
 } from "@/lib/life-lab/playlist-artifact-content";
 import type {
   PlaylistAssetDiagnostic,
+  PlaylistAssetId,
   PlaylistAssetView,
   PlaylistAssetsBundle,
 } from "@/lib/life-lab/playlist-assets";
@@ -45,6 +49,9 @@ type PlaylistAssetsSectionProps = {
   sectionId: LifeLabSectionId;
   videos: PlaylistVideoRow[];
   relatedNotes: LifeLabNoteSummary[];
+  playlistTitle: string;
+  channelName?: string | null;
+  metadata?: LifeLabNoteMetadata;
 };
 
 function QuietUnavailable({ title }: { title: string }) {
@@ -57,8 +64,10 @@ function QuietUnavailable({ title }: { title: string }) {
 
 export function PlaylistSummarySection({
   asset,
+  availableAssetIds = new Set<PlaylistAssetId>(),
 }: {
   asset: PlaylistAssetView;
+  availableAssetIds?: Set<PlaylistAssetId>;
 }) {
   if (asset.unavailable) {
     return (
@@ -72,7 +81,9 @@ export function PlaylistSummarySection({
   return (
     <section className="space-y-2">
       <h2 className="text-sm font-semibold text-foreground">Playlist summary</h2>
-      <MarkdownContent content={prepareArtifactBodyForDisplay(asset)} />
+      <MarkdownContent
+        content={preparePlaylistSummaryForDisplay(asset, availableAssetIds)}
+      />
     </section>
   );
 }
@@ -104,17 +115,25 @@ function LearningMapSection({
 function FrequencyCloudSection({
   asset,
   label,
+  type,
   maxItems,
   minFontSize,
   maxFontSize,
   emptyMessage,
+  playlistTitle,
+  channelName,
+  metadata,
 }: {
   asset: PlaylistAssetView;
   label: string;
+  type: PlaylistCloudFilterType;
   maxItems: number;
   minFontSize: number;
   maxFontSize: number;
   emptyMessage: string;
+  playlistTitle: string;
+  channelName?: string | null;
+  metadata?: LifeLabNoteMetadata;
 }) {
   if (asset.unavailable) {
     return (
@@ -125,12 +144,19 @@ function FrequencyCloudSection({
     );
   }
 
-  const items = limitFrequencyCloudItems(
-    parseFrequencyMarkdownList(prepareArtifactBodyForDisplay(asset)),
-    maxItems,
+  const parsed = parseFrequencyMarkdownList(
+    prepareArtifactBodyForDisplay(asset),
   );
+  const filtered = filterPlaylistCloudItems({
+    items: parsed,
+    playlistTitle,
+    channelName,
+    metadata,
+    type,
+    maxVisible: maxItems,
+  });
 
-  if (items.length === 0) {
+  if (filtered.visibleItems.length === 0) {
     return (
       <section className="space-y-2">
         <h3 className="text-sm font-semibold text-foreground">{label}</h3>
@@ -143,9 +169,17 @@ function FrequencyCloudSection({
     <section className="space-y-2">
       <h3 className="text-sm font-semibold text-foreground">{label}</h3>
       <LifeLabFrequencyCloud
-        items={items}
+        items={filtered.visibleItems.map((item) => ({
+          label: item.label,
+          count: item.rawCount,
+          rawCount: item.rawCount,
+          weight: item.adjustedWeight,
+        }))}
+        countItems={filtered.allItems.map((item) => ({
+          label: item.label,
+          count: item.rawCount,
+        }))}
         ariaLabel={`${label} cloud`}
-        maxItems={maxItems}
         minFontSize={minFontSize}
         maxFontSize={maxFontSize}
       />
@@ -493,19 +527,22 @@ function DevInfoSection({
   );
 }
 
-const COLLAPSED_ASSET_IDS = new Set([
+const COLLAPSED_ASSET_ORDER: PlaylistAssetId[] = [
   "timeline",
+  "full-concept-map",
   "topic-graph",
   "people-map",
   "concept-map",
-  "full-concept-map",
-]);
+];
 
 export function LifeLabPlaylistAnalysis({
   bundle,
   sectionId,
   videos,
   relatedNotes,
+  playlistTitle,
+  channelName = null,
+  metadata,
 }: PlaylistAssetsSectionProps) {
   const playlistId =
     bundle.folder.status === "resolved" ? bundle.folder.playlistId : null;
@@ -517,10 +554,11 @@ export function LifeLabPlaylistAnalysis({
   );
   const people = bundle.artifacts.find((asset) => asset.id === "people");
   const summaryAsset = bundle.artifacts.find((asset) => asset.id === "summary");
-  const collapsedAssets = bundle.artifacts.filter(
-    (asset) =>
-      asset.tier === "secondary" && COLLAPSED_ASSET_IDS.has(asset.id),
-  );
+  const collapsedAssets = COLLAPSED_ASSET_ORDER.flatMap((assetId) => {
+    const asset = bundle.artifacts.find((item) => item.id === assetId);
+
+    return asset ? [asset] : [];
+  });
   const showMissingLearningMap =
     bundle.folder.status === "resolved" && !bundle.learningMapFound;
   const recentVideos = summaryAsset
@@ -569,10 +607,14 @@ export function LifeLabPlaylistAnalysis({
         <FrequencyCloudSection
           asset={conceptFrequencies}
           label="Concepts"
+          type="concepts"
           maxItems={24}
           minFontSize={14}
           maxFontSize={30}
           emptyMessage="No concept data available yet."
+          playlistTitle={playlistTitle}
+          channelName={channelName}
+          metadata={metadata}
         />
       ) : null}
 
@@ -580,10 +622,14 @@ export function LifeLabPlaylistAnalysis({
         <FrequencyCloudSection
           asset={people}
           label="People"
+          type="people"
           maxItems={20}
           minFontSize={14}
           maxFontSize={26}
           emptyMessage="No people data available yet."
+          playlistTitle={playlistTitle}
+          channelName={channelName}
+          metadata={metadata}
         />
       ) : null}
 
@@ -594,19 +640,29 @@ export function LifeLabPlaylistAnalysis({
 
       <RecentVideosSection items={recentVideos} />
 
-      {questionsSection ? (
-        <CollapsedMarkdownSection title="Questions" content={questionsSection} />
-      ) : null}
-
-      {collapsedAssets.length > 0 ? (
+      {collapsedAssets.length > 0 || questionsSection ? (
         <div className="space-y-2">
-          {collapsedAssets.map((asset) => (
-            <CollapsedArtifactSection
-              key={`${playlistId ?? "playlist"}-${asset.id}`}
-              asset={asset}
-              playlistId={playlistId}
-            />
-          ))}
+          {collapsedAssets
+            .filter((asset) => asset.id === "timeline")
+            .map((asset) => (
+              <CollapsedArtifactSection
+                key={`${playlistId ?? "playlist"}-${asset.id}`}
+                asset={asset}
+                playlistId={playlistId}
+              />
+            ))}
+          {questionsSection ? (
+            <CollapsedMarkdownSection title="Questions" content={questionsSection} />
+          ) : null}
+          {collapsedAssets
+            .filter((asset) => asset.id !== "timeline")
+            .map((asset) => (
+              <CollapsedArtifactSection
+                key={`${playlistId ?? "playlist"}-${asset.id}`}
+                asset={asset}
+                playlistId={playlistId}
+              />
+            ))}
         </div>
       ) : null}
     </section>
