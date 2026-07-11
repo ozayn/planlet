@@ -49,8 +49,16 @@ import {
   STANDALONE_CHANNEL_GROUP_PREVIEW_LIMIT,
   type StandaloneChannelGroup,
 } from "@/lib/life-lab/standalone-channel";
+import {
+  findStandaloneSeriesBySlug,
+  partitionStandaloneBySeries,
+  STANDALONE_INDIVIDUAL_VIDEO_PREVIEW_LIMIT,
+  STANDALONE_SERIES_PREVIEW_LIMIT,
+  type StandaloneVideoSeries,
+} from "@/lib/life-lab/standalone-series";
 
 export type { StandaloneChannelGroup } from "@/lib/life-lab/standalone-channel";
+export type { StandaloneVideoSeries } from "@/lib/life-lab/standalone-series";
 
 export const RECENTLY_ADDED_LIMIT = 5;
 
@@ -89,11 +97,18 @@ export type LifeLabSectionViewBlock =
   | { kind: "recently-added"; notes: LifeLabNoteSummary[] }
   | {
       kind: "standalone-videos";
+      seriesGroups: StandaloneVideoSeries[];
+      previewSeriesGroups: StandaloneVideoSeries[];
       channelGroups: StandaloneChannelGroup[];
       previewChannelGroups: StandaloneChannelGroup[];
+      individualNotes: LifeLabNoteSummary[];
+      previewIndividualNotes: LifeLabNoteSummary[];
+      totalSeriesCount: number;
       totalChannelCount: number;
+      totalIndividualCount: number;
       totalCount: number;
       activeChannelFilter: string | null;
+      activeSeriesFilter: string | null;
     }
   | { kind: "playlists"; items: LifeLabPlaylistCard[]; debug?: PlaylistBrowseDebugInfo }
   | { kind: "group"; group: LifeLabNoteGroup }
@@ -457,14 +472,29 @@ function buildYoutubeBrowseView(
     driveFolderId?: string | null;
     sort?: LifeLabSortKey;
     channelFilter?: string | null;
+    seriesFilter?: string | null;
   } = {},
 ): LifeLabSectionViewBlock[] {
   const sort = options.sort ?? "recent";
   const blocks: LifeLabSectionViewBlock[] = [];
 
+  const standaloneNotes = dedupeNotesByIdentity(
+    sortLifeLabNotes(
+      notes.filter((note) => isStandaloneYoutubeVideo(note, notes)),
+      sort,
+    ),
+  );
+
+  const { seriesGroups, ungroupedNotes, seriesNoteKeys } =
+    partitionStandaloneBySeries(standaloneNotes, { sort });
+
   const recentPool = dedupeNotesByIdentity(
     sortLifeLabNotes(
-      notes.filter((note) => isRecentlyAddedStandaloneNote(sectionId, note, notes)),
+      notes.filter(
+        (note) =>
+          isRecentlyAddedStandaloneNote(sectionId, note, notes) &&
+          !seriesNoteKeys.has(noteLibraryDedupeKey(note)),
+      ),
       "recent",
     ),
   ).slice(0, RECENTLY_ADDED_LIMIT);
@@ -480,40 +510,84 @@ function buildYoutubeBrowseView(
     recentPool.map((note) => noteLibraryDedupeKey(note)),
   );
 
-  const standaloneNotes = dedupeNotesByIdentity(
-    sortLifeLabNotes(
-      notes.filter((note) => isStandaloneYoutubeVideo(note, notes)),
-      sort,
-    ),
-  );
-
   if (standaloneNotes.length > 0) {
     const channelFilter = options.channelFilter?.trim() ?? null;
-    const filteredStandaloneNotes = channelFilter
-      ? standaloneNotes.filter((note) =>
-          noteMatchesStandaloneChannelFilter(note, channelFilter),
-        )
-      : standaloneNotes;
+    const seriesFilter = options.seriesFilter?.trim() ?? null;
+    const activeSeries = seriesFilter
+      ? findStandaloneSeriesBySlug(seriesGroups, seriesFilter)
+      : null;
 
-    if (filteredStandaloneNotes.length > 0) {
-      const channelGroups = groupStandaloneVideosByChannel({
-        notes: filteredStandaloneNotes,
-        sort,
-        excludeKeys: channelFilter ? new Set<string>() : recentKeys,
-        videosPerChannelPreview: channelFilter
-          ? filteredStandaloneNotes.length
-          : undefined,
-      });
+    if (activeSeries) {
+      const sortedSeriesVideos = sortLifeLabNotes(activeSeries.videos, sort);
 
       blocks.push({
         kind: "standalone-videos",
+        seriesGroups: [activeSeries],
+        previewSeriesGroups: [activeSeries],
+        channelGroups: [],
+        previewChannelGroups: [],
+        individualNotes: sortedSeriesVideos,
+        previewIndividualNotes: sortedSeriesVideos,
+        totalSeriesCount: seriesGroups.length,
+        totalChannelCount: 0,
+        totalIndividualCount: sortedSeriesVideos.length,
+        totalCount: standaloneNotes.length,
+        activeChannelFilter: null,
+        activeSeriesFilter: seriesFilter,
+      });
+    } else {
+      const channelPool = channelFilter
+        ? ungroupedNotes.filter((note) =>
+            noteMatchesStandaloneChannelFilter(note, channelFilter),
+          )
+        : ungroupedNotes;
+
+      const channelGroups =
+        channelPool.length > 0
+          ? groupStandaloneVideosByChannel({
+              notes: channelPool,
+              sort,
+              excludeKeys: channelFilter ? new Set<string>() : recentKeys,
+              videosPerChannelPreview: channelFilter
+                ? channelPool.length
+                : undefined,
+            })
+          : [];
+
+      const channelPreviewKeys = new Set(
+        channelGroups.flatMap((group) =>
+          group.previewNotes.map((note) => noteLibraryDedupeKey(note)),
+        ),
+      );
+
+      const individualNotes = sortLifeLabNotes(
+        ungroupedNotes.filter(
+          (note) =>
+            !channelPreviewKeys.has(noteLibraryDedupeKey(note)) &&
+            !recentKeys.has(noteLibraryDedupeKey(note)),
+        ),
+        sort,
+      );
+
+      blocks.push({
+        kind: "standalone-videos",
+        seriesGroups,
+        previewSeriesGroups: seriesGroups.slice(0, STANDALONE_SERIES_PREVIEW_LIMIT),
         channelGroups,
         previewChannelGroups: channelFilter
           ? channelGroups
           : channelGroups.slice(0, STANDALONE_CHANNEL_GROUP_PREVIEW_LIMIT),
+        individualNotes,
+        previewIndividualNotes: individualNotes.slice(
+          0,
+          STANDALONE_INDIVIDUAL_VIDEO_PREVIEW_LIMIT,
+        ),
+        totalSeriesCount: seriesGroups.length,
         totalChannelCount: channelGroups.length,
+        totalIndividualCount: individualNotes.length,
         totalCount: standaloneNotes.length,
         activeChannelFilter: channelFilter,
+        activeSeriesFilter: null,
       });
     }
   }
@@ -593,6 +667,7 @@ export function buildLifeLabSectionView(input: {
   driveFolderId?: string | null;
   sort?: LifeLabSortKey;
   channelFilter?: string | null;
+  seriesFilter?: string | null;
 }): LifeLabSectionView {
   if (input.hasActiveQuery) {
     return {
@@ -612,6 +687,7 @@ export function buildLifeLabSectionView(input: {
           driveFolderId: input.driveFolderId,
           sort: input.sort,
           channelFilter: input.channelFilter,
+          seriesFilter: input.seriesFilter,
         },
       ),
     };

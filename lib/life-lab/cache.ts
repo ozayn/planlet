@@ -4,7 +4,7 @@ export const LIFE_LAB_CACHE_TAG = "life-lab";
 export const LIFE_LAB_SECTIONS_CACHE_TAG = "life-lab:sections";
 
 /** Bump when section listing or playlist browse logic changes materially. */
-export const LIFE_LAB_SECTION_FILE_INDEX_CACHE_VERSION = "v4-youtube-thumbnails";
+export const LIFE_LAB_SECTION_FILE_INDEX_CACHE_VERSION = "v5-standalone-series";
 
 /** Bump when note payload enrichment or serialized metadata shape changes. */
 export const LIFE_LAB_NOTE_PAYLOAD_CACHE_VERSION = "v4-youtube-thumbnails";

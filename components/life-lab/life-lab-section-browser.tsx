@@ -173,6 +173,7 @@ export function LifeLabSectionBrowser({
     ? rawSort
     : LIFE_LAB_DEFAULT_SORT;
   const filters = useMemo(() => readFilters(searchParams), [searchParams]);
+  const seriesFilter = searchParams.get("series")?.trim() ?? null;
 
   const sanitizedFilterOptions = useMemo(
     () =>
@@ -211,8 +212,9 @@ export function LifeLabSectionBrowser({
         hasActiveQuery,
         sort,
         channelFilter: filters.channel ?? null,
+        seriesFilter,
       }),
-    [filteredNotes, groups, hasActiveQuery, sectionId, sort, filters.channel],
+    [filteredNotes, groups, hasActiveQuery, sectionId, sort, filters.channel, seriesFilter],
   );
 
   const flashcardStats = useMemo(() => {
