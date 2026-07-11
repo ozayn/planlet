@@ -4,7 +4,8 @@ import Link from "next/link";
 
 import { LifeLabMetadataChips } from "@/components/life-lab/life-lab-metadata-chips";
 import { LifeLabNoteDevToolbar } from "@/components/life-lab/life-lab-note-dev-toolbar";
-import { LifeLabNoteReadAloud } from "@/components/life-lab/life-lab-note-read-aloud";
+import { LifeLabNoteListen } from "@/components/life-lab/life-lab-note-listen";
+import type { LifeLabReadAloudPreferences } from "@/lib/life-lab/read-aloud-preferences";
 import { LifeLabSourceLink } from "@/components/life-lab/life-lab-source-link";
 import type { LifeLabNote, LifeLabSectionId } from "@/lib/life-lab/constants";
 import type { PlaylistVideoNavigation } from "@/lib/life-lab/playlist-index";
@@ -31,6 +32,8 @@ type LifeLabNoteDetailHeaderProps = {
   sectionId: LifeLabSectionId;
   sectionLabel: string;
   playlistNav?: PlaylistVideoNavigation | null;
+  readAloudPreferences: LifeLabReadAloudPreferences;
+  openAiNarrationAvailable: boolean;
 };
 
 function MetadataChip({ label }: { label: string }) {
@@ -54,6 +57,8 @@ export function LifeLabNoteDetailHeader({
   sectionId,
   sectionLabel,
   playlistNav = null,
+  readAloudPreferences,
+  openAiNarrationAvailable,
 }: LifeLabNoteDetailHeaderProps) {
   const displayTitle = lifeLabNoteDisplayTitle(note);
   const showFullTitle = lifeLabNoteDisplayTitleDiffers(note);
@@ -207,12 +212,17 @@ export function LifeLabNoteDetailHeader({
       ) : null}
 
       <details className="ui-settings-details group">
-        <summary className="ui-settings-details-summary">Audio</summary>
+        <summary className="ui-settings-details-summary">Listen</summary>
         <div className="ui-settings-details-body">
-          <LifeLabNoteReadAloud
+          <LifeLabNoteListen
             title={note.title}
             content={note.content}
-            compact
+            sectionId={sectionId}
+            slug={note.slug}
+            fileId={note.fileId}
+            preferences={readAloudPreferences}
+            openAiNarrationAvailable={openAiNarrationAvailable}
+            includeFlashcards
           />
         </div>
       </details>

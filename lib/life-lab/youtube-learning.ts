@@ -1,5 +1,6 @@
 import type { LifeLabNoteMetadata, LifeLabSectionId } from "@/lib/life-lab/constants";
 import { isYoutubeVideoNote } from "@/lib/life-lab/playlist-index";
+import { cleanYoutubePlaylistVideoTitle } from "@/lib/life-lab/playlist-title-cleanup";
 
 const TITLE_CASE_SMALL_WORDS = new Set([
   "a",
@@ -52,49 +53,51 @@ export function youtubeVideoDisplayTitle(
   metadata?: LifeLabNoteMetadata,
 ): string {
   const trimmed = title.trim();
+  let display = trimmed;
 
-  if (trimmed.length <= 72) {
-    return trimmed;
-  }
+  if (trimmed.length > 72) {
+    const episodeFromMetadata =
+      metadata?.episode != null ? String(metadata.episode).replace(/^0+/, "") : null;
+    const episodeMatch = trimmed.match(/\b(?:Episode|Ep\.?)\s*0*(\d+)\b/i);
+    const episodeNumber = episodeFromMetadata ?? episodeMatch?.[1] ?? null;
+    const episodeSplit = trimmed.split(/\b(?:Episode|Ep\.?)\s*0*\d+\b/i);
+    const beforeEpisode = episodeSplit[0]?.trim() ?? trimmed;
+    const afterEpisode = episodeSplit[1]?.trim() ?? "";
 
-  const episodeFromMetadata =
-    metadata?.episode != null ? String(metadata.episode).replace(/^0+/, "") : null;
-  const episodeMatch = trimmed.match(/\b(?:Episode|Ep\.?)\s*0*(\d+)\b/i);
-  const episodeNumber = episodeFromMetadata ?? episodeMatch?.[1] ?? null;
-  const episodeSplit = trimmed.split(/\b(?:Episode|Ep\.?)\s*0*\d+\b/i);
-  const beforeEpisode = episodeSplit[0]?.trim() ?? trimmed;
-  const afterEpisode = episodeSplit[1]?.trim() ?? "";
+    let series = beforeEpisode.replace(/\?.*$/, "").trim();
+    const colonIndex = series.indexOf(":");
 
-  let series = beforeEpisode.replace(/\?.*$/, "").trim();
-  const colonIndex = series.indexOf(":");
+    if (colonIndex !== -1) {
+      series = series.slice(0, colonIndex).trim();
+    }
 
-  if (colonIndex !== -1) {
-    series = series.slice(0, colonIndex).trim();
-  }
+    let subtitle = cleanQuotedSubtitle(afterEpisode);
 
-  let subtitle = cleanQuotedSubtitle(afterEpisode);
+    if (!subtitle) {
+      const quoteMatch = trimmed.match(/["“]([^"”]+)["”]/);
 
-  if (!subtitle) {
-    const quoteMatch = trimmed.match(/["“]([^"”]+)["”]/);
+      if (quoteMatch?.[1]) {
+        subtitle = cleanQuotedSubtitle(quoteMatch[1]);
+      }
+    }
 
-    if (quoteMatch?.[1]) {
-      subtitle = cleanQuotedSubtitle(quoteMatch[1]);
+    if (episodeNumber && subtitle) {
+      display = `${series}, Episode ${episodeNumber}: ${subtitle}`;
+    } else if (subtitle) {
+      display = `${series}: ${subtitle}`;
+    } else if (series.length > 0 && series.length < trimmed.length) {
+      display = series;
     }
   }
 
-  if (episodeNumber && subtitle) {
-    return `${series}, Episode ${episodeNumber}: ${subtitle}`;
+  if (metadata?.playlist?.trim()) {
+    display = cleanYoutubePlaylistVideoTitle(display, {
+      playlistTitle: metadata.playlist,
+      channel: metadata.channel,
+    });
   }
 
-  if (subtitle) {
-    return `${series}: ${subtitle}`;
-  }
-
-  if (series.length > 0 && series.length < trimmed.length) {
-    return series;
-  }
-
-  return trimmed;
+  return display;
 }
 
 export function lifeLabNoteDisplayTitle(input: {

@@ -55,6 +55,24 @@ export function getTextParserProviderLabel(): string {
   return getPlanletAiProvider() === "anthropic" ? "Claude" : "OpenAI";
 }
 
+export function isLifeLabOpenAiTtsEnabled(): boolean {
+  const flag = process.env.LIFE_LAB_OPENAI_TTS_ENABLED?.trim().toLowerCase();
+
+  if (flag === "false" || flag === "0") {
+    return false;
+  }
+
+  return isOpenAIConfigured();
+}
+
+export function getOpenAiTtsModel(): string {
+  return process.env.OPENAI_TTS_MODEL?.trim() || "gpt-4o-mini-tts";
+}
+
+export function getOpenAiTtsVoice(): string {
+  return process.env.OPENAI_TTS_VOICE?.trim() || "coral";
+}
+
 export function isWebPushConfigured(): boolean {
   return Boolean(
     process.env.WEB_PUSH_PUBLIC_KEY?.trim() &&

@@ -94,4 +94,43 @@ describe("life lab mermaid label wrap", () => {
     assert.match(prepared, /<br\/>/);
     assert.match(prepared, /^flowchart TD/);
   });
+
+  it("wraps learning map labels without truncating words", () => {
+    const source = `flowchart TD
+  A["Emotion shapes judgment"]
+  B["Heuristics and subconscious processing"]
+  C["Humans as social beings"]
+  D["Community over pure transactions"]
+  A --> C
+  B --> C
+  C --> D`;
+
+    const wrapped = wrapMermaidNodeLabels(source, {
+      maxCharactersPerLine: 26,
+      maxLines: 3,
+    });
+
+    assert.match(wrapped, /B\["Heuristics and<br\/>subconscious processing"\]/);
+    assert.match(wrapped, /D\["Community over pure<br\/>transactions"\]/);
+    assert.doesNotMatch(wrapped, /…/);
+    assert.doesNotMatch(wrapped, /\.\.\./);
+    assert.match(wrapped, /Heuristics and/);
+    assert.match(wrapped, /subconscious processing/);
+    assert.match(wrapped, /Community over pure/);
+    assert.match(wrapped, /transactions/);
+  });
+
+  it("wraps unquoted flowchart node labels", () => {
+    const source = `flowchart TD
+  B[Heuristics and subconscious processing]`;
+
+    const wrapped = wrapMermaidNodeLabels(source, {
+      maxCharactersPerLine: 22,
+      maxLines: 3,
+    });
+
+    assert.match(wrapped, /B\[Heuristics and<br\/>subconscious<br\/>processing\]/);
+    assert.match(wrapped, /subconscious/);
+    assert.match(wrapped, /processing/);
+  });
 });

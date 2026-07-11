@@ -13,13 +13,35 @@ function parseSvgLength(value: string | null | undefined): number {
   return Number.isFinite(parsed) ? parsed : 0;
 }
 
+function normalizeMermaidLabelStyleAttribute(style: string): string {
+  return style
+    .replace(/white-space:\s*nowrap/gi, "white-space:normal")
+    .replace(/max-width:\s*\d+px/gi, "max-width:none")
+    .replace(/text-overflow:\s*ellipsis/gi, "text-overflow:unset")
+    .replace(/overflow:\s*hidden/gi, "overflow:visible");
+}
+
+export function fixMermaidHtmlLabelStyles(svgString: string): string {
+  return svgString.replace(/style="([^"]*)"/g, (match, style: string) => {
+    if (
+      !/nowrap|max-width|ellipsis|overflow:\s*hidden/i.test(style)
+    ) {
+      return match;
+    }
+
+    const normalized = normalizeMermaidLabelStyleAttribute(style);
+
+    return normalized === style ? match : `style="${normalized}"`;
+  });
+}
+
 export function prepareMermaidSvg(svgString: string): PreparedMermaidSvg {
   const viewBoxMatch = svgString.match(/viewBox=(["'])([^"']+)\1/i);
   const viewBoxParts = viewBoxMatch?.[2]?.split(/\s+/).map(Number) ?? [];
   const viewWidth = viewBoxParts[2] ?? 0;
   const viewHeight = viewBoxParts[3] ?? 0;
 
-  let html = svgString;
+  let html = fixMermaidHtmlLabelStyles(svgString);
 
   if (viewWidth > 0 && viewHeight > 0) {
     const widthMatch = html.match(/\bwidth=(["'])([^"']+)\1/i);

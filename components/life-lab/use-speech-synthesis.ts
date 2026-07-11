@@ -27,6 +27,7 @@ import {
 
 type UseSpeechSynthesisOptions = {
   rate?: SpeechRate;
+  initialVoiceId?: string;
 };
 
 // Uses browser-native speechSynthesis only.
@@ -49,13 +50,15 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
     ReturnType<typeof listSelectableSpeechVoices>
   >([]);
   const [selectedVoiceId, setSelectedVoiceIdState] = useState(
-    SPEECH_AUTO_VOICE_ID,
+    options.initialVoiceId ?? SPEECH_AUTO_VOICE_ID,
   );
   const [browserName] = useState(() => detectSpeechBrowserName());
   const [rate, setRate] = useState<SpeechRate>(
     options.rate ?? DEFAULT_SPEECH_RATE,
   );
-  const selectedVoiceIdRef = useRef(SPEECH_AUTO_VOICE_ID);
+  const selectedVoiceIdRef = useRef(
+    options.initialVoiceId ?? SPEECH_AUTO_VOICE_ID,
+  );
   const sessionVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
   const sessionUsesVoiceRef = useRef(false);
   const rateRef = useRef<SpeechRate>(rate);
@@ -111,10 +114,10 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
   }, [rate]);
 
   useEffect(() => {
-    const storedVoiceId = readStoredSpeechVoiceId();
+    const storedVoiceId = options.initialVoiceId ?? readStoredSpeechVoiceId();
     selectedVoiceIdRef.current = storedVoiceId;
     setSelectedVoiceIdState(storedVoiceId);
-  }, []);
+  }, [options.initialVoiceId]);
 
   useEffect(() => {
     isMountedRef.current = true;

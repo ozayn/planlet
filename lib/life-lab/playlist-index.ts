@@ -15,12 +15,18 @@ import {
   resolveLifeLabNoteImage,
   type ResolvedLifeLabNoteImage,
 } from "@/lib/life-lab/note-image";
+import {
+  cleanPlaylistVideoDisplayTitles,
+  cleanYoutubePlaylistVideoTitle,
+  type PlaylistTitleCleanupContext,
+} from "@/lib/life-lab/playlist-title-cleanup";
 
 export type PlaylistVideoStatus = "processed" | "pending" | "skipped" | "error";
 
 export type PlaylistVideoRow = {
   episode: string | null;
   title: string;
+  displayTitle?: string;
   status: PlaylistVideoStatus;
   duration: string | null;
   videoUrl: string | null;
@@ -319,6 +325,28 @@ function parsePlaylistVideosTable(
   return videos;
 }
 
+export function playlistVideoRowTitle(video: PlaylistVideoRow): string {
+  return video.displayTitle ?? video.title;
+}
+
+export function applyPlaylistVideoDisplayTitles(
+  videos: PlaylistVideoRow[],
+  context: PlaylistTitleCleanupContext,
+): PlaylistVideoRow[] {
+  const displayTitles = cleanPlaylistVideoDisplayTitles(
+    videos.map((video) => video.title),
+    context,
+  );
+
+  return videos.map((video, index) => {
+    const displayTitle = displayTitles[index] ?? video.title;
+
+    return displayTitle === video.title
+      ? video
+      : { ...video, displayTitle };
+  });
+}
+
 export function enrichPlaylistVideoRows(
   videos: PlaylistVideoRow[],
   notes: LifeLabNoteSummary[],
@@ -577,10 +605,11 @@ export function parsePlaylistIndexNote(note: LifeLabNote): PlaylistIndexDisplay 
     : [];
   const batchNotes = extractBatchNotes(content);
   const summary = summarizePlaylistVideos(videos);
+  const channel = metadata?.channel?.trim() ?? null;
 
   return {
     playlistTitle,
-    channel: metadata?.channel?.trim() ?? null,
+    channel,
     dateLabel,
     playlistUrl: extractPlaylistUrl(content, metadata),
     focus: extractPlaylistFocus(content, metadata),
@@ -590,7 +619,10 @@ export function parsePlaylistIndexNote(note: LifeLabNote): PlaylistIndexDisplay 
     transcriptStatus: extractTranscriptStatus(batchNotes),
     sourcePath: relativePath ?? null,
     summary,
-    videos,
+    videos: applyPlaylistVideoDisplayTitles(videos, {
+      playlistTitle,
+      channel,
+    }),
     batchNotes,
     rawVideosTable,
     parseSucceeded: videos.length > 0,
@@ -642,10 +674,11 @@ export function comparePlaylistVideoNotes(
 function summaryToNavLink(
   note: LifeLabNoteSummary,
   sectionId: LifeLabSectionId,
+  context: PlaylistTitleCleanupContext,
 ): PlaylistVideoNavLink {
   return {
     href: `/life-lab/${sectionId}/${note.slug}`,
-    title: note.title,
+    title: cleanYoutubePlaylistVideoTitle(note.title, context),
     status: "processed",
     episode: note.metadata?.episode != null ? String(note.metadata.episode) : null,
   };
@@ -703,8 +736,18 @@ export function buildPlaylistNavigationFromVideoNotes(
   return {
     playlistIndexHref,
     playlistTitle: playlistName,
-    previous: previousVideo ? summaryToNavLink(previousVideo, sectionId) : null,
-    next: nextVideo ? summaryToNavLink(nextVideo, sectionId) : null,
+    previous: previousVideo
+      ? summaryToNavLink(previousVideo, sectionId, {
+          playlistTitle: playlistName,
+          channel: previousVideo.metadata?.channel,
+        })
+      : null,
+    next: nextVideo
+      ? summaryToNavLink(nextVideo, sectionId, {
+          playlistTitle: playlistName,
+          channel: nextVideo.metadata?.channel,
+        })
+      : null,
     currentEpisode:
       videoNote.metadata?.episode != null
         ? String(videoNote.metadata.episode)
@@ -747,7 +790,7 @@ export function resolveYoutubeVideoPlaylistNavigation(
 function toNavLink(video: PlaylistVideoRow): PlaylistVideoNavLink {
   return {
     href: video.noteHref,
-    title: video.title,
+    title: playlistVideoRowTitle(video),
     status: video.status,
     episode: video.episode,
   };

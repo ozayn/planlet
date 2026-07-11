@@ -562,7 +562,11 @@ describe("life lab mermaid sizing", () => {
     );
     assert.equal(
       getMermaidInitializeOptions("light", "landscape").flowchart.wrappingWidth,
-      208,
+      220,
+    );
+    assert.equal(
+      getMermaidInitializeOptions("light", "comfortable").flowchart.wrappingWidth,
+      180,
     );
   });
 });
@@ -1208,9 +1212,9 @@ describe("life lab speech", () => {
     assert.equal(DEFAULT_SPEECH_LANG, "en-GB");
   });
 
-  it("includes 0.9x speech rate and uses it as the default", () => {
-    assert.deepEqual(SPEECH_RATE_OPTIONS, [0.8, 0.9, 1, 1.2]);
-    assert.equal(DEFAULT_SPEECH_RATE, 0.9);
+  it("includes updated speech rate options and default", () => {
+    assert.deepEqual(SPEECH_RATE_OPTIONS, [0.8, 1, 1.15, 1.3, 1.5]);
+    assert.equal(DEFAULT_SPEECH_RATE, 1);
   });
 
   it("chunks long note text into readable segments", () => {
@@ -1905,6 +1909,50 @@ describe("playlist index notes", () => {
     }), true);
   });
 
+  it("cleans repeated playlist suffixes from video display titles", () => {
+    const content = `---
+type: playlist-index
+playlist: Great Art Explained
+channel: Great Art Explained
+---
+
+# Great Art Explained
+
+## Videos
+
+| Status | Episode | Video title | Duration |
+| --- | --- | --- | --- |
+| processed | 5 | Frida Kahlo's 'The Two Fridas': Great Art Explained | 15:01 |
+| processed | 1 | Picasso's Guernica: Great Art Explained | 12:00 |
+| processed | 2 | Michelangelo's David: Great Art Explained | 14:22 |
+`;
+
+    const { metadata, body } = parseLifeLabFrontmatter(content);
+    const display = parsePlaylistIndexNote({
+      slug: "playlists__great-art-explained",
+      title: "Great Art Explained",
+      excerpt: "",
+      modifiedAt: null,
+      modifiedAtLabel: null,
+      dateLabel: null,
+      subfolderLabel: "playlists",
+      fileId: "fixture-great-art",
+      relativePath: "playlists/great-art-explained.md",
+      metadata,
+      sectionId: "youtube-learning",
+      sectionLabel: "YouTube learning",
+      content: body,
+    });
+
+    assert.equal(display.videos[0]?.title, "Frida Kahlo's 'The Two Fridas': Great Art Explained");
+    assert.equal(
+      display.videos[0]?.displayTitle,
+      "Frida Kahlo's 'The Two Fridas'",
+    );
+    assert.equal(display.videos[1]?.displayTitle, "Picasso's Guernica");
+    assert.equal(display.videos[2]?.displayTitle, "Michelangelo's David");
+  });
+
   it("builds youtube video note links only for videos/ note filenames", () => {
     assert.equal(
       resolveYoutubeVideoNoteSlug("videos/2026-07-05-shahs-last-stand.md"),
@@ -2262,6 +2310,23 @@ Opening lecture on moral philosophy.`;
         relativePath: "taste-map.md",
       }),
       "Short title",
+    );
+    assert.equal(
+      youtubeVideoDisplayTitle(
+        "Frida Kahlo's 'The Two Fridas': Great Art Explained",
+        { playlist: "Great Art Explained" },
+      ),
+      "Frida Kahlo's 'The Two Fridas'",
+    );
+    assert.equal(
+      lifeLabNoteDisplayTitleDiffers({
+        title: "Frida Kahlo's 'The Two Fridas': Great Art Explained",
+        sectionId: "youtube-learning",
+        relativePath: "videos/2026-07-10-two-fridas.md",
+        subfolderLabel: "videos",
+        metadata: { playlist: "Great Art Explained", source: "youtube" },
+      }),
+      true,
     );
   });
 

@@ -3,7 +3,8 @@
 import Link from "next/link";
 
 import { LifeLabMetadataChips } from "@/components/life-lab/life-lab-metadata-chips";
-import { LifeLabNoteReadAloud } from "@/components/life-lab/life-lab-note-read-aloud";
+import { LifeLabNoteListen } from "@/components/life-lab/life-lab-note-listen";
+import type { LifeLabReadAloudPreferences } from "@/lib/life-lab/read-aloud-preferences";
 import type { LifeLabNote, LifeLabSectionId } from "@/lib/life-lab/constants";
 import {
   collectAllMetadataChips,
@@ -16,6 +17,8 @@ type LifeLabReadingBriefHeaderProps = {
   sectionId: LifeLabSectionId;
   sectionLabel: string;
   note: LifeLabNote;
+  readAloudPreferences: LifeLabReadAloudPreferences;
+  openAiNarrationAvailable: boolean;
 };
 
 function MetadataChip({ label }: { label: string }) {
@@ -38,6 +41,8 @@ export function LifeLabReadingBriefHeader({
   sectionId,
   sectionLabel,
   note,
+  readAloudPreferences,
+  openAiNarrationAvailable,
 }: LifeLabReadingBriefHeaderProps) {
   const displayTitle = readingBriefDisplayTitle(note.title);
   const dateLine = note.dateLabel ?? note.modifiedAtLabel;
@@ -159,10 +164,15 @@ export function LifeLabReadingBriefHeader({
         </details>
       ) : null}
 
-      <LifeLabNoteReadAloud
+      <LifeLabNoteListen
         title={note.title}
         content={note.content}
-        compact
+        sectionId={sectionId}
+        slug={note.slug}
+        fileId={note.fileId}
+        preferences={readAloudPreferences}
+        openAiNarrationAvailable={openAiNarrationAvailable}
+        includeFlashcards
       />
     </header>
   );

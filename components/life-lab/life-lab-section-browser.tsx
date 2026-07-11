@@ -123,7 +123,6 @@ type LifeLabSectionBrowserProps = {
   filterOptions: LifeLabFilterOptions;
   listingDiagnostic: LifeLabListingDiagnostic | null;
   showDiagnostics: boolean;
-  refreshHref: string;
 };
 
 export function LifeLabSectionBrowser({
@@ -132,7 +131,6 @@ export function LifeLabSectionBrowser({
   filterOptions,
   listingDiagnostic,
   showDiagnostics,
-  refreshHref,
 }: LifeLabSectionBrowserProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -372,7 +370,6 @@ export function LifeLabSectionBrowser({
           sectionView={sectionView}
           listingDiagnostic={listingDiagnostic}
           showDiagnostics={showDiagnostics}
-          refreshHref={refreshHref}
           searchQuery={searchQuery}
         />
       )}

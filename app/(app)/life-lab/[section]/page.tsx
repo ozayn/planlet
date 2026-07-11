@@ -2,10 +2,12 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { auth } from "@/auth";
+import { LifeLabRefreshButton } from "@/components/life-lab/life-lab-refresh-button";
 import { LifeLabSectionBrowser } from "@/components/life-lab/life-lab-section-browser";
 import { LifeLabStatusPanel } from "@/components/life-lab/life-lab-status-panel";
 import { PageHeader } from "@/components/page-header";
 import { getLifeLabSectionData } from "@/lib/life-lab";
+import { canUseLifeLabRefreshBypass } from "@/lib/life-lab/cache";
 import { isAdminRole } from "@/lib/auth-roles";
 import { canAccessLifeLabPage } from "@/lib/roles";
 
@@ -27,7 +29,8 @@ export default async function LifeLabSectionPage({
   const { section } = await params;
   const { refresh } = await searchParams;
   const isAdmin = isAdminRole(session.user.role);
-  const shouldRefresh = refresh === "1" && isAdmin;
+  const isAuthorized = canAccessLifeLabPage(session.user);
+  const shouldRefresh = canUseLifeLabRefreshBypass(refresh, isAuthorized);
   const showDiagnostics =
     isAdmin && process.env.NODE_ENV === "development";
 
@@ -49,12 +52,15 @@ export default async function LifeLabSectionPage({
         title={sectionLabel}
         subtitle="Notes from this Life Lab folder."
         action={
-          <Link
-            href="/life-lab"
-            className="text-sm font-medium text-muted transition-colors hover:text-foreground"
-          >
-            All sections
-          </Link>
+          <div className="flex items-center gap-3">
+            <LifeLabRefreshButton scope="section" sectionId={sectionId} />
+            <Link
+              href="/life-lab"
+              className="text-sm font-medium text-muted transition-colors hover:text-foreground"
+            >
+              All sections
+            </Link>
+          </div>
         }
       />
 
@@ -73,11 +79,6 @@ export default async function LifeLabSectionPage({
           filterOptions={filterOptions}
           listingDiagnostic={listingDiagnostic}
           showDiagnostics={showDiagnostics}
-          refreshHref={
-            shouldRefresh
-              ? `/life-lab/${sectionId}`
-              : `/life-lab/${sectionId}?refresh=1`
-          }
         />
       )}
     </section>

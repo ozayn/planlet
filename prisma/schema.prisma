@@ -91,6 +91,11 @@ enum UserRole {
   ADMIN
 }
 
+enum LifeLabReadAloudProvider {
+  DEVICE
+  OPENAI
+}
+
 enum PlanSharePermission {
   VIEW
 }
@@ -300,6 +305,9 @@ model User {
   canUseLifeLabFeatures       Boolean   @default(false)
   canUseIdeasFeatures         Boolean   @default(false)
   canUseActivityTimerFeatures Boolean   @default(false)
+  lifeLabReadAloudProvider    LifeLabReadAloudProvider @default(DEVICE)
+  lifeLabSpeechVoiceId        String?
+  lifeLabSpeechRate           Float     @default(1)
   planItemView              PlanItemView @default(CHECKLIST)
   taskOrganizationDisplay   TaskOrganizationDisplay @default(ASSIGNED_ONLY)
   mobileNavItems            String[]    @default([])
@@ -362,6 +370,27 @@ model AiUsageLog {
 
   @@index([userId, createdAt])
   @@index([userId, feature])
+}
+
+model LifeLabNarrationCache {
+  id                 String   @id @default(cuid())
+  cacheKey           String   @unique
+  driveFileId        String
+  noteModifiedTime   String?
+  contentHash        String
+  model              String
+  voice              String
+  instructionVersion Int
+  chunkIndex         Int
+  sectionLabel       String?
+  storageKey         String
+  durationSeconds    Float?
+  byteSize           Int?
+  createdAt          DateTime @default(now())
+  lastAccessedAt     DateTime @default(now())
+
+  @@index([driveFileId, model, voice, instructionVersion])
+  @@index([driveFileId, contentHash])
 }
 
 model PushSubscription {

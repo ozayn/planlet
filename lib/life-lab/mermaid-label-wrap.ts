@@ -15,6 +15,13 @@ const FLOWCHART_QUOTED_LABEL_PATTERNS = [
   /\b([\w-]+)(\s*\()(")([^"]+)("\))/g,
 ] as const;
 
+const FLOWCHART_UNQUOTED_LABEL_PATTERNS = [
+  /\b([\w-]+)(\s*\[\[)([^"\]\n]+)(\]\])/g,
+  /\b([\w-]+)(\s*\[\()([^"\)\n]+)(\)\])/g,
+  /\b([\w-]+)(\s*\[)([^"\]\n]+)(\])/g,
+  /\b([\w-]+)(\s*\()([^"\)\n]+)(\))/g,
+] as const;
+
 const EXPLICIT_BREAK_PATTERN = /<br\s*\/?>/i;
 const URL_PATTERN = /^https?:\/\//i;
 
@@ -69,13 +76,6 @@ function wrapWords(
     }
 
     currentLine = word;
-
-    if (lines.length >= maxLines - 1) {
-      const remainingIndex = words.indexOf(word);
-      const remainder = words.slice(remainingIndex).join(" ");
-      lines.push(remainder);
-      return lines.slice(0, maxLines).join("<br/>");
-    }
   }
 
   if (currentLine) {
@@ -86,7 +86,7 @@ function wrapWords(
     return lines[0] ?? text;
   }
 
-  return lines.slice(0, maxLines).join("<br/>");
+  return lines.join("<br/>");
 }
 
 function wrapLabelText(
@@ -138,6 +138,25 @@ export function wrapMermaidNodeLabels(
         }
 
         return `${nodeId}${bracketPart}${openQuote}${wrappedLabel}${closePart}`;
+      },
+    );
+  }
+
+  for (const pattern of FLOWCHART_UNQUOTED_LABEL_PATTERNS) {
+    result = result.replace(
+      pattern,
+      (match, nodeId, bracketPart, label, closePart) => {
+        if (label.includes('"')) {
+          return match;
+        }
+
+        const wrappedLabel = wrapQuotedNodeLabel(label, options);
+
+        if (wrappedLabel === label) {
+          return match;
+        }
+
+        return `${nodeId}${bracketPart}${wrappedLabel}${closePart}`;
       },
     );
   }

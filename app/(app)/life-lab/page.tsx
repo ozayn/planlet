@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 
 import { auth } from "@/auth";
 import { LifeLabHomeBrowser } from "@/components/life-lab/life-lab-home-browser";
+import { LifeLabRefreshButton } from "@/components/life-lab/life-lab-refresh-button";
 import { LifeLabStatusPanel } from "@/components/life-lab/life-lab-status-panel";
 import { PageHeader } from "@/components/page-header";
 import { getLifeLabBrowseData, getLifeLabHomeData } from "@/lib/life-lab";
@@ -27,6 +28,11 @@ export default async function LifeLabPage() {
       <PageHeader
         title="Life Lab"
         subtitle="Learning notes from selected Life Lab folders."
+        action={
+          availability.status === "ready" ? (
+            <LifeLabRefreshButton scope="home" />
+          ) : null
+        }
       />
 
       {availability.status !== "ready" ? (

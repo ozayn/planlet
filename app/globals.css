@@ -2262,7 +2262,7 @@ body {
   max-width: 100%;
   margin-top: 0.75rem;
   margin-bottom: 0.75rem;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .ui-mermaid-toolbar {
@@ -2286,7 +2286,7 @@ body {
   width: 100%;
   max-width: 100%;
   overflow-x: auto;
-  overflow-y: hidden;
+  overflow-y: visible;
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
   border-radius: 0.5rem;
@@ -2306,8 +2306,8 @@ body {
 .ui-markdown .ui-mermaid-svg,
 .ui-mermaid-svg {
   display: block;
-  width: 100%;
-  max-width: 100%;
+  width: auto;
+  max-width: none;
 }
 
 .ui-markdown .ui-mermaid svg,
@@ -2315,8 +2315,28 @@ body {
 .ui-mermaid-svg svg {
   display: block;
   width: auto;
-  max-width: 100%;
+  max-width: none;
   height: auto;
+}
+
+.ui-mermaid svg foreignObject {
+  overflow: visible !important;
+}
+
+.ui-mermaid svg foreignObject div,
+.ui-mermaid svg foreignObject .nodeLabel,
+.ui-mermaid svg foreignObject .edgeLabel {
+  white-space: normal !important;
+  overflow: visible !important;
+  text-overflow: unset !important;
+  max-width: none !important;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.ui-mermaid svg g.node,
+.ui-mermaid svg g.cluster {
+  overflow: visible;
 }
 
 .ui-markdown .ui-mermaid-loading {

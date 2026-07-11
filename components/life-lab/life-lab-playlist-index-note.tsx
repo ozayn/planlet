@@ -6,6 +6,7 @@ import type { LifeLabNote, LifeLabNoteSummary } from "@/lib/life-lab/constants";
 import {
   enrichPlaylistVideoRows,
   parsePlaylistIndexNote,
+  playlistVideoRowTitle,
   type PlaylistIndexSummary,
   type PlaylistVideoRow,
   type PlaylistVideoStatus,
@@ -203,6 +204,7 @@ function MobileVideoCard({
   video: PlaylistVideoRow;
   index: number;
 }) {
+  const title = playlistVideoRowTitle(video);
   const metadata = formatMobileVideoMetadata(video, index);
   const content = (
     <div className="flex items-start gap-2.5">
@@ -215,7 +217,7 @@ function MobileVideoCard({
           {metadata}
         </p>
         <p className="line-clamp-2 text-sm font-medium leading-snug text-foreground">
-          {video.title}
+          {title}
         </p>
       </div>
     </div>
@@ -226,7 +228,7 @@ function MobileVideoCard({
       <li>
         <Link
           href={video.noteHref}
-          aria-label={`Open note: ${video.title}`}
+          aria-label={`Open note: ${title}`}
           className="block rounded-xl border border-border/60 bg-surface p-2.5 transition-colors hover:bg-accent-cream/20 active:bg-accent-cream/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
         >
           {content}
@@ -243,18 +245,20 @@ function MobileVideoCard({
 }
 
 function VideoTitle({ video }: { video: PlaylistVideoRow }) {
+  const title = playlistVideoRowTitle(video);
+
   if (video.noteHref) {
     return (
       <Link
         href={video.noteHref}
         className="font-medium text-foreground transition-colors hover:text-muted"
       >
-        {video.title}
+        {title}
       </Link>
     );
   }
 
-  return <span className="font-medium text-foreground">{video.title}</span>;
+  return <span className="font-medium text-foreground">{title}</span>;
 }
 
 function VideoTable({ videos }: { videos: PlaylistVideoRow[] }) {

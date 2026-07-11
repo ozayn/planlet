@@ -7,6 +7,7 @@ export const AI_USAGE_FEATURES = {
   CAREER_REFLECTION: "career_reflection",
   JOB_URL_EXTRACTION: "job_url_extraction",
   AUDIO_TRANSCRIPTION: "audio_transcription",
+  LIFE_LAB_NARRATION: "life_lab_narration",
 } as const;
 
 export type AiUsageFeature =
@@ -32,6 +33,7 @@ const AI_USAGE_FEATURE_LABELS: Record<string, string> = {
   [AI_USAGE_FEATURES.CAREER_REFLECTION]: "Career reflection",
   [AI_USAGE_FEATURES.JOB_URL_EXTRACTION]: "Job tracker",
   [AI_USAGE_FEATURES.AUDIO_TRANSCRIPTION]: "Audio transcription",
+  [AI_USAGE_FEATURES.LIFE_LAB_NARRATION]: "Life Lab narration",
 };
 
 export function getAiUsageFeatureLabel(feature: string): string {

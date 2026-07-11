@@ -11,8 +11,12 @@ import { LifeLabPlaylistVideoNav } from "@/components/life-lab/life-lab-playlist
 import { LifeLabNoteDetailHeader } from "@/components/life-lab/life-lab-note-detail-header";
 import { LifeLabNoteImageFigure } from "@/components/life-lab/life-lab-note-image";
 import { LifeLabNoteDevInfoPanel } from "@/components/life-lab/life-lab-note-dev-info-panel";
+import { LifeLabRefreshButton } from "@/components/life-lab/life-lab-refresh-button";
 import { LifeLabStatusPanel } from "@/components/life-lab/life-lab-status-panel";
 import { getLifeLabNoteData, getLifeLabSectionData, getYoutubeVideoPlaylistNavigation } from "@/lib/life-lab";
+import { isLifeLabOpenAiTtsEnabled } from "@/lib/env";
+import { getLifeLabReadAloudPreferencesForUser } from "@/lib/life-lab/read-aloud-preferences";
+import { canUseLifeLabRefreshBypass } from "@/lib/life-lab/cache";
 import { isLifeLabDevToolsEnabled } from "@/lib/life-lab/dev";
 import { hasDictionaryStudySections } from "@/lib/life-lab/dictionary-candidates";
 import { stripLeadingMarkdownH1 } from "@/lib/life-lab/note-content";
@@ -39,8 +43,8 @@ export default async function LifeLabNotePage({
 
   const { section, slug } = await params;
   const { refresh } = await searchParams;
-  const shouldRefresh =
-    refresh === "1" && isLifeLabDevToolsEnabled();
+  const isAuthorized = canAccessLifeLabPage(session.user);
+  const shouldRefresh = canUseLifeLabRefreshBypass(refresh, isAuthorized);
   const { availability, note } = await getLifeLabNoteData(section, slug, {
     refresh: shouldRefresh,
   });
@@ -69,6 +73,10 @@ export default async function LifeLabNotePage({
     isPlaylistIndex && note.sectionId === "youtube-learning"
       ? (await getLifeLabSectionData(note.sectionId)).notes
       : [];
+  const readAloudPreferences = await getLifeLabReadAloudPreferencesForUser(
+    session.user.id,
+  );
+  const openAiNarrationAvailable = isLifeLabOpenAiTtsEnabled();
 
   return (
     <section
@@ -78,11 +86,25 @@ export default async function LifeLabNotePage({
           : "space-y-4 md:space-y-6"
       }`}
     >
+      <div className="flex justify-end">
+        <LifeLabRefreshButton
+          scope="note"
+          sectionId={note.sectionId}
+          slug={note.slug}
+          fileId={note.fileId}
+          metadata={note.metadata}
+          relativePath={note.relativePath}
+          subfolderLabel={note.subfolderLabel}
+        />
+      </div>
+
       {isReadingBrief ? (
         <LifeLabReadingBriefHeader
           sectionId={note.sectionId}
           sectionLabel={note.sectionLabel}
           note={note}
+          readAloudPreferences={readAloudPreferences}
+          openAiNarrationAvailable={openAiNarrationAvailable}
         />
       ) : isPlaylistIndex ? null : (
         <LifeLabNoteDetailHeader
@@ -90,6 +112,8 @@ export default async function LifeLabNotePage({
           sectionId={note.sectionId}
           sectionLabel={note.sectionLabel}
           playlistNav={playlistNav}
+          readAloudPreferences={readAloudPreferences}
+          openAiNarrationAvailable={openAiNarrationAvailable}
         />
       )}
 

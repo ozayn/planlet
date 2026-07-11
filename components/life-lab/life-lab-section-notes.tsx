@@ -39,7 +39,6 @@ type LifeLabSectionNotesProps = {
   sectionView: LifeLabSectionView;
   listingDiagnostic: LifeLabListingDiagnostic | null;
   showDiagnostics: boolean;
-  refreshHref: string;
   searchQuery?: string;
 };
 
@@ -55,10 +54,8 @@ const GROUP_INITIAL_VISIBLE = 5;
 
 function LifeLabListingDiagnosticPanel({
   diagnostic,
-  refreshHref,
 }: {
   diagnostic: LifeLabListingDiagnostic;
-  refreshHref: string;
 }) {
   const rows = [
     { label: "Files found", value: String(diagnostic.fileCount) },
@@ -70,6 +67,22 @@ function LifeLabListingDiagnosticPanel({
     },
   ];
 
+  if (diagnostic.cache) {
+    rows.push(
+      {
+        label: "Cache hit",
+        value: diagnostic.cache.fromCache ? "Yes" : "No",
+      },
+      { label: "Cache key", value: diagnostic.cache.cacheKey },
+      {
+        label: "Cache tags",
+        value: diagnostic.cache.cacheTags.join(", "),
+      },
+      { label: "Cached at", value: diagnostic.cache.cachedAt },
+      { label: "Expires at", value: diagnostic.cache.expiresAt },
+    );
+  }
+
   return (
     <details className="ui-settings-details group">
       <summary className="ui-settings-details-summary">Debug</summary>
@@ -80,14 +93,6 @@ function LifeLabListingDiagnosticPanel({
             <dd className="text-end text-foreground">{row.value}</dd>
           </div>
         ))}
-        <div className="pt-2">
-          <Link
-            href={refreshHref}
-            className="text-xs font-medium text-muted transition-colors hover:text-foreground"
-          >
-            Refresh Drive listing
-          </Link>
-        </div>
       </dl>
     </details>
   );
@@ -405,7 +410,6 @@ export function LifeLabSectionNotes({
   sectionView,
   listingDiagnostic,
   showDiagnostics,
-  refreshHref,
   searchQuery,
 }: LifeLabSectionNotesProps) {
   return (
@@ -471,10 +475,7 @@ export function LifeLabSectionNotes({
       })}
 
       {showDiagnostics && listingDiagnostic ? (
-        <LifeLabListingDiagnosticPanel
-          diagnostic={listingDiagnostic}
-          refreshHref={refreshHref}
-        />
+        <LifeLabListingDiagnosticPanel diagnostic={listingDiagnostic} />
       ) : null}
     </div>
   );

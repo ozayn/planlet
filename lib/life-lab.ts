@@ -1,9 +1,23 @@
-import { revalidatePath, revalidateTag, unstable_cache } from "next/cache";
+import { revalidatePath, unstable_cache } from "next/cache";
 
 import {
-  getLifeLabCacheSeconds,
-  LIFE_LAB_CACHE_SECONDS,
+  getLifeLabListCacheSeconds,
+  getLifeLabNoteCacheSeconds,
+  lifeLabCacheExpiresAt,
+  lifeLabNoteCacheTag,
+  lifeLabPlaylistCacheTag,
+  lifeLabSectionCacheTag,
   LIFE_LAB_CACHE_TAG,
+  LIFE_LAB_SECTIONS_CACHE_TAG,
+} from "@/lib/life-lab/cache";
+import {
+  invalidateLifeLabNoteCaches,
+  invalidateLifeLabPlaylistCache,
+  invalidateLifeLabSectionCache,
+  invalidateLifeLabSectionsCache,
+} from "@/lib/life-lab/cache-invalidation";
+import {
+  LIFE_LAB_CACHE_SECONDS,
   LIFE_LAB_UNAVAILABLE_MESSAGE,
   LIFE_LAB_UNCONFIGURED_ADMIN_MESSAGE,
   type LifeLabAvailability,
@@ -19,7 +33,6 @@ import {
   type LifeLabBrowseNote,
 } from "@/lib/life-lab/constants";
 import {
-  enrichSectionNoteRecords,
   processLifeLabNoteContent,
   type LifeLabSectionNoteRecord,
 } from "@/lib/life-lab/enrichment";
@@ -138,6 +151,16 @@ type LifeLabFolderMapError = {
 export type LifeLabFolderMapResult =
   | { ok: true; entries: LifeLabFolderMapEntries }
   | { ok: false; error: LifeLabFolderMapError };
+
+type LifeLabNotePayload = {
+  record: LifeLabSectionNoteRecord;
+  rawContent: string;
+};
+
+type LifeLabSectionFileIndex = {
+  records: LifeLabSectionNoteRecord[];
+  listingDiagnostic: LifeLabListingDiagnostic;
+};
 
 export function lifeLabFolderEntriesToMap(
   entries: LifeLabFolderMapEntries,
@@ -490,14 +513,16 @@ function filterSectionMarkdownEntries(
   );
 }
 
-const getSectionFolderMapCached = unstable_cache(
-  loadSectionFolderMap,
-  ["life-lab-section-folder-map"],
-  {
-    revalidate: getLifeLabCacheSeconds(),
-    tags: [LIFE_LAB_CACHE_TAG],
-  },
-);
+async function getSectionFolderMapCached(): Promise<LifeLabFolderMapResult> {
+  return unstable_cache(
+    loadSectionFolderMap,
+    ["life-lab-section-folder-map"],
+    {
+      revalidate: getLifeLabListCacheSeconds(),
+      tags: [LIFE_LAB_SECTIONS_CACHE_TAG, LIFE_LAB_CACHE_TAG],
+    },
+  )();
+}
 
 async function getSectionFolderMap(): Promise<LifeLabFolderMapResult> {
   const cached = normalizeLifeLabFolderMapResult(await getSectionFolderMapCached());
@@ -517,13 +542,17 @@ async function getSectionFolderMap(): Promise<LifeLabFolderMapResult> {
   };
 }
 
-async function loadSectionNotes(
+async function loadSectionFileIndex(
   sectionId: LifeLabSectionId,
   options: { useCachedFolderMap?: boolean } = {},
-): Promise<{
-  records: LifeLabSectionNoteRecord[];
-  listingDiagnostic: LifeLabListingDiagnostic;
-}> {
+): Promise<LifeLabSectionFileIndex> {
+  const emptyDiagnostic: LifeLabListingDiagnostic = {
+    fileCount: 0,
+    foldersTraversed: 0,
+    maxDepthUsed: 0,
+    paginationOccurred: false,
+  };
+
   const mapResult = options.useCachedFolderMap === false
     ? await loadSectionFolderMap()
     : await getSectionFolderMap();
@@ -531,12 +560,7 @@ async function loadSectionNotes(
   if (!mapResult.ok) {
     return {
       records: [],
-      listingDiagnostic: {
-        fileCount: 0,
-        foldersTraversed: 0,
-        maxDepthUsed: 0,
-        paginationOccurred: false,
-      },
+      listingDiagnostic: emptyDiagnostic,
     };
   }
 
@@ -544,12 +568,7 @@ async function loadSectionNotes(
   if (!credentials) {
     return {
       records: [],
-      listingDiagnostic: {
-        fileCount: 0,
-        foldersTraversed: 0,
-        maxDepthUsed: 0,
-        paginationOccurred: false,
-      },
+      listingDiagnostic: emptyDiagnostic,
     };
   }
 
@@ -559,12 +578,7 @@ async function loadSectionNotes(
   if (!folderId) {
     return {
       records: [],
-      listingDiagnostic: {
-        fileCount: 0,
-        foldersTraversed: 0,
-        maxDepthUsed: 0,
-        paginationOccurred: false,
-      },
+      listingDiagnostic: emptyDiagnostic,
     };
   }
 
@@ -574,10 +588,9 @@ async function loadSectionNotes(
     sectionId,
   );
   const visibleEntries = filterSectionMarkdownEntries(entries, sectionId);
-  const baseRecords = dedupeSectionNoteRecords(
+  const records = dedupeSectionNoteRecords(
     visibleEntries.map((entry) => summarizeMarkdownEntry(entry)),
   );
-  const records = await enrichSectionNoteRecords(credentials, baseRecords);
 
   return {
     records,
@@ -585,49 +598,158 @@ async function loadSectionNotes(
   };
 }
 
-const getSectionNotesCached = unstable_cache(
-  async (sectionId: LifeLabSectionId) => loadSectionNotes(sectionId),
-  ["life-lab-section-notes-recursive"],
-  {
-    revalidate: getLifeLabCacheSeconds(),
-    tags: [LIFE_LAB_CACHE_TAG],
-  },
-);
+async function getSectionFileIndexCached(
+  sectionId: LifeLabSectionId,
+): Promise<LifeLabSectionFileIndex> {
+  return unstable_cache(
+    async () => loadSectionFileIndex(sectionId),
+    ["life-lab-section-file-index", sectionId],
+    {
+      revalidate: getLifeLabListCacheSeconds(),
+      tags: [
+        LIFE_LAB_SECTIONS_CACHE_TAG,
+        lifeLabSectionCacheTag(sectionId),
+        LIFE_LAB_CACHE_TAG,
+      ],
+    },
+  )();
+}
 
-const getNoteContentCached = unstable_cache(
-  async (sectionId: LifeLabSectionId, slug: string) => {
-    const { records } = await getSectionNotesCached(sectionId);
-    const record = records.find((item) => item.slug === slug);
+async function loadNotePayload(
+  sectionId: LifeLabSectionId,
+  baseRecord: LifeLabSectionNoteRecord,
+): Promise<LifeLabNotePayload | null> {
+  const credentials = getLifeLabDriveCredentials();
+  if (!credentials) {
+    return null;
+  }
 
-    if (!record) {
-      return null;
-    }
+  const rawContent = await downloadDriveFile(credentials, baseRecord.fileId);
 
-    const credentials = getLifeLabDriveCredentials();
-    if (!credentials) {
-      return null;
-    }
+  return {
+    record: processLifeLabNoteContent(baseRecord, rawContent),
+    rawContent,
+  };
+}
 
-    const content = await downloadDriveFile(credentials, record.fileId);
+async function getNotePayloadCached(
+  sectionId: LifeLabSectionId,
+  baseRecord: LifeLabSectionNoteRecord,
+): Promise<LifeLabNotePayload | null> {
+  return unstable_cache(
+    async () => loadNotePayload(sectionId, baseRecord),
+    ["life-lab-note-payload", baseRecord.fileId],
+    {
+      revalidate: getLifeLabNoteCacheSeconds(),
+      tags: [
+        lifeLabNoteCacheTag(baseRecord.fileId),
+        lifeLabSectionCacheTag(sectionId),
+        LIFE_LAB_CACHE_TAG,
+      ],
+    },
+  )();
+}
 
-    return buildLifeLabNote(record, sectionId, content);
-  },
-  ["life-lab-note-content"],
-  {
-    revalidate: getLifeLabCacheSeconds(),
-    tags: [LIFE_LAB_CACHE_TAG],
-  },
-);
+async function enrichSectionRecordsFromCache(
+  sectionId: LifeLabSectionId,
+  baseRecords: LifeLabSectionNoteRecord[],
+): Promise<LifeLabSectionNoteRecord[]> {
+  const enriched = await Promise.all(
+    baseRecords.map(async (baseRecord) => {
+      const payload = await getNotePayloadCached(sectionId, baseRecord);
+
+      return payload?.record ?? baseRecord;
+    }),
+  );
+
+  return enriched;
+}
+
+async function loadSectionNotes(
+  sectionId: LifeLabSectionId,
+  options: { useCachedFolderMap?: boolean } = {},
+): Promise<LifeLabSectionFileIndex> {
+  return loadSectionFileIndex(sectionId, options);
+}
+
+async function getSectionNotesCached(
+  sectionId: LifeLabSectionId,
+): Promise<LifeLabSectionFileIndex> {
+  return getSectionFileIndexCached(sectionId);
+}
+
+async function getEnrichedSectionRecordsCached(
+  sectionId: LifeLabSectionId,
+): Promise<{
+  records: LifeLabSectionNoteRecord[];
+  listingDiagnostic: LifeLabListingDiagnostic;
+}> {
+  const fileIndex = await getSectionFileIndexCached(sectionId);
+  const records = await enrichSectionRecordsFromCache(
+    sectionId,
+    fileIndex.records,
+  );
+
+  return {
+    records,
+    listingDiagnostic: fileIndex.listingDiagnostic,
+  };
+}
+
+async function getNoteContentCached(
+  sectionId: LifeLabSectionId,
+  slug: string,
+): Promise<LifeLabNote | null> {
+  const { records: baseRecords } = await getSectionFileIndexCached(sectionId);
+  const baseRecord = baseRecords.find((item) => item.slug === slug);
+
+  if (!baseRecord) {
+    return null;
+  }
+
+  const payload = await getNotePayloadCached(sectionId, baseRecord);
+
+  if (!payload) {
+    return null;
+  }
+
+  return buildLifeLabNote(payload.record, sectionId, payload.rawContent);
+}
 
 export function refreshLifeLabCache(): void {
-  revalidateTag(LIFE_LAB_CACHE_TAG, "max");
+  invalidateLifeLabSectionsCache();
+}
+
+export function refreshLifeLabSectionCache(
+  sectionId: LifeLabSectionId,
+): void {
+  invalidateLifeLabSectionCache(sectionId);
 }
 
 export function refreshLifeLabNoteCache(
   sectionId: LifeLabSectionId,
   slug: string,
+  fileId: string,
 ): void {
+  invalidateLifeLabNoteCaches({
+    fileId,
+    sectionId,
+  });
   revalidatePath(`/life-lab/${sectionId}/${slug}`);
+}
+
+export function refreshLifeLabPlaylistCache(
+  sectionId: LifeLabSectionId,
+  playlistSlug: string,
+  fileId: string,
+): void {
+  invalidateLifeLabPlaylistCache(sectionId, playlistSlug);
+  invalidateLifeLabNoteCaches({
+    fileId,
+    sectionId,
+    playlistSlug,
+  });
+  revalidatePath(`/life-lab/${sectionId}/${playlistSlug}`);
 }
 
 export async function getLifeLabHomeData(): Promise<{
@@ -665,24 +787,12 @@ export async function getLifeLabHomeData(): Promise<{
   try {
     const sections = await Promise.all(
       getAllowedLifeLabSectionIds().map(async (sectionId) => {
-        const folderId = folderMap.get(sectionId);
-        let noteCount = 0;
-
-        if (folderId) {
-          const credentials = getLifeLabDriveCredentials();
-          if (credentials) {
-            const { stats } = await listSectionMarkdownFiles(
-              credentials,
-              folderId,
-            );
-            noteCount = stats.fileCount;
-          }
-        }
+        const { records } = await getSectionNotesCached(sectionId);
 
         return {
           id: sectionId,
           label: getLifeLabSectionLabel(sectionId),
-          noteCount,
+          noteCount: records.length,
         };
       }),
     );
@@ -758,7 +868,7 @@ export async function getLifeLabSectionData(
 
   try {
     if (options.refresh) {
-      refreshLifeLabCache();
+      refreshLifeLabSectionCache(sectionId);
     }
 
     const mapResult = await getSectionFolderMap();
@@ -776,10 +886,30 @@ export async function getLifeLabSectionData(
       };
     }
 
-    const { records, listingDiagnostic } = options.refresh
+    const fromCache = !options.refresh;
+    const loadedAt = new Date().toISOString();
+    const { records, listingDiagnostic: listingDiagnosticBase } = options.refresh
       ? await loadSectionNotes(sectionId, { useCachedFolderMap: false })
       : await getSectionNotesCached(sectionId);
     const notes = records.map(toNoteSummary);
+    const listingDiagnostic = options.includeListingDiagnostic
+      ? {
+          ...listingDiagnosticBase,
+          cache: {
+            fromCache,
+            cacheKey: `life-lab:section:${sectionId}`,
+            cacheTags: [
+              LIFE_LAB_SECTIONS_CACHE_TAG,
+              lifeLabSectionCacheTag(sectionId),
+            ],
+            cachedAt: loadedAt,
+            expiresAt: lifeLabCacheExpiresAt(
+              loadedAt,
+              getLifeLabListCacheSeconds(),
+            ),
+          },
+        }
+      : null;
 
     return {
       availability,
@@ -789,9 +919,7 @@ export async function getLifeLabSectionData(
       groups: groupLifeLabNotes(notes, { sectionId }),
       filterOptions: collectLifeLabFilterOptions(notes),
       flashcardNoteCount: notes.filter((note) => note.hasFlashcards).length,
-      listingDiagnostic: options.includeListingDiagnostic
-        ? listingDiagnostic
-        : null,
+      listingDiagnostic,
     };
   } catch (error) {
     const normalized =
@@ -836,7 +964,12 @@ export async function getLifeLabNoteData(
 
   try {
     if (options.refresh) {
-      refreshLifeLabNoteCache(sectionId, slug);
+      const { records: baseRecords } = await getSectionFileIndexCached(sectionId);
+      const baseRecord = baseRecords.find((item) => item.slug === slug);
+
+      if (baseRecord) {
+        refreshLifeLabNoteCache(sectionId, slug, baseRecord.fileId);
+      }
     }
 
     const mapResult = await getSectionFolderMap();
@@ -915,23 +1048,22 @@ async function loadNoteContent(
   sectionId: LifeLabSectionId,
   slug: string,
 ): Promise<LifeLabNote | null> {
-  const { records } = await loadSectionNotes(sectionId, {
+  const { records: baseRecords } = await loadSectionFileIndex(sectionId, {
     useCachedFolderMap: false,
   });
-  const record = records.find((item) => item.slug === slug);
+  const baseRecord = baseRecords.find((item) => item.slug === slug);
 
-  if (!record) {
+  if (!baseRecord) {
     return null;
   }
 
-  const credentials = getLifeLabDriveCredentials();
-  if (!credentials) {
+  const payload = await loadNotePayload(sectionId, baseRecord);
+
+  if (!payload) {
     return null;
   }
 
-  const content = await downloadDriveFile(credentials, record.fileId);
-
-  return buildLifeLabNote(record, sectionId, content);
+  return buildLifeLabNote(payload.record, sectionId, payload.rawContent);
 }
 
 function buildLifeLabNote(
@@ -998,7 +1130,7 @@ export async function resolveLifeLabNoteRecord(
     return null;
   }
 
-  const { records } = await loadSectionNotes(sectionId);
+  const { records } = await getSectionNotesCached(sectionId);
   return records.find((item) => item.slug === slug) ?? null;
 }
 
@@ -1077,10 +1209,21 @@ export async function getLifeLabStudyData(
 
   const filteredNotes = filterLifeLabNotes(sectionData.notes, filters);
   const filteredSlugs = new Set(filteredNotes.map((note) => note.slug));
-  const { records } = await getSectionNotesCached(sectionData.sectionId);
-  const studyRecords = records.filter(
-    (record) => filteredSlugs.has(record.slug) && record.flashcards?.length,
-  );
+  const { records: baseRecords } = await getSectionNotesCached(sectionData.sectionId);
+  const studyRecords = (
+    await Promise.all(
+      baseRecords
+        .filter((record) => filteredSlugs.has(record.slug))
+        .map(async (baseRecord) => {
+          const payload = await getNotePayloadCached(
+            sectionData.sectionId!,
+            baseRecord,
+          );
+
+          return payload?.record ?? baseRecord;
+        }),
+    )
+  ).filter((record) => record.flashcards?.length);
 
   return {
     availability: sectionData.availability,
@@ -1109,7 +1252,7 @@ export async function getLifeLabBrowseData(): Promise<{
 
   const sections = await Promise.all(
     getAllowedLifeLabSectionIds().map(async (sectionId) => {
-      const { records } = await getSectionNotesCached(sectionId);
+      const { records } = await getEnrichedSectionRecordsCached(sectionId);
       const sectionLabel = getLifeLabSectionLabel(sectionId);
 
       return records.map((record) => ({
@@ -1163,7 +1306,7 @@ export async function getLifeLabAllStudyData(
         return;
       }
 
-      const { records } = await getSectionNotesCached(sectionId);
+      const { records } = await getEnrichedSectionRecordsCached(sectionId);
       cards.push(
         ...recordsToStudyCards(
           records.filter(
@@ -1179,4 +1322,27 @@ export async function getLifeLabAllStudyData(
     availability: browseData.availability,
     cards,
   };
+}
+
+export async function fetchFreshLifeLabHome(): Promise<void> {
+  await loadSectionFolderMap();
+
+  await Promise.all(
+    getAllowedLifeLabSectionIds().map((sectionId) =>
+      loadSectionNotes(sectionId, { useCachedFolderMap: false }),
+    ),
+  );
+}
+
+export async function fetchFreshLifeLabSection(
+  sectionId: LifeLabSectionId,
+): Promise<void> {
+  await loadSectionNotes(sectionId, { useCachedFolderMap: false });
+}
+
+export async function fetchFreshLifeLabNote(
+  sectionId: LifeLabSectionId,
+  slug: string,
+): Promise<LifeLabNote | null> {
+  return loadNoteContent(sectionId, slug);
 }

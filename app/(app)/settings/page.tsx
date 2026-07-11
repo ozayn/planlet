@@ -37,6 +37,9 @@ import { getActivityTimerPresetSettingsData } from "@/lib/activity-timer";
 import { getPlanningPreferencesForUser, getMobileNavItemsForUser } from "@/lib/user-preferences";
 import { resolveMobileNavItems } from "@/lib/mobile-nav";
 import { getUserTimezone } from "@/lib/user-timezone";
+import { SettingsReadAloud } from "@/components/settings/settings-read-aloud";
+import { getLifeLabReadAloudPreferencesForUser } from "@/lib/life-lab/read-aloud-preferences";
+import { isLifeLabOpenAiTtsEnabled } from "@/lib/env";
 import { isAdminRole } from "@/lib/auth-roles";
 
 export default async function SettingsPage() {
@@ -90,6 +93,11 @@ export default async function SettingsPage() {
   const activityTimerPresetSettings = showActivityTimerPresets
     ? await getActivityTimerPresetSettingsData(session!.user!.id)
     : null;
+  const readAloudPreferences =
+    session?.user?.id && access.canUseLifeLabFeatures
+      ? await getLifeLabReadAloudPreferencesForUser(session.user.id)
+      : null;
+  const openAiNarrationAvailable = isLifeLabOpenAiTtsEnabled();
 
   return (
     <section className="ui-settings-page mx-auto max-w-lg space-y-5">
@@ -135,6 +143,13 @@ export default async function SettingsPage() {
 
       {notificationPreferences ? (
         <SettingsAppNotifications preferences={notificationPreferences} />
+      ) : null}
+
+      {readAloudPreferences ? (
+        <SettingsReadAloud
+          preferences={readAloudPreferences}
+          openAiNarrationAvailable={openAiNarrationAvailable}
+        />
       ) : null}
 
       <SettingsInstallPlanlet />

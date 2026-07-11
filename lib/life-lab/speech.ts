@@ -1,3 +1,10 @@
+import {
+  buildNarrationPlaybackChunks,
+} from "@/lib/life-lab/narration-chunks";
+import {
+  buildNarrationDocument,
+} from "@/lib/life-lab/narration-text";
+
 const FLASHCARD_SECTION_PATTERN =
   /^#{1,6}\s+(?:Optional Flashcards|Flashcards|Study Cards)\s*[\r\n]+[\s\S]*$/gim;
 
@@ -49,9 +56,9 @@ export const DEFAULT_SPEECH_LANG = "en-GB";
 
 export const SPEECH_CHUNK_MAX_LENGTH = 1000;
 
-export const SPEECH_RATE_OPTIONS = [0.8, 0.9, 1, 1.2] as const;
+export const SPEECH_RATE_OPTIONS = [0.8, 1, 1.15, 1.3, 1.5] as const;
 
-export const DEFAULT_SPEECH_RATE: SpeechRate = 0.9;
+export const DEFAULT_SPEECH_RATE: SpeechRate = 1;
 
 export const SPEECH_START_TIMEOUT_MS = 2500;
 
@@ -202,6 +209,14 @@ export type ListedSelectableSpeechVoice = {
   label: string;
   voice: SpeechSynthesisVoice;
 };
+
+export function listAllDeviceSpeechVoices(
+  voices: SpeechSynthesisVoice[],
+): ListedSelectableSpeechVoice[] {
+  return sortVoicesForDropdown(
+    voices.filter((voice) => !isNoveltySpeechVoice(voice)),
+  ).map((voice) => toListedSelectableSpeechVoice(voice));
+}
 
 export function listSelectableSpeechVoices(
   voices: SpeechSynthesisVoice[],
@@ -619,8 +634,15 @@ export function chunkSpeechText(
 export function prepareNoteSpeechChunks(
   title: string,
   content: string,
+  options: { includeFlashcards?: boolean } = {},
 ): string[] {
-  return chunkSpeechText(prepareNoteSpeechText(title, content));
+  const sections = buildNarrationDocument({
+    title,
+    content,
+    includeFlashcards: options.includeFlashcards ?? false,
+  });
+
+  return buildNarrationPlaybackChunks(sections).map((chunk) => chunk.text);
 }
 
 export function prepareFlashcardSpeechText(parts: {

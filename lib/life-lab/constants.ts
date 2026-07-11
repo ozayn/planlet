@@ -1,10 +1,12 @@
-export const LIFE_LAB_CACHE_SECONDS = 600;
+export const LIFE_LAB_CACHE_SECONDS = 1800;
 
-export const LIFE_LAB_CACHE_TAG = "life-lab";
-
-export function getLifeLabCacheSeconds(): number {
-  return process.env.NODE_ENV === "development" ? 30 : LIFE_LAB_CACHE_SECONDS;
-}
+export {
+  getLifeLabCacheSeconds,
+  getLifeLabListCacheSeconds,
+  getLifeLabNoteCacheSeconds,
+  LIFE_LAB_CACHE_TAG,
+  LIFE_LAB_SECTIONS_CACHE_TAG,
+} from "@/lib/life-lab/cache";
 
 export const LIFE_LAB_MAX_FOLDER_DEPTH = 5;
 
@@ -126,6 +128,15 @@ export type LifeLabListingDiagnostic = {
   foldersTraversed: number;
   maxDepthUsed: number;
   paginationOccurred: boolean;
+  cache?: LifeLabCacheDiagnostic;
+};
+
+export type LifeLabCacheDiagnostic = {
+  fromCache: boolean;
+  cacheKey: string;
+  cacheTags: string[];
+  cachedAt: string;
+  expiresAt: string;
 };
 
 export type LifeLabNoteDevMeta = {

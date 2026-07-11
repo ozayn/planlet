@@ -258,3 +258,70 @@ export async function updateMobileNavItemsAction(
 export async function resetMobileNavItemsAction(): Promise<SettingsActionResult> {
   return updateMobileNavItemsAction([...DEFAULT_MOBILE_NAV_ITEMS]);
 }
+
+export async function updateLifeLabReadAloudProviderAction(
+  provider: "DEVICE" | "OPENAI",
+): Promise<SettingsActionResult> {
+  try {
+    const userId = await requireUserId();
+    const { updateLifeLabReadAloudProvider } = await import(
+      "@/lib/life-lab/read-aloud-preferences"
+    );
+    await updateLifeLabReadAloudProvider(userId, provider);
+    revalidatePath("/settings");
+    revalidatePath("/life-lab", "layout");
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to update read aloud provider.",
+    };
+  }
+}
+
+export async function updateLifeLabSpeechVoiceAction(
+  speechVoiceId: string,
+): Promise<SettingsActionResult> {
+  try {
+    const userId = await requireUserId();
+    const { updateLifeLabSpeechVoiceId } = await import(
+      "@/lib/life-lab/read-aloud-preferences"
+    );
+    await updateLifeLabSpeechVoiceId(userId, speechVoiceId);
+    revalidatePath("/settings");
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to update speech voice.",
+    };
+  }
+}
+
+export async function updateLifeLabSpeechRateAction(
+  speechRate: number,
+): Promise<SettingsActionResult> {
+  try {
+    const userId = await requireUserId();
+    const { updateLifeLabSpeechRate } = await import(
+      "@/lib/life-lab/read-aloud-preferences"
+    );
+    await updateLifeLabSpeechRate(userId, speechRate as 0.8 | 1 | 1.15 | 1.3 | 1.5);
+    revalidatePath("/settings");
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to update speech rate.",
+    };
+  }
+}
