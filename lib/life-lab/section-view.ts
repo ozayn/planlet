@@ -5,6 +5,7 @@ import type {
 } from "@/lib/life-lab/constants";
 import {
   sortLifeLabNotes,
+  type LifeLabSortKey,
 } from "@/lib/life-lab/browse";
 import {
   isPlaylistGroupId,
@@ -43,8 +44,15 @@ import {
   type PlaylistBrowseResolutionState,
 } from "@/lib/life-lab/playlist-browse-resolution";
 import { noteLibraryDedupeKey } from "@/lib/life-lab/youtube-library";
+import {
+  groupStandaloneVideosByChannel,
+  noteMatchesStandaloneChannelFilter,
+  STANDALONE_CHANNEL_GROUP_PREVIEW_LIMIT,
+  type StandaloneChannelGroup,
+} from "@/lib/life-lab/standalone-channel";
 
-export const STANDALONE_PREVIEW_LIMIT = 5;
+export type { StandaloneChannelGroup } from "@/lib/life-lab/standalone-channel";
+
 export const RECENTLY_ADDED_LIMIT = 5;
 
 export type LifeLabPlaylistCard = {
@@ -80,7 +88,14 @@ export type PlaylistBrowseDebugInfo = {
 export type LifeLabSectionViewBlock =
   | { kind: "continue-learning"; notes: LifeLabNoteSummary[] }
   | { kind: "recently-added"; notes: LifeLabNoteSummary[] }
-  | { kind: "standalone-videos"; previewNotes: LifeLabNoteSummary[]; allNotes: LifeLabNoteSummary[]; totalCount: number }
+  | {
+      kind: "standalone-videos";
+      channelGroups: StandaloneChannelGroup[];
+      previewChannelGroups: StandaloneChannelGroup[];
+      totalChannelCount: number;
+      totalCount: number;
+      activeChannelFilter: string | null;
+    }
   | { kind: "playlists"; items: LifeLabPlaylistCard[]; debug?: PlaylistBrowseDebugInfo }
   | { kind: "group"; group: LifeLabNoteGroup }
   | { kind: "unresolved-playlists"; items: UnresolvedPlaylistDebug[] };
@@ -110,9 +125,9 @@ function dedupeNotesByIdentity(notes: LifeLabNoteSummary[]): LifeLabNoteSummary[
 
 function excludeRecentNotes(
   notes: LifeLabNoteSummary[],
-  recentSlugs: Set<string>,
+  recentKeys: Set<string>,
 ): LifeLabNoteSummary[] {
-  return notes.filter((note) => !recentSlugs.has(note.slug));
+  return notes.filter((note) => !recentKeys.has(noteLibraryDedupeKey(note)));
 }
 
 function isReferenceLikeNote(note: LifeLabNoteSummary): boolean {
@@ -425,8 +440,13 @@ function buildYoutubeBrowseView(
   sectionId: LifeLabSectionId,
   notes: LifeLabNoteSummary[],
   groups: LifeLabNoteGroup[],
-  options: { driveFolderId?: string | null } = {},
+  options: {
+    driveFolderId?: string | null;
+    sort?: LifeLabSortKey;
+    channelFilter?: string | null;
+  } = {},
 ): LifeLabSectionViewBlock[] {
+  const sort = options.sort ?? "recent";
   const blocks: LifeLabSectionViewBlock[] = [];
 
   const recentPool = dedupeNotesByIdentity(
@@ -443,26 +463,46 @@ function buildYoutubeBrowseView(
     });
   }
 
-  const recentSlugs = new Set(recentPool.map((note) => note.slug));
+  const recentKeys = new Set(
+    recentPool.map((note) => noteLibraryDedupeKey(note)),
+  );
 
   const standaloneNotes = dedupeNotesByIdentity(
     sortLifeLabNotes(
       notes.filter(isStandaloneYoutubeVideo),
-      "recent",
+      sort,
     ),
   );
 
   if (standaloneNotes.length > 0) {
-    const previewNotes = standaloneNotes
-      .filter((note) => !recentSlugs.has(note.slug))
-      .slice(0, STANDALONE_PREVIEW_LIMIT);
+    const channelFilter = options.channelFilter?.trim() ?? null;
+    const filteredStandaloneNotes = channelFilter
+      ? standaloneNotes.filter((note) =>
+          noteMatchesStandaloneChannelFilter(note, channelFilter),
+        )
+      : standaloneNotes;
 
-    blocks.push({
-      kind: "standalone-videos",
-      previewNotes,
-      allNotes: standaloneNotes,
-      totalCount: standaloneNotes.length,
-    });
+    if (filteredStandaloneNotes.length > 0) {
+      const channelGroups = groupStandaloneVideosByChannel({
+        notes: filteredStandaloneNotes,
+        sort,
+        excludeKeys: channelFilter ? new Set<string>() : recentKeys,
+        videosPerChannelPreview: channelFilter
+          ? filteredStandaloneNotes.length
+          : undefined,
+      });
+
+      blocks.push({
+        kind: "standalone-videos",
+        channelGroups,
+        previewChannelGroups: channelFilter
+          ? channelGroups
+          : channelGroups.slice(0, STANDALONE_CHANNEL_GROUP_PREVIEW_LIMIT),
+        totalChannelCount: channelGroups.length,
+        totalCount: standaloneNotes.length,
+        activeChannelFilter: channelFilter,
+      });
+    }
   }
 
   const { cards: playlistCards, unresolved, debug } = buildPlaylistCards(
@@ -509,7 +549,7 @@ function buildYoutubeBrowseView(
 
     const contentNotes = excludeRecentNotes(
       group.notes.filter((note) => isBrowseableContentNote(sectionId, note)),
-      recentSlugs,
+      recentKeys,
     );
 
     if (contentNotes.length === 0) {
@@ -538,6 +578,8 @@ export function buildLifeLabSectionView(input: {
   groups: LifeLabNoteGroup[];
   hasActiveQuery: boolean;
   driveFolderId?: string | null;
+  sort?: LifeLabSortKey;
+  channelFilter?: string | null;
 }): LifeLabSectionView {
   if (input.hasActiveQuery) {
     return {
@@ -553,7 +595,11 @@ export function buildLifeLabSectionView(input: {
         input.sectionId,
         input.notes,
         input.groups,
-        { driveFolderId: input.driveFolderId },
+        {
+          driveFolderId: input.driveFolderId,
+          sort: input.sort,
+          channelFilter: input.channelFilter,
+        },
       ),
     };
   }

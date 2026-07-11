@@ -77,6 +77,13 @@ export type LifeLabNoteMetadata = {
   section?: string;
   source?: string;
   channel?: string;
+  channelName?: string;
+  youtubeChannel?: string;
+  sourceChannel?: string;
+  channelId?: string;
+  youtubeChannelId?: string;
+  channel_id?: string;
+  youtube_channel_id?: string;
   playlist?: string;
   playlist_url?: string;
   collectionPath?: string;

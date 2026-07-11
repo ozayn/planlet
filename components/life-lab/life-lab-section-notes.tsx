@@ -548,9 +548,11 @@ export function LifeLabSectionNotes({
               <LifeLabStandaloneVideos
                 key={`standalone-${index}`}
                 sectionId={sectionId}
-                previewNotes={block.previewNotes}
-                allNotes={block.allNotes}
+                channelGroups={block.channelGroups}
+                previewChannelGroups={block.previewChannelGroups}
+                totalChannelCount={block.totalChannelCount}
                 totalCount={block.totalCount}
+                activeChannelFilter={block.activeChannelFilter}
               />
             );
           case "unresolved-playlists":

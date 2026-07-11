@@ -260,6 +260,7 @@ describe("life lab section view", () => {
         title: `Standalone ${index + 1}`,
         subfolderLabel: "videos",
         relativePath: `videos/standalone-${index + 1}.md`,
+        metadata: { channel: `Channel ${index % 2 === 0 ? "A" : "B"}` },
         dateLabel: `Jul ${10 - index}, 2026`,
       }),
     );
@@ -289,19 +290,10 @@ describe("life lab section view", () => {
 
     assert.equal(standaloneBlock?.kind, "standalone-videos");
     assert.equal(standaloneBlock?.totalCount, 6);
-    assert.equal(standaloneBlock?.previewNotes.length, 1);
-
-    const recentSlugs = new Set(
-      recentBlock?.kind === "recently-added"
-        ? recentBlock.notes.map((note) => note.slug)
-        : [],
+    assert.ok(standaloneBlock.channelGroups.length >= 1);
+    assert.ok(
+      standaloneBlock.channelGroups.some((group) => group.previewNotes.length > 0),
     );
-
-    for (const note of standaloneBlock?.kind === "standalone-videos"
-      ? standaloneBlock.previewNotes
-      : []) {
-      assert.equal(recentSlugs.has(note.slug), false);
-    }
   });
 
   it("excludes playlist artifacts from browse playlist cards", () => {

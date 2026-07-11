@@ -117,14 +117,31 @@ export function buildLifeLabImageCaption(
 
 export function lifeLabNoteImageAlt(
   image: LifeLabNoteImage,
-  options: { fallbackTitle?: string | null; isYoutubeThumbnail?: boolean } = {},
+  options: {
+    fallbackTitle?: string | null;
+    isYoutubeThumbnail?: boolean;
+    thumbnailPrefix?: string;
+  } = {},
 ): string {
-  return (
-    image.alt?.trim() ||
-    image.title?.trim() ||
-    options.fallbackTitle?.trim() ||
-    (options.isYoutubeThumbnail ? "Video thumbnail" : "Note image")
-  );
+  if (image.alt?.trim()) {
+    return image.alt.trim();
+  }
+
+  if (image.title?.trim()) {
+    return image.title.trim();
+  }
+
+  const title = options.fallbackTitle?.trim();
+
+  if (title && options.thumbnailPrefix) {
+    return `${options.thumbnailPrefix} ${title}`;
+  }
+
+  if (title) {
+    return title;
+  }
+
+  return options.isYoutubeThumbnail ? "Video thumbnail" : "Note image";
 }
 
 export function extractVisualAnchorSection(body: string): string | null {

@@ -1,5 +1,9 @@
 import type { LifeLabNoteMetadata, LifeLabNoteSummary } from "@/lib/life-lab/constants";
 import { monthKeyLabel, noteMonthKey } from "@/lib/life-lab/browse";
+import {
+  buildCanonicalChannelLabelMap,
+  resolveStandaloneChannel,
+} from "@/lib/life-lab/standalone-channel";
 import { resolveStudyStatusValue, studyStatusLabel } from "@/lib/life-lab/study-status";
 
 export type LifeLabFilterKey =
@@ -101,6 +105,8 @@ export function collectLifeLabFilterOptions(
   };
   const statuses = new Set<string>();
   const monthKeys = new Set<string>();
+  const canonicalChannelLabels = buildCanonicalChannelLabelMap(notes);
+  const channelOptions = new Map<string, string>();
 
   for (const note of notes) {
     if (note.subfolderLabel) {
@@ -110,8 +116,16 @@ export function collectLifeLabFilterOptions(
     const metadata = note.metadata ?? {};
 
     for (const key of Object.keys(FILTER_METADATA_KEYS) as MetadataFilterKey[]) {
+      if (key === "channel") {
+        continue;
+      }
+
       raw[key].push(...metadataValues(metadata, key));
     }
+
+    const channel = resolveStandaloneChannel(note, canonicalChannelLabels);
+
+    channelOptions.set(channel.slug, channel.label);
 
     const status = resolveStudyStatusValue(metadata);
 
@@ -131,7 +145,9 @@ export function collectLifeLabFilterOptions(
     tag: uniqueSortedOptions(raw.tag),
     topic: uniqueSortedOptions(raw.topic),
     source: uniqueSortedOptions(raw.source),
-    channel: uniqueSortedOptions(raw.channel),
+    channel: [...channelOptions.entries()]
+      .sort((left, right) => left[1].localeCompare(right[1]))
+      .map(([value, label]) => ({ value, label })),
     playlist: uniqueSortedOptions(raw.playlist),
     person: uniqueSortedOptions(raw.person),
     place: uniqueSortedOptions(raw.place),
@@ -150,6 +166,9 @@ export function collectLifeLabFilterOptions(
 export function noteMatchesFilters(
   note: LifeLabNoteSummary,
   filters: LifeLabNoteFilters,
+  options: {
+    canonicalChannelLabels?: Map<string, string>;
+  } = {},
 ): boolean {
   for (const [rawKey, rawValue] of Object.entries(filters)) {
     const key = rawKey as LifeLabFilterKey;
@@ -184,6 +203,20 @@ export function noteMatchesFilters(
     }
 
     const metadata = note.metadata ?? {};
+
+    if (key === "channel") {
+      const channel = resolveStandaloneChannel(
+        note,
+        options.canonicalChannelLabels,
+      );
+
+      if (channel.slug !== value.toLowerCase()) {
+        return false;
+      }
+
+      continue;
+    }
+
     const values = metadataValues(metadata, key).map((item) =>
       item.toLowerCase(),
     );
@@ -217,5 +250,9 @@ export function filterLifeLabNotes(
     return notes;
   }
 
-  return notes.filter((note) => noteMatchesFilters(note, activeFilters));
+  const canonicalChannelLabels = buildCanonicalChannelLabelMap(notes);
+
+  return notes.filter((note) =>
+    noteMatchesFilters(note, activeFilters, { canonicalChannelLabels }),
+  );
 }

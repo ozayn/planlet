@@ -99,6 +99,32 @@ type ActiveFilterChip = {
   value: string;
 };
 
+function countNonChannelFilters(filters: LifeLabNoteFilters): number {
+  return FILTER_PARAM_KEYS.filter((key) => {
+    if (key === "channel") {
+      return false;
+    }
+
+    return Boolean(filters[key]?.trim());
+  }).length;
+}
+
+function shouldUseYoutubeBrowseLayout(
+  sectionId: LifeLabSectionId,
+  searchQuery: string,
+  filters: LifeLabNoteFilters,
+): boolean {
+  if (sectionId !== "youtube-learning") {
+    return false;
+  }
+
+  if (searchQuery) {
+    return false;
+  }
+
+  return countNonChannelFilters(filters) === 0;
+}
+
 function buildActiveFilterChips(filters: LifeLabNoteFilters): ActiveFilterChip[] {
   return FILTER_PARAM_KEYS.flatMap((key) => {
     const rawValue = filters[key];
@@ -171,7 +197,10 @@ export function LifeLabSectionBrowser({
     [filteredNotes, sectionId, sort],
   );
 
-  const hasActiveQuery = Boolean(searchQuery) || countActiveLifeLabFilters(filters) > 0;
+  const hasActiveQuery =
+    Boolean(searchQuery) ||
+    (!shouldUseYoutubeBrowseLayout(sectionId, searchQuery, filters) &&
+      countActiveLifeLabFilters(filters) > 0);
 
   const sectionView = useMemo(
     () =>
@@ -180,8 +209,10 @@ export function LifeLabSectionBrowser({
         notes: filteredNotes,
         groups,
         hasActiveQuery,
+        sort,
+        channelFilter: filters.channel ?? null,
       }),
-    [filteredNotes, groups, hasActiveQuery, sectionId],
+    [filteredNotes, groups, hasActiveQuery, sectionId, sort, filters.channel],
   );
 
   const flashcardStats = useMemo(() => {
