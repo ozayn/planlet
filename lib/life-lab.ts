@@ -9,12 +9,15 @@ import {
   lifeLabNoteCacheTag,
   lifeLabPlaylistAssetCacheTag,
   lifeLabPlaylistAssetsCacheTag,
+  lifeLabPlaylistClustersCacheTag,
+  lifeLabPlaylistFullMapCacheTag,
   lifeLabPlaylistLearningMapCacheTag,
   lifeLabPlaylistCacheTag,
   lifeLabSectionCacheTag,
   LIFE_LAB_CACHE_TAG,
   LIFE_LAB_SECTIONS_CACHE_TAG,
   LIFE_LAB_SECTION_FILE_INDEX_CACHE_VERSION,
+  LIFE_LAB_NOTE_PAYLOAD_CACHE_VERSION,
   lifeLabSectionPlaylistsCacheTag,
 } from "@/lib/life-lab/cache";
 import {
@@ -90,7 +93,6 @@ import {
   titleFromFilename,
 } from "@/lib/life-lab/slug";
 import {
-  isPlaylistIndexNote,
   isPlaylistIndexSummaryRecord,
   isYoutubeVideoNote,
   parsePlaylistIndexNote,
@@ -100,13 +102,16 @@ import {
 } from "@/lib/life-lab/playlist-index";
 import {
   buildPlaylistAssetsBundle,
+  buildPlaylistClusterFile,
   emptyPlaylistAssetDiagnostics,
   emptyPlaylistAssetsBundle,
   orderPlaylistAssetsForDisplay,
+  parseClusterRowsFromLoadedAssets,
   PLAYLIST_ASSET_IDS,
   playlistAssetsCacheKeyParts,
   preparePlaylistAssetMarkdown,
   resolvePlaylistAssetsForIndexNote,
+  resolvePlaylistClusterRecords,
   suppressDuplicatePlaylistIndexContent,
   type PlaylistAssetsBundle,
 } from "@/lib/life-lab/playlist-assets";
@@ -621,42 +626,6 @@ async function loadSectionFileIndex(
   };
 }
 
-async function enrichPlaylistIndexRecordsForBrowse(
-  sectionId: LifeLabSectionId,
-  records: LifeLabSectionNoteRecord[],
-): Promise<LifeLabSectionNoteRecord[]> {
-  if (sectionId !== "youtube-learning") {
-    return records;
-  }
-
-  const indexCandidates = records.filter((record) =>
-    isPlaylistIndexNote({
-      sectionId,
-      relativePath: record.relativePath,
-      subfolderLabel: record.subfolderLabel,
-      metadata: record.metadata,
-    }),
-  );
-
-  if (indexCandidates.length === 0) {
-    return records;
-  }
-
-  const enrichedByFileId = new Map<string, LifeLabSectionNoteRecord>();
-
-  await Promise.all(
-    indexCandidates.map(async (record) => {
-      const payload = await getNotePayloadCached(sectionId, record);
-
-      if (payload?.record) {
-        enrichedByFileId.set(record.fileId, payload.record);
-      }
-    }),
-  );
-
-  return records.map((record) => enrichedByFileId.get(record.fileId) ?? record);
-}
-
 async function getSectionFileIndexCached(
   sectionId: LifeLabSectionId,
 ): Promise<LifeLabSectionFileIndex> {
@@ -702,7 +671,7 @@ async function getNotePayloadCached(
 ): Promise<LifeLabNotePayload | null> {
   return unstable_cache(
     async () => loadNotePayload(sectionId, baseRecord),
-    ["life-lab-note-payload", baseRecord.fileId],
+    ["life-lab-note-payload", LIFE_LAB_NOTE_PAYLOAD_CACHE_VERSION, baseRecord.fileId],
     {
       revalidate: getLifeLabNoteCacheSeconds(),
       tags: [
@@ -858,20 +827,72 @@ async function loadPlaylistAssetPayloads(
     }),
   );
 
-  const interimBundle = buildPlaylistAssetsBundle({
+  const clusterMatches = resolvePlaylistClusterRecords(
+    resolution,
+    fileIndex.records,
+  );
+  const loadedClusters = await Promise.all(
+    clusterMatches.map(async (match) => {
+      try {
+        const payload = options.fresh
+          ? await loadNotePayload(sectionId, match.record)
+          : await getNotePayloadCached(sectionId, match.record);
+
+        if (!payload?.rawContent?.trim()) {
+          return buildPlaylistClusterFile({
+            slug: match.slug,
+            relativePath: match.relativePath,
+            fileId: match.record.fileId,
+            modifiedAt: match.record.modifiedAt,
+            rawBody: null,
+            error: "Cluster file is empty.",
+          });
+        }
+
+        const { body: rawBody } = parseLifeLabFrontmatter(payload.rawContent);
+
+        return buildPlaylistClusterFile({
+          slug: match.slug,
+          relativePath: match.relativePath,
+          fileId: match.record.fileId,
+          modifiedAt: match.record.modifiedAt,
+          rawBody,
+        });
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Cluster diagram could not be loaded.";
+
+        return buildPlaylistClusterFile({
+          slug: match.slug,
+          relativePath: match.relativePath,
+          fileId: match.record.fileId,
+          modifiedAt: match.record.modifiedAt,
+          rawBody: null,
+          error: message,
+        });
+      }
+    }),
+  );
+
+  const bundleWithClusters = buildPlaylistAssetsBundle({
     folder,
     resolution,
     matches,
     loaded,
+    clusterRows: parseClusterRowsFromLoadedAssets(loaded),
+    clusterFiles: loadedClusters,
   });
   const { suppressedDuplicates, body: strippedIndexBody } =
     suppressDuplicatePlaylistIndexContent({
       indexBody: body,
-      assets: interimBundle.artifacts,
+      assets: bundleWithClusters.artifacts,
+      presentAssetIds: matches.map((match) => match.definition.id),
     });
 
   return {
-    ...interimBundle,
+    ...bundleWithClusters,
     suppressedDuplicates,
     strippedIndexBody,
   };
@@ -896,6 +917,8 @@ async function getPlaylistAssetsBundleCached(
       tags: [
         lifeLabPlaylistAssetsCacheTag(playlistId),
         lifeLabPlaylistLearningMapCacheTag(playlistId),
+        lifeLabPlaylistClustersCacheTag(playlistId),
+        lifeLabPlaylistFullMapCacheTag(playlistId),
         lifeLabPlaylistCacheTag(sectionId, indexNote.slug),
         lifeLabSectionCacheTag(sectionId),
         LIFE_LAB_CACHE_TAG,
@@ -1169,14 +1192,28 @@ export async function getLifeLabSectionData(
 
     const fromCache = !options.refresh;
     const loadedAt = new Date().toISOString();
-    const { records: rawRecords, listingDiagnostic: listingDiagnosticBase } =
-      options.refresh
-        ? await loadSectionNotes(sectionId, { useCachedFolderMap: false })
-        : await getSectionNotesCached(sectionId);
-    const records =
-      sectionId === "youtube-learning"
-        ? await enrichPlaylistIndexRecordsForBrowse(sectionId, rawRecords)
-        : rawRecords;
+
+    let records: LifeLabSectionNoteRecord[];
+    let listingDiagnosticBase: LifeLabListingDiagnostic;
+
+    if (sectionId === "youtube-learning") {
+      if (options.refresh) {
+        await loadSectionNotes(sectionId, { useCachedFolderMap: false });
+      }
+
+      const enriched = await getEnrichedSectionRecordsCached(sectionId);
+      records = enriched.records;
+      listingDiagnosticBase = enriched.listingDiagnostic;
+    } else if (options.refresh) {
+      const loaded = await loadSectionNotes(sectionId, { useCachedFolderMap: false });
+      records = loaded.records;
+      listingDiagnosticBase = loaded.listingDiagnostic;
+    } else {
+      const cached = await getSectionNotesCached(sectionId);
+      records = cached.records;
+      listingDiagnosticBase = cached.listingDiagnostic;
+    }
+
     const notes = records.map(toNoteSummary);
     const groups = groupLifeLabNotes(notes, { sectionId });
     const folderMap = resolveLifeLabFolderMap(mapResult);

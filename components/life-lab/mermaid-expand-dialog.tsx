@@ -24,6 +24,8 @@ type MermaidExpandDialogProps = {
   onClose: () => void;
   code: string;
   returnFocusRef?: RefObject<HTMLElement | null>;
+  title?: string;
+  subtitle?: string;
 };
 
 function clampZoom(value: number): number {
@@ -35,6 +37,8 @@ export function MermaidExpandDialog({
   onClose,
   code,
   returnFocusRef,
+  title = "Learning Map Diagram",
+  subtitle = "Scroll or pinch to explore the full diagram.",
 }: MermaidExpandDialogProps) {
   const titleId = useId();
   const subtitleId = useId();
@@ -151,10 +155,10 @@ export function MermaidExpandDialog({
               className="text-base font-semibold text-foreground"
               dir="auto"
             >
-              Learning Map Diagram
+              {title}
             </h2>
             <p id={subtitleId} className="mt-0.5 text-sm text-muted">
-              Scroll or pinch to explore the full diagram.
+              {subtitle}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-1">

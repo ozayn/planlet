@@ -4,7 +4,10 @@ export const LIFE_LAB_CACHE_TAG = "life-lab";
 export const LIFE_LAB_SECTIONS_CACHE_TAG = "life-lab:sections";
 
 /** Bump when section listing or playlist browse logic changes materially. */
-export const LIFE_LAB_SECTION_FILE_INDEX_CACHE_VERSION = "v2-partial-playlists";
+export const LIFE_LAB_SECTION_FILE_INDEX_CACHE_VERSION = "v4-youtube-thumbnails";
+
+/** Bump when note payload enrichment or serialized metadata shape changes. */
+export const LIFE_LAB_NOTE_PAYLOAD_CACHE_VERSION = "v4-youtube-thumbnails";
 
 export function lifeLabSectionPlaylistsCacheTag(sectionId: string): string {
   return `life-lab:playlists:${sectionId}`;
@@ -16,6 +19,21 @@ export function lifeLabSectionCacheTag(sectionId: string): string {
 
 export function lifeLabNoteCacheTag(fileId: string): string {
   return `life-lab:note:${fileId}`;
+}
+
+export function lifeLabPlaylistClustersCacheTag(playlistId: string): string {
+  return `life-lab:playlist-clusters:${playlistId}`;
+}
+
+export function lifeLabPlaylistClusterCacheTag(
+  playlistId: string,
+  clusterSlug: string,
+): string {
+  return `life-lab:playlist-cluster:${playlistId}:${clusterSlug}`;
+}
+
+export function lifeLabPlaylistFullMapCacheTag(playlistId: string): string {
+  return `life-lab:playlist-full-map:${playlistId}`;
 }
 
 export function lifeLabPlaylistCacheTag(

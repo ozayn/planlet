@@ -402,6 +402,7 @@ export function LifeLabSectionBrowser({
           listingDiagnostic={listingDiagnostic}
           showDiagnostics={showDiagnostics}
           searchQuery={searchQuery}
+          contextNotes={filteredNotes}
         />
       )}
     </div>

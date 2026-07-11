@@ -124,6 +124,13 @@ describe("life lab section view", () => {
       }),
       ...playlistVideos,
       noteSummary({
+        slug: "videos__standalone-intro",
+        title: "Standalone intro",
+        subfolderLabel: "videos",
+        relativePath: "videos/standalone-intro.md",
+        dateLabel: "Jul 11, 2026",
+      }),
+      noteSummary({
         slug: "channels",
         title: "Channels",
         relativePath: "channels.md",
@@ -156,14 +163,14 @@ describe("life lab section view", () => {
         {
           id: "reference",
           label: "Reference",
-          notes: [notes[3]],
+          notes: [notes[4]],
           collapsedByDefault: true,
           variant: "disclosure",
         },
         {
           id: "about",
           label: "About YouTube Learning",
-          notes: [notes[4]],
+          notes: [notes[5]],
           collapsedByDefault: true,
           variant: "disclosure",
         },
@@ -173,6 +180,12 @@ describe("life lab section view", () => {
 
     assert.equal(view.mode, "browse");
     assert.equal(view.blocks[0]?.kind, "recently-added");
+    assert.equal(
+      view.blocks[0]?.kind === "recently-added"
+        ? view.blocks[0].notes[0]?.slug
+        : null,
+      "videos__standalone-intro",
+    );
     assert.equal(view.blocks.some((block) => block.kind === "playlists"), true);
 
     const playlistBlock = view.blocks.find((block) => block.kind === "playlists");

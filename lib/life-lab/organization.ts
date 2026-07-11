@@ -27,7 +27,10 @@ import {
   relativePathFilename,
   slugToRelativePath,
 } from "@/lib/life-lab/slug";
-import { classifyYoutubeLibraryNote } from "@/lib/life-lab/youtube-library";
+import {
+  createYoutubeLibraryClassifier,
+  noteLibraryDedupeKey,
+} from "@/lib/life-lab/youtube-library";
 
 const ABOUT_GROUP_ID = "about";
 const ARCHIVE_GROUP_ID = "archive";
@@ -70,17 +73,28 @@ export function classifyNoteGroup(note: LifeLabNoteSummary): string {
   return note.subfolderLabel.toLowerCase();
 }
 
-function classifyYoutubeNoteGroup(note: LifeLabNoteSummary): string {
-  const role = classifyYoutubeLibraryNote(note);
+function classifyYoutubeNoteGroup(
+  note: LifeLabNoteSummary,
+  classifier: ReturnType<typeof createYoutubeLibraryClassifier>,
+): string {
+  const role = classifier.classifyRole(note);
 
   switch (role) {
     case "playlist-video": {
+      const ownership = classifier.classifyOwnership(note);
+
+      if (ownership?.kind === "playlist") {
+        return playlistGroupId(ownership.playlistTitle);
+      }
+
       const playlist = note.metadata?.playlist?.trim();
 
       return playlist ? playlistGroupId(playlist) : VIDEOS_GROUP_ID;
     }
     case "standalone-video":
       return STANDALONE_GROUP_ID;
+    case "unresolved-playlist-video":
+      return REFERENCE_GROUP_ID;
     case "reference":
       return REFERENCE_GROUP_ID;
     case "archive":
@@ -355,9 +369,17 @@ function mergeFilmLabSecondaryGroups(
 function classifyNoteGroupForSection(
   note: LifeLabNoteSummary,
   sectionId?: LifeLabSectionId,
+  classifier?: ReturnType<typeof createYoutubeLibraryClassifier>,
 ): string {
+  if (sectionId === "youtube-learning" && classifier) {
+    return classifyYoutubeNoteGroup(note, classifier);
+  }
+
   if (sectionId === "youtube-learning") {
-    return classifyYoutubeNoteGroup(note);
+    return classifyYoutubeNoteGroup(
+      note,
+      createYoutubeLibraryClassifier([]),
+    );
   }
 
   if (sectionId === "learning-dictionary") {
@@ -415,14 +437,17 @@ export function groupLifeLabNotes(
   notes: LifeLabNoteSummary[],
   options: GroupLifeLabNotesOptions = {},
 ): LifeLabNoteGroup[] {
-  const seenFileIds = new Set<string>();
-  const seenRelativePaths = new Set<string>();
+  const seenKeys = new Set<string>();
   const groups = new Map<string, LifeLabNoteSummary[]>();
+  const classifier =
+    options.sectionId === "youtube-learning"
+      ? createYoutubeLibraryClassifier(notes)
+      : null;
 
   const classified = notes
     .map((note) => ({
       note,
-      groupId: classifyNoteGroupForSection(note, options.sectionId),
+      groupId: classifyNoteGroupForSection(note, options.sectionId, classifier ?? undefined),
     }))
     .sort((left, right) => {
       const priorityDelta =
@@ -436,14 +461,13 @@ export function groupLifeLabNotes(
     });
 
   for (const { note, groupId } of classified) {
-    const relativePath = note.relativePath || slugToRelativePath(note.slug);
+    const key = noteLibraryDedupeKey(note);
 
-    if (seenFileIds.has(note.fileId) || seenRelativePaths.has(relativePath)) {
+    if (seenKeys.has(key)) {
       continue;
     }
 
-    seenFileIds.add(note.fileId);
-    seenRelativePaths.add(relativePath);
+    seenKeys.add(key);
 
     const existing = groups.get(groupId) ?? [];
     existing.push(note);

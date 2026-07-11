@@ -6,77 +6,144 @@ import {
   isNonPlayableMetadataNote,
   isPlayableYoutubeNote,
 } from "@/lib/life-lab/youtube-browse";
+import {
+  buildPlaylistOwnershipRegistry,
+  classifyVideoOwnership,
+  isPlaylistVideoOwnership,
+  isStandaloneVideoOwnership,
+  resolveNoteYoutubeVideoId,
+  type PlaylistOwnershipRegistry,
+  type VideoOwnership,
+} from "@/lib/life-lab/video-ownership";
 
 export type YoutubeLibraryNoteRole =
   | "playlist-video"
   | "standalone-video"
+  | "unresolved-playlist-video"
   | "reference"
   | "archive"
   | "about";
 
-export function hasRecognizedPlaylist(note: LifeLabNoteSummary): boolean {
-  const playlist = note.metadata?.playlist?.trim();
+export type YoutubeLibraryClassifier = {
+  registry: PlaylistOwnershipRegistry;
+  classifyOwnership: (note: LifeLabNoteSummary) => VideoOwnership | null;
+  classifyRole: (note: LifeLabNoteSummary) => YoutubeLibraryNoteRole | null;
+};
 
-  if (!playlist) {
-    return false;
+export function createYoutubeLibraryClassifier(
+  notes: LifeLabNoteSummary[],
+): YoutubeLibraryClassifier {
+  const registry = buildPlaylistOwnershipRegistry(notes);
+
+  function classifyOwnership(note: LifeLabNoteSummary): VideoOwnership | null {
+    return classifyVideoOwnership(note, registry);
   }
 
-  return !isInternalPlaylistTitle(playlist);
+  function classifyRole(note: LifeLabNoteSummary): YoutubeLibraryNoteRole | null {
+    if (isReadmeSlug(note.slug)) {
+      return "about";
+    }
+
+    const filename = relativePathFilename(note.relativePath).toLowerCase();
+
+    if (filename === "playlist-summary.md") {
+      return "about";
+    }
+
+    if (note.subfolderLabel?.toLowerCase() === "archive") {
+      return "archive";
+    }
+
+    if (
+      isPlaylistIndexNote({
+        sectionId: "youtube-learning",
+        relativePath: note.relativePath,
+        subfolderLabel: note.subfolderLabel,
+        metadata: note.metadata,
+      })
+    ) {
+      return null;
+    }
+
+    if (isNonPlayableMetadataNote(note)) {
+      return "reference";
+    }
+
+    if (!note.subfolderLabel && !note.metadata?.playlist?.trim()) {
+      return "reference";
+    }
+
+    const ownership = classifyOwnership(note);
+
+    if (ownership?.kind === "playlist") {
+      return "playlist-video";
+    }
+
+    if (ownership?.kind === "unresolved") {
+      return "unresolved-playlist-video";
+    }
+
+    if (ownership?.kind === "standalone") {
+      return "standalone-video";
+    }
+
+    return null;
+  }
+
+  return {
+    registry,
+    classifyOwnership,
+    classifyRole,
+  };
+}
+
+let defaultClassifier: YoutubeLibraryClassifier | null = null;
+
+function getClassifier(notes?: LifeLabNoteSummary[]): YoutubeLibraryClassifier {
+  if (notes && notes.length > 0) {
+    return createYoutubeLibraryClassifier(notes);
+  }
+
+  if (!defaultClassifier) {
+    defaultClassifier = createYoutubeLibraryClassifier([]);
+  }
+
+  return defaultClassifier;
+}
+
+export function classifyVideoOwnershipForNote(
+  note: LifeLabNoteSummary,
+  notes?: LifeLabNoteSummary[],
+): VideoOwnership | null {
+  return getClassifier(notes).classifyOwnership(note);
+}
+
+/** @deprecated Use classifyVideoOwnershipForNote or createYoutubeLibraryClassifier */
+export function hasRecognizedPlaylist(note: LifeLabNoteSummary): boolean {
+  const ownership = classifyVideoOwnershipForNote(note);
+
+  return isPlaylistVideoOwnership(ownership);
 }
 
 export function classifyYoutubeLibraryNote(
   note: LifeLabNoteSummary,
+  notes?: LifeLabNoteSummary[],
 ): YoutubeLibraryNoteRole | null {
-  if (isReadmeSlug(note.slug)) {
-    return "about";
-  }
-
-  const filename = relativePathFilename(note.relativePath).toLowerCase();
-
-  if (filename === "playlist-summary.md") {
-    return "about";
-  }
-
-  if (note.subfolderLabel?.toLowerCase() === "archive") {
-    return "archive";
-  }
-
-  if (
-    isPlaylistIndexNote({
-      sectionId: "youtube-learning",
-      relativePath: note.relativePath,
-      subfolderLabel: note.subfolderLabel,
-      metadata: note.metadata,
-    })
-  ) {
-    return null;
-  }
-
-  if (isNonPlayableMetadataNote(note)) {
-    return "reference";
-  }
-
-  if (!note.subfolderLabel && !note.metadata?.playlist?.trim()) {
-    return "reference";
-  }
-
-  if (!isPlayableYoutubeNote(note)) {
-    return null;
-  }
-
-  if (hasRecognizedPlaylist(note)) {
-    return "playlist-video";
-  }
-
-  return "standalone-video";
+  return getClassifier(notes).classifyRole(note);
 }
 
-export function isStandaloneYoutubeVideo(note: LifeLabNoteSummary): boolean {
-  return classifyYoutubeLibraryNote(note) === "standalone-video";
+export function isStandaloneYoutubeVideo(
+  note: LifeLabNoteSummary,
+  notes?: LifeLabNoteSummary[],
+): boolean {
+  return classifyYoutubeLibraryNote(note, notes) === "standalone-video";
 }
 
-export function isPlaylistYoutubeVideo(note: LifeLabNoteSummary): boolean {
-  return classifyYoutubeLibraryNote(note) === "playlist-video";
+export function isPlaylistYoutubeVideo(
+  note: LifeLabNoteSummary,
+  notes?: LifeLabNoteSummary[],
+): boolean {
+  return classifyYoutubeLibraryNote(note, notes) === "playlist-video";
 }
 
 export function noteLibraryDedupeKey(note: LifeLabNoteSummary): string {
@@ -86,9 +153,23 @@ export function noteLibraryDedupeKey(note: LifeLabNoteSummary): string {
     return fileId;
   }
 
+  const videoId = resolveNoteYoutubeVideoId(note);
+
+  if (videoId) {
+    return `yt:${videoId}`;
+  }
+
   if (note.relativePath) {
     return note.relativePath;
   }
 
   return note.slug;
 }
+
+export {
+  buildPlaylistOwnershipRegistry,
+  classifyVideoOwnership,
+  resolveNoteYoutubeVideoId,
+  resolvePlaylistContextLabel,
+  type VideoOwnership,
+} from "@/lib/life-lab/video-ownership";

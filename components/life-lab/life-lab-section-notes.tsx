@@ -26,6 +26,10 @@ import {
 import { groupDisclosureSummary } from "@/lib/life-lab/organization";
 import { resolveLifeLabNoteImage } from "@/lib/life-lab/note-image";
 import { isPlaylistIndexNote } from "@/lib/life-lab/playlist-index";
+import {
+  classifyVideoOwnershipForNote,
+  resolvePlaylistContextLabel,
+} from "@/lib/life-lab/youtube-library";
 import type {
   LifeLabSectionView,
   PlaylistBrowseDebugInfo,
@@ -44,6 +48,7 @@ type LifeLabSectionNotesProps = {
   listingDiagnostic: LifeLabListingDiagnostic | null;
   showDiagnostics: boolean;
   searchQuery?: string;
+  contextNotes?: LifeLabNoteSummary[];
 };
 
 type LifeLabNoteCardProps = {
@@ -51,6 +56,7 @@ type LifeLabNoteCardProps = {
   note: LifeLabNoteSummary;
   group: LifeLabNoteGroup;
   searchQuery?: string;
+  contextNotes?: LifeLabNoteSummary[];
   compact?: boolean;
 };
 
@@ -194,6 +200,32 @@ function CategoryBadge({ label }: { label: string }) {
   );
 }
 
+function SearchPlaylistContext({
+  sectionId,
+  note,
+  searchQuery,
+  contextNotes,
+}: {
+  sectionId: LifeLabSectionId;
+  note: LifeLabNoteSummary;
+  searchQuery?: string;
+  contextNotes?: LifeLabNoteSummary[];
+}) {
+  if (sectionId !== "youtube-learning" || !searchQuery?.trim()) {
+    return null;
+  }
+
+  const label = resolvePlaylistContextLabel(
+    classifyVideoOwnershipForNote(note, contextNotes),
+  );
+
+  if (!label) {
+    return null;
+  }
+
+  return <p className="text-xs text-muted">{label}</p>;
+}
+
 function CardPreview({
   note,
   searchQuery,
@@ -280,6 +312,7 @@ function LifeLabNoteCard({
   note,
   group,
   searchQuery,
+  contextNotes,
   compact = false,
 }: LifeLabNoteCardProps) {
   if (
@@ -323,6 +356,12 @@ function LifeLabNoteCard({
               >
                 {note.title}
               </Link>
+              <SearchPlaylistContext
+                sectionId={sectionId}
+                note={note}
+                searchQuery={searchQuery}
+                contextNotes={contextNotes}
+              />
               <CompactNoteMeta sectionId={sectionId} note={note} />
               <CardPreview note={note} searchQuery={searchQuery} />
           </div>
@@ -344,10 +383,12 @@ function LifeLabNoteList({
   sectionId,
   group,
   searchQuery,
+  contextNotes,
 }: {
   sectionId: LifeLabSectionId;
   group: LifeLabNoteGroup;
   searchQuery?: string;
+  contextNotes?: LifeLabNoteSummary[];
 }) {
   const [expanded, setExpanded] = useState(false);
   const hasOverflow = group.notes.length > GROUP_INITIAL_VISIBLE;
@@ -374,6 +415,7 @@ function LifeLabNoteList({
               note={note}
               group={group}
               searchQuery={searchQuery}
+              contextNotes={contextNotes}
               compact
             />
           ),
@@ -422,11 +464,13 @@ function LifeLabNoteGroupSection({
   sectionId,
   group,
   searchQuery,
+  contextNotes,
   defaultOpen = false,
 }: {
   sectionId: LifeLabSectionId;
   group: LifeLabNoteGroup;
   searchQuery?: string;
+  contextNotes?: LifeLabNoteSummary[];
   defaultOpen?: boolean;
 }) {
   const hidePrimaryHeading =
@@ -448,6 +492,7 @@ function LifeLabNoteGroupSection({
           sectionId={sectionId}
           group={group}
           searchQuery={searchQuery}
+          contextNotes={contextNotes}
         />
       </section>
     );
@@ -486,6 +531,7 @@ export function LifeLabSectionNotes({
   listingDiagnostic,
   showDiagnostics,
   searchQuery,
+  contextNotes,
 }: LifeLabSectionNotesProps) {
   const unresolvedPlaylists = sectionView.blocks.flatMap((block) =>
     block.kind === "unresolved-playlists" ? block.items : [],
@@ -564,6 +610,7 @@ export function LifeLabSectionNotes({
                 sectionId={sectionId}
                 group={block.group}
                 searchQuery={searchQuery}
+                contextNotes={contextNotes}
               />
             );
           default:

@@ -1,6 +1,16 @@
 import { createHash } from "node:crypto";
 
 import type {
+  PlaylistClusterFile,
+  PlaylistClusterRow,
+} from "@/lib/life-lab/playlist-clusters";
+import {
+  normalizeClusterSlug,
+  parsePlaylistClusterRows,
+  prepareClusterDiagramMarkdown,
+} from "@/lib/life-lab/playlist-clusters";
+
+import type {
   LifeLabNoteSummary,
   LifeLabSectionId,
 } from "@/lib/life-lab/constants";
@@ -26,6 +36,8 @@ export { suppressDuplicatePlaylistIndexContent } from "@/lib/life-lab/playlist-a
 export const PLAYLIST_ASSET_IDS = [
   "learning-map",
   "summary",
+  "clusters-index",
+  "full-concept-map",
   "concept-frequencies",
   "people",
   "topic-graph",
@@ -36,11 +48,13 @@ export const PLAYLIST_ASSET_IDS = [
 
 export type PlaylistAssetId = (typeof PLAYLIST_ASSET_IDS)[number];
 
+export type PlaylistAssetTier = "primary" | "secondary" | "meta";
+
 export type PlaylistAssetDefinition = {
   id: PlaylistAssetId;
   filename: PlaylistAssetFilename;
   fallbackTitle: string;
-  tier: "primary" | "secondary";
+  tier: PlaylistAssetTier;
   normalizeMermaid: boolean;
 };
 
@@ -58,6 +72,20 @@ export const PLAYLIST_ASSET_DEFINITIONS: PlaylistAssetDefinition[] = [
     fallbackTitle: "Playlist Summary",
     tier: "primary",
     normalizeMermaid: false,
+  },
+  {
+    id: "clusters-index",
+    filename: "playlist-clusters.md",
+    fallbackTitle: "Concept Clusters",
+    tier: "meta",
+    normalizeMermaid: false,
+  },
+  {
+    id: "full-concept-map",
+    filename: "playlist-full-concept-map.md",
+    fallbackTitle: "Full Concept Map",
+    tier: "secondary",
+    normalizeMermaid: true,
   },
   {
     id: "concept-frequencies",
@@ -123,7 +151,7 @@ export type PlaylistAssetView = {
   id: PlaylistAssetId;
   title: string;
   content: string;
-  tier: "primary" | "secondary";
+  tier: PlaylistAssetTier;
   relativePath: string;
   fileId: string;
   modifiedAt: string | null;
@@ -136,6 +164,8 @@ export type PlaylistAssetsBundle = {
   folder: PlaylistAssetsFolderResult;
   resolution: PlaylistAssetResolution | null;
   artifacts: PlaylistAssetView[];
+  clusterRows: PlaylistClusterRow[];
+  clusterFiles: PlaylistClusterFile[];
   diagnostics: PlaylistAssetDiagnostic[];
   suppressedDuplicates: string[];
   strippedIndexBody: string | null;
@@ -183,12 +213,52 @@ export function emptyPlaylistAssetsBundle(
     folder,
     resolution: null,
     artifacts: [],
+    clusterRows: [],
+    clusterFiles: [],
     diagnostics: emptyPlaylistAssetDiagnostics(),
     suppressedDuplicates: [],
     strippedIndexBody: null,
     learningMapFound: false,
     learningMapSignature: null,
   };
+}
+
+export function resolvePlaylistClusterRecords(
+  resolution: PlaylistAssetResolution,
+  records: LifeLabSectionNoteRecord[],
+): Array<{
+  record: LifeLabSectionNoteRecord;
+  slug: string;
+  relativePath: string;
+}> {
+  const prefix = `${resolution.assetsRelativePath}/clusters/`.toLowerCase();
+  const matches: Array<{
+    record: LifeLabSectionNoteRecord;
+    slug: string;
+    relativePath: string;
+  }> = [];
+
+  for (const record of records) {
+    const normalized = record.relativePath.replace(/\\/g, "/");
+
+    if (!normalized.toLowerCase().startsWith(prefix)) {
+      continue;
+    }
+
+    const filename = normalized.slice(prefix.length);
+
+    if (!filename.endsWith(".md") || filename.includes("/")) {
+      continue;
+    }
+
+    matches.push({
+      record,
+      slug: normalizeClusterSlug(filename),
+      relativePath: normalized,
+    });
+  }
+
+  return matches;
 }
 
 export function resolvePlaylistAssetRecords(
@@ -280,6 +350,8 @@ export function buildPlaylistAssetsBundle(input: {
     fromCache: boolean;
     error: string | null;
   }>;
+  clusterRows?: PlaylistClusterRow[];
+  clusterFiles?: PlaylistClusterFile[];
   suppressedDuplicates?: string[];
 }): PlaylistAssetsBundle {
   const artifacts: PlaylistAssetView[] = [];
@@ -336,12 +408,71 @@ export function buildPlaylistAssetsBundle(input: {
   return {
     folder: input.folder,
     resolution: input.resolution,
-    artifacts: deduplicatePlaylistArtifactsForDisplay(artifacts),
+    artifacts: deduplicatePlaylistArtifactsForDisplay(
+      artifacts.filter((artifact) => artifact.tier !== "meta"),
+    ),
+    clusterRows: input.clusterRows ?? [],
+    clusterFiles: input.clusterFiles ?? [],
     diagnostics,
     suppressedDuplicates: input.suppressedDuplicates ?? [],
     strippedIndexBody: null,
     ...summarizeLearningMap(artifacts),
   };
+}
+
+export function buildPlaylistClusterFile(input: {
+  slug: string;
+  relativePath: string;
+  fileId: string;
+  modifiedAt: string | null;
+  rawBody: string | null;
+  error?: string | null;
+}): PlaylistClusterFile {
+  if (!input.rawBody?.trim() || input.error) {
+    return {
+      slug: input.slug,
+      title: input.slug,
+      content: "",
+      mermaidCode: null,
+      relativePath: input.relativePath,
+      fileId: input.fileId,
+      modifiedAt: input.modifiedAt,
+      unavailable: true,
+      error: input.error ?? "This cluster diagram could not be loaded.",
+    };
+  }
+
+  const prepared = prepareClusterDiagramMarkdown(input.rawBody);
+
+  return {
+    slug: input.slug,
+    title: prepared.title ?? input.slug,
+    content: prepared.content,
+    mermaidCode: prepared.mermaidCode,
+    relativePath: input.relativePath,
+    fileId: input.fileId,
+    modifiedAt: input.modifiedAt,
+    unavailable: false,
+    error: null,
+  };
+}
+
+export function parseClusterRowsFromLoadedAssets(
+  loaded: Array<{
+    match: PlaylistAssetRecordMatch;
+    content: string | null;
+    rawBody: string | null;
+  }>,
+): PlaylistClusterRow[] {
+  const clustersIndex = loaded.find(
+    (entry) => entry.match.definition.id === "clusters-index",
+  );
+
+  if (!clustersIndex?.rawBody?.trim()) {
+    return [];
+  }
+
+  return parsePlaylistClusterRows(clustersIndex.rawBody);
 }
 
 export function resolvePlaylistAssetsForIndexNote(

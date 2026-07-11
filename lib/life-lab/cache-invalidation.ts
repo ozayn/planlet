@@ -4,6 +4,9 @@ import type { LifeLabSectionId } from "@/lib/life-lab/constants";
 import {
   lifeLabPlaylistAssetCacheTag,
   lifeLabPlaylistAssetsCacheTag,
+  lifeLabPlaylistAssetsCacheTag,
+  lifeLabPlaylistClustersCacheTag,
+  lifeLabPlaylistFullMapCacheTag,
   lifeLabPlaylistLearningMapCacheTag,
   tagsInvalidatedByHomeRefresh,
   tagsInvalidatedByNoteRefresh,
@@ -60,4 +63,7 @@ export function invalidateLifeLabPlaylistAssetsCache(
   playlistId: string,
 ): void {
   revalidateTag(lifeLabPlaylistAssetsCacheTag(playlistId), "max");
+  revalidateTag(lifeLabPlaylistClustersCacheTag(playlistId), "max");
+  revalidateTag(lifeLabPlaylistFullMapCacheTag(playlistId), "max");
+  revalidateTag(lifeLabPlaylistLearningMapCacheTag(playlistId), "max");
 }

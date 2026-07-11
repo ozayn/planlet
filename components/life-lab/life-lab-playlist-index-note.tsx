@@ -6,6 +6,7 @@ import { ChevronRight } from "lucide-react";
 import {
   LifeLabPlaylistAnalysis,
   LifeLabPlaylistDebug,
+  PlaylistSummarySection,
 } from "@/components/life-lab/life-lab-playlist-artifacts";
 import { PlaylistVideoThumbnail } from "@/components/life-lab/playlist-video-thumbnail";
 import { MarkdownContent } from "@/components/life-lab/markdown-content";
@@ -389,9 +390,10 @@ export function LifeLabPlaylistIndexNote({
 }: LifeLabPlaylistIndexNoteProps) {
   const display = parsePlaylistIndexNote(note);
   const videos = enrichPlaylistVideoRows(display.videos, relatedNotes);
-  const hasSummaryAsset = playlistAssets?.artifacts.some(
+  const summaryAsset = playlistAssets?.artifacts.find(
     (asset) => asset.id === "summary" && !asset.unavailable,
   );
+  const hasSummaryAsset = Boolean(summaryAsset);
   const fallbackContent = stripUrlsForFallback(
     playlistAssets?.strippedIndexBody ?? note.content,
   );
@@ -455,6 +457,8 @@ export function LifeLabPlaylistIndexNote({
           ) : null}
         </div>
       </header>
+
+      {summaryAsset ? <PlaylistSummarySection asset={summaryAsset} /> : null}
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-foreground">Videos</h2>

@@ -5,11 +5,8 @@ import {
 } from "@/lib/life-lab/note-image";
 import { resolvePlaylistIndexImage } from "@/lib/life-lab/playlist-thumbnail";
 import { isSafeHttpUrl, normalizeSourceUrl } from "@/lib/life-lab/source-url";
-import {
-  extractYouTubeVideoId,
-  isYouTubeVideoId,
-  youtubeThumbnailUrlFromVideoId,
-} from "@/lib/life-lab/youtube-video-id";
+import { resolveYouTubeThumbnail } from "@/lib/life-lab/youtube-thumbnail";
+import { isYouTubeVideoId } from "@/lib/life-lab/youtube-video-id";
 
 function resolveUrlThumbnail(
   url: string | undefined,
@@ -71,13 +68,13 @@ function collectVideoUrlCandidates(input: {
     .filter((value): value is string => Boolean(value));
 }
 
-function youtubeThumbnailFromVideoId(
-  videoId: string,
+function toResolvedThumbnail(
+  url: string,
   title?: string,
 ): ResolvedLifeLabNoteImage {
   return {
-    url: youtubeThumbnailUrlFromVideoId(videoId),
-    kind: "youtube_thumbnail",
+    url,
+    kind: url.includes("i.ytimg.com") ? "youtube_thumbnail" : "image",
     alt: title ? `${title} thumbnail` : "Video thumbnail",
   };
 }
@@ -123,16 +120,24 @@ export function resolvePlaylistVideoRowThumbnail(input: {
   }
 
   const metadataVideoId = resolveMetadataVideoId(metadata);
+  const urlCandidates = collectVideoUrlCandidates(input);
 
-  if (metadataVideoId) {
-    return youtubeThumbnailFromVideoId(metadataVideoId, title);
+  const fromExplicitIds = resolveYouTubeThumbnail({
+    youtubeVideoId: metadataVideoId ?? undefined,
+    videoId: metadataVideoId ?? undefined,
+  });
+
+  if (fromExplicitIds) {
+    return toResolvedThumbnail(fromExplicitIds, title);
   }
 
-  for (const candidate of collectVideoUrlCandidates(input)) {
-    const videoId = extractYouTubeVideoId(candidate);
+  for (const candidate of urlCandidates) {
+    const resolved = resolveYouTubeThumbnail({
+      sourceUrl: candidate,
+    });
 
-    if (videoId) {
-      return youtubeThumbnailFromVideoId(videoId, title);
+    if (resolved) {
+      return toResolvedThumbnail(resolved, title);
     }
   }
 

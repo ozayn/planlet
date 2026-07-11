@@ -27,14 +27,14 @@ import {
   playlistTitleKey,
 } from "@/lib/life-lab/youtube-browse";
 import {
-  classifyYoutubeLibraryNote,
+  createYoutubeLibraryClassifier,
   isStandaloneYoutubeVideo,
+  noteLibraryDedupeKey,
 } from "@/lib/life-lab/youtube-library";
 import {
   resolvePlaylistCardThumbnail,
 } from "@/lib/life-lab/playlist-thumbnail";
 import type { ResolvedLifeLabNoteImage } from "@/lib/life-lab/note-image";
-
 import {
   buildPlaylistBrowseDiagnosticEntry,
   isValidPlaylistBrowseIndex,
@@ -43,7 +43,6 @@ import {
   type PlaylistBrowseDiagnosticEntry,
   type PlaylistBrowseResolutionState,
 } from "@/lib/life-lab/playlist-browse-resolution";
-import { noteLibraryDedupeKey } from "@/lib/life-lab/youtube-library";
 import {
   groupStandaloneVideosByChannel,
   noteMatchesStandaloneChannelFilter,
@@ -140,12 +139,26 @@ function isReferenceLikeNote(note: LifeLabNoteSummary): boolean {
   return !note.subfolderLabel && !note.metadata?.playlist?.trim();
 }
 
+function isRecentlyAddedStandaloneNote(
+  sectionId: LifeLabSectionId,
+  note: LifeLabNoteSummary,
+  notes: LifeLabNoteSummary[],
+): boolean {
+  if (sectionId !== "youtube-learning") {
+    return isBrowseableContentNote(sectionId, note, notes);
+  }
+
+  return isStandaloneYoutubeVideo(note, notes);
+}
+
 function isBrowseableContentNote(
   sectionId: LifeLabSectionId,
   note: LifeLabNoteSummary,
+  notes: LifeLabNoteSummary[],
 ): boolean {
   if (sectionId === "youtube-learning") {
-    const role = classifyYoutubeLibraryNote(note);
+    const classifier = createYoutubeLibraryClassifier(notes);
+    const role = classifier.classifyRole(note);
 
     return role === "playlist-video" || role === "standalone-video";
   }
@@ -451,7 +464,7 @@ function buildYoutubeBrowseView(
 
   const recentPool = dedupeNotesByIdentity(
     sortLifeLabNotes(
-      notes.filter((note) => isBrowseableContentNote(sectionId, note)),
+      notes.filter((note) => isRecentlyAddedStandaloneNote(sectionId, note, notes)),
       "recent",
     ),
   ).slice(0, RECENTLY_ADDED_LIMIT);
@@ -469,7 +482,7 @@ function buildYoutubeBrowseView(
 
   const standaloneNotes = dedupeNotesByIdentity(
     sortLifeLabNotes(
-      notes.filter(isStandaloneYoutubeVideo),
+      notes.filter((note) => isStandaloneYoutubeVideo(note, notes)),
       sort,
     ),
   );
@@ -548,7 +561,7 @@ function buildYoutubeBrowseView(
     }
 
     const contentNotes = excludeRecentNotes(
-      group.notes.filter((note) => isBrowseableContentNote(sectionId, note)),
+      group.notes.filter((note) => isBrowseableContentNote(sectionId, note, notes)),
       recentKeys,
     );
 

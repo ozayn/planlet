@@ -7,6 +7,7 @@ import {
   resolveLifeLabNoteImage,
   type ResolvedLifeLabNoteImage,
 } from "@/lib/life-lab/note-image";
+import { resolvePlaylistVideoRowThumbnail } from "@/lib/life-lab/playlist-video-thumbnail";
 import { isSafeHttpUrl, normalizeSourceUrl } from "@/lib/life-lab/source-url";
 
 import {
@@ -96,29 +97,15 @@ function firstChildNoteThumbnail(
   contentNotes: LifeLabNoteSummary[],
 ): ResolvedLifeLabNoteImage | null {
   for (const note of contentNotes) {
-    const image = resolveLifeLabNoteImage(note.metadata);
-
-    if (image) {
-      return image;
-    }
-  }
-
-  return null;
-}
-
-function youtubeThumbnailFromNotes(
-  contentNotes: LifeLabNoteSummary[],
-): ResolvedLifeLabNoteImage | null {
-  for (const note of contentNotes) {
-    const videoUrl =
-      note.metadata?.video_url?.trim() ??
-      note.metadata?.source_url?.trim();
-
-    if (!videoUrl) {
-      continue;
-    }
-
-    const thumbnail = youtubeThumbnailFromVideoUrl(videoUrl);
+    const thumbnail = resolvePlaylistVideoRowThumbnail({
+      metadata: note.metadata,
+      videoUrl:
+        note.metadata?.video_url?.trim() ??
+        note.metadata?.source_url?.trim() ??
+        note.metadata?.sourceUrl?.trim() ??
+        null,
+      title: note.title,
+    });
 
     if (thumbnail) {
       return thumbnail;
@@ -139,20 +126,7 @@ export function resolvePlaylistCardThumbnail(input: {
     return indexImage;
   }
 
-  const childImage = firstChildNoteThumbnail(input.contentNotes);
-
-  if (childImage) {
-    return childImage;
-  }
-
-  const playlistUrl =
-    input.playlistUrl ?? input.indexNote.metadata?.playlist_url?.trim() ?? null;
-
-  if (playlistUrl) {
-    return youtubeThumbnailFromNotes(input.contentNotes);
-  }
-
-  return null;
+  return firstChildNoteThumbnail(input.contentNotes);
 }
 
 export function normalizePlaylistImageFields(

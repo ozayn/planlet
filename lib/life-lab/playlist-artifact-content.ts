@@ -5,6 +5,7 @@ import type { PlaylistAssetId, PlaylistAssetView } from "@/lib/life-lab/playlist
 const ASSET_DISPLAY_ORDER: PlaylistAssetId[] = [
   "learning-map",
   "summary",
+  "full-concept-map",
   "concept-frequencies",
   "people",
   "topic-graph",
@@ -27,6 +28,10 @@ const ASSET_SECTION_MATCHERS: Partial<
 > = {
   "learning-map": (title) => isLearningMapSection(normalizeSectionTitle(title)),
   summary: (title) => /^(?:playlist\s+)?summary$/i.test(normalizeSectionTitle(title)),
+  "clusters-index": (title) =>
+    /^(?:concept\s+)?clusters?$/i.test(normalizeSectionTitle(title)),
+  "full-concept-map": (title) =>
+    /^full\s+concept\s+map$/i.test(normalizeSectionTitle(title)),
   "concept-frequencies": (title) =>
     /^(?:concept\s+frequencies|concepts?)$/i.test(normalizeSectionTitle(title)),
   people: (title) =>
@@ -40,6 +45,8 @@ const ASSET_SECTION_MATCHERS: Partial<
 const COLLAPSED_LABELS: Record<PlaylistAssetId, string> = {
   "learning-map": "Learning Map",
   summary: "Playlist Summary",
+  "clusters-index": "Concept Clusters",
+  "full-concept-map": "Full concept map",
   "concept-frequencies": "Concepts",
   people: "People",
   timeline: "Timeline",
@@ -301,6 +308,22 @@ export function deduplicatePlaylistArtifactsForDisplay(
       }
     }
 
+    if (artifact.id === "full-concept-map") {
+      const learningMap = result.find((item) => item.id === "learning-map");
+
+      if (learningMap?.contentHash === contentHash) {
+        continue;
+      }
+    }
+
+    if (artifact.id === "concept-map") {
+      const fullMap = result.find((item) => item.id === "full-concept-map");
+
+      if (fullMap?.contentHash === contentHash) {
+        continue;
+      }
+    }
+
     seenHashes.set(contentHash, artifact.id);
     result.push({
       ...artifact,
@@ -343,9 +366,11 @@ function stripMarkdownSectionsWithLog(
 export function suppressDuplicatePlaylistIndexContent(input: {
   indexBody: string;
   assets: PlaylistAssetView[];
+  presentAssetIds?: PlaylistAssetId[];
 }): { body: string; suppressedDuplicates: string[] } {
   const suppressed = new Set<string>();
   const available = input.assets.filter((asset) => !asset.unavailable);
+  const presentAssetIds = new Set(input.presentAssetIds ?? available.map((asset) => asset.id));
   let body = input.indexBody;
 
   for (const asset of available) {
@@ -380,6 +405,34 @@ export function suppressDuplicatePlaylistIndexContent(input: {
 
     if (stripped.length > 0) {
       suppressed.add(`index-${asset.id}`);
+    }
+  }
+
+  if (presentAssetIds.has("clusters-index")) {
+    const { body: withoutClusters, stripped } = stripMarkdownSectionsWithLog(
+      body,
+      (title) =>
+        ASSET_SECTION_MATCHERS["clusters-index"]?.(title) ?? false,
+    );
+
+    body = withoutClusters;
+
+    if (stripped.length > 0) {
+      suppressed.add("index-clusters-index");
+    }
+  }
+
+  if (presentAssetIds.has("full-concept-map")) {
+    const { body: withoutFullMap, stripped } = stripMarkdownSectionsWithLog(
+      body,
+      (title) =>
+        ASSET_SECTION_MATCHERS["full-concept-map"]?.(title) ?? false,
+    );
+
+    body = withoutFullMap;
+
+    if (stripped.length > 0) {
+      suppressed.add("index-full-concept-map");
     }
   }
 

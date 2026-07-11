@@ -61,7 +61,7 @@ describe("life lab youtube library classification", () => {
     assert.equal(classifyYoutubeLibraryNote(note), "reference");
   });
 
-  it("dedupes notes by file id or relative path", () => {
+  it("dedupes notes by file id, youtube video id, or relative path", () => {
     const note = noteSummary({
       slug: "videos__soul",
       title: "Soul",
@@ -70,6 +70,16 @@ describe("life lab youtube library classification", () => {
     });
 
     assert.equal(noteLibraryDedupeKey(note), "abc123");
+
+    const byVideoId = noteSummary({
+      slug: "videos__soul-alias",
+      title: "Soul alias",
+      fileId: "",
+      relativePath: "videos/soul-alias.md",
+      metadata: { youtubeVideoId: "abc123XYZ01" },
+    });
+
+    assert.equal(noteLibraryDedupeKey(byVideoId), "yt:abc123XYZ01");
 
     const fallback = noteSummary({
       slug: "videos__soul",

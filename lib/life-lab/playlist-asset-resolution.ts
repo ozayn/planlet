@@ -1,7 +1,7 @@
 import type { LifeLabNoteMetadata, LifeLabNoteSummary } from "@/lib/life-lab/constants";
 import {
   PLAYLIST_ASSETS_ROOT,
-  parsePlaylistAssetRelativePath,
+  parsePlaylistAssetFolderId,
 } from "@/lib/life-lab/playlist-asset-paths";
 import type { LifeLabSectionNoteRecord } from "@/lib/life-lab/enrichment";
 
@@ -191,10 +191,10 @@ function listAssetFolderIdsFromRecords(
   const ids = new Set<string>();
 
   for (const record of records) {
-    const parsed = parsePlaylistAssetRelativePath(record.relativePath);
+    const folderId = parsePlaylistAssetFolderId(record.relativePath);
 
-    if (parsed) {
-      ids.add(parsed.playlistId.toLowerCase());
+    if (folderId) {
+      ids.add(folderId);
     }
   }
 
@@ -381,12 +381,14 @@ export function playlistAssetsCacheKeyParts(input: {
   return {
     bundleCacheKey: [
       "life-lab-playlist-assets",
+      "v2-layered-clusters",
       input.sectionId,
       input.playlistId,
       input.indexSlug,
     ],
     learningMapCacheKey: [
       "life-lab-playlist-learning-map",
+      "v2-layered-clusters",
       input.playlistId,
     ],
   };

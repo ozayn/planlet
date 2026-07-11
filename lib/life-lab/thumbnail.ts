@@ -8,6 +8,8 @@ export {
   youtubeThumbnailUrlFromVideoId,
 } from "@/lib/life-lab/youtube-video-id";
 
+export { resolveYouTubeThumbnail } from "@/lib/life-lab/youtube-thumbnail";
+
 export function resolveLifeLabThumbnail(
   note: Pick<LifeLabNoteSummary, "title" | "metadata">,
 ): ResolvedLifeLabNoteImage | null {
