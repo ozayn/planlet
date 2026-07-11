@@ -10,7 +10,7 @@ import {
   suppressDuplicatePlaylistIndexContent,
 } from "@/lib/life-lab/playlist-artifact-content";
 import type { PlaylistAssetView } from "@/lib/life-lab/playlist-assets";
-import { formatCompactPlaylistMetadata } from "@/lib/life-lab/playlist-index";
+import { formatPlaylistHeaderLine, formatPlaylistHeaderState } from "@/lib/life-lab/playlist-index";
 
 function asset(
   partial: Partial<PlaylistAssetView> & Pick<PlaylistAssetView, "id">,
@@ -112,6 +112,24 @@ describe("playlist artifact content", () => {
     assert.match(output, /06:38 Lecture start/);
   });
 
+  it("deduplicates repeated timeline sections and preserves markdown emphasis", () => {
+    const input = [
+      "## Aristotle",
+      "- **384 BCE** — Aristotle is born in *Macedonia*.",
+      "",
+      "## Aristotle",
+      "- **384 BCE** — Aristotle is born in *Macedonia*.",
+      "- **Student of Plato** — He studies at Plato's Academy.",
+    ].join("\n");
+
+    const output = deduplicateTimelineMarkdown(input);
+
+    assert.equal((output.match(/## Aristotle/g) ?? []).length, 1);
+    assert.match(output, /\*\*384 BCE\*\*/);
+    assert.match(output, /\*Macedonia\*/);
+    assert.match(output, /\*\*Student of Plato\*\*/);
+  });
+
   it("suppresses duplicate sections from the playlist index body", () => {
     const indexBody = [
       "## Learning Map",
@@ -188,26 +206,27 @@ describe("playlist artifact content", () => {
 });
 
 describe("playlist page layout helpers", () => {
-  it("formats compact playlist metadata without dashboard noise", () => {
+  it("formats playlist header metadata without repeated status prose", () => {
     assert.equal(
-      formatCompactPlaylistMetadata({
-        total: 26,
-        processed: 26,
-        pending: 0,
-        skipped: 0,
-        error: 0,
+      formatPlaylistHeaderLine({
+        channel: "The School of Life",
+        visibleCount: 33,
+        dateLabel: "Jul 11",
       }),
-      "26 videos · 26 processed",
+      "The School of Life · 33 videos · Updated Jul 11",
     );
     assert.equal(
-      formatCompactPlaylistMetadata({
-        total: 26,
-        processed: 23,
-        pending: 3,
-        skipped: 0,
-        error: 0,
+      formatPlaylistHeaderState({
+        summary: {
+          total: 33,
+          processed: 33,
+          pending: 0,
+          skipped: 0,
+          error: 0,
+        },
+        hiddenUnavailableCount: 1,
       }),
-      "26 videos · 23 processed · 3 pending",
+      "33 processed · 1 unavailable",
     );
   });
 });

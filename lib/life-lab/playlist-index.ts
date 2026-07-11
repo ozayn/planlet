@@ -13,10 +13,15 @@ import {
 } from "@/lib/life-lab/collection";
 import {
   driveRelativePathToSlug,
-  markdownExcerpt,
   relativePathFilename,
   titleFromMarkdownHeading,
 } from "@/lib/life-lab/slug";
+import {
+  formatCount,
+  normalizeAccidentalAllCapsTitle,
+} from "@/lib/life-lab/collection-metadata";
+import { filterVisiblePlaylistVideos } from "@/lib/life-lab/playlist-video-availability";
+import { cleanLifeLabExcerpt } from "@/lib/life-lab/excerpt";
 import { resolvePlaylistVideoRowThumbnail } from "@/lib/life-lab/playlist-video-thumbnail";
 import type { ResolvedLifeLabNoteImage } from "@/lib/life-lab/note-image";
 import { isInternalPlaylistTitle } from "@/lib/life-lab/youtube-browse";
@@ -388,7 +393,7 @@ function extractPlaylistFocus(
   metadata?: LifeLabNoteMetadata,
 ): string | null {
   if (metadata?.summary?.trim()) {
-    return markdownExcerpt(metadata.summary, 220);
+    return cleanLifeLabExcerpt(metadata.summary, 220);
   }
 
   const summarySection = extractSectionByHeading(
@@ -397,7 +402,7 @@ function extractPlaylistFocus(
   );
 
   if (summarySection) {
-    return markdownExcerpt(summarySection, 220);
+    return cleanLifeLabExcerpt(summarySection, 220);
   }
 
   const labeledMatch = body.match(
@@ -405,7 +410,7 @@ function extractPlaylistFocus(
   );
 
   if (labeledMatch?.[1]?.trim()) {
-    return markdownExcerpt(labeledMatch[1].trim(), 220);
+    return cleanLifeLabExcerpt(labeledMatch[1].trim(), 220);
   }
 
   const withoutHeading = body.replace(/^#\s+.+\n+/, "").trim();
@@ -419,7 +424,7 @@ function extractPlaylistFocus(
         !/^\*\*[A-Za-z ]+\*\*\s*$/.test(block),
     );
 
-  return firstParagraph ? markdownExcerpt(firstParagraph, 220) : null;
+  return firstParagraph ? cleanLifeLabExcerpt(firstParagraph, 220) : null;
 }
 
 function formatStudyStatusLabel(value: string): string {
@@ -520,21 +525,83 @@ export function summarizePlaylistVideos(
 export function formatCompactPlaylistMetadata(
   summary: PlaylistIndexSummary,
 ): string {
-  const parts = [`${summary.total} videos`, `${summary.processed} processed`];
+  const parts = [formatCount(summary.total, "video", "videos")];
 
   if (summary.pending > 0) {
-    parts.push(`${summary.pending} pending`);
+    parts.push(formatCount(summary.pending, "pending", "pending"));
   }
 
   if (summary.error > 0) {
-    parts.push(`${summary.error} error${summary.error === 1 ? "" : "s"}`);
+    parts.push(formatCount(summary.error, "error", "errors"));
   }
 
   if (summary.skipped > 0) {
-    parts.push(`${summary.skipped} skipped`);
+    parts.push(formatCount(summary.skipped, "skipped", "skipped"));
   }
 
   return parts.join(" · ");
+}
+
+export function formatPlaylistHeaderLine(input: {
+  channel: string | null;
+  visibleCount: number;
+  dateLabel: string | null;
+}): string {
+  const parts: string[] = [];
+
+  if (input.channel) {
+    parts.push(input.channel);
+  }
+
+  parts.push(formatCount(input.visibleCount, "video", "videos"));
+
+  if (input.dateLabel) {
+    parts.push(`Updated ${input.dateLabel}`);
+  }
+
+  return parts.join(" · ");
+}
+
+export function formatPlaylistHeaderState(input: {
+  summary: PlaylistIndexSummary;
+  hiddenUnavailableCount: number;
+}): string | null {
+  const parts: string[] = [];
+
+  if (
+    input.summary.processed > 0 &&
+    (input.hiddenUnavailableCount > 0 ||
+      input.summary.pending > 0 ||
+      input.summary.error > 0)
+  ) {
+    parts.push(`${input.summary.processed} processed`);
+  }
+
+  if (input.hiddenUnavailableCount > 0) {
+    parts.push(
+      input.hiddenUnavailableCount === 1
+        ? "1 unavailable"
+        : `${input.hiddenUnavailableCount} unavailable`,
+    );
+  }
+
+  if (input.summary.pending > 0) {
+    parts.push(formatCount(input.summary.pending, "pending", "pending"));
+  }
+
+  if (input.summary.error > 0) {
+    parts.push(formatCount(input.summary.error, "error", "errors"));
+  }
+
+  return parts.length > 0 ? parts.join(" · ") : null;
+}
+
+export function shouldShowPlaylistStudyStatus(
+  studyStatus: string | null | undefined,
+): boolean {
+  const normalized = studyStatus?.trim().toLowerCase();
+
+  return Boolean(normalized && normalized !== "new");
 }
 
 export function formatPlaylistProcessingSummary(
@@ -659,7 +726,7 @@ export function parsePlaylistIndexNote(note: LifeLabNote): PlaylistIndexDisplay 
   const channel = metadata?.channel?.trim() ?? null;
 
   return {
-    playlistTitle,
+    playlistTitle: normalizeAccidentalAllCapsTitle(playlistTitle),
     channel,
     dateLabel,
     playlistUrl: extractPlaylistUrl(content, metadata),
@@ -922,7 +989,10 @@ export function buildVideoPlaylistNavigation(
   playlistIndexSlug: string,
   sectionId: LifeLabSectionId,
 ): PlaylistVideoNavigation | null {
-  const currentIndex = display.videos.findIndex(
+  const visibleVideos = filterVisiblePlaylistVideos({
+    videos: display.videos,
+  }).visibleVideos;
+  const currentIndex = visibleVideos.findIndex(
     (video) => video.noteSlug === currentSlug,
   );
 
@@ -931,10 +1001,10 @@ export function buildVideoPlaylistNavigation(
   }
 
   const previousVideo =
-    currentIndex > 0 ? display.videos[currentIndex - 1] : null;
+    currentIndex > 0 ? visibleVideos[currentIndex - 1] : null;
   const nextVideo =
-    currentIndex < display.videos.length - 1
-      ? display.videos[currentIndex + 1]
+    currentIndex < visibleVideos.length - 1
+      ? visibleVideos[currentIndex + 1]
       : null;
 
   return {
@@ -942,7 +1012,7 @@ export function buildVideoPlaylistNavigation(
     playlistTitle: display.playlistTitle,
     previous: previousVideo ? toNavLink(previousVideo) : null,
     next: nextVideo ? toNavLink(nextVideo) : null,
-    currentEpisode: display.videos[currentIndex]?.episode ?? null,
+    currentEpisode: visibleVideos[currentIndex]?.episode ?? null,
   };
 }
 

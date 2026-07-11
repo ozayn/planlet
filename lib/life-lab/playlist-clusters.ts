@@ -1,3 +1,4 @@
+import { formatCount } from "@/lib/life-lab/collection-metadata";
 import { normalizeLearningMapArtifactMarkdown } from "@/lib/life-lab/mermaid-direction";
 import { prepareLifeLabMarkdownForReading } from "@/lib/life-lab/markdown-display";
 import { stripLeadingMarkdownH1 } from "@/lib/life-lab/note-content";
@@ -40,12 +41,52 @@ function countDescriptionItems(description: string | null): number | null {
     return null;
   }
 
+  const explicitCount = description.match(/(\d+)\s+(?:related\s+)?concepts?/i);
+
+  if (explicitCount?.[1]) {
+    return Number.parseInt(explicitCount[1], 10);
+  }
+
   const parts = description
     .split(/[,;•·]/)
     .map((part) => part.trim())
     .filter(Boolean);
 
   return parts.length > 0 ? parts.length : null;
+}
+
+export function formatClusterRowMetadata(row: PlaylistClusterRow): {
+  conceptsLine: string | null;
+  countLine: string | null;
+} {
+  const description = row.description?.trim() ?? null;
+  let conceptsLine = description;
+  let count = row.count;
+
+  if (description) {
+    const explicitCount = description.match(/(\d+)\s+(?:related\s+)?concepts?/i);
+
+    if (explicitCount?.[1]) {
+      count = Number.parseInt(explicitCount[1], 10);
+      conceptsLine = description
+        .replace(/(\d+)\s+(?:related\s+)?concepts?:?\s*/i, "")
+        .replace(/\s*[·•—–-]\s*$/g, "")
+        .replace(/^[,:;\s]+|[,:;\s]+$/g, "")
+        .trim();
+    }
+  }
+
+  const countLine =
+    count != null && count > 0
+      ? count === 1
+        ? "1 concept"
+        : formatCount(count, "concept", "concepts")
+      : null;
+
+  return {
+    conceptsLine: conceptsLine || null,
+    countLine,
+  };
 }
 
 function parseListClusterRow(line: string): PlaylistClusterRow | null {

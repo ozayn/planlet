@@ -10,15 +10,24 @@ import {
 } from "@/components/life-lab/life-lab-playlist-artifacts";
 import { PlaylistVideoThumbnail } from "@/components/life-lab/playlist-video-thumbnail";
 import { MarkdownContent } from "@/components/life-lab/markdown-content";
-import type { LifeLabNote, LifeLabNoteSummary } from "@/lib/life-lab/constants";
+import type {
+  LifeLabNote,
+  LifeLabNoteDevMeta,
+  LifeLabNoteLoadMeta,
+  LifeLabNoteSummary,
+} from "@/lib/life-lab/constants";
+import { summarizePlaylistVideos } from "@/lib/life-lab/playlist-index";
 import type { PlaylistAssetsBundle } from "@/lib/life-lab/playlist-assets";
 import {
   enrichPlaylistVideoRows,
-  formatCompactPlaylistMetadata,
+  formatPlaylistHeaderLine,
+  formatPlaylistHeaderState,
   parsePlaylistIndexNote,
   playlistVideoRowTitle,
+  shouldShowPlaylistStudyStatus,
   type PlaylistVideoRow,
 } from "@/lib/life-lab/playlist-index";
+import { filterVisiblePlaylistVideos } from "@/lib/life-lab/playlist-video-availability";
 import {
   PLAYLIST_VIDEO_ROW_ICON_CLASS,
   PlaylistSourceIcon,
@@ -29,6 +38,10 @@ type LifeLabPlaylistIndexNoteProps = {
   note: LifeLabNote;
   relatedNotes?: LifeLabNoteSummary[];
   playlistAssets?: (PlaylistAssetsBundle & { fromCache: boolean }) | null;
+  isAdmin?: boolean;
+  dev?: LifeLabNoteDevMeta | null;
+  loadMeta?: LifeLabNoteLoadMeta | null;
+  technicalProvenance?: string[];
 };
 
 function stripUrlsForFallback(content: string): string {
@@ -111,32 +124,6 @@ function RowChevron() {
       strokeWidth={2}
       aria-hidden="true"
     />
-  );
-}
-
-function IncompleteProgressBar({
-  processed,
-  total,
-}: {
-  processed: number;
-  total: number;
-}) {
-  const percent = total > 0 ? Math.round((processed / total) * 100) : 0;
-
-  return (
-    <div
-      className="h-1 w-full overflow-hidden rounded-full bg-border/40"
-      role="progressbar"
-      aria-valuenow={processed}
-      aria-valuemin={0}
-      aria-valuemax={total}
-      aria-label={`Processed ${processed} of ${total} videos`}
-    >
-      <div
-        className="h-full rounded-full bg-accent-cream transition-[width]"
-        style={{ width: `${percent}%` }}
-      />
-    </div>
   );
 }
 
@@ -387,9 +374,18 @@ export function LifeLabPlaylistIndexNote({
   note,
   relatedNotes = [],
   playlistAssets = null,
+  isAdmin = false,
+  dev = null,
+  loadMeta = null,
+  technicalProvenance = [],
 }: LifeLabPlaylistIndexNoteProps) {
   const display = parsePlaylistIndexNote(note);
-  const videos = enrichPlaylistVideoRows(display.videos, relatedNotes);
+  const enrichedVideos = enrichPlaylistVideoRows(display.videos, relatedNotes);
+  const { visibleVideos, hiddenUnavailableCount } = filterVisiblePlaylistVideos({
+    videos: enrichedVideos,
+    notes: relatedNotes,
+  });
+  const visibleSummary = summarizePlaylistVideos(visibleVideos);
   const summaryAsset = playlistAssets?.artifacts.find(
     (asset) => asset.id === "summary" && !asset.unavailable,
   );
@@ -397,8 +393,16 @@ export function LifeLabPlaylistIndexNote({
   const fallbackContent = stripUrlsForFallback(
     playlistAssets?.strippedIndexBody ?? note.content,
   );
-  const showIncompleteProgress =
-    display.summary.processed < display.summary.total;
+  const headerLine = formatPlaylistHeaderLine({
+    channel: display.channel,
+    visibleCount: visibleSummary.total,
+    dateLabel: display.dateLabel,
+  });
+  const headerState = formatPlaylistHeaderState({
+    summary: visibleSummary,
+    hiddenUnavailableCount,
+  });
+  const showStudyStatus = shouldShowPlaylistStudyStatus(display.studyStatus);
 
   if (!display.parseSucceeded) {
     return <MarkdownContent content={fallbackContent} />;
@@ -427,33 +431,28 @@ export function LifeLabPlaylistIndexNote({
           ) : null}
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-lg font-semibold tracking-tight text-foreground md:text-xl">
               {display.playlistTitle}
             </h1>
-            {display.studyStatus ? (
+            {showStudyStatus && display.studyStatus ? (
               <span className="rounded-full border border-border/70 bg-accent-cream/50 px-2.5 py-0.5 text-[0.6875rem] font-medium text-foreground">
                 {display.studyStatus}
               </span>
             ) : null}
           </div>
 
-          <p className="text-xs text-muted">
-            {[display.channel, display.dateLabel, formatCompactPlaylistMetadata(display.summary)]
-              .filter(Boolean)
-              .join(" · ")}
-          </p>
+          {headerLine ? (
+            <p className="text-sm text-muted">{headerLine}</p>
+          ) : null}
+
+          {headerState ? (
+            <p className="text-sm text-muted-light">{headerState}</p>
+          ) : null}
 
           {display.focus && !hasSummaryAsset ? (
             <p className="text-sm leading-relaxed text-muted">{display.focus}</p>
-          ) : null}
-
-          {showIncompleteProgress ? (
-            <IncompleteProgressBar
-              processed={display.summary.processed}
-              total={display.summary.total}
-            />
           ) : null}
         </div>
       </header>
@@ -462,17 +461,27 @@ export function LifeLabPlaylistIndexNote({
 
       <section className="space-y-3">
         <h2 className="text-sm font-semibold text-foreground">Videos</h2>
-        <VideoTable videos={videos} />
-        <VideoCards videos={videos} />
+        <VideoTable videos={visibleVideos} />
+        <VideoCards videos={visibleVideos} />
       </section>
 
       {playlistAssets ? (
-        <LifeLabPlaylistAnalysis bundle={playlistAssets} />
+        <LifeLabPlaylistAnalysis
+          bundle={playlistAssets}
+          sectionId={note.sectionId}
+          videos={visibleVideos}
+          relatedNotes={relatedNotes}
+        />
       ) : null}
 
       <LifeLabPlaylistDebug
         bundle={playlistAssets}
         batchNotes={display.batchNotes}
+        hiddenUnavailableCount={hiddenUnavailableCount}
+        isAdmin={isAdmin}
+        dev={dev}
+        loadMeta={loadMeta}
+        technicalProvenance={technicalProvenance}
         technicalDetails={
           <PlaylistTechnicalDetails
             sourcePath={display.sourcePath}

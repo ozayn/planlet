@@ -145,8 +145,56 @@ function stripLeadingMatchingHeadings(
 }
 
 export function deduplicateTimelineMarkdown(content: string): string {
+  const sections = listMarkdownSectionRanges(content);
+
+  if (sections.length === 0) {
+    return deduplicateTimelineLines(content);
+  }
+
+  const mergedSections = new Map<string, string>();
+  const result: string[] = [];
+  const preamble = content.slice(0, sections[0]?.start ?? 0).trim();
+
+  if (preamble) {
+    result.push(deduplicateTimelineLines(preamble));
+  }
+
+  for (const section of sections) {
+    const normalizedTitle = normalizeTimelineSectionTitle(section.title);
+    const sectionBody = content.slice(section.start, section.end).trim();
+
+    if (mergedSections.has(normalizedTitle)) {
+      const existing = mergedSections.get(normalizedTitle) ?? "";
+      const additionalLines = sectionBody.split("\n").slice(1).join("\n").trim();
+
+      mergedSections.set(
+        normalizedTitle,
+        deduplicateTimelineLines(
+          additionalLines ? `${existing}\n${additionalLines}` : existing,
+        ),
+      );
+      continue;
+    }
+
+    mergedSections.set(normalizedTitle, deduplicateTimelineLines(sectionBody));
+  }
+
+  result.push(...mergedSections.values());
+
+  return result.filter(Boolean).join("\n\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+function normalizeTimelineSectionTitle(title: string): string {
+  return title.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function normalizeTimelineLine(line: string): string {
+  return line.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function deduplicateTimelineLines(content: string): string {
   const lines = content.split("\n");
-  const seenTimestampLines = new Set<string>();
+  const seenLines = new Set<string>();
   const result: string[] = [];
 
   for (const line of lines) {
@@ -157,18 +205,40 @@ export function deduplicateTimelineMarkdown(content: string): string {
       continue;
     }
 
-    if (/^[-*•]?\s*\d{1,2}:\d{2}/.test(trimmed)) {
-      if (seenTimestampLines.has(trimmed)) {
-        continue;
-      }
+    const normalized = normalizeTimelineLine(trimmed);
 
-      seenTimestampLines.add(trimmed);
+    if (normalized && seenLines.has(normalized)) {
+      continue;
+    }
+
+    if (normalized) {
+      seenLines.add(normalized);
     }
 
     result.push(line);
   }
 
   return result.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+export function extractMarkdownSection(
+  content: string,
+  headingPattern: RegExp,
+): string | null {
+  const match = headingPattern.exec(content);
+
+  if (!match || match.index === undefined) {
+    return null;
+  }
+
+  const start = match.index + match[0].length;
+  const rest = content.slice(start);
+  const nextHeading = rest.search(/^##\s+/m);
+  const section = (
+    nextHeading === -1 ? rest : rest.slice(0, nextHeading)
+  ).trim();
+
+  return section || null;
 }
 
 export function countMarkdownEntries(content: string): number | null {

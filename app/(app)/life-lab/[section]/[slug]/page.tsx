@@ -156,6 +156,13 @@ export default async function LifeLabNotePage({
                 note={note}
                 relatedNotes={relatedNotes}
                 playlistAssets={playlistAssets}
+                isAdmin={isAdmin}
+                dev={note.dev}
+                loadMeta={{
+                  fromCache: note.dev?.fromCache ?? false,
+                  loadedAt: note.dev?.loadedAt ?? "",
+                }}
+                technicalProvenance={note.technicalProvenance}
               />
             ) : (
               <>
@@ -178,13 +185,13 @@ export default async function LifeLabNotePage({
               </>
             )}
           </article>
-          {note.technicalProvenance ? (
+          {note.technicalProvenance && !isPlaylistIndex ? (
             <LifeLabNoteTechnicalDebugPanel
               technicalProvenance={note.technicalProvenance}
               isAdmin={isAdmin}
             />
           ) : null}
-          {note.dev ? (
+          {note.dev && !isPlaylistIndex ? (
             <LifeLabNoteDevInfoPanel
               dev={note.dev}
               loadMeta={{

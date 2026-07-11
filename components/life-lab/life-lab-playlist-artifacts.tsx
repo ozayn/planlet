@@ -1,14 +1,23 @@
 "use client";
 
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { useRef, useState } from "react";
 import { ChevronRight } from "lucide-react";
 
+import { LifeLabFrequencyCloud } from "@/components/life-lab/life-lab-frequency-cloud";
 import { MarkdownContent } from "@/components/life-lab/markdown-content";
 import { MermaidExpandDialog } from "@/components/life-lab/mermaid-expand-dialog";
-import { isLifeLabDevToolsEnabled } from "@/lib/life-lab/dev";
+import type {
+  LifeLabNoteDevMeta,
+  LifeLabNoteLoadMeta,
+  LifeLabNoteSummary,
+  LifeLabSectionId,
+} from "@/lib/life-lab/constants";
+import { canViewLifeLabTechnicalDebug, isLifeLabDevToolsEnabled } from "@/lib/life-lab/dev";
 import {
   collapsedArtifactLabel,
+  extractMarkdownSection,
   prepareArtifactBodyForDisplay,
 } from "@/lib/life-lab/playlist-artifact-content";
 import type {
@@ -17,14 +26,20 @@ import type {
   PlaylistAssetsBundle,
 } from "@/lib/life-lab/playlist-assets";
 import {
+  formatClusterRowMetadata,
   resolveClusterFileForRow,
   type PlaylistClusterFile,
   type PlaylistClusterRow,
 } from "@/lib/life-lab/playlist-clusters";
+import { resolveRecentVideosFromMarkdown } from "@/lib/life-lab/playlist-recent-videos";
+import type { PlaylistVideoRow } from "@/lib/life-lab/playlist-index";
 
 type PlaylistAssetsSectionProps = {
   bundle: PlaylistAssetsBundle;
   fromCache?: boolean;
+  sectionId: LifeLabSectionId;
+  videos: PlaylistVideoRow[];
+  relatedNotes: LifeLabNoteSummary[];
 };
 
 function QuietUnavailable({ title }: { title: string }) {
@@ -74,7 +89,36 @@ function LearningMapSection({
   return (
     <section className="space-y-2">
       <h3 className="text-sm font-semibold text-foreground">Learning Map</h3>
-      <MarkdownContent content={prepareArtifactBodyForDisplay(asset)} />
+      <div className="min-w-0 max-w-full overflow-x-auto">
+        <MarkdownContent content={prepareArtifactBodyForDisplay(asset)} />
+      </div>
+    </section>
+  );
+}
+
+function FrequencyCloudSection({
+  asset,
+  label,
+}: {
+  asset: PlaylistAssetView;
+  label: string;
+}) {
+  if (asset.unavailable) {
+    return (
+      <section className="space-y-2">
+        <h3 className="text-sm font-semibold text-foreground">{label}</h3>
+        <QuietUnavailable title={label} />
+      </section>
+    );
+  }
+
+  return (
+    <section className="space-y-2">
+      <h3 className="text-sm font-semibold text-foreground">{label}</h3>
+      <LifeLabFrequencyCloud
+        content={prepareArtifactBodyForDisplay(asset)}
+        label={label}
+      />
     </section>
   );
 }
@@ -88,13 +132,7 @@ function ClusterRowButton({
   clusterFile: PlaylistClusterFile | null;
   onOpen: () => void;
 }) {
-  const metadata = [
-    row.description,
-    row.count != null ? `${row.count} concepts` : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
-
+  const metadata = formatClusterRowMetadata(row);
   const unavailable = !clusterFile || clusterFile.unavailable || !clusterFile.mermaidCode;
 
   return (
@@ -106,14 +144,20 @@ function ClusterRowButton({
             onOpen();
           }
         }}
+        disabled={unavailable}
         className="group flex w-full items-start gap-3 rounded-lg px-1 py-2.5 text-left transition-colors hover:bg-accent-cream/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border disabled:cursor-default disabled:opacity-60"
       >
         <div className="min-w-0 flex-1 space-y-0.5">
           <p className="text-sm font-medium leading-snug text-foreground">
             {row.title}
           </p>
-          {metadata ? (
-            <p className="line-clamp-2 text-xs text-muted">{metadata}</p>
+          {metadata.conceptsLine ? (
+            <p className="line-clamp-2 text-sm text-muted">
+              {metadata.conceptsLine}
+            </p>
+          ) : null}
+          {metadata.countLine ? (
+            <p className="text-sm text-muted-light">{metadata.countLine}</p>
           ) : null}
           {unavailable && clusterFile?.error ? (
             <p className="text-xs text-muted-light">{clusterFile.error}</p>
@@ -151,7 +195,7 @@ function ConceptClustersSection({
   return (
     <section className="space-y-2">
       <h3 className="text-sm font-semibold text-foreground">Concept clusters</h3>
-      <ul className="space-y-1">
+      <ul className="space-y-0.5">
         {rows.map((row) => (
           <ClusterRowButton
             key={row.slug}
@@ -171,7 +215,7 @@ function ConceptClustersSection({
           subtitle={
             activeFile?.unavailable || !activeFile?.mermaidCode
               ? "This cluster diagram could not be rendered."
-              : "Scroll or pinch to explore the cluster diagram."
+              : undefined
           }
         />
       ) : null}
@@ -179,16 +223,58 @@ function ConceptClustersSection({
   );
 }
 
-function FullConceptMapSection({ asset }: { asset: PlaylistAssetView }) {
+function RecentVideosSection({
+  items,
+}: {
+  items: Array<{ title: string; href: string }>;
+}) {
+  if (items.length === 0) {
+    return null;
+  }
+
   return (
-    <details className="ui-settings-details group">
-      <summary className="ui-settings-details-summary">Full concept map</summary>
-      <div className="ui-settings-details-body space-y-2">
-        <p className="text-xs text-muted-light">
-          Detailed view of all mapped concepts.
-        </p>
+    <section className="space-y-2">
+      <h3 className="text-sm font-semibold text-foreground">Recent videos</h3>
+      <ul className="space-y-0.5">
+        {items.map((item) => (
+          <li key={item.href}>
+            <Link
+              href={item.href}
+              className="group flex items-center justify-between gap-3 rounded-lg px-1 py-2 text-sm text-foreground transition-colors hover:bg-accent-cream/25 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border"
+            >
+              <span className="min-w-0">{item.title}</span>
+              <ChevronRight
+                className="size-4 shrink-0 text-muted transition-colors group-hover:text-foreground"
+                aria-hidden="true"
+              />
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+function CollapsedArtifactSection({
+  asset,
+  playlistId,
+  label,
+}: {
+  asset: PlaylistAssetView;
+  playlistId: string | null;
+  label?: string;
+}) {
+  return (
+    <details
+      key={`${playlistId ?? "playlist"}-${asset.id}`}
+      className="ui-settings-details group"
+    >
+      <summary className="ui-settings-details-summary">
+        {label ?? collapsedArtifactLabel(asset)}
+      </summary>
+      <div className="ui-settings-details-body">
         {asset.unavailable ? (
-          <QuietUnavailable title="Full concept map" />
+          <QuietUnavailable title={asset.title} />
         ) : (
           <MarkdownContent content={prepareArtifactBodyForDisplay(asset)} />
         )}
@@ -197,27 +283,22 @@ function FullConceptMapSection({ asset }: { asset: PlaylistAssetView }) {
   );
 }
 
-function CollapsedArtifactSection({
-  asset,
-  playlistId,
+function CollapsedMarkdownSection({
+  title,
+  content,
 }: {
-  asset: PlaylistAssetView;
-  playlistId: string | null;
+  title: string;
+  content: string;
 }) {
+  if (!content.trim()) {
+    return null;
+  }
+
   return (
-    <details
-      key={`${playlistId ?? "playlist"}-${asset.id}`}
-      className="ui-settings-details group"
-    >
-      <summary className="ui-settings-details-summary">
-        {collapsedArtifactLabel(asset)}
-      </summary>
+    <details className="ui-settings-details group">
+      <summary className="ui-settings-details-summary">{title}</summary>
       <div className="ui-settings-details-body">
-        {asset.unavailable ? (
-          <QuietUnavailable title={asset.title} />
-        ) : (
-          <MarkdownContent content={prepareArtifactBodyForDisplay(asset)} />
-        )}
+        <MarkdownContent content={content} />
       </div>
     </details>
   );
@@ -295,38 +376,98 @@ function PlaylistAssetDiagnosticsPanel({
   );
 }
 
-const SUPPORTING_ASSET_IDS = new Set([
-  "concept-frequencies",
-  "people",
-  "topic-graph",
+function DevInfoSection({
+  dev,
+  loadMeta,
+}: {
+  dev: LifeLabNoteDevMeta;
+  loadMeta: LifeLabNoteLoadMeta;
+}) {
+  const rows = [
+    { label: "Drive file ID", value: dev.fileId },
+    { label: "Relative path", value: dev.relativePath },
+    { label: "Parent folder", value: dev.parentFolder ?? "Unknown" },
+    { label: "Google modified time", value: dev.modifiedAt ?? "Unknown" },
+    { label: "Cached", value: loadMeta.fromCache ? "Yes" : "No" },
+    { label: "Loaded at", value: loadMeta.loadedAt ?? "Unknown" },
+    {
+      label: "File size",
+      value:
+        dev.fileSizeBytes == null ? "Unknown" : `${dev.fileSizeBytes} bytes`,
+    },
+    { label: "MIME type", value: dev.mimeType ?? "Unknown" },
+  ];
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+        Developer information
+      </p>
+      <dl className="space-y-1 text-xs text-muted">
+        {rows.map((row) => (
+          <div key={row.label} className="flex justify-between gap-3">
+            <dt>{row.label}</dt>
+            <dd className="max-w-[60%] truncate text-end text-foreground" dir="auto">
+              {row.value}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
+const COLLAPSED_ASSET_IDS = new Set([
   "timeline",
+  "topic-graph",
   "people-map",
   "concept-map",
+  "full-concept-map",
 ]);
 
 export function LifeLabPlaylistAnalysis({
   bundle,
+  sectionId,
+  videos,
+  relatedNotes,
 }: PlaylistAssetsSectionProps) {
   const playlistId =
     bundle.folder.status === "resolved" ? bundle.folder.playlistId : null;
   const learningMap = bundle.artifacts.find(
     (asset) => asset.id === "learning-map",
   );
-  const fullConceptMap = bundle.artifacts.find(
-    (asset) => asset.id === "full-concept-map",
+  const conceptFrequencies = bundle.artifacts.find(
+    (asset) => asset.id === "concept-frequencies",
   );
-  const supporting = bundle.artifacts.filter(
+  const people = bundle.artifacts.find((asset) => asset.id === "people");
+  const summaryAsset = bundle.artifacts.find((asset) => asset.id === "summary");
+  const collapsedAssets = bundle.artifacts.filter(
     (asset) =>
-      asset.tier === "secondary" &&
-      SUPPORTING_ASSET_IDS.has(asset.id),
+      asset.tier === "secondary" && COLLAPSED_ASSET_IDS.has(asset.id),
   );
   const showMissingLearningMap =
     bundle.folder.status === "resolved" && !bundle.learningMapFound;
+  const recentVideos = summaryAsset
+    ? resolveRecentVideosFromMarkdown({
+        content: summaryAsset.content,
+        sectionId,
+        videos,
+        notes: relatedNotes,
+        totalVisibleVideos: videos.length,
+      })
+    : [];
+  const questionsSection = summaryAsset
+    ? extractMarkdownSection(summaryAsset.content, /^##\s+questions?\s*$/im)
+    : null;
+
   const hasAnalysis =
     learningMap ||
+    conceptFrequencies ||
+    people ||
     bundle.clusterRows.length > 0 ||
-    fullConceptMap ||
-    supporting.length > 0 ||
+    recentVideos.length > 0 ||
+    questionsSection ||
+    collapsedAssets.length > 0 ||
     showMissingLearningMap;
 
   if (!hasAnalysis) {
@@ -334,7 +475,7 @@ export function LifeLabPlaylistAnalysis({
   }
 
   return (
-    <section className="space-y-4 border-t border-border/50 pt-5">
+    <section className="space-y-5 border-t border-border/50 pt-5">
       <h2 className="text-sm font-semibold text-foreground">Playlist analysis</h2>
 
       {learningMap ? (
@@ -348,16 +489,26 @@ export function LifeLabPlaylistAnalysis({
         </section>
       ) : null}
 
+      {conceptFrequencies ? (
+        <FrequencyCloudSection asset={conceptFrequencies} label="Concepts" />
+      ) : null}
+
+      {people ? <FrequencyCloudSection asset={people} label="People" /> : null}
+
       <ConceptClustersSection
         rows={bundle.clusterRows}
         clusterFiles={bundle.clusterFiles}
       />
 
-      {fullConceptMap ? <FullConceptMapSection asset={fullConceptMap} /> : null}
+      <RecentVideosSection items={recentVideos} />
 
-      {supporting.length > 0 ? (
+      {questionsSection ? (
+        <CollapsedMarkdownSection title="Questions" content={questionsSection} />
+      ) : null}
+
+      {collapsedAssets.length > 0 ? (
         <div className="space-y-2">
-          {supporting.map((asset) => (
+          {collapsedAssets.map((asset) => (
             <CollapsedArtifactSection
               key={`${playlistId ?? "playlist"}-${asset.id}`}
               asset={asset}
@@ -374,22 +525,44 @@ type LifeLabPlaylistDebugProps = {
   bundle?: (PlaylistAssetsBundle & { fromCache: boolean }) | null;
   batchNotes?: string[];
   technicalDetails?: ReactNode;
+  hiddenUnavailableCount?: number;
+  isAdmin?: boolean;
+  dev?: LifeLabNoteDevMeta | null;
+  loadMeta?: LifeLabNoteLoadMeta | null;
+  technicalProvenance?: string[];
 };
 
 export function LifeLabPlaylistDebug({
   bundle = null,
   batchNotes = [],
   technicalDetails = null,
+  hiddenUnavailableCount = 0,
+  isAdmin = false,
+  dev = null,
+  loadMeta = null,
+  technicalProvenance = [],
 }: LifeLabPlaylistDebugProps) {
-  if (!isLifeLabDevToolsEnabled()) {
+  const showDebug =
+    isLifeLabDevToolsEnabled() || canViewLifeLabTechnicalDebug(isAdmin);
+
+  if (!showDebug) {
     return null;
   }
 
   const hasBatchNotes = batchNotes.length > 0;
   const hasTechnicalDetails = Boolean(technicalDetails);
   const hasAssetDiagnostics = Boolean(bundle);
+  const hasDevInfo = Boolean(dev && loadMeta);
+  const hasTechnicalProvenance = technicalProvenance.length > 0;
 
-  if (!hasBatchNotes && !hasTechnicalDetails && !hasAssetDiagnostics) {
+  if (
+    !hasBatchNotes &&
+    !hasTechnicalDetails &&
+    !hasAssetDiagnostics &&
+    !hasDevInfo &&
+    !hasTechnicalProvenance &&
+    hiddenUnavailableCount === 0
+  ) {
     return null;
   }
 
@@ -397,11 +570,38 @@ export function LifeLabPlaylistDebug({
     <details className="ui-settings-details group border-t border-border/50 pt-4">
       <summary className="ui-settings-details-summary">Debug</summary>
       <div className="ui-settings-details-body space-y-4">
+        {hiddenUnavailableCount > 0 ? (
+          <p className="text-xs text-muted">
+            {hiddenUnavailableCount === 1
+              ? "1 unavailable playlist entry hidden"
+              : `${hiddenUnavailableCount} unavailable playlist entries hidden`}
+          </p>
+        ) : null}
         {hasAssetDiagnostics && bundle ? (
           <PlaylistAssetDiagnosticsPanel
             bundle={bundle}
             fromCache={bundle.fromCache}
           />
+        ) : null}
+        {hasDevInfo && dev && loadMeta ? (
+          <DevInfoSection dev={dev} loadMeta={loadMeta} />
+        ) : null}
+        {hasTechnicalProvenance ? (
+          <div className="space-y-2">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted">
+              Technical provenance
+            </p>
+            <ul className="space-y-2 text-xs text-muted">
+              {technicalProvenance.map((entry, index) => (
+                <li
+                  key={`${index}-${entry.slice(0, 24)}`}
+                  className="rounded-lg border border-border/50 bg-surface px-3 py-2 whitespace-pre-wrap text-foreground/90"
+                >
+                  {entry}
+                </li>
+              ))}
+            </ul>
+          </div>
         ) : null}
         {hasBatchNotes ? (
           <div className="space-y-2">

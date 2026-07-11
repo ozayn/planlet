@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  formatClusterRowMetadata,
   normalizeClusterSlug,
   parsePlaylistClusterRows,
   resolveClusterFileForRow,
@@ -248,5 +249,36 @@ describe("playlist asset registry", () => {
     assert.equal(filenames.includes("playlist-clusters.md"), true);
     assert.equal(filenames.includes("playlist-full-concept-map.md"), true);
     assert.equal(filenames.includes("playlist-learning-map.md"), true);
+  });
+});
+
+describe("playlist cluster metadata", () => {
+  it("avoids contradictory concept counts on one row", () => {
+    const metadata = formatClusterRowMetadata({
+      slug: "core-concepts",
+      title: "Core concepts",
+      description:
+        "Existentialism, dialectic, values, memory, responsibility · 25 concepts",
+      count: 5,
+      clusterPath: null,
+    });
+
+    assert.equal(
+      metadata.conceptsLine,
+      "Existentialism, dialectic, values, memory, responsibility",
+    );
+    assert.equal(metadata.countLine, "25 concepts");
+  });
+
+  it("uses singular concept grammar", () => {
+    const metadata = formatClusterRowMetadata({
+      slug: "one",
+      title: "One concept",
+      description: "Existentialism",
+      count: 1,
+      clusterPath: null,
+    });
+
+    assert.equal(metadata.countLine, "1 concept");
   });
 });
