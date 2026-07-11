@@ -46,7 +46,11 @@ describe("life lab section view", () => {
   it("formats playlist progress summaries for cards", () => {
     assert.equal(
       formatPlaylistCardProgress("26 processed · 0 pending · 0 errors"),
-      "Processed 26 · Pending 0",
+      null,
+    );
+    assert.equal(
+      formatPlaylistCardProgress("3 processed · 9 pending · 0 errors"),
+      "3 processed · 9 pending",
     );
   });
 
@@ -194,7 +198,7 @@ describe("life lab section view", () => {
     assert.equal(playlistBlock?.items[0]?.noteCount, 2);
     assert.equal(
       playlistBlock?.items[0]?.progressSummary,
-      "Processed 0 · Pending 19",
+      "19 pending",
     );
 
     assert.equal(

@@ -18,6 +18,11 @@ import {
   type CollectionCardDiagnostic,
 } from "@/lib/life-lab/collection";
 import {
+  formatCount,
+  formatPlaylistCardProgress,
+  normalizeAccidentalAllCapsTitle,
+} from "@/lib/life-lab/collection-metadata";
+import {
   isPlaylistIndexNote,
   isYoutubeVideoNote,
 } from "@/lib/life-lab/playlist-index";
@@ -189,22 +194,7 @@ function noteLastUpdatedLabel(note: LifeLabNoteSummary): string | null {
   return note.dateLabel ?? note.modifiedAtLabel;
 }
 
-export function formatPlaylistCardProgress(excerpt: string): string | null {
-  const trimmed = excerpt.trim();
-
-  if (!trimmed) {
-    return null;
-  }
-
-  const processedMatch = trimmed.match(/(\d+)\s+processed/i);
-  const pendingMatch = trimmed.match(/(\d+)\s+pending/i);
-
-  if (processedMatch && pendingMatch) {
-    return `Processed ${processedMatch[1]} · Pending ${pendingMatch[1]}`;
-  }
-
-  return trimmed;
-}
+export { formatPlaylistCardProgress } from "@/lib/life-lab/collection-metadata";
 
 function playlistKey(value: string): string {
   return playlistTitleKey(value);
@@ -222,7 +212,7 @@ function formatPlaylistNotesLabel(noteCount: number | null): string {
     return "Notes unavailable";
   }
 
-  return `${noteCount} ${noteCount === 1 ? "note" : "notes"}`;
+  return formatCount(noteCount, "note", "notes");
 }
 
 function buildPlaylistCard(input: {
@@ -240,7 +230,7 @@ function buildPlaylistCard(input: {
 
   return {
     slug: input.indexNote.slug,
-    title: input.title,
+    title: normalizeAccidentalAllCapsTitle(input.title),
     noteCount: input.noteCount,
     notesLabel: formatPlaylistNotesLabel(input.noteCount),
     channelLabel: input.indexNote.metadata?.channel?.trim() ?? null,
@@ -386,7 +376,7 @@ function buildPlaylistCards(
 
     cards.set(key, {
       slug: indexNote?.slug ?? representative?.slug ?? key,
-      title,
+      title: normalizeAccidentalAllCapsTitle(title),
       noteCount,
       notesLabel: formatPlaylistNotesLabel(noteCount),
       channelLabel:
