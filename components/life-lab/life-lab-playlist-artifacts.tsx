@@ -8,7 +8,12 @@ import { ChevronRight } from "lucide-react";
 import { LifeLabFrequencyCloud } from "@/components/life-lab/life-lab-frequency-cloud";
 import { MarkdownContent } from "@/components/life-lab/markdown-content";
 import { MermaidExpandDialog } from "@/components/life-lab/mermaid-expand-dialog";
+import {
+  limitFrequencyCloudItems,
+  parseFrequencyMarkdownList,
+} from "@/lib/life-lab/frequency-cloud";
 import type {
+  LifeLabCacheDiagnostic,
   LifeLabNoteDevMeta,
   LifeLabNoteLoadMeta,
   LifeLabNoteSummary,
@@ -99,9 +104,17 @@ function LearningMapSection({
 function FrequencyCloudSection({
   asset,
   label,
+  maxItems,
+  minFontSize,
+  maxFontSize,
+  emptyMessage,
 }: {
   asset: PlaylistAssetView;
   label: string;
+  maxItems: number;
+  minFontSize: number;
+  maxFontSize: number;
+  emptyMessage: string;
 }) {
   if (asset.unavailable) {
     return (
@@ -112,12 +125,29 @@ function FrequencyCloudSection({
     );
   }
 
+  const items = limitFrequencyCloudItems(
+    parseFrequencyMarkdownList(prepareArtifactBodyForDisplay(asset)),
+    maxItems,
+  );
+
+  if (items.length === 0) {
+    return (
+      <section className="space-y-2">
+        <h3 className="text-sm font-semibold text-foreground">{label}</h3>
+        <p className="text-xs text-muted-light">{emptyMessage}</p>
+      </section>
+    );
+  }
+
   return (
     <section className="space-y-2">
       <h3 className="text-sm font-semibold text-foreground">{label}</h3>
       <LifeLabFrequencyCloud
-        content={prepareArtifactBodyForDisplay(asset)}
-        label={label}
+        items={items}
+        ariaLabel={`${label} cloud`}
+        maxItems={maxItems}
+        minFontSize={minFontSize}
+        maxFontSize={maxFontSize}
       />
     </section>
   );
@@ -308,7 +338,7 @@ function PlaylistAssetDiagnosticsPanel({
   bundle,
   fromCache,
 }: {
-  bundle: PlaylistAssetsBundle;
+  bundle: PlaylistAssetsBundle & { cache?: LifeLabCacheDiagnostic };
   fromCache?: boolean;
 }) {
   const resolvedFolder =
@@ -346,6 +376,44 @@ function PlaylistAssetDiagnosticsPanel({
         <p className="text-xs text-muted">
           Bundle cache: {fromCache ? "hit" : "miss"}
         </p>
+      ) : null}
+      {bundle.cache ? (
+        <dl className="space-y-1 text-xs text-muted">
+          <div className="flex justify-between gap-3">
+            <dt>Cache key</dt>
+            <dd className="max-w-[60%] truncate text-end text-foreground">
+              {bundle.cache.cacheKey}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt>Note list cache</dt>
+            <dd className="text-foreground">
+              {bundle.cache.noteListHit === true
+                ? "hit"
+                : bundle.cache.noteListHit === false
+                  ? "miss"
+                  : "unknown"}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt>Drive API calls</dt>
+            <dd className="text-foreground">
+              {bundle.cache.driveCalls ?? 0}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt>Stale fallback</dt>
+            <dd className="text-foreground">
+              {bundle.cache.staleFallback ? "yes" : "no"}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt>Refresh requested</dt>
+            <dd className="text-foreground">
+              {bundle.cache.refreshRequested ? "yes" : "no"}
+            </dd>
+          </div>
+        </dl>
       ) : null}
       {bundle.suppressedDuplicates.length > 0 ? (
         <p className="text-xs text-muted">
@@ -390,13 +458,21 @@ function DevInfoSection({
     { label: "Google modified time", value: dev.modifiedAt ?? "Unknown" },
     { label: "Cached", value: loadMeta.fromCache ? "Yes" : "No" },
     { label: "Loaded at", value: loadMeta.loadedAt ?? "Unknown" },
-    {
-      label: "File size",
-      value:
-        dev.fileSizeBytes == null ? "Unknown" : `${dev.fileSizeBytes} bytes`,
-    },
-    { label: "MIME type", value: dev.mimeType ?? "Unknown" },
   ];
+
+  if (loadMeta.cache) {
+    rows.push(
+      { label: "Cache key", value: loadMeta.cache.cacheKey },
+      {
+        label: "Drive API calls",
+        value: String(loadMeta.cache.driveCalls ?? 0),
+      },
+      {
+        label: "Stale fallback",
+        value: loadMeta.cache.staleFallback ? "Yes" : "No",
+      },
+    );
+  }
 
   return (
     <div className="space-y-2">
@@ -490,10 +566,26 @@ export function LifeLabPlaylistAnalysis({
       ) : null}
 
       {conceptFrequencies ? (
-        <FrequencyCloudSection asset={conceptFrequencies} label="Concepts" />
+        <FrequencyCloudSection
+          asset={conceptFrequencies}
+          label="Concepts"
+          maxItems={24}
+          minFontSize={14}
+          maxFontSize={30}
+          emptyMessage="No concept data available yet."
+        />
       ) : null}
 
-      {people ? <FrequencyCloudSection asset={people} label="People" /> : null}
+      {people ? (
+        <FrequencyCloudSection
+          asset={people}
+          label="People"
+          maxItems={20}
+          minFontSize={14}
+          maxFontSize={26}
+          emptyMessage="No people data available yet."
+        />
+      ) : null}
 
       <ConceptClustersSection
         rows={bundle.clusterRows}
@@ -522,7 +614,10 @@ export function LifeLabPlaylistAnalysis({
 }
 
 type LifeLabPlaylistDebugProps = {
-  bundle?: (PlaylistAssetsBundle & { fromCache: boolean }) | null;
+  bundle?: (PlaylistAssetsBundle & {
+    fromCache: boolean;
+    cache?: LifeLabCacheDiagnostic;
+  }) | null;
   batchNotes?: string[];
   technicalDetails?: ReactNode;
   hiddenUnavailableCount?: number;

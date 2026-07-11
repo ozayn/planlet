@@ -5,6 +5,7 @@ import {
   LIFE_LAB_MAX_FILES_PER_SECTION,
   LIFE_LAB_MAX_FOLDER_DEPTH,
 } from "@/lib/life-lab/constants";
+import { recordLifeLabDriveCall } from "@/lib/life-lab/cache-telemetry";
 
 type DriveCredentials = {
   clientEmail: string;
@@ -134,6 +135,7 @@ async function driveRequest<T>(
   credentials: DriveCredentials,
   path: string,
 ): Promise<T> {
+  recordLifeLabDriveCall("list");
   const accessToken = await getAccessToken(credentials);
   const response = await fetch(`https://www.googleapis.com/drive/v3${path}`, {
     headers: {
@@ -155,6 +157,7 @@ async function driveDownload(
   credentials: DriveCredentials,
   fileId: string,
 ): Promise<string> {
+  recordLifeLabDriveCall("download", fileId);
   const accessToken = await getAccessToken(credentials);
   const response = await fetch(
     `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,

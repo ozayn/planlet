@@ -6,8 +6,11 @@ import {
   getLifeLabListCacheSeconds,
   getLifeLabNoteCacheSeconds,
   lifeLabCacheExpiresAt,
+  lifeLabFolderMapCacheKey,
+  lifeLabNotePayloadCacheKey,
+  lifeLabPlaylistAssetsBundleCacheKey,
+  lifeLabSectionFileIndexCacheKey,
   lifeLabNoteCacheTag,
-  lifeLabPlaylistAssetCacheTag,
   lifeLabPlaylistAssetsCacheTag,
   lifeLabPlaylistLearningMapCacheTag,
   lifeLabPlaylistCacheTag,
@@ -161,16 +164,21 @@ describe("life lab listing cache keys", () => {
     const playlistId = "plwxnmb28xmpeypjmhfnbj4rafkrtman3p";
 
     assert.equal(
-      `life-lab-section-file-index-${sectionId}`,
-      "life-lab-section-file-index-youtube-learning",
+      lifeLabSectionFileIndexCacheKey(sectionId),
+      "life-lab-section-file-index:v5-standalone-series:youtube-learning",
     );
     assert.equal(
-      `life-lab-note-payload-${fileId}`,
-      "life-lab-note-payload-drive-file-1",
+      lifeLabNotePayloadCacheKey(fileId),
+      "life-lab-note-payload:v4-youtube-thumbnails:drive-file-1",
     );
     assert.equal(
-      `life-lab-playlist-assets-${sectionId}-${playlistId}-playlists__western-philosophy-index`,
-      "life-lab-playlist-assets-youtube-learning-plwxnmb28xmpeypjmhfnbj4rafkrtman3p-playlists__western-philosophy-index",
+      lifeLabPlaylistAssetsBundleCacheKey({
+        sectionId,
+        playlistId,
+        indexSlug: "playlists__western-philosophy-index",
+      }),
+      "life-lab-playlist-assets:v2-layered-clusters:youtube-learning:plwxnmb28xmpeypjmhfnbj4rafkrtman3p:playlists__western-philosophy-index",
     );
+    assert.equal(lifeLabFolderMapCacheKey(), "life-lab-section-folder-map");
   });
 });

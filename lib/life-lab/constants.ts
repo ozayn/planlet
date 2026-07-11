@@ -176,6 +176,12 @@ export type LifeLabCacheDiagnostic = {
   cacheTags: string[];
   cachedAt: string;
   expiresAt: string;
+  driveCalls?: number;
+  filesFetched?: string[];
+  staleFallback?: boolean;
+  refreshRequested?: boolean;
+  noteListHit?: boolean;
+  assetsHit?: boolean;
 };
 
 export type LifeLabNoteDevMeta = {
@@ -191,6 +197,7 @@ export type LifeLabNoteDevMeta = {
 export type LifeLabNoteLoadMeta = {
   fromCache: boolean;
   loadedAt: string;
+  cache?: LifeLabCacheDiagnostic;
 };
 
 export type LifeLabFlashcard = {

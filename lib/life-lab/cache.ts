@@ -66,6 +66,40 @@ export function lifeLabPlaylistAssetCacheTag(
   return `life-lab:playlist-asset:${playlistId}:${assetName}`;
 }
 
+export function lifeLabFolderMapCacheKey(): string {
+  return "life-lab-section-folder-map";
+}
+
+export function lifeLabSectionFileIndexCacheKey(sectionId: string): string {
+  return [
+    "life-lab-section-file-index",
+    LIFE_LAB_SECTION_FILE_INDEX_CACHE_VERSION,
+    sectionId,
+  ].join(":");
+}
+
+export function lifeLabNotePayloadCacheKey(fileId: string): string {
+  return [
+    "life-lab-note-payload",
+    LIFE_LAB_NOTE_PAYLOAD_CACHE_VERSION,
+    fileId,
+  ].join(":");
+}
+
+export function lifeLabPlaylistAssetsBundleCacheKey(input: {
+  sectionId: string;
+  playlistId: string;
+  indexSlug: string;
+}): string {
+  return [
+    "life-lab-playlist-assets",
+    "v2-layered-clusters",
+    input.sectionId,
+    input.playlistId,
+    input.indexSlug,
+  ].join(":");
+}
+
 export function getLifeLabListCacheSeconds(): number {
   const fromEnv = Number.parseInt(
     process.env.LIFE_LAB_LIST_CACHE_SECONDS ?? "",

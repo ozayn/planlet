@@ -5,8 +5,10 @@ import { extractTechnicalProvenanceForDebug } from "@/lib/life-lab/markdown-disp
 import {
   getLifeLabListCacheSeconds,
   getLifeLabNoteCacheSeconds,
-  lifeLabCacheExpiresAt,
+  lifeLabFolderMapCacheKey,
   lifeLabNoteCacheTag,
+  lifeLabNotePayloadCacheKey,
+  lifeLabPlaylistAssetsBundleCacheKey,
   lifeLabPlaylistAssetCacheTag,
   lifeLabPlaylistAssetsCacheTag,
   lifeLabPlaylistClustersCacheTag,
@@ -14,6 +16,7 @@ import {
   lifeLabPlaylistLearningMapCacheTag,
   lifeLabPlaylistCacheTag,
   lifeLabSectionCacheTag,
+  lifeLabSectionFileIndexCacheKey,
   LIFE_LAB_CACHE_TAG,
   LIFE_LAB_SECTIONS_CACHE_TAG,
   LIFE_LAB_SECTION_FILE_INDEX_CACHE_VERSION,
@@ -30,6 +33,14 @@ import {
   invalidateLifeLabSectionsCache,
 } from "@/lib/life-lab/cache-invalidation";
 import {
+  beginLifeLabCacheMiss,
+  buildLifeLabCacheDiagnostic,
+  finishLifeLabCacheLookup,
+  getLifeLabCacheResult,
+  logLifeLabPlaylistCacheSummary,
+  runLifeLabRequestTelemetry,
+} from "@/lib/life-lab/cache-telemetry";
+import {
   LIFE_LAB_CACHE_SECONDS,
   LIFE_LAB_UNAVAILABLE_MESSAGE,
   LIFE_LAB_UNCONFIGURED_ADMIN_MESSAGE,
@@ -44,6 +55,7 @@ import {
   type LifeLabSectionSummary,
   type LifeLabStudyCard,
   type LifeLabBrowseNote,
+  type LifeLabCacheDiagnostic,
 } from "@/lib/life-lab/constants";
 import {
   processLifeLabNoteContent,
@@ -542,14 +554,33 @@ function filterSectionMarkdownEntries(
 }
 
 async function getSectionFolderMapCached(): Promise<LifeLabFolderMapResult> {
-  return unstable_cache(
-    loadSectionFolderMap,
+  const cacheKey = lifeLabFolderMapCacheKey();
+  const startedAt = Date.now();
+
+  const result = await unstable_cache(
+    async () => {
+      beginLifeLabCacheMiss({
+        type: "folder-map",
+        key: cacheKey,
+        tags: [LIFE_LAB_SECTIONS_CACHE_TAG, LIFE_LAB_CACHE_TAG],
+      });
+      return loadSectionFolderMap();
+    },
     ["life-lab-section-folder-map"],
     {
       revalidate: getLifeLabListCacheSeconds(),
       tags: [LIFE_LAB_SECTIONS_CACHE_TAG, LIFE_LAB_CACHE_TAG],
     },
   )();
+
+  finishLifeLabCacheLookup({
+    type: "folder-map",
+    key: cacheKey,
+    durationMs: Date.now() - startedAt,
+    tags: [LIFE_LAB_SECTIONS_CACHE_TAG, LIFE_LAB_CACHE_TAG],
+  });
+
+  return result;
 }
 
 async function getSectionFolderMap(): Promise<LifeLabFolderMapResult> {
@@ -629,8 +660,24 @@ async function loadSectionFileIndex(
 async function getSectionFileIndexCached(
   sectionId: LifeLabSectionId,
 ): Promise<LifeLabSectionFileIndex> {
-  return unstable_cache(
-    async () => loadSectionFileIndex(sectionId),
+  const cacheKey = lifeLabSectionFileIndexCacheKey(sectionId);
+  const tags = [
+    LIFE_LAB_SECTIONS_CACHE_TAG,
+    lifeLabSectionCacheTag(sectionId),
+    lifeLabSectionPlaylistsCacheTag(sectionId),
+    LIFE_LAB_CACHE_TAG,
+  ];
+  const startedAt = Date.now();
+
+  const result = await unstable_cache(
+    async () => {
+      beginLifeLabCacheMiss({
+        type: "section",
+        key: cacheKey,
+        tags,
+      });
+      return loadSectionFileIndex(sectionId);
+    },
     [
       "life-lab-section-file-index",
       LIFE_LAB_SECTION_FILE_INDEX_CACHE_VERSION,
@@ -638,14 +685,18 @@ async function getSectionFileIndexCached(
     ],
     {
       revalidate: getLifeLabListCacheSeconds(),
-      tags: [
-        LIFE_LAB_SECTIONS_CACHE_TAG,
-        lifeLabSectionCacheTag(sectionId),
-        lifeLabSectionPlaylistsCacheTag(sectionId),
-        LIFE_LAB_CACHE_TAG,
-      ],
+      tags,
     },
   )();
+
+  finishLifeLabCacheLookup({
+    type: "section",
+    key: cacheKey,
+    durationMs: Date.now() - startedAt,
+    tags,
+  });
+
+  return result;
 }
 
 async function loadNotePayload(
@@ -669,18 +720,38 @@ async function getNotePayloadCached(
   sectionId: LifeLabSectionId,
   baseRecord: LifeLabSectionNoteRecord,
 ): Promise<LifeLabNotePayload | null> {
-  return unstable_cache(
-    async () => loadNotePayload(sectionId, baseRecord),
+  const cacheKey = lifeLabNotePayloadCacheKey(baseRecord.fileId);
+  const tags = [
+    lifeLabNoteCacheTag(baseRecord.fileId),
+    lifeLabSectionCacheTag(sectionId),
+    LIFE_LAB_CACHE_TAG,
+  ];
+  const startedAt = Date.now();
+
+  const result = await unstable_cache(
+    async () => {
+      beginLifeLabCacheMiss({
+        type: "note",
+        key: cacheKey,
+        tags,
+      });
+      return loadNotePayload(sectionId, baseRecord);
+    },
     ["life-lab-note-payload", LIFE_LAB_NOTE_PAYLOAD_CACHE_VERSION, baseRecord.fileId],
     {
       revalidate: getLifeLabNoteCacheSeconds(),
-      tags: [
-        lifeLabNoteCacheTag(baseRecord.fileId),
-        lifeLabSectionCacheTag(sectionId),
-        LIFE_LAB_CACHE_TAG,
-      ],
+      tags,
     },
   )();
+
+  finishLifeLabCacheLookup({
+    type: "note",
+    key: cacheKey,
+    durationMs: Date.now() - startedAt,
+    tags,
+  });
+
+  return result;
 }
 
 async function enrichSectionRecordsFromCache(
@@ -792,7 +863,12 @@ async function loadPlaylistAssetPayloads(
             match,
             content: null,
             rawBody: null,
-            fromCache: !options.fresh,
+            fromCache: options.fresh
+              ? false
+              : getLifeLabCacheResult(
+                  "note",
+                  lifeLabNotePayloadCacheKey(match.record.fileId),
+                ) === "hit",
             error: "Asset file is empty.",
           };
         }
@@ -807,7 +883,12 @@ async function loadPlaylistAssetPayloads(
           match,
           content,
           rawBody,
-          fromCache: !options.fresh,
+          fromCache: options.fresh
+            ? false
+            : getLifeLabCacheResult(
+                "note",
+                lifeLabNotePayloadCacheKey(match.record.fileId),
+              ) === "hit",
           error: null,
         };
       } catch (error) {
@@ -820,7 +901,12 @@ async function loadPlaylistAssetPayloads(
           match,
           content: null,
           rawBody: null,
-          fromCache: !options.fresh,
+          fromCache: options.fresh
+            ? false
+            : getLifeLabCacheResult(
+                "note",
+                lifeLabNotePayloadCacheKey(match.record.fileId),
+              ) === "hit",
           error: message,
         };
       }
@@ -908,71 +994,197 @@ async function getPlaylistAssetsBundleCached(
     playlistId,
     indexSlug: indexNote.slug,
   });
+  const bundleCacheKey = lifeLabPlaylistAssetsBundleCacheKey({
+    sectionId,
+    playlistId,
+    indexSlug: indexNote.slug,
+  });
+  const tags = [
+    lifeLabPlaylistAssetsCacheTag(playlistId),
+    lifeLabPlaylistLearningMapCacheTag(playlistId),
+    lifeLabPlaylistClustersCacheTag(playlistId),
+    lifeLabPlaylistFullMapCacheTag(playlistId),
+    lifeLabPlaylistCacheTag(sectionId, indexNote.slug),
+    lifeLabSectionCacheTag(sectionId),
+    LIFE_LAB_CACHE_TAG,
+    ...PLAYLIST_ASSET_IDS.map((assetId) =>
+      lifeLabPlaylistAssetCacheTag(playlistId, assetId),
+    ),
+  ];
+  const startedAt = Date.now();
 
-  return unstable_cache(
-    async () => loadPlaylistAssetPayloads(sectionId, indexNote),
+  const result = await unstable_cache(
+    async () => {
+      beginLifeLabCacheMiss({
+        type: "playlist",
+        key: bundleCacheKey,
+        tags,
+      });
+      return loadPlaylistAssetPayloads(sectionId, indexNote);
+    },
     cacheKeys.bundleCacheKey,
     {
       revalidate: getLifeLabNoteCacheSeconds(),
-      tags: [
-        lifeLabPlaylistAssetsCacheTag(playlistId),
-        lifeLabPlaylistLearningMapCacheTag(playlistId),
-        lifeLabPlaylistClustersCacheTag(playlistId),
-        lifeLabPlaylistFullMapCacheTag(playlistId),
-        lifeLabPlaylistCacheTag(sectionId, indexNote.slug),
-        lifeLabSectionCacheTag(sectionId),
-        LIFE_LAB_CACHE_TAG,
-        ...PLAYLIST_ASSET_IDS.map((assetId) =>
-          lifeLabPlaylistAssetCacheTag(playlistId, assetId),
-        ),
-      ],
+      tags,
     },
   )();
+
+  finishLifeLabCacheLookup({
+    type: "playlist",
+    key: bundleCacheKey,
+    durationMs: Date.now() - startedAt,
+    tags,
+    playlistId,
+    assetsHit: true,
+  });
+
+  return result;
+}
+
+function resolveSectionCacheDiagnostic(
+  sectionId: LifeLabSectionId,
+  loadedAt: string,
+  refreshRequested: boolean,
+): LifeLabCacheDiagnostic {
+  const cacheKey = lifeLabSectionFileIndexCacheKey(sectionId);
+  const tags = [
+    LIFE_LAB_SECTIONS_CACHE_TAG,
+    lifeLabSectionCacheTag(sectionId),
+    lifeLabSectionPlaylistsCacheTag(sectionId),
+    LIFE_LAB_CACHE_TAG,
+  ];
+  const result: "hit" | "miss" = refreshRequested
+    ? "miss"
+    : (getLifeLabCacheResult("section", cacheKey) ?? "miss");
+
+  return buildLifeLabCacheDiagnostic({
+    type: "section",
+    key: cacheKey,
+    result,
+    tags,
+    cachedAt: loadedAt,
+    ttlSeconds: getLifeLabListCacheSeconds(),
+  });
+}
+
+function resolveNoteCacheDiagnostic(
+  fileId: string,
+  sectionId: LifeLabSectionId,
+  loadedAt: string,
+  refreshRequested: boolean,
+): LifeLabCacheDiagnostic {
+  const cacheKey = lifeLabNotePayloadCacheKey(fileId);
+  const tags = [
+    lifeLabNoteCacheTag(fileId),
+    lifeLabSectionCacheTag(sectionId),
+    LIFE_LAB_CACHE_TAG,
+  ];
+  const result: "hit" | "miss" = refreshRequested
+    ? "miss"
+    : (getLifeLabCacheResult("note", cacheKey) ?? "miss");
+
+  return buildLifeLabCacheDiagnostic({
+    type: "note",
+    key: cacheKey,
+    result,
+    tags,
+    cachedAt: loadedAt,
+    ttlSeconds: getLifeLabNoteCacheSeconds(),
+  });
 }
 
 export async function getPlaylistAssetsForIndexNote(
   sectionId: LifeLabSectionId,
   indexNote: PlaylistAssetIndexNote,
   options: { refresh?: boolean } = {},
-): Promise<PlaylistAssetsBundle & { fromCache: boolean }> {
-  if (options.refresh) {
-    const bundle = await loadPlaylistAssetPayloads(sectionId, indexNote, {
-      fresh: true,
-    });
+): Promise<
+  PlaylistAssetsBundle & { fromCache: boolean; cache?: LifeLabCacheDiagnostic }
+> {
+  return runLifeLabRequestTelemetry(
+    async () => {
+      if (options.refresh) {
+        const bundle = await loadPlaylistAssetPayloads(sectionId, indexNote, {
+          fresh: true,
+        });
 
-    return {
-      ...bundle,
-      artifacts: orderPlaylistAssetsForDisplay(bundle.artifacts),
-      fromCache: false,
-    };
-  }
+        return {
+          ...bundle,
+          artifacts: orderPlaylistAssetsForDisplay(bundle.artifacts),
+          fromCache: false,
+        };
+      }
 
-  const fileIndex = await getSectionFileIndexCached(sectionId);
-  const { body } = parseLifeLabFrontmatter(indexNote.content ?? "");
-  const { folder, resolution } = resolvePlaylistAssetsForIndexNote(
-    indexNote,
-    fileIndex.records,
-    body,
+      const fileIndex = await getSectionFileIndexCached(sectionId);
+      const noteListHit =
+        getLifeLabCacheResult(
+          "section",
+          lifeLabSectionFileIndexCacheKey(sectionId),
+        ) === "hit";
+      const { body } = parseLifeLabFrontmatter(indexNote.content ?? "");
+      const { folder, resolution } = resolvePlaylistAssetsForIndexNote(
+        indexNote,
+        fileIndex.records,
+        body,
+      );
+
+      if (!resolution) {
+        return {
+          ...emptyPlaylistAssetsBundle(folder),
+          fromCache: noteListHit,
+        };
+      }
+
+      const bundleCacheKey = lifeLabPlaylistAssetsBundleCacheKey({
+        sectionId,
+        playlistId: resolution.playlistId,
+        indexSlug: indexNote.slug,
+      });
+      const bundle = await getPlaylistAssetsBundleCached(
+        sectionId,
+        resolution.playlistId,
+        indexNote,
+      );
+      const assetsHit =
+        getLifeLabCacheResult("playlist", bundleCacheKey) === "hit";
+      const loadedAt = new Date().toISOString();
+
+      logLifeLabPlaylistCacheSummary({
+        playlistId: resolution.playlistId,
+        bundleCacheKey,
+        assetsHit,
+        noteListHit,
+      });
+
+      const cache = {
+        ...buildLifeLabCacheDiagnostic({
+          type: "playlist",
+          key: bundleCacheKey,
+          result: assetsHit ? "hit" : "miss",
+          tags: [
+            lifeLabPlaylistAssetsCacheTag(resolution.playlistId),
+            lifeLabPlaylistLearningMapCacheTag(resolution.playlistId),
+            lifeLabPlaylistClustersCacheTag(resolution.playlistId),
+            lifeLabPlaylistFullMapCacheTag(resolution.playlistId),
+            lifeLabPlaylistCacheTag(sectionId, indexNote.slug),
+            lifeLabSectionCacheTag(sectionId),
+            LIFE_LAB_CACHE_TAG,
+          ],
+          cachedAt: loadedAt,
+          ttlSeconds: getLifeLabNoteCacheSeconds(),
+        }),
+        noteListHit,
+        assetsHit,
+      };
+
+      return {
+        ...bundle,
+        artifacts: orderPlaylistAssetsForDisplay(bundle.artifacts),
+        fromCache: assetsHit,
+        cache,
+      };
+    },
+    { refreshRequested: options.refresh ?? false },
   );
-
-  if (!resolution) {
-    return {
-      ...emptyPlaylistAssetsBundle(folder),
-      fromCache: true,
-    };
-  }
-
-  const bundle = await getPlaylistAssetsBundleCached(
-    sectionId,
-    resolution.playlistId,
-    indexNote,
-  );
-
-  return {
-    ...bundle,
-    artifacts: orderPlaylistAssetsForDisplay(bundle.artifacts),
-    fromCache: true,
-  };
 }
 
 export async function fetchFreshPlaylistAssets(
@@ -1060,65 +1272,67 @@ export async function getLifeLabHomeData(): Promise<{
   availability: LifeLabAvailability;
   sections: LifeLabSectionSummary[];
 }> {
-  const availability = getLifeLabAvailability();
+  return runLifeLabRequestTelemetry(async () => {
+    const availability = getLifeLabAvailability();
 
-  if (availability.status !== "ready") {
-    return { availability, sections: [] };
-  }
+    if (availability.status !== "ready") {
+      return { availability, sections: [] };
+    }
 
-  const mapResult = await getSectionFolderMap();
+    const mapResult = await getSectionFolderMap();
 
-  if (!mapResult.ok) {
-    return {
-      availability: unavailableAvailability(mapResult.error),
-      sections: [],
-    };
-  }
+    if (!mapResult.ok) {
+      return {
+        availability: unavailableAvailability(mapResult.error),
+        sections: [],
+      };
+    }
 
-  const folderMap = resolveLifeLabFolderMap(mapResult);
+    const folderMap = resolveLifeLabFolderMap(mapResult);
 
-  if (!folderMap) {
-    const error = new LifeLabDriveError(
-      "Life Lab folder map could not be reconstructed.",
-    );
+    if (!folderMap) {
+      const error = new LifeLabDriveError(
+        "Life Lab folder map could not be reconstructed.",
+      );
 
-    return {
-      availability: unavailableAvailability(error),
-      sections: [],
-    };
-  }
+      return {
+        availability: unavailableAvailability(error),
+        sections: [],
+      };
+    }
 
-  try {
-    const sections = await Promise.all(
-      getAllowedLifeLabSectionIds().map(async (sectionId) => {
-        const { records } = await getSectionNotesCached(sectionId);
+    try {
+      const sections = await Promise.all(
+        getAllowedLifeLabSectionIds().map(async (sectionId) => {
+          const { records } = await getSectionNotesCached(sectionId);
 
-        return {
-          id: sectionId,
-          label: getLifeLabSectionLabel(sectionId),
-          noteCount: records.length,
-        };
-      }),
-    );
+          return {
+            id: sectionId,
+            label: getLifeLabSectionLabel(sectionId),
+            noteCount: records.length,
+          };
+        }),
+      );
 
-    return {
-      availability: {
-        status: "ready",
-      },
-      sections,
-    };
-  } catch (error) {
-    const normalized =
-      error instanceof Error
-        ? error
-        : new LifeLabDriveError("Failed to load Life Lab sections.");
-    logLifeLabFolderMapFailure(normalized);
+      return {
+        availability: {
+          status: "ready",
+        },
+        sections,
+      };
+    } catch (error) {
+      const normalized =
+        error instanceof Error
+          ? error
+          : new LifeLabDriveError("Failed to load Life Lab sections.");
+      logLifeLabFolderMapFailure(normalized);
 
-    return {
-      availability: unavailableAvailability(normalized, true),
-      sections: [],
-    };
-  }
+      return {
+        availability: unavailableAvailability(normalized, true),
+        sections: [],
+      };
+    }
+  });
 }
 
 type LifeLabSectionDataOptions = {
@@ -1139,142 +1353,140 @@ export async function getLifeLabSectionData(
   flashcardNoteCount: number;
   listingDiagnostic: LifeLabListingDiagnostic | null;
 }> {
-  const availability = getLifeLabAvailability();
+  return runLifeLabRequestTelemetry(
+    async () => {
+      const availability = getLifeLabAvailability();
 
-  if (
-    isLifeLabSectionBlocked(sectionId) ||
-    !isLifeLabSectionId(sectionId)
-  ) {
-    return {
-      availability,
-      sectionId: null,
-      sectionLabel: null,
-      notes: [],
-      groups: [],
-      filterOptions: collectLifeLabFilterOptions([]),
-      flashcardNoteCount: 0,
-      listingDiagnostic: null,
-    };
-  }
-
-  if (availability.status !== "ready") {
-    return {
-      availability,
-      sectionId,
-      sectionLabel: getLifeLabSectionLabel(sectionId),
-      notes: [],
-      groups: [],
-      filterOptions: collectLifeLabFilterOptions([]),
-      flashcardNoteCount: 0,
-      listingDiagnostic: null,
-    };
-  }
-
-  try {
-    if (options.refresh) {
-      refreshLifeLabSectionCache(sectionId);
-    }
-
-    const mapResult = await getSectionFolderMap();
-
-    if (!mapResult.ok) {
-      return {
-        availability: unavailableAvailability(mapResult.error),
-        sectionId,
-        sectionLabel: getLifeLabSectionLabel(sectionId),
-        notes: [],
-        groups: [],
-        filterOptions: collectLifeLabFilterOptions([]),
-        flashcardNoteCount: 0,
-        listingDiagnostic: null,
-      };
-    }
-
-    const fromCache = !options.refresh;
-    const loadedAt = new Date().toISOString();
-
-    let records: LifeLabSectionNoteRecord[];
-    let listingDiagnosticBase: LifeLabListingDiagnostic;
-
-    if (sectionId === "youtube-learning") {
-      if (options.refresh) {
-        await loadSectionNotes(sectionId, { useCachedFolderMap: false });
+      if (
+        isLifeLabSectionBlocked(sectionId) ||
+        !isLifeLabSectionId(sectionId)
+      ) {
+        return {
+          availability,
+          sectionId: null,
+          sectionLabel: null,
+          notes: [],
+          groups: [],
+          filterOptions: collectLifeLabFilterOptions([]),
+          flashcardNoteCount: 0,
+          listingDiagnostic: null,
+        };
       }
 
-      const enriched = await getEnrichedSectionRecordsCached(sectionId);
-      records = enriched.records;
-      listingDiagnosticBase = enriched.listingDiagnostic;
-    } else if (options.refresh) {
-      const loaded = await loadSectionNotes(sectionId, { useCachedFolderMap: false });
-      records = loaded.records;
-      listingDiagnosticBase = loaded.listingDiagnostic;
-    } else {
-      const cached = await getSectionNotesCached(sectionId);
-      records = cached.records;
-      listingDiagnosticBase = cached.listingDiagnostic;
-    }
+      if (availability.status !== "ready") {
+        return {
+          availability,
+          sectionId,
+          sectionLabel: getLifeLabSectionLabel(sectionId),
+          notes: [],
+          groups: [],
+          filterOptions: collectLifeLabFilterOptions([]),
+          flashcardNoteCount: 0,
+          listingDiagnostic: null,
+        };
+      }
 
-    const notes = records.map(toNoteSummary);
-    const groups = groupLifeLabNotes(notes, { sectionId });
-    const folderMap = resolveLifeLabFolderMap(mapResult);
-    const driveFolderId = folderMap?.get(sectionId) ?? null;
-
-    if (sectionId === "youtube-learning") {
-      diagnoseYoutubePlaylistBrowse({
-        sectionId,
-        notes,
-        groups,
-        driveFolderId,
-      });
-    }
-
-    const listingDiagnostic = options.includeListingDiagnostic
-      ? {
-          ...listingDiagnosticBase,
-          cache: {
-            fromCache,
-            cacheKey: `life-lab:section:${sectionId}`,
-            cacheTags: [
-              LIFE_LAB_SECTIONS_CACHE_TAG,
-              lifeLabSectionCacheTag(sectionId),
-            ],
-            cachedAt: loadedAt,
-            expiresAt: lifeLabCacheExpiresAt(
-              loadedAt,
-              getLifeLabListCacheSeconds(),
-            ),
-          },
+      try {
+        if (options.refresh) {
+          refreshLifeLabSectionCache(sectionId);
         }
-      : null;
 
-    return {
-      availability,
-      sectionId,
-      sectionLabel: getLifeLabSectionLabel(sectionId),
-      notes,
-      groups,
-      filterOptions: collectLifeLabFilterOptions(notes),
-      flashcardNoteCount: notes.filter((note) => note.hasFlashcards).length,
-      listingDiagnostic,
-    };
-  } catch (error) {
-    const normalized =
-      error instanceof Error
-        ? error
-        : new LifeLabDriveError("Failed to load Life Lab section notes.");
-    logLifeLabFolderMapFailure(normalized);
+        const mapResult = await getSectionFolderMap();
 
-    return {
-      availability: unavailableAvailability(normalized, true),
-      sectionId,
-      sectionLabel: getLifeLabSectionLabel(sectionId),
-      notes: [],
-      groups: [],
-      filterOptions: collectLifeLabFilterOptions([]),
-      flashcardNoteCount: 0,
-      listingDiagnostic: null,
-    };
-  }
+        if (!mapResult.ok) {
+          return {
+            availability: unavailableAvailability(mapResult.error),
+            sectionId,
+            sectionLabel: getLifeLabSectionLabel(sectionId),
+            notes: [],
+            groups: [],
+            filterOptions: collectLifeLabFilterOptions([]),
+            flashcardNoteCount: 0,
+            listingDiagnostic: null,
+          };
+        }
+
+        const loadedAt = new Date().toISOString();
+
+        let records: LifeLabSectionNoteRecord[];
+        let listingDiagnosticBase: LifeLabListingDiagnostic;
+
+        if (sectionId === "youtube-learning") {
+          if (options.refresh) {
+            await loadSectionNotes(sectionId, { useCachedFolderMap: false });
+          }
+
+          const enriched = await getEnrichedSectionRecordsCached(sectionId);
+          records = enriched.records;
+          listingDiagnosticBase = enriched.listingDiagnostic;
+        } else if (options.refresh) {
+          const loaded = await loadSectionNotes(sectionId, {
+            useCachedFolderMap: false,
+          });
+          records = loaded.records;
+          listingDiagnosticBase = loaded.listingDiagnostic;
+        } else {
+          const cached = await getSectionNotesCached(sectionId);
+          records = cached.records;
+          listingDiagnosticBase = cached.listingDiagnostic;
+        }
+
+        const notes = records.map(toNoteSummary);
+        const groups = groupLifeLabNotes(notes, { sectionId });
+        const folderMap = resolveLifeLabFolderMap(mapResult);
+        const driveFolderId = folderMap?.get(sectionId) ?? null;
+
+        if (sectionId === "youtube-learning") {
+          diagnoseYoutubePlaylistBrowse({
+            sectionId,
+            notes,
+            groups,
+            driveFolderId,
+          });
+        }
+
+        const listingDiagnostic = options.includeListingDiagnostic
+          ? {
+              ...listingDiagnosticBase,
+              cache: resolveSectionCacheDiagnostic(
+                sectionId,
+                loadedAt,
+                options.refresh ?? false,
+              ),
+            }
+          : null;
+
+        return {
+          availability,
+          sectionId,
+          sectionLabel: getLifeLabSectionLabel(sectionId),
+          notes,
+          groups,
+          filterOptions: collectLifeLabFilterOptions(notes),
+          flashcardNoteCount: notes.filter((note) => note.hasFlashcards).length,
+          listingDiagnostic,
+        };
+      } catch (error) {
+        const normalized =
+          error instanceof Error
+            ? error
+            : new LifeLabDriveError("Failed to load Life Lab section notes.");
+        logLifeLabFolderMapFailure(normalized);
+
+        return {
+          availability: unavailableAvailability(normalized, true),
+          sectionId,
+          sectionLabel: getLifeLabSectionLabel(sectionId),
+          notes: [],
+          groups: [],
+          filterOptions: collectLifeLabFilterOptions([]),
+          flashcardNoteCount: 0,
+          listingDiagnostic: null,
+        };
+      }
+    },
+    { refreshRequested: options.refresh ?? false },
+  );
 }
 
 export async function getLifeLabNoteData(
@@ -1285,60 +1497,76 @@ export async function getLifeLabNoteData(
   availability: LifeLabAvailability;
   note: LifeLabNote | null;
 }> {
-  const availability = getLifeLabAvailability();
+  return runLifeLabRequestTelemetry(
+    async () => {
+      const availability = getLifeLabAvailability();
 
-  if (
-    isLifeLabSectionBlocked(sectionId) ||
-    !isLifeLabSectionId(sectionId)
-  ) {
-    return { availability, note: null };
-  }
-
-  if (availability.status !== "ready") {
-    return { availability, note: null };
-  }
-
-  try {
-    if (options.refresh) {
-      const { records: baseRecords } = await getSectionFileIndexCached(sectionId);
-      const baseRecord = baseRecords.find((item) => item.slug === slug);
-
-      if (baseRecord) {
-        refreshLifeLabNoteCache(sectionId, slug, baseRecord.fileId);
+      if (
+        isLifeLabSectionBlocked(sectionId) ||
+        !isLifeLabSectionId(sectionId)
+      ) {
+        return { availability, note: null };
       }
-    }
 
-    const mapResult = await getSectionFolderMap();
+      if (availability.status !== "ready") {
+        return { availability, note: null };
+      }
 
-    if (!mapResult.ok) {
-      return {
-        availability: unavailableAvailability(mapResult.error),
-        note: null,
-      };
-    }
+      try {
+        if (options.refresh) {
+          const { records: baseRecords } =
+            await getSectionFileIndexCached(sectionId);
+          const baseRecord = baseRecords.find((item) => item.slug === slug);
 
-    const fromCache = !options.refresh;
-    const loadedAt = new Date().toISOString();
-    const note = options.refresh
-      ? await loadNoteContent(sectionId, slug)
-      : await getNoteContentCached(sectionId, slug);
+          if (baseRecord) {
+            refreshLifeLabNoteCache(sectionId, slug, baseRecord.fileId);
+          }
+        }
 
-    return {
-      availability,
-      note: note ? attachLifeLabNoteLoadMeta(note, fromCache, loadedAt) : null,
-    };
-  } catch (error) {
-    const normalized =
-      error instanceof Error
-        ? error
-        : new LifeLabDriveError("Failed to load Life Lab note.");
-    logLifeLabFolderMapFailure(normalized);
+        const mapResult = await getSectionFolderMap();
 
-    return {
-      availability: unavailableAvailability(normalized, true),
-      note: null,
-    };
-  }
+        if (!mapResult.ok) {
+          return {
+            availability: unavailableAvailability(mapResult.error),
+            note: null,
+          };
+        }
+
+        const loadedAt = new Date().toISOString();
+        const note = options.refresh
+          ? await loadNoteContent(sectionId, slug)
+          : await getNoteContentCached(sectionId, slug);
+
+        if (!note) {
+          return { availability, note: null };
+        }
+
+        const cache = resolveNoteCacheDiagnostic(
+          note.fileId,
+          sectionId,
+          loadedAt,
+          options.refresh ?? false,
+        );
+
+        return {
+          availability,
+          note: attachLifeLabNoteLoadMeta(note, cache),
+        };
+      } catch (error) {
+        const normalized =
+          error instanceof Error
+            ? error
+            : new LifeLabDriveError("Failed to load Life Lab note.");
+        logLifeLabFolderMapFailure(normalized);
+
+        return {
+          availability: unavailableAvailability(normalized, true),
+          note: null,
+        };
+      }
+    },
+    { refreshRequested: options.refresh ?? false },
+  );
 }
 
 export async function getYoutubeVideoPlaylistNavigation(
@@ -1448,8 +1676,7 @@ function buildLifeLabNote(
 
 function attachLifeLabNoteLoadMeta(
   note: LifeLabNote,
-  fromCache: boolean,
-  loadedAt: string,
+  cache: LifeLabCacheDiagnostic,
 ): LifeLabNote {
   if (!isLifeLabDevToolsEnabled() || !note.dev) {
     return note;
@@ -1459,8 +1686,9 @@ function attachLifeLabNoteLoadMeta(
     ...note,
     dev: {
       ...note.dev,
-      fromCache,
-      loadedAt,
+      fromCache: cache.fromCache,
+      loadedAt: cache.cachedAt,
+      cache,
     },
   };
 }

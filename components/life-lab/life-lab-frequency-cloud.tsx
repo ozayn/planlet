@@ -8,8 +8,9 @@ import {
 } from "@/lib/life-lab/frequency-cloud";
 
 type LifeLabFrequencyCloudProps = {
-  content: string;
-  label: string;
+  items?: FrequencyCloudItem[];
+  content?: string;
+  ariaLabel: string;
   maxItems?: number;
   minFontSize?: number;
   maxFontSize?: number;
@@ -28,11 +29,16 @@ function FrequencyCountList({ items }: { items: FrequencyCloudItem[] }) {
 }
 
 export function LifeLabFrequencyCloud({
+  items: itemsProp,
   content,
-  label,
-  maxItems = 28,
+  ariaLabel,
+  maxItems = 24,
+  minFontSize = 14,
+  maxFontSize = 28,
 }: LifeLabFrequencyCloudProps) {
-  const items = limitFrequencyCloudItems(parseFrequencyMarkdownList(content), maxItems);
+  const parsedItems =
+    itemsProp ?? (content ? parseFrequencyMarkdownList(content) : []);
+  const items = limitFrequencyCloudItems(parsedItems, maxItems);
 
   if (items.length === 0) {
     return null;
@@ -44,12 +50,15 @@ export function LifeLabFrequencyCloud({
   return (
     <div className="space-y-2">
       <div
-        className="flex flex-wrap gap-x-4 gap-y-2"
+        className="flex flex-wrap gap-x-4 gap-y-2.5"
         role="list"
-        aria-label={`${label} cloud`}
+        aria-label={ariaLabel}
       >
         {items.map((item) => {
-          const style = frequencyCloudStyle(item.count, minCount, maxCount);
+          const style = frequencyCloudStyle(item.count, minCount, maxCount, {
+            minFontSize,
+            maxFontSize,
+          });
 
           return (
             <span

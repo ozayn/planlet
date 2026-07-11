@@ -1,6 +1,36 @@
 import type { LifeLabNoteDevMeta, LifeLabNoteLoadMeta } from "@/lib/life-lab/constants";
 import { isLifeLabDevToolsEnabled } from "@/lib/life-lab/dev";
 
+function appendCacheDiagnosticRows(
+  rows: Array<{ label: string; value: string }>,
+  cache: NonNullable<LifeLabNoteLoadMeta["cache"]>,
+): void {
+  rows.push(
+    { label: "Cache key", value: cache.cacheKey },
+    { label: "Cache tags", value: cache.cacheTags.join(", ") },
+    { label: "Expires at", value: cache.expiresAt },
+    {
+      label: "Drive API calls",
+      value: String(cache.driveCalls ?? 0),
+    },
+    {
+      label: "Files fetched",
+      value:
+        cache.filesFetched && cache.filesFetched.length > 0
+          ? cache.filesFetched.join(", ")
+          : "None",
+    },
+    {
+      label: "Stale fallback",
+      value: cache.staleFallback ? "Yes" : "No",
+    },
+    {
+      label: "Refresh requested",
+      value: cache.refreshRequested ? "Yes" : "No",
+    },
+  );
+}
+
 type LifeLabNoteDevInfoPanelProps = {
   dev: LifeLabNoteDevMeta;
   loadMeta: LifeLabNoteLoadMeta;
@@ -56,9 +86,16 @@ export function LifeLabNoteDevInfoPanel({
       label: "Loaded at",
       value: formatTimestamp(loadMeta.loadedAt),
     },
+  ];
+
+  if (loadMeta.cache) {
+    appendCacheDiagnosticRows(rows, loadMeta.cache);
+  }
+
+  rows.push(
     { label: "File size", value: formatBytes(dev.fileSizeBytes) },
     { label: "MIME type", value: dev.mimeType ?? "Unknown" },
-  ];
+  );
 
   return (
     <details className="ui-settings-details group">

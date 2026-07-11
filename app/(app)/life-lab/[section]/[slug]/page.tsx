@@ -161,6 +161,7 @@ export default async function LifeLabNotePage({
                 loadMeta={{
                   fromCache: note.dev?.fromCache ?? false,
                   loadedAt: note.dev?.loadedAt ?? "",
+                  cache: note.dev?.cache,
                 }}
                 technicalProvenance={note.technicalProvenance}
               />
@@ -197,6 +198,7 @@ export default async function LifeLabNotePage({
               loadMeta={{
                 fromCache: note.dev.fromCache,
                 loadedAt: note.dev.loadedAt,
+                cache: note.dev.cache,
               }}
             />
           ) : null}

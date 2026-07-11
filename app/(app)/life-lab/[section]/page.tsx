@@ -8,6 +8,7 @@ import { LifeLabStatusPanel } from "@/components/life-lab/life-lab-status-panel"
 import { PageHeader } from "@/components/page-header";
 import { getLifeLabSectionData } from "@/lib/life-lab";
 import { canUseLifeLabRefreshBypass } from "@/lib/life-lab/cache";
+import { canViewLifeLabCacheDiagnostics } from "@/lib/life-lab/cache-telemetry";
 import { isAdminRole } from "@/lib/auth-roles";
 import { canAccessLifeLabPage } from "@/lib/roles";
 
@@ -31,8 +32,7 @@ export default async function LifeLabSectionPage({
   const isAdmin = isAdminRole(session.user.role);
   const isAuthorized = canAccessLifeLabPage(session.user);
   const shouldRefresh = canUseLifeLabRefreshBypass(refresh, isAuthorized);
-  const showDiagnostics =
-    isAdmin && process.env.NODE_ENV === "development";
+  const showDiagnostics = canViewLifeLabCacheDiagnostics(isAdmin);
 
   const { availability, sectionId, sectionLabel, notes, filterOptions, listingDiagnostic } =
     await getLifeLabSectionData(section, {

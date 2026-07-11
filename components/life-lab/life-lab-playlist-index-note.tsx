@@ -37,7 +37,10 @@ import {
 type LifeLabPlaylistIndexNoteProps = {
   note: LifeLabNote;
   relatedNotes?: LifeLabNoteSummary[];
-  playlistAssets?: (PlaylistAssetsBundle & { fromCache: boolean }) | null;
+  playlistAssets?: (PlaylistAssetsBundle & {
+    fromCache: boolean;
+    cache?: import("@/lib/life-lab/constants").LifeLabCacheDiagnostic;
+  }) | null;
   isAdmin?: boolean;
   dev?: LifeLabNoteDevMeta | null;
   loadMeta?: LifeLabNoteLoadMeta | null;

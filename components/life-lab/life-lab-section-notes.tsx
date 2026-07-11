@@ -94,6 +94,26 @@ function LifeLabListingDiagnosticPanel({
       },
       { label: "Cached at", value: diagnostic.cache.cachedAt },
       { label: "Expires at", value: diagnostic.cache.expiresAt },
+      {
+        label: "Drive API calls",
+        value: String(diagnostic.cache.driveCalls ?? 0),
+      },
+      {
+        label: "Files fetched",
+        value:
+          diagnostic.cache.filesFetched &&
+          diagnostic.cache.filesFetched.length > 0
+            ? diagnostic.cache.filesFetched.join(", ")
+            : "None",
+      },
+      {
+        label: "Stale fallback",
+        value: diagnostic.cache.staleFallback ? "Yes" : "No",
+      },
+      {
+        label: "Refresh requested",
+        value: diagnostic.cache.refreshRequested ? "Yes" : "No",
+      },
     );
   }
 
