@@ -77,4 +77,13 @@ describe("life lab markdown display", () => {
     assert.match(prepared, /## Learning Map/);
     assert.match(prepared, /\*\*Topics\*\*\n\n- Iran/);
   });
+
+  it("hides transcript status headings", () => {
+    const prepared = prepareLifeLabMarkdownForReading(
+      "## Summary\n\nOverview.\n\n## Transcript status\n\nUnavailable.",
+    );
+
+    assert.doesNotMatch(prepared, /Transcript status/i);
+    assert.match(prepared, /Overview/);
+  });
 });

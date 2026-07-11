@@ -1,6 +1,6 @@
 import type { LifeLabReadAloudProvider } from "@/app/generated/prisma/client";
 
-export const NARRATION_INSTRUCTION_VERSION = 1;
+export const NARRATION_INSTRUCTION_VERSION = 2;
 
 export const NARRATION_INSTRUCTIONS =
   "Read in a calm, natural, intelligent educational tone. Use clear pauses between headings and avoid sounding promotional.";

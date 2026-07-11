@@ -1,4 +1,5 @@
 import type { LifeLabNoteMetadata } from "@/lib/life-lab/constants";
+import { extractFrontmatterTechnicalNotes } from "@/lib/life-lab/hidden-markdown-sections";
 import { normalizeLifeLabNoteImage } from "@/lib/life-lab/note-image";
 import { pickSourceUrlFromFrontmatterRaw } from "@/lib/life-lab/source-url";
 import { normalizePlaylistImageFields } from "@/lib/life-lab/playlist-thumbnail";
@@ -13,6 +14,7 @@ const NESTED_FRONTMATTER_OBJECT_KEYS = new Set([
 export type ParsedLifeLabMarkdown = {
   metadata: LifeLabNoteMetadata;
   body: string;
+  technicalProvenance: string[];
 };
 
 const FRONTMATTER_PATTERN = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/;
@@ -243,14 +245,17 @@ export function parseLifeLabFrontmatter(content: string): ParsedLifeLabMarkdown 
     return {
       metadata: {},
       body: content,
+      technicalProvenance: [],
     };
   }
 
   const raw = parseYamlFrontmatter(match[1]);
   const metadata = normalizeMetadata(raw);
+  const technicalProvenance = extractFrontmatterTechnicalNotes(raw);
 
   return {
     metadata,
     body: content.slice(match[0].length).replace(/^\s+/, ""),
+    technicalProvenance,
   };
 }

@@ -11,6 +11,7 @@ import { LifeLabPlaylistVideoNav } from "@/components/life-lab/life-lab-playlist
 import { LifeLabNoteDetailHeader } from "@/components/life-lab/life-lab-note-detail-header";
 import { LifeLabNoteImageFigure } from "@/components/life-lab/life-lab-note-image";
 import { LifeLabNoteDevInfoPanel } from "@/components/life-lab/life-lab-note-dev-info-panel";
+import { LifeLabNoteTechnicalDebugPanel } from "@/components/life-lab/life-lab-note-technical-debug-panel";
 import { LifeLabRefreshButton } from "@/components/life-lab/life-lab-refresh-button";
 import { LifeLabStatusPanel } from "@/components/life-lab/life-lab-status-panel";
 import { getLifeLabNoteData, getLifeLabSectionData, getPlaylistAssetsForIndexNote, getYoutubeVideoPlaylistNavigation } from "@/lib/life-lab";
@@ -177,6 +178,12 @@ export default async function LifeLabNotePage({
               </>
             )}
           </article>
+          {note.technicalProvenance ? (
+            <LifeLabNoteTechnicalDebugPanel
+              technicalProvenance={note.technicalProvenance}
+              isAdmin={isAdmin}
+            />
+          ) : null}
           {note.dev ? (
             <LifeLabNoteDevInfoPanel
               dev={note.dev}

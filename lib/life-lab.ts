@@ -1,5 +1,7 @@
 import { revalidatePath, unstable_cache } from "next/cache";
 
+import { extractTechnicalProvenanceForDebug } from "@/lib/life-lab/markdown-display";
+
 import {
   getLifeLabListCacheSeconds,
   getLifeLabNoteCacheSeconds,
@@ -1368,7 +1370,8 @@ function buildLifeLabNote(
   sectionId: LifeLabSectionId,
   content: string,
 ): LifeLabNote {
-  const { body } = parseLifeLabFrontmatter(content);
+  const { body, technicalProvenance: frontmatterTechnical } =
+    parseLifeLabFrontmatter(content);
   const processed = processLifeLabNoteContent(record, content);
   const summary = toNoteSummary(processed);
   const { dev: _summaryDev, ...baseSummary } = summary;
@@ -1380,6 +1383,10 @@ function buildLifeLabNote(
     ? stripSourceUrlLineFromMarkdown(body, sourceUrl)
     : body;
   const flashcards = processed.flashcards ?? extractFlashcardsFromMarkdown(body);
+  const technicalProvenance = extractTechnicalProvenanceForDebug(
+    displayContent,
+    frontmatterTechnical,
+  );
 
   const note: LifeLabNote = {
     ...baseSummary,
@@ -1387,6 +1394,8 @@ function buildLifeLabNote(
     sectionLabel: getLifeLabSectionLabel(sectionId),
     content: displayContent,
     flashcards,
+    technicalProvenance:
+      technicalProvenance.length > 0 ? technicalProvenance : undefined,
   };
 
   if (isLifeLabDevToolsEnabled()) {

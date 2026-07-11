@@ -4,6 +4,7 @@ import {
 import {
   buildNarrationDocument,
 } from "@/lib/life-lab/narration-text";
+import { prepareLifeLabMarkdownForReading } from "@/lib/life-lab/markdown-display";
 
 const FLASHCARD_SECTION_PATTERN =
   /^#{1,6}\s+(?:Optional Flashcards|Flashcards|Study Cards)\s*[\r\n]+[\s\S]*$/gim;
@@ -740,7 +741,7 @@ export function markdownToSpeechText(content: string): string {
 }
 
 export function prepareNoteSpeechText(title: string, content: string): string {
-  const body = markdownToSpeechText(content);
+  const body = markdownToSpeechText(prepareLifeLabMarkdownForReading(content));
 
   if (!body) {
     return title.trim();

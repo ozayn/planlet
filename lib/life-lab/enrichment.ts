@@ -36,6 +36,7 @@ import {
   extractSourceUrlFromBody,
   extractSourceUrlFromMetadata,
 } from "@/lib/life-lab/source-url";
+import { prepareLifeLabMarkdownForReading } from "@/lib/life-lab/markdown-display";
 import type { DriveCredentials } from "@/lib/life-lab/google-drive";
 import { downloadDriveFile } from "@/lib/life-lab/google-drive";
 
@@ -71,7 +72,7 @@ function formatDateLabelFromIso(date: string): string | null {
 }
 
 function buildBodySearchText(body: string): string {
-  return markdownExcerpt(body, 4000);
+  return markdownExcerpt(prepareLifeLabMarkdownForReading(body), 4000);
 }
 
 export function processLifeLabNoteContent(
@@ -118,13 +119,14 @@ export function processLifeLabNoteContent(
     metadata: mergedMetadata,
     content: body,
   });
+  const readableBody = prepareLifeLabMarkdownForReading(body);
   let excerpt = isReadingBrief
     ? extractReadingBriefPreview(body)
     : isDictionaryEntry
       ? extractDictionaryDefinition(body)
       : isFilmLab
         ? extractFilmLabPreview(body, mergedMetadata)
-        : markdownExcerpt(body);
+        : markdownExcerpt(readableBody);
 
   if (isPlaylistIndex) {
     const playlistDisplay = parsePlaylistIndexNote({

@@ -2,7 +2,7 @@ import {
   extractFlashcardsFromSectionText,
   isFlashcardSectionTitle,
 } from "@/lib/life-lab/flashcards";
-import { isHiddenMarkdownSection } from "@/lib/life-lab/hidden-markdown-sections";
+import { isHiddenTechnicalHeading } from "@/lib/life-lab/hidden-markdown-sections";
 import { transformMarkdownTables } from "@/lib/life-lab/reading-briefs";
 import {
   isFullTranscriptSectionTitle,
@@ -66,7 +66,7 @@ export function buildLifeLabNoteContentBlocks(
       blocks.push({ kind: "markdown", content: before });
     }
 
-    if (isHiddenMarkdownSection(section.title)) {
+    if (isHiddenTechnicalHeading(section.title)) {
       cursor = section.end;
       continue;
     }

@@ -1,4 +1,5 @@
-import { isHiddenMarkdownSection } from "@/lib/life-lab/hidden-markdown-sections";
+import { isHiddenTechnicalHeading } from "@/lib/life-lab/hidden-markdown-sections";
+import { prepareLifeLabMarkdownForReading } from "@/lib/life-lab/markdown-display";
 import {
   markdownToSpeechText,
   plainTextToSpeechText,
@@ -53,7 +54,7 @@ function shouldSkipSectionTitle(title: string): boolean {
     return true;
   }
 
-  if (isHiddenMarkdownSection(normalized)) {
+  if (isHiddenTechnicalHeading(normalized)) {
     return true;
   }
 
@@ -180,7 +181,7 @@ export function buildNarrationDocument(
   }
 
   const markdownSections = orderNarrationSections(
-    splitMarkdownSections(input.content),
+    splitMarkdownSections(prepareLifeLabMarkdownForReading(input.content)),
   );
 
   sections.push(...markdownSections);

@@ -207,6 +207,7 @@ export type LifeLabNote = LifeLabNoteSummary & {
   sectionLabel: string;
   content: string;
   flashcards?: LifeLabFlashcard[];
+  technicalProvenance?: string[];
   dev?: LifeLabNoteDevMeta & LifeLabNoteLoadMeta;
 };
 

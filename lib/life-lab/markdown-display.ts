@@ -1,4 +1,9 @@
-import { isHiddenMarkdownSection } from "@/lib/life-lab/hidden-markdown-sections";
+import {
+  collectHiddenTechnicalContent,
+  isHiddenTechnicalHeading,
+  stripPlanletHiddenBlocks,
+  stripTechnicalMetadataFromMarkdown,
+} from "@/lib/life-lab/hidden-markdown-sections";
 import { normalizeLearningMapMermaidInMarkdown } from "@/lib/life-lab/mermaid-direction";
 import { listReadingBriefH2Sections } from "@/lib/life-lab/reading-briefs";
 import {
@@ -53,7 +58,7 @@ export function stripMetadataOnlyTranscriptSections(body: string): string {
       continue;
     }
 
-    if (isHiddenMarkdownSection(section.title)) {
+    if (isHiddenTechnicalHeading(section.title)) {
       continue;
     }
 
@@ -67,26 +72,58 @@ export function stripHiddenMarkdownSections(body: string): string {
   const sections = listReadingBriefH2Sections(body);
 
   if (sections.length === 0) {
-    return body;
+    return stripTechnicalMetadataFromMarkdown(body);
   }
 
   const parts: string[] = [];
+  const hiddenParts: string[] = [];
   const preambleEnd = sections[0]?.start ?? body.length;
   const preamble = body.slice(0, preambleEnd).trim();
 
   if (preamble) {
-    parts.push(preamble);
+    const strippedPreamble = stripTechnicalMetadataFromMarkdown(preamble);
+
+    if (strippedPreamble) {
+      parts.push(strippedPreamble);
+    }
+
+    if (strippedPreamble !== preamble) {
+      hiddenParts.push(...collectHiddenTechnicalContent(preamble));
+    }
   }
 
   for (const section of sections) {
-    if (isHiddenMarkdownSection(section.title)) {
+    if (isHiddenTechnicalHeading(section.title)) {
+      hiddenParts.push(`## ${section.title}\n\n${section.content}`.trim());
       continue;
     }
 
-    parts.push(`## ${section.title}\n\n${section.content}`.trim());
+    const cleanedContent = stripTechnicalMetadataFromMarkdown(section.content);
+
+    if (cleanedContent) {
+      parts.push(`## ${section.title}\n\n${cleanedContent}`.trim());
+    }
   }
 
   return parts.join("\n\n").trim();
+}
+
+export function extractTechnicalProvenanceForDebug(
+  body: string,
+  frontmatterNotes: string[] = [],
+): string[] {
+  const hiddenBlocks = stripPlanletHiddenBlocks(body).hidden;
+  const hiddenSections = listReadingBriefH2Sections(body)
+    .filter((section) => isHiddenTechnicalHeading(section.title))
+    .map((section) => `## ${section.title}\n\n${section.content}`.trim());
+  const hiddenParagraphs = collectHiddenTechnicalContent(body);
+
+  return [
+    ...frontmatterNotes,
+    ...hiddenBlocks,
+    ...hiddenSections,
+    ...hiddenParagraphs,
+  ].filter((entry, index, all) => all.indexOf(entry) === index);
 }
 
 export function prepareLifeLabMarkdownForReading(body: string): string {
@@ -99,5 +136,7 @@ export function prepareLifeLabMarkdownForReading(body: string): string {
 
 export {
   HIDDEN_MARKDOWN_SECTIONS,
+  HIDDEN_TECHNICAL_HEADINGS,
   isHiddenMarkdownSection,
+  isHiddenTechnicalHeading,
 } from "@/lib/life-lab/hidden-markdown-sections";

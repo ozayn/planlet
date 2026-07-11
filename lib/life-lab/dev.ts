@@ -2,6 +2,10 @@ export function isLifeLabDevToolsEnabled(): boolean {
   return process.env.NODE_ENV === "development";
 }
 
+export function canViewLifeLabTechnicalDebug(isAdmin: boolean): boolean {
+  return isLifeLabDevToolsEnabled() || isAdmin;
+}
+
 export function lifeLabDebugRawUrl(
   sectionId: string,
   slug: string,
