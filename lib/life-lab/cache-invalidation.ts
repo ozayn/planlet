@@ -4,7 +4,6 @@ import type { LifeLabSectionId } from "@/lib/life-lab/constants";
 import {
   lifeLabPlaylistAssetCacheTag,
   lifeLabPlaylistAssetsCacheTag,
-  lifeLabPlaylistAssetsCacheTag,
   lifeLabPlaylistClustersCacheTag,
   lifeLabPlaylistFullMapCacheTag,
   lifeLabPlaylistLearningMapCacheTag,
