@@ -3,6 +3,7 @@ import { APP_TIMEZONE } from "@/config/time";
 import { PRODUCT } from "@/config/product";
 import { isAdminRole } from "@/lib/auth-roles";
 import { getActivityTimerPresetSettingsData } from "@/lib/activity-timer";
+import { getCoachingNarrationPreferencesForUser } from "@/lib/coaching/narration-preferences";
 import { getLifeLabReadAloudPreferencesForUser } from "@/lib/life-lab/read-aloud-preferences";
 import { resolveMobileNavItems } from "@/lib/mobile-nav";
 import { getNotificationPreferencesForUser } from "@/lib/notification-preferences";
@@ -39,19 +40,23 @@ export async function loadSettingsAccessContext(): Promise<SettingsAccessContext
   const isAdmin = isAdminRole(user?.role);
 
   const canUseLifeLab = canUseLifeLabFeatures(user ?? {});
+  const canUseCoaching = canUseCoachingFeatures(user ?? {});
   const canUseTimer = canUseActivityTimerFeatures(user ?? {});
   const showReflectionCoaching =
-    canUseCoachingFeatures(user ?? {}) ||
+    canUseCoaching ||
     canUseReflectionFeatures(user ?? {}) ||
     canUseTherapyThoughts(user ?? {});
 
-  const hasReadAloudSettings = Boolean(userId && canUseLifeLab);
+  const hasReadAloudSettings = Boolean(
+    userId && (canUseLifeLab || canUseCoaching),
+  );
   const hasTimerPresets = Boolean(userId && (canUseTimer || isAdmin));
 
   return {
     isSignedIn: Boolean(userId),
     isAdmin,
     canUseLifeLabFeatures: canUseLifeLab,
+    canUseCoachingFeatures: canUseCoaching,
     canUseActivityTimerFeatures: canUseTimer,
     showReflectionCoaching,
     hasReadAloudSettings,
@@ -86,6 +91,7 @@ export async function loadSettingsPageData() {
     mobileNavItems,
     readingDensity,
     readAloudPreferences,
+    coachingNarrationPreferences,
     activityTimerPresetSettings,
   ] = userId
     ? await Promise.all([
@@ -96,6 +102,9 @@ export async function loadSettingsPageData() {
         getReadingDensityForUser(userId),
         access.hasReadAloudSettings
           ? getLifeLabReadAloudPreferencesForUser(userId)
+          : Promise.resolve(null),
+        access.canUseCoachingFeatures
+          ? getCoachingNarrationPreferencesForUser(userId)
           : Promise.resolve(null),
         access.hasTimerPresets
           ? getActivityTimerPresetSettingsData(userId)
@@ -110,6 +119,7 @@ export async function loadSettingsPageData() {
         null,
         [],
         "compact" as const,
+        null,
         null,
         null,
       ];
@@ -130,6 +140,7 @@ export async function loadSettingsPageData() {
     mobileNavItems: resolvedMobileNavItems,
     readingDensity,
     readAloudPreferences,
+    coachingNarrationPreferences,
     activityTimerPresetSettings,
     openAiNarrationAvailable: isLifeLabOpenAiTtsEnabled(),
     technicalInfoRows: [

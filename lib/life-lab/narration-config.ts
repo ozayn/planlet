@@ -74,11 +74,8 @@ export const NARRATION_CONTENT_PROFILE_VERSIONS: Record<
   number
 > = {
   "life-lab": 1,
-  coaching: 1,
+  coaching: 2,
 };
-
-export const COACHING_NARRATION_CONTENT_PROFILE =
-  "Read in a calm, warm, grounded, nonjudgmental tone. Keep the pacing gentle and reflective. Avoid sounding clinical, theatrical, promotional, or overly cheerful. Use slightly longer pauses between reflective questions.";
 
 /** @deprecated Use resolveNarrationInstructions() with a narration style instead. */
 export const NARRATION_INSTRUCTIONS =

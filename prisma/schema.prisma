@@ -103,6 +103,10 @@ enum OpenAiNarrationStyle {
   CUSTOM
 }
 
+enum CoachingOpenAiNarrationStyle {
+  KIND_BRITISH_MENTOR
+}
+
 enum PlanSharePermission {
   VIEW
 }
@@ -325,6 +329,8 @@ model User {
   lifeLabCustomNarrationInstructions String? @db.Text
   lifeLabReadAloudAutoContinue      Boolean @default(true)
   lifeLabReadAloudSectionInclusion  Json?
+  coachingOpenAiTtsVoice            String?
+  coachingOpenAiNarrationStyle      CoachingOpenAiNarrationStyle @default(KIND_BRITISH_MENTOR)
   planItemView              PlanItemView @default(CHECKLIST)
   readingDensity            ReadingDensity @default(COMPACT)
   taskOrganizationDisplay   TaskOrganizationDisplay @default(ASSIGNED_ONLY)

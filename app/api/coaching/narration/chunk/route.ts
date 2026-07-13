@@ -7,6 +7,7 @@ import {
   mapCoachingNarrationServiceError,
   parseCoachingReadAloudContent,
 } from "@/lib/coaching/narration-service";
+import { getResolvedCoachingNarrationSettingsForUser } from "@/lib/coaching/narration-preferences";
 import { validateOpenAiTtsConfiguration } from "@/lib/env";
 import { logNarrationDiagnostic } from "@/lib/life-lab/narration-diagnostics";
 import {
@@ -14,10 +15,6 @@ import {
   narrationErrorHttpStatus,
   type NarrationErrorCategory,
 } from "@/lib/life-lab/narration-errors";
-import {
-  getResolvedOpenAiNarrationSettingsForUser,
-} from "@/lib/life-lab/read-aloud-preferences";
-import { NARRATION_CONTENT_PROFILES } from "@/lib/life-lab/narration-config";
 import { canUseCoachingFeatures } from "@/lib/roles";
 
 type CoachingNarrationChunkBody = {
@@ -129,9 +126,8 @@ async function serveCoachingNarrationChunk(params: CoachingNarrationChunkParams)
   };
 
   try {
-    const narrationSettings = await getResolvedOpenAiNarrationSettingsForUser(
+    const narrationSettings = await getResolvedCoachingNarrationSettingsForUser(
       session.user.id,
-      { contentProfile: NARRATION_CONTENT_PROFILES.COACHING },
     );
     const result = await getOrCreateCoachingNarrationChunk({
       content,

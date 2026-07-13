@@ -18,12 +18,9 @@ import {
   NarrationSynthesisError,
   synthesizeSpeech,
 } from "@/lib/ai/synthesize-speech";
-import {
-  NARRATION_CONTENT_PROFILE_VERSIONS,
-  NARRATION_CONTENT_PROFILES,
-  OPENAI_NARRATION_STYLES,
-} from "@/lib/life-lab/narration-config";
-import type { ResolvedOpenAiNarrationSettings } from "@/lib/life-lab/openai-narration-preferences";
+import { NARRATION_CONTENT_PROFILES } from "@/lib/life-lab/narration-config";
+import type { ResolvedCoachingNarrationSettings } from "@/lib/coaching/narration-preferences";
+import { getCoachingNarrationPreviewText } from "@/lib/coaching/narration-preferences";
 import { logNarrationDiagnostic } from "@/lib/life-lab/narration-diagnostics";
 import {
   buildNarrationErrorPayload,
@@ -40,7 +37,7 @@ export type CoachingNarrationChunkRequest = {
   contentHash: string;
   chunkIndex: number;
   userId: string;
-  narrationSettings: ResolvedOpenAiNarrationSettings;
+  narrationSettings: ResolvedCoachingNarrationSettings;
   model?: string;
   regenerate?: boolean;
   skipCache?: boolean;
@@ -148,11 +145,11 @@ export async function getOrCreateCoachingNarrationChunk(
   const {
     voice,
     instructions,
-    narrationStyle,
+    narrationStyleSlug,
     instructionsFingerprint,
     instructionVersion,
+    contentProfileVersion,
   } = input.narrationSettings;
-  const narrationStyleSlug = OPENAI_NARRATION_STYLES[narrationStyle].slug;
   const cacheKey = buildCoachingNarrationCacheKey({
     userId: input.userId,
     contentHash: computedHash,
@@ -160,11 +157,11 @@ export async function getOrCreateCoachingNarrationChunk(
     model,
     voice,
     narrationStyle: narrationStyleSlug,
+    narrationProfile: NARRATION_CONTENT_PROFILES.COACHING,
     readAloudSectionId: chunk.sectionId,
     instructionsFingerprint,
     instructionVersion,
-    contentProfileVersion:
-      NARRATION_CONTENT_PROFILE_VERSIONS[NARRATION_CONTENT_PROFILES.COACHING],
+    contentProfileVersion,
     chunkIndex: chunk.index,
   });
 
@@ -239,8 +236,7 @@ export async function getOrCreateCoachingNarrationChunk(
         userId: input.userId,
         cacheKey,
         contentHash: computedHash,
-        contentProfileVersion:
-          NARRATION_CONTENT_PROFILE_VERSIONS[NARRATION_CONTENT_PROFILES.COACHING],
+        contentProfileVersion,
         model,
         voice,
         narrationStyle: narrationStyleSlug,
@@ -282,6 +278,34 @@ export async function getOrCreateCoachingNarrationChunk(
     contentHash: computedHash,
     model,
     voice,
+  };
+}
+
+export async function synthesizeCoachingNarrationPreviewAudio(input: {
+  userId: string;
+  settings: ResolvedCoachingNarrationSettings;
+  model?: string;
+}): Promise<{
+  audio: Buffer;
+  model: string;
+  voice: string;
+  narrationStyle: string;
+}> {
+  const model = input.model ?? getDefaultOpenAiNarrationModel();
+  const synthesized = await synthesizeSpeech({
+    text: getCoachingNarrationPreviewText(),
+    userId: input.userId,
+    model,
+    voice: input.settings.voice,
+    instructions: input.settings.instructions,
+    noteId: `coaching-preview:${input.userId}`,
+  });
+
+  return {
+    audio: synthesized.audio,
+    model: synthesized.model,
+    voice: synthesized.voice,
+    narrationStyle: input.settings.narrationStyleSlug,
   };
 }
 

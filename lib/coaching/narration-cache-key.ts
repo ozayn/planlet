@@ -1,13 +1,11 @@
 import { createHash } from "node:crypto";
 
-import {
-  hashNarrationContent,
-} from "@/lib/life-lab/narration-cache-key";
+import { COACHING_NARRATION_INSTRUCTION_VERSION } from "@/lib/coaching/narration-config";
+import { hashNarrationContent } from "@/lib/life-lab/narration-cache-key";
 import {
   LIFE_LAB_READ_ALOUD_PROVIDERS,
   NARRATION_CONTENT_PROFILE_VERSIONS,
   NARRATION_CONTENT_PROFILES,
-  NARRATION_INSTRUCTION_VERSION,
 } from "@/lib/life-lab/narration-config";
 
 export { hashNarrationContent };
@@ -19,6 +17,7 @@ export type CoachingNarrationCacheKeyInput = {
   model: string;
   voice: string;
   narrationStyle: string;
+  narrationProfile: string;
   readAloudSectionId: string;
   instructionsFingerprint: string;
   instructionVersion?: number;
@@ -31,6 +30,7 @@ export function buildCoachingNarrationCacheKey(
 ): string {
   const payload = [
     NARRATION_CONTENT_PROFILES.COACHING,
+    input.narrationProfile,
     input.userId,
     input.contentHash,
     input.provider,
@@ -39,7 +39,7 @@ export function buildCoachingNarrationCacheKey(
     input.narrationStyle,
     input.readAloudSectionId,
     input.instructionsFingerprint,
-    String(input.instructionVersion ?? NARRATION_INSTRUCTION_VERSION),
+    String(input.instructionVersion ?? COACHING_NARRATION_INSTRUCTION_VERSION),
     String(
       input.contentProfileVersion ??
         NARRATION_CONTENT_PROFILE_VERSIONS[NARRATION_CONTENT_PROFILES.COACHING],

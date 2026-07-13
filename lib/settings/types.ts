@@ -29,6 +29,7 @@ export type SettingsAccessContext = {
   isSignedIn: boolean;
   isAdmin: boolean;
   canUseLifeLabFeatures: boolean;
+  canUseCoachingFeatures: boolean;
   canUseActivityTimerFeatures: boolean;
   showReflectionCoaching: boolean;
   hasReadAloudSettings: boolean;

@@ -9,6 +9,7 @@ const fullAccess: SettingsAccessContext = {
   isSignedIn: true,
   isAdmin: true,
   canUseLifeLabFeatures: true,
+  canUseCoachingFeatures: true,
   canUseActivityTimerFeatures: true,
   showReflectionCoaching: true,
   hasReadAloudSettings: true,

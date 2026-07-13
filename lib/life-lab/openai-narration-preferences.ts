@@ -5,7 +5,6 @@ import {
   hashNarrationContent,
 } from "@/lib/life-lab/narration-cache-key";
 import {
-  COACHING_NARRATION_CONTENT_PROFILE,
   MIXED_LANGUAGE_NARRATION_APPENDIX,
   NARRATION_CONTENT_PROFILES,
   NARRATION_INSTRUCTION_VERSION,
@@ -80,34 +79,19 @@ export function resolveOpenAiNarrationVoice(input: {
 export function resolveNarrationInstructions(input: {
   narrationStyle: OpenAiNarrationStyleId;
   customNarrationInstructions?: string | null;
-  contentProfile?: NarrationContentProfile;
 }): string {
-  const baseInstructions = (() => {
-    if (input.narrationStyle === "CUSTOM") {
-      const custom = input.customNarrationInstructions?.trim();
+  if (input.narrationStyle === "CUSTOM") {
+    const custom = input.customNarrationInstructions?.trim();
 
-      if (!custom) {
-        return OPENAI_NARRATION_STYLES.NEUTRAL_EDUCATIONAL.instructions;
-      }
-
-      return custom;
+    if (!custom) {
+      return `${OPENAI_NARRATION_STYLES.NEUTRAL_EDUCATIONAL.instructions}\n\n${MIXED_LANGUAGE_NARRATION_APPENDIX}`;
     }
 
-    return OPENAI_NARRATION_STYLES[input.narrationStyle].instructions;
-  })();
+    return `${custom}\n\n${MIXED_LANGUAGE_NARRATION_APPENDIX}`;
+  }
 
-  const profileAppendix =
-    input.contentProfile === NARRATION_CONTENT_PROFILES.COACHING
-      ? COACHING_NARRATION_CONTENT_PROFILE
-      : null;
-
-  return [
-    baseInstructions,
-    profileAppendix,
-    MIXED_LANGUAGE_NARRATION_APPENDIX,
-  ]
-    .filter(Boolean)
-    .join("\n\n");
+  const style = OPENAI_NARRATION_STYLES[input.narrationStyle];
+  return `${style.instructions}\n\n${MIXED_LANGUAGE_NARRATION_APPENDIX}`;
 }
 
 export function resolveOpenAiNarrationSettings(
@@ -125,7 +109,6 @@ export function resolveOpenAiNarrationSettings(
   const instructions = resolveNarrationInstructions({
     narrationStyle,
     customNarrationInstructions: preferences.customNarrationInstructions,
-    contentProfile,
   });
 
   return {

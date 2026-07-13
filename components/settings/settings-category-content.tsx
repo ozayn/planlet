@@ -69,6 +69,9 @@ export function SettingsCategoryContent({
           <SettingsBlock id="narration-provider" title="Read aloud">
             <SettingsReadAloud
               preferences={data.readAloudPreferences}
+              coachingPreferences={data.coachingNarrationPreferences}
+              showLifeLabOpenAiSettings={data.access.canUseLifeLabFeatures}
+              showCoachingNarrationSettings={data.access.canUseCoachingFeatures}
               openAiNarrationAvailable={data.openAiNarrationAvailable}
               embedded
             />

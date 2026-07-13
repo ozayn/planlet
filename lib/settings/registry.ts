@@ -165,7 +165,8 @@ export const SETTINGS_ITEMS: SettingsItemDefinition[] = [
     subtitle: "OpenAI delivery tone",
     keywords: ["narration", "style", "british", "openai", "voice"],
     anchor: "openai-narration",
-    isAvailable: (access) => access.hasReadAloudSettings,
+    isAvailable: (access) =>
+      access.hasReadAloudSettings && access.canUseLifeLabFeatures,
   },
   {
     id: "openai-voice",
@@ -174,7 +175,26 @@ export const SETTINGS_ITEMS: SettingsItemDefinition[] = [
     subtitle: "Built-in OpenAI TTS voice",
     keywords: ["openai", "voice", "marin", "shimmer", "narration"],
     anchor: "openai-voice",
-    isAvailable: (access) => access.hasReadAloudSettings,
+    isAvailable: (access) =>
+      access.hasReadAloudSettings && access.canUseLifeLabFeatures,
+  },
+  {
+    id: "coaching-narration",
+    categorySlug: "voice-audio",
+    title: "Coaching narration",
+    subtitle: "Voice and style for Coaching feedback",
+    keywords: [
+      "coaching",
+      "narration",
+      "mentor",
+      "british",
+      "fable",
+      "voice",
+      "style",
+    ],
+    anchor: "coaching-narration",
+    isAvailable: (access) =>
+      access.hasReadAloudSettings && access.canUseCoachingFeatures,
   },
   {
     id: "narration-voice",
@@ -220,7 +240,8 @@ export const SETTINGS_ITEMS: SettingsItemDefinition[] = [
     subtitle: "Choose included note sections",
     keywords: ["sections", "summary", "flashcards", "transcript", "narration"],
     anchor: "read-aloud-sections",
-    isAvailable: (access) => access.hasReadAloudSettings,
+    isAvailable: (access) =>
+      access.hasReadAloudSettings && access.canUseLifeLabFeatures,
   },
   {
     id: "skip-technical-sections",

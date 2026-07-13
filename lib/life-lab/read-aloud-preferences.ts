@@ -4,7 +4,6 @@ import { prisma } from "@/lib/prisma";
 import {
   isLifeLabReadAloudProvider,
   LIFE_LAB_READ_ALOUD_PROVIDERS,
-  type NarrationContentProfile,
   type OpenAiNarrationStyleId,
 } from "@/lib/life-lab/narration-config";
 import {
@@ -118,20 +117,14 @@ export async function getLifeLabReadAloudPreferencesForUser(
 
 export async function getResolvedOpenAiNarrationSettingsForUser(
   userId: string,
-  options?: {
-    contentProfile?: NarrationContentProfile;
-  },
 ): Promise<ResolvedOpenAiNarrationSettings> {
   const preferences = await getLifeLabReadAloudPreferencesForUser(userId);
 
-  return resolveOpenAiNarrationSettings(
-    {
-      voice: preferences.openAiTtsVoice,
-      narrationStyle: preferences.openAiNarrationStyle,
-      customNarrationInstructions: preferences.customNarrationInstructions,
-    },
-    options,
-  );
+  return resolveOpenAiNarrationSettings({
+    voice: preferences.openAiTtsVoice,
+    narrationStyle: preferences.openAiNarrationStyle,
+    customNarrationInstructions: preferences.customNarrationInstructions,
+  });
 }
 
 export async function updateLifeLabReadAloudProvider(

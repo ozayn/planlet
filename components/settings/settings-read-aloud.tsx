@@ -4,6 +4,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 
 import {
+  updateCoachingOpenAiNarrationStyleAction,
+  updateCoachingOpenAiTtsVoiceAction,
   updateLifeLabCustomNarrationInstructionsAction,
   updateLifeLabOpenAiNarrationStyleAction,
   updateLifeLabOpenAiTtsVoiceAction,
@@ -14,6 +16,14 @@ import {
   updateLifeLabSpeechVoiceAction,
 } from "@/app/(app)/settings/actions";
 import { SettingsSection } from "@/components/settings/settings-section";
+import type { CoachingNarrationPreferences } from "@/lib/coaching/narration-config";
+import {
+  COACHING_NARRATION_PREVIEW_TEXT,
+  COACHING_OPENAI_NARRATION_STYLE_IDS,
+  COACHING_OPENAI_NARRATION_STYLES,
+  formatCoachingOpenAiNarrationStyleLabel,
+  type CoachingOpenAiNarrationStyleId,
+} from "@/lib/coaching/narration-config";
 import type { LifeLabReadAloudPreferences } from "@/lib/life-lab/read-aloud-preferences";
 import type { ReadAloudSectionInclusionPrefs } from "@/lib/life-lab/read-aloud-sections";
 import {
@@ -69,12 +79,18 @@ const READ_ALOUD_SECTION_TOGGLES: Array<{
 
 type SettingsReadAloudProps = {
   preferences: LifeLabReadAloudPreferences;
+  coachingPreferences?: CoachingNarrationPreferences | null;
+  showLifeLabOpenAiSettings?: boolean;
+  showCoachingNarrationSettings?: boolean;
   openAiNarrationAvailable: boolean;
   embedded?: boolean;
 };
 
 export function SettingsReadAloud({
   preferences,
+  coachingPreferences = null,
+  showLifeLabOpenAiSettings = true,
+  showCoachingNarrationSettings = false,
   openAiNarrationAvailable,
   embedded = false,
 }: SettingsReadAloudProps) {
@@ -89,6 +105,12 @@ export function SettingsReadAloud({
   const [customInstructions, setCustomInstructions] = useState(
     preferences.customNarrationInstructions ?? "",
   );
+  const [coachingVoice, setCoachingVoice] = useState(
+    coachingPreferences?.openAiTtsVoice ?? "fable",
+  );
+  const [coachingStyle, setCoachingStyle] = useState<CoachingOpenAiNarrationStyleId>(
+    coachingPreferences?.openAiNarrationStyle ?? "KIND_BRITISH_MENTOR",
+  );
   const [autoContinue, setAutoContinue] = useState(preferences.readAloudAutoContinue);
   const [sectionInclusion, setSectionInclusion] = useState(
     preferences.readAloudSectionInclusion,
@@ -100,7 +122,11 @@ export function SettingsReadAloud({
   const [error, setError] = useState<string | null>(null);
   const [openAiVoiceWarning, setOpenAiVoiceWarning] = useState<string | null>(null);
   const [previewStatus, setPreviewStatus] = useState<string | null>(null);
+  const [coachingPreviewStatus, setCoachingPreviewStatus] = useState<string | null>(
+    null,
+  );
   const [isPreviewing, setIsPreviewing] = useState(false);
+  const [isCoachingPreviewing, setIsCoachingPreviewing] = useState(false);
   const [isPending, startTransition] = useTransition();
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   const previewUrlRef = useRef<string | null>(null);
@@ -115,6 +141,15 @@ export function SettingsReadAloud({
     setAutoContinue(preferences.readAloudAutoContinue);
     setSectionInclusion(preferences.readAloudSectionInclusion);
   }, [preferences]);
+
+  useEffect(() => {
+    if (!coachingPreferences) {
+      return;
+    }
+
+    setCoachingVoice(coachingPreferences.openAiTtsVoice);
+    setCoachingStyle(coachingPreferences.openAiNarrationStyle);
+  }, [coachingPreferences]);
 
   useEffect(() => {
     if (!isSpeechSynthesisSupported()) {
@@ -221,6 +256,48 @@ export function SettingsReadAloud({
       if (!result.success) {
         setOpenAiStyle(openAiStyle);
         setError(result.error ?? "Couldn't save narration style.");
+        return;
+      }
+
+      router.refresh();
+    });
+  }
+
+  function saveCoachingVoice(nextVoice: string) {
+    if (nextVoice === coachingVoice || isPending) {
+      return;
+    }
+
+    setCoachingVoice(nextVoice);
+    setError(null);
+
+    startTransition(async () => {
+      const result = await updateCoachingOpenAiTtsVoiceAction(nextVoice);
+
+      if (!result.success) {
+        setCoachingVoice(coachingVoice);
+        setError(result.error ?? "Couldn't save Coaching voice.");
+        return;
+      }
+
+      router.refresh();
+    });
+  }
+
+  function saveCoachingStyle(nextStyle: CoachingOpenAiNarrationStyleId) {
+    if (nextStyle === coachingStyle || isPending) {
+      return;
+    }
+
+    setCoachingStyle(nextStyle);
+    setError(null);
+
+    startTransition(async () => {
+      const result = await updateCoachingOpenAiNarrationStyleAction(nextStyle);
+
+      if (!result.success) {
+        setCoachingStyle(coachingStyle);
+        setError(result.error ?? "Couldn't save Coaching narration style.");
         return;
       }
 
@@ -398,6 +475,69 @@ export function SettingsReadAloud({
     }
   }
 
+  async function previewCoachingNarration() {
+    if (!openAiNarrationAvailable || isCoachingPreviewing) {
+      return;
+    }
+
+    setCoachingPreviewStatus("Generating preview…");
+    setIsCoachingPreviewing(true);
+
+    try {
+      const response = await fetch("/api/coaching/narration/preview", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          voice: coachingVoice,
+          narrationStyle: coachingStyle,
+        }),
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as
+          | { error?: string }
+          | null;
+        setCoachingPreviewStatus(payload?.error ?? "Preview failed.");
+        return;
+      }
+
+      const blob = await response.blob();
+      const objectUrl = createNarrationObjectUrl(blob);
+
+      if (!previewAudioRef.current) {
+        previewAudioRef.current = new Audio();
+      }
+
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
+      }
+
+      previewUrlRef.current = objectUrl;
+      replaceAudioObjectUrl({
+        audio: previewAudioRef.current,
+        nextUrl: objectUrl,
+        activeUrlRef: previewUrlRef,
+      });
+
+      await previewAudioRef.current.play();
+
+      const styleLabel = decodeURIComponent(
+        response.headers.get("X-Narration-Style-Label") ??
+          formatCoachingOpenAiNarrationStyleLabel(coachingStyle),
+      );
+      const voiceLabel = decodeURIComponent(
+        response.headers.get("X-Narration-Voice-Label") ??
+          formatOpenAiNarrationVoiceLabel(coachingVoice),
+      );
+
+      setCoachingPreviewStatus(`Previewing ${styleLabel} · ${voiceLabel}`);
+    } catch {
+      setCoachingPreviewStatus("Preview failed.");
+    } finally {
+      setIsCoachingPreviewing(false);
+    }
+  }
+
   function saveRate(nextRate: SpeechRate) {
     if (nextRate === speechRate || isPending) {
       return;
@@ -530,64 +670,150 @@ export function SettingsReadAloud({
         >
           <p className="text-xs leading-relaxed text-muted">
             OpenAI narration uses the server API key and billing. Audio is cached
-            after generation and labeled as AI-generated voice on note pages.
+            after generation.
           </p>
 
-          <fieldset id="openai-narration-style" className="space-y-2">
-            <legend className="text-sm font-medium text-foreground">
-              Narration style
-            </legend>
+          {showLifeLabOpenAiSettings ? (
+            <>
+              <fieldset id="openai-narration-style" className="space-y-2">
+                <legend className="text-sm font-medium text-foreground">
+                  Life Lab narration style
+                </legend>
+                <div className="space-y-2">
+                  {OPENAI_NARRATION_STYLE_IDS.map((styleId) => (
+                    <label
+                      key={styleId}
+                      className={`flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 transition-colors ${
+                        openAiStyle === styleId
+                          ? "border-border bg-accent-cream/30"
+                          : "border-border/70"
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="openai-narration-style"
+                        value={styleId}
+                        checked={openAiStyle === styleId}
+                        disabled={isPending}
+                        onChange={() => saveOpenAiStyle(styleId)}
+                        className="mt-1"
+                      />
+                      <span className="text-sm text-foreground">
+                        {OPENAI_NARRATION_STYLES[styleId].label}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
+              {openAiStyle === "CUSTOM" ? (
+                <label className="flex flex-col gap-1.5 text-sm">
+                  <span className="font-medium text-foreground">
+                    Custom instructions
+                  </span>
+                  <textarea
+                    value={customInstructions}
+                    disabled={isPending}
+                    onChange={(event) => setCustomInstructions(event.target.value)}
+                    onBlur={() => saveCustomInstructions(customInstructions)}
+                    rows={4}
+                    className="rounded-xl border border-border/70 bg-transparent px-3 py-2 text-sm text-foreground"
+                    placeholder="Describe how OpenAI should read your notes."
+                  />
+                </label>
+              ) : null}
+
+              <label
+                id="openai-voice"
+                className="flex flex-col gap-1.5 text-sm scroll-mt-4"
+              >
+                <span className="font-medium text-foreground">Life Lab OpenAI voice</span>
+                <select
+                  value={openAiVoice}
+                  disabled={isPending}
+                  onChange={(event) => saveOpenAiVoice(event.target.value)}
+                  className="rounded-xl border border-border/70 bg-transparent px-3 py-2 text-sm text-foreground"
+                >
+                  {OPENAI_NARRATION_VOICES.map((voice) => (
+                    <option key={voice.id} value={voice.id}>
+                      {voice.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={() => void previewOpenAiNarration()}
+                  disabled={isPending || isPreviewing}
+                  className="rounded-full border border-border/70 px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:bg-accent-cream/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isPreviewing ? "Generating preview…" : "Preview Life Lab"}
+                </button>
+                <p className="text-xs leading-relaxed text-muted">
+                  {NARRATION_PREVIEW_TEXT}
+                </p>
+                {previewStatus ? (
+                  <p className="text-xs text-muted-light">{previewStatus}</p>
+                ) : null}
+                {openAiVoiceWarning ? (
+                  <p className="text-xs text-red-600">{openAiVoiceWarning}</p>
+                ) : null}
+              </div>
+            </>
+          ) : null}
+        </div>
+      )}
+
+      {showCoachingNarrationSettings ? (
+        <div
+          id="coaching-narration"
+          className="space-y-4 border-t border-border-soft pt-4 scroll-mt-4"
+        >
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-foreground">Coaching narration</p>
+            <p className="text-xs leading-relaxed text-muted">
+              Separate from Life Lab. Used when reading Coaching feedback aloud with
+              OpenAI narration.
+            </p>
+          </div>
+
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium text-foreground">Style</legend>
             <div className="space-y-2">
-              {OPENAI_NARRATION_STYLE_IDS.map((styleId) => (
+              {COACHING_OPENAI_NARRATION_STYLE_IDS.map((styleId) => (
                 <label
                   key={styleId}
                   className={`flex cursor-pointer items-start gap-3 rounded-xl border px-3 py-3 transition-colors ${
-                    openAiStyle === styleId
+                    coachingStyle === styleId
                       ? "border-border bg-accent-cream/30"
                       : "border-border/70"
                   }`}
                 >
                   <input
                     type="radio"
-                    name="openai-narration-style"
+                    name="coaching-narration-style"
                     value={styleId}
-                    checked={openAiStyle === styleId}
+                    checked={coachingStyle === styleId}
                     disabled={isPending}
-                    onChange={() => saveOpenAiStyle(styleId)}
+                    onChange={() => saveCoachingStyle(styleId)}
                     className="mt-1"
                   />
                   <span className="text-sm text-foreground">
-                    {OPENAI_NARRATION_STYLES[styleId].label}
+                    {COACHING_OPENAI_NARRATION_STYLES[styleId].label}
                   </span>
                 </label>
               ))}
             </div>
           </fieldset>
 
-          {openAiStyle === "CUSTOM" ? (
-            <label className="flex flex-col gap-1.5 text-sm">
-              <span className="font-medium text-foreground">Custom instructions</span>
-              <textarea
-                value={customInstructions}
-                disabled={isPending}
-                onChange={(event) => setCustomInstructions(event.target.value)}
-                onBlur={() => saveCustomInstructions(customInstructions)}
-                rows={4}
-                className="rounded-xl border border-border/70 bg-transparent px-3 py-2 text-sm text-foreground"
-                placeholder="Describe how OpenAI should read your notes."
-              />
-            </label>
-          ) : null}
-
-          <label
-            id="openai-voice"
-            className="flex flex-col gap-1.5 text-sm scroll-mt-4"
-          >
-            <span className="font-medium text-foreground">OpenAI voice</span>
+          <label className="flex flex-col gap-1.5 text-sm">
+            <span className="font-medium text-foreground">Voice</span>
             <select
-              value={openAiVoice}
-              disabled={isPending}
-              onChange={(event) => saveOpenAiVoice(event.target.value)}
+              value={coachingVoice}
+              disabled={isPending || !openAiNarrationAvailable}
+              onChange={(event) => saveCoachingVoice(event.target.value)}
               className="rounded-xl border border-border/70 bg-transparent px-3 py-2 text-sm text-foreground"
             >
               {OPENAI_NARRATION_VOICES.map((voice) => (
@@ -601,24 +827,23 @@ export function SettingsReadAloud({
           <div className="space-y-2">
             <button
               type="button"
-              onClick={() => void previewOpenAiNarration()}
-              disabled={isPending || isPreviewing}
+              onClick={() => void previewCoachingNarration()}
+              disabled={
+                isPending || isCoachingPreviewing || !openAiNarrationAvailable
+              }
               className="rounded-full border border-border/70 px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:bg-accent-cream/50 hover:text-foreground disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isPreviewing ? "Generating preview…" : "Preview"}
+              {isCoachingPreviewing ? "Generating preview…" : "Preview Coaching"}
             </button>
-            <p className="text-xs leading-relaxed text-muted">
-              {NARRATION_PREVIEW_TEXT}
+            <p className="whitespace-pre-line text-xs leading-relaxed text-muted">
+              {COACHING_NARRATION_PREVIEW_TEXT}
             </p>
-            {previewStatus ? (
-              <p className="text-xs text-muted-light">{previewStatus}</p>
-            ) : null}
-            {openAiVoiceWarning ? (
-              <p className="text-xs text-red-600">{openAiVoiceWarning}</p>
+            {coachingPreviewStatus ? (
+              <p className="text-xs text-muted-light">{coachingPreviewStatus}</p>
             ) : null}
           </div>
         </div>
-      )}
+      ) : null}
 
       <div
         id="read-aloud-continue"
@@ -648,26 +873,28 @@ export function SettingsReadAloud({
         </div>
       </div>
 
-      <div
-        id="read-aloud-sections"
-        className="space-y-4 border-t border-border-soft pt-4 scroll-mt-4"
-      >
-        <div className="space-y-1">
-          <p className="text-sm font-medium text-foreground">Read aloud sections</p>
-          <p className="text-xs leading-relaxed text-muted">
-            Choose which note sections are included in narration. Technical
-            details, source notes, and hidden content are always excluded.
-          </p>
-        </div>
-
-        {(["default", "optional"] as const).map((group) => (
-          <div key={group} className="space-y-2">
-            <p className="text-xs font-medium text-muted">
-              {group === "default" ? "Included by default" : "Optional"}
+      {showLifeLabOpenAiSettings ? (
+        <div
+          id="read-aloud-sections"
+          className="space-y-4 border-t border-border-soft pt-4 scroll-mt-4"
+        >
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-foreground">Read aloud sections</p>
+            <p className="text-xs leading-relaxed text-muted">
+              Choose which note sections are included in narration. Technical
+              details, source notes, and hidden content are always excluded.
             </p>
-            <div className="space-y-2">
-              {READ_ALOUD_SECTION_TOGGLES.filter((entry) => entry.group === group).map(
-                (entry) => (
+          </div>
+
+          {(["default", "optional"] as const).map((group) => (
+            <div key={group} className="space-y-2">
+              <p className="text-xs font-medium text-muted">
+                {group === "default" ? "Included by default" : "Optional"}
+              </p>
+              <div className="space-y-2">
+                {READ_ALOUD_SECTION_TOGGLES.filter(
+                  (entry) => entry.group === group,
+                ).map((entry) => (
                   <label
                     key={entry.key}
                     className="flex cursor-pointer items-center gap-3 rounded-xl border border-border/70 px-3 py-2.5"
@@ -682,12 +909,12 @@ export function SettingsReadAloud({
                     />
                     <span className="text-sm text-foreground">{entry.label}</span>
                   </label>
-                ),
-              )}
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      ) : null}
 
       {error ? <p className="text-xs text-red-600">{error}</p> : null}
     </>

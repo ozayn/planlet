@@ -484,3 +484,57 @@ export async function updateLifeLabReadAloudSectionInclusionAction(
     };
   }
 }
+
+export async function updateCoachingOpenAiTtsVoiceAction(
+  voice: string,
+): Promise<SettingsActionResult> {
+  try {
+    const userId = await requireUserId();
+    const { updateCoachingOpenAiTtsVoice } = await import(
+      "@/lib/coaching/narration-preferences"
+    );
+    await updateCoachingOpenAiTtsVoice(userId, voice);
+    revalidateSettingsSurfaces();
+    revalidatePath("/coaching");
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to update Coaching OpenAI voice.",
+    };
+  }
+}
+
+export async function updateCoachingOpenAiNarrationStyleAction(
+  style: string,
+): Promise<SettingsActionResult> {
+  try {
+    const userId = await requireUserId();
+    const { isCoachingOpenAiNarrationStyle } = await import(
+      "@/lib/coaching/narration-config"
+    );
+    const { updateCoachingOpenAiNarrationStyle } = await import(
+      "@/lib/coaching/narration-preferences"
+    );
+
+    if (!isCoachingOpenAiNarrationStyle(style)) {
+      return { success: false, error: "Invalid Coaching narration style." };
+    }
+
+    await updateCoachingOpenAiNarrationStyle(userId, style);
+    revalidateSettingsSurfaces();
+    revalidatePath("/coaching");
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to update Coaching narration style.",
+    };
+  }
+}
