@@ -438,3 +438,49 @@ export async function updateLifeLabCustomNarrationInstructionsAction(
     };
   }
 }
+
+export async function updateLifeLabReadAloudAutoContinueAction(
+  autoContinue: boolean,
+): Promise<SettingsActionResult> {
+  try {
+    const userId = await requireUserId();
+    const { updateLifeLabReadAloudAutoContinue } = await import(
+      "@/lib/life-lab/read-aloud-preferences"
+    );
+    await updateLifeLabReadAloudAutoContinue(userId, autoContinue);
+    revalidateSettingsSurfaces();
+    revalidatePath("/life-lab", "layout");
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to update continue automatically setting.",
+    };
+  }
+}
+
+export async function updateLifeLabReadAloudSectionInclusionAction(
+  inclusion: import("@/lib/life-lab/read-aloud-sections").ReadAloudSectionInclusionPrefs,
+): Promise<SettingsActionResult> {
+  try {
+    const userId = await requireUserId();
+    const { updateLifeLabReadAloudSectionInclusion } = await import(
+      "@/lib/life-lab/read-aloud-preferences"
+    );
+    await updateLifeLabReadAloudSectionInclusion(userId, inclusion);
+    revalidateSettingsSurfaces();
+    revalidatePath("/life-lab", "layout");
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to update read aloud section preferences.",
+    };
+  }
+}

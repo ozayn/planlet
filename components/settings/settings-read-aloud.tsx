@@ -7,12 +7,15 @@ import {
   updateLifeLabCustomNarrationInstructionsAction,
   updateLifeLabOpenAiNarrationStyleAction,
   updateLifeLabOpenAiTtsVoiceAction,
+  updateLifeLabReadAloudAutoContinueAction,
   updateLifeLabReadAloudProviderAction,
+  updateLifeLabReadAloudSectionInclusionAction,
   updateLifeLabSpeechRateAction,
   updateLifeLabSpeechVoiceAction,
 } from "@/app/(app)/settings/actions";
 import { SettingsSection } from "@/components/settings/settings-section";
 import type { LifeLabReadAloudPreferences } from "@/lib/life-lab/read-aloud-preferences";
+import type { ReadAloudSectionInclusionPrefs } from "@/lib/life-lab/read-aloud-sections";
 import {
   NARRATION_PREVIEW_TEXT,
   OPENAI_NARRATION_STYLES,
@@ -46,6 +49,24 @@ import {
 const DEVICE_VOICE_PREVIEW_TEXT =
   "Hi, this is a preview of your selected reading voice.";
 
+const READ_ALOUD_SECTION_TOGGLES: Array<{
+  key: keyof ReadAloudSectionInclusionPrefs;
+  label: string;
+  group: "default" | "optional";
+}> = [
+  { key: "shortVersion", label: "Short version", group: "default" },
+  { key: "summary", label: "Summary", group: "default" },
+  { key: "coreArgument", label: "Core argument", group: "default" },
+  { key: "keyIdeas", label: "Key ideas", group: "default" },
+  { key: "mainLessons", label: "Main lessons", group: "default" },
+  { key: "whatToRemember", label: "What to remember", group: "default" },
+  { key: "peopleConcepts", label: "People / concepts", group: "optional" },
+  { key: "timeline", label: "Timeline", group: "optional" },
+  { key: "questions", label: "Questions", group: "optional" },
+  { key: "flashcards", label: "Flashcards", group: "optional" },
+  { key: "fullTranscript", label: "Full transcript", group: "optional" },
+];
+
 type SettingsReadAloudProps = {
   preferences: LifeLabReadAloudPreferences;
   openAiNarrationAvailable: boolean;
@@ -68,6 +89,10 @@ export function SettingsReadAloud({
   const [customInstructions, setCustomInstructions] = useState(
     preferences.customNarrationInstructions ?? "",
   );
+  const [autoContinue, setAutoContinue] = useState(preferences.readAloudAutoContinue);
+  const [sectionInclusion, setSectionInclusion] = useState(
+    preferences.readAloudSectionInclusion,
+  );
   const [deviceVoices, setDeviceVoices] = useState<
     ReturnType<typeof listAllDeviceSpeechVoices>
   >([]);
@@ -87,6 +112,8 @@ export function SettingsReadAloud({
     setOpenAiVoice(preferences.openAiTtsVoice);
     setOpenAiStyle(preferences.openAiNarrationStyle);
     setCustomInstructions(preferences.customNarrationInstructions ?? "");
+    setAutoContinue(preferences.readAloudAutoContinue);
+    setSectionInclusion(preferences.readAloudSectionInclusion);
   }, [preferences]);
 
   useEffect(() => {
@@ -215,6 +242,52 @@ export function SettingsReadAloud({
       if (!result.success) {
         setCustomInstructions(preferences.customNarrationInstructions ?? "");
         setError(result.error ?? "Couldn't save custom instructions.");
+        return;
+      }
+
+      router.refresh();
+    });
+  }
+
+  function saveAutoContinue(nextValue: boolean) {
+    if (nextValue === autoContinue || isPending) {
+      return;
+    }
+
+    setAutoContinue(nextValue);
+    setError(null);
+
+    startTransition(async () => {
+      const result = await updateLifeLabReadAloudAutoContinueAction(nextValue);
+
+      if (!result.success) {
+        setAutoContinue(autoContinue);
+        setError(result.error ?? "Couldn't save continue automatically setting.");
+        return;
+      }
+
+      router.refresh();
+    });
+  }
+
+  function saveSectionInclusion(
+    key: keyof ReadAloudSectionInclusionPrefs,
+    enabled: boolean,
+  ) {
+    if (sectionInclusion[key] === enabled || isPending) {
+      return;
+    }
+
+    const nextInclusion = { ...sectionInclusion, [key]: enabled };
+    setSectionInclusion(nextInclusion);
+    setError(null);
+
+    startTransition(async () => {
+      const result = await updateLifeLabReadAloudSectionInclusionAction(nextInclusion);
+
+      if (!result.success) {
+        setSectionInclusion(sectionInclusion);
+        setError(result.error ?? "Couldn't save read aloud sections.");
         return;
       }
 
@@ -546,6 +619,75 @@ export function SettingsReadAloud({
           </div>
         </div>
       )}
+
+      <div
+        id="read-aloud-continue"
+        className="space-y-3 border-t border-border-soft pt-4 scroll-mt-4"
+      >
+        <p className="text-sm font-medium text-foreground">Continue automatically</p>
+        <p className="text-xs leading-relaxed text-muted">
+          When on, narration moves to the next included section after each one
+          finishes. When off, playback stops after the current section.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {([true, false] as const).map((value) => (
+            <button
+              key={value ? "on" : "off"}
+              type="button"
+              disabled={isPending}
+              onClick={() => saveAutoContinue(value)}
+              className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
+                autoContinue === value
+                  ? "bg-accent-cream text-foreground"
+                  : "border border-border/70 text-muted hover:bg-accent-cream/50 hover:text-foreground"
+              }`}
+            >
+              {value ? "On" : "Off"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div
+        id="read-aloud-sections"
+        className="space-y-4 border-t border-border-soft pt-4 scroll-mt-4"
+      >
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-foreground">Read aloud sections</p>
+          <p className="text-xs leading-relaxed text-muted">
+            Choose which note sections are included in narration. Technical
+            details, source notes, and hidden content are always excluded.
+          </p>
+        </div>
+
+        {(["default", "optional"] as const).map((group) => (
+          <div key={group} className="space-y-2">
+            <p className="text-xs font-medium text-muted">
+              {group === "default" ? "Included by default" : "Optional"}
+            </p>
+            <div className="space-y-2">
+              {READ_ALOUD_SECTION_TOGGLES.filter((entry) => entry.group === group).map(
+                (entry) => (
+                  <label
+                    key={entry.key}
+                    className="flex cursor-pointer items-center gap-3 rounded-xl border border-border/70 px-3 py-2.5"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={sectionInclusion[entry.key]}
+                      disabled={isPending}
+                      onChange={(event) =>
+                        saveSectionInclusion(entry.key, event.target.checked)
+                      }
+                    />
+                    <span className="text-sm text-foreground">{entry.label}</span>
+                  </label>
+                ),
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
 
       {error ? <p className="text-xs text-red-600">{error}</p> : null}
     </>

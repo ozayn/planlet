@@ -1,212 +1,66 @@
-import { isHiddenTechnicalHeading } from "@/lib/life-lab/hidden-markdown-sections";
-import { prepareLifeLabMarkdownForReading } from "@/lib/life-lab/markdown-display";
 import {
-  markdownToSpeechText,
-  plainTextToSpeechText,
-  sanitizeSpeechText,
-} from "@/lib/life-lab/speech";
+  buildReadAloudSections,
+  readAloudSectionsToPlainText,
+  type BuildReadAloudSectionsInput,
+  type ReadAloudSection,
+} from "@/lib/life-lab/read-aloud-sections";
 
-const MERMAID_BLOCK_PATTERN = /```mermaid[\s\S]*?```/gi;
-const CODE_BLOCK_PATTERN = /```[\s\S]*?```/g;
-const FLASHCARD_SECTION_PATTERN =
-  /^#{1,6}\s+(?:Optional Flashcards|Flashcards|Study Cards)\s*[\r\n]+[\s\S]*$/gim;
-
-const SKIPPED_SECTION_PATTERNS = [
-  /^source\s*notes?$/i,
-  /^developer information$/i,
-  /^processing notes$/i,
-  /^internal metadata$/i,
-  /^extraction metadata$/i,
-  /^visual anchor$/i,
-  /^filter\b/i,
-  /^debug\b/i,
-  /^transcript availability$/i,
-  /^drive metadata$/i,
-] as const;
-
-const PREFERRED_SECTION_PATTERNS = [
-  /^short version$/i,
-  /^summary$/i,
-  /^core argument$/i,
-  /^key ideas?$/i,
-  /^people and concepts$/i,
-  /^main lessons?$/i,
-  /^questions?$/i,
-  /^what to remember$/i,
-] as const;
-
+/** @deprecated Use ReadAloudSection from read-aloud-sections.ts */
 export type NarrationSection = {
   label: string;
   body: string;
 };
 
-export type NarrationDocumentInput = {
-  title: string;
-  content: string;
+export type NarrationDocumentInput = BuildReadAloudSectionsInput & {
   includeFlashcards?: boolean;
-  flashcards?: Array<{ question: string; answer: string }>;
 };
 
-function shouldSkipSectionTitle(title: string): boolean {
-  const normalized = title.trim();
-
-  if (!normalized) {
-    return true;
-  }
-
-  if (isHiddenTechnicalHeading(normalized)) {
-    return true;
-  }
-
-  return SKIPPED_SECTION_PATTERNS.some((pattern) => pattern.test(normalized));
-}
-
-function cleanSectionBody(body: string): string {
-  return markdownToSpeechText(
-    body
-      .replace(MERMAID_BLOCK_PATTERN, " ")
-      .replace(CODE_BLOCK_PATTERN, " ")
-      .replace(FLASHCARD_SECTION_PATTERN, " "),
-  );
-}
-
-function splitMarkdownSections(content: string): NarrationSection[] {
-  const normalized = content.replace(/\r\n/g, "\n").trim();
-
-  if (!normalized) {
-    return [];
-  }
-
-  const lines = normalized.split("\n");
-  const sections: NarrationSection[] = [];
-  let currentLabel = "Introduction";
-  let currentLines: string[] = [];
-
-  function pushCurrentSection(): void {
-    const body = cleanSectionBody(currentLines.join("\n"));
-
-    if (body) {
-      sections.push({
-        label: currentLabel,
-        body,
-      });
-    }
-
-    currentLines = [];
-  }
-
-  for (const line of lines) {
-    const headingMatch = line.match(/^(#{1,6})\s+(.+?)\s*#*\s*$/);
-
-    if (headingMatch) {
-      pushCurrentSection();
-      currentLabel = headingMatch[2]?.trim() || "Section";
-
-      if (shouldSkipSectionTitle(currentLabel)) {
-        currentLabel = "";
-        currentLines = [];
-        continue;
-      }
-
-      continue;
-    }
-
-    if (!currentLabel) {
-      continue;
-    }
-
-    currentLines.push(line);
-  }
-
-  pushCurrentSection();
-  return sections;
-}
-
-function orderNarrationSections(sections: NarrationSection[]): NarrationSection[] {
-  const preferred: NarrationSection[] = [];
-  const regular: NarrationSection[] = [];
-
-  for (const section of sections) {
-    const isPreferred = PREFERRED_SECTION_PATTERNS.some((pattern) =>
-      pattern.test(section.label),
-    );
-
-    if (isPreferred) {
-      preferred.push(section);
-    } else {
-      regular.push(section);
-    }
-  }
-
-  return [...preferred, ...regular];
-}
-
-function buildFlashcardSections(
-  flashcards: Array<{ question: string; answer: string }>,
-): NarrationSection[] {
-  const lines: string[] = [];
-
-  flashcards.forEach((card, index) => {
-    const question = plainTextToSpeechText(card.question);
-    const answer = plainTextToSpeechText(card.answer);
-
-    if (!question) {
-      return;
-    }
-
-    lines.push(`Flashcard ${index + 1}. Question. ${question}.`);
-
-    if (answer) {
-      lines.push(`Answer. ${answer}.`);
-    }
-  });
-
-  const body = sanitizeSpeechText(lines.join(" "));
-
-  if (!body) {
-    return [];
-  }
-
-  return [{ label: "Flashcards", body }];
-}
-
-function normalizeHeadingTitle(value: string): string {
-  return value.trim().toLowerCase();
+function toNarrationSection(section: ReadAloudSection): NarrationSection {
+  return {
+    label: section.title,
+    body: section.text,
+  };
 }
 
 export function buildNarrationDocument(
   input: NarrationDocumentInput,
 ): NarrationSection[] {
-  const title = sanitizeSpeechText(input.title.trim());
-  const sections: NarrationSection[] = [];
+  return buildReadAloudSections({
+    title: input.title,
+    content: input.content,
+    flashcards: input.includeFlashcards ? input.flashcards : undefined,
+    inclusion: input.inclusion,
+  }).map(toNarrationSection);
+}
 
-  const markdownSections = orderNarrationSections(
-    splitMarkdownSections(prepareLifeLabMarkdownForReading(input.content)),
-  );
-
-  const firstMarkdownLabel = markdownSections[0]?.label ?? null;
-  const titleDuplicatesFirstSection =
-    title.length > 0 &&
-    firstMarkdownLabel != null &&
-    normalizeHeadingTitle(firstMarkdownLabel) === normalizeHeadingTitle(title);
-
-  if (title && !titleDuplicatesFirstSection) {
-    sections.push({ label: title, body: title });
-  }
-
-  sections.push(...markdownSections);
-
-  if (input.includeFlashcards && input.flashcards?.length) {
-    sections.push(...buildFlashcardSections(input.flashcards));
-  }
-
-  return sections.filter((section) => section.body.trim().length > 0);
+export function buildReadAloudSectionsFromNote(
+  input: NarrationDocumentInput,
+): ReadAloudSection[] {
+  return buildReadAloudSections({
+    title: input.title,
+    content: input.content,
+    flashcards: input.includeFlashcards ? input.flashcards : undefined,
+    inclusion: input.inclusion,
+  });
 }
 
 export function narrationDocumentToPlainText(
-  sections: NarrationSection[],
+  sections: NarrationSection[] | ReadAloudSection[],
 ): string {
-  return sections
-    .map((section) => `${section.label}. ${section.body}`)
-    .join("\n\n");
+  if (sections.length === 0) {
+    return "";
+  }
+
+  if ("body" in sections[0]) {
+    return (sections as NarrationSection[])
+      .map((section) => `${section.label}. ${section.body}`)
+      .join("\n\n");
+  }
+
+  return readAloudSectionsToPlainText(sections as ReadAloudSection[]);
 }
+
+export {
+  buildReadAloudSections,
+  type ReadAloudSection,
+} from "@/lib/life-lab/read-aloud-sections";

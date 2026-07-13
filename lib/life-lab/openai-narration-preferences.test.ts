@@ -87,21 +87,32 @@ describe("open ai narration preferences", () => {
       voice: british.voice,
       narrationStyle: OPENAI_NARRATION_STYLES.BRITISH_FEMALE_CALM.slug,
       instructionsFingerprint: british.instructionsFingerprint,
+      readAloudSectionId: "summary",
     });
     const neutralKey = buildNarrationCacheKey({
       ...base,
       voice: neutral.voice,
       narrationStyle: OPENAI_NARRATION_STYLES.NEUTRAL_EDUCATIONAL.slug,
       instructionsFingerprint: neutral.instructionsFingerprint,
+      readAloudSectionId: "summary",
     });
     const shimmerKey = buildNarrationCacheKey({
       ...base,
       voice: "shimmer",
       narrationStyle: OPENAI_NARRATION_STYLES.BRITISH_FEMALE_CALM.slug,
       instructionsFingerprint: british.instructionsFingerprint,
+      readAloudSectionId: "summary",
+    });
+    const otherSectionKey = buildNarrationCacheKey({
+      ...base,
+      voice: british.voice,
+      narrationStyle: OPENAI_NARRATION_STYLES.BRITISH_FEMALE_CALM.slug,
+      instructionsFingerprint: british.instructionsFingerprint,
+      readAloudSectionId: "key-ideas",
     });
 
     assert.notEqual(britishKey, neutralKey);
     assert.notEqual(britishKey, shimmerKey);
+    assert.notEqual(britishKey, otherSectionKey);
   });
 });

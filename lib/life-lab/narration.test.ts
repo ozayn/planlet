@@ -17,6 +17,7 @@ import {
   buildNarrationDocument,
   narrationDocumentToPlainText,
 } from "@/lib/life-lab/narration-text";
+import { buildReadAloudSections } from "@/lib/life-lab/read-aloud-sections";
 
 describe("life lab narration text", () => {
   it("builds a narration document with title and readable sections", () => {
@@ -67,10 +68,13 @@ describe("life lab narration text", () => {
       content: "## Summary\nA note.",
       includeFlashcards: true,
       flashcards: [{ question: "What is chiaroscuro?", answer: "Light and shadow." }],
+      inclusion: { flashcards: true },
     });
 
-    assert.equal(sections.at(-1)?.label, "Flashcards");
-    assert.match(sections.at(-1)?.body ?? "", /chiaroscuro/i);
+    const flashcards = sections.find((section) => section.label === "Flashcards");
+
+    assert.ok(flashcards);
+    assert.match(flashcards.body ?? "", /chiaroscuro/i);
   });
   it("reports empty narration text summaries", () => {
     const summary = summarizeNoteNarrationText({
@@ -86,7 +90,7 @@ describe("life lab narration text", () => {
 
 describe("life lab narration chunks", () => {
   it("chunks long narration by safe character limits", () => {
-    const sections = buildNarrationDocument({
+    const sections = buildReadAloudSections({
       title: "Long note",
       content: `## Summary\n${"Word ".repeat(900)}`,
     });
@@ -94,6 +98,7 @@ describe("life lab narration chunks", () => {
 
     assert.ok(chunks.length > 1);
     assert.ok(chunks.every((chunk) => chunk.text.length <= 500));
+    assert.ok(chunks.some((chunk) => chunk.sectionTitle === "Summary"));
   });
 });
 
@@ -112,8 +117,8 @@ describe("life lab narration cache keys", () => {
       chunkIndex: 0,
     };
 
-    const coral = buildNarrationCacheKey({ ...base, voice: "coral" });
-    const alloy = buildNarrationCacheKey({ ...base, voice: "alloy" });
+    const coral = buildNarrationCacheKey({ ...base, voice: "coral", readAloudSectionId: "summary" });
+    const alloy = buildNarrationCacheKey({ ...base, voice: "alloy", readAloudSectionId: "summary" });
 
     assert.notEqual(coral, alloy);
   });
@@ -135,10 +140,12 @@ describe("life lab narration cache keys", () => {
     const older = buildNarrationCacheKey({
       ...base,
       noteModifiedTime: "2026-07-10T10:00:00.000Z",
+      readAloudSectionId: "summary",
     });
     const newer = buildNarrationCacheKey({
       ...base,
       noteModifiedTime: "2026-07-11T10:00:00.000Z",
+      readAloudSectionId: "summary",
     });
 
     assert.notEqual(older, newer);

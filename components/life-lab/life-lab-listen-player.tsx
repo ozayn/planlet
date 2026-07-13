@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ChevronLeft,
+  ChevronRight,
   Loader2,
   MoreHorizontal,
   Pause,
@@ -16,9 +18,16 @@ import {
 import { useOpenAiNarration } from "@/components/life-lab/use-openai-narration";
 import { useSpeechSynthesis } from "@/components/life-lab/use-speech-synthesis";
 import type { LifeLabReadAloudPreferences } from "@/lib/life-lab/read-aloud-preferences";
-import { buildNarrationPlaybackChunks } from "@/lib/life-lab/narration-chunks";
+import { buildReadAloudPlaybackPlan } from "@/lib/life-lab/narration-chunks";
 import { READ_ALOUD_PROVIDER_LABELS } from "@/lib/life-lab/narration-config";
-import { buildNarrationDocument } from "@/lib/life-lab/narration-text";
+import { buildReadAloudSectionsFromNote } from "@/lib/life-lab/narration-text";
+import { findReadAloudSectionIndex } from "@/lib/life-lab/read-aloud-sections";
+import {
+  readStoredResumeSectionId,
+  readStoredStartSectionId,
+  writeStoredResumeSectionId,
+  writeStoredStartSectionId,
+} from "@/lib/life-lab/read-aloud-session";
 import {
   formatSpeechRate,
   isSpeechSynthesisSupported,
@@ -95,6 +104,29 @@ function ListenPrimaryButton({
   );
 }
 
+function resolveDefaultStartSectionId(
+  fileId: string,
+  sectionIds: string[],
+): string {
+  if (sectionIds.length === 0) {
+    return "";
+  }
+
+  const storedStart = readStoredStartSectionId(fileId);
+
+  if (storedStart && sectionIds.includes(storedStart)) {
+    return storedStart;
+  }
+
+  const storedResume = readStoredResumeSectionId(fileId);
+
+  if (storedResume && sectionIds.includes(storedResume)) {
+    return storedResume;
+  }
+
+  return sectionIds[0] ?? "";
+}
+
 export function LifeLabListenPlayer({
   title,
   content,
@@ -108,36 +140,58 @@ export function LifeLabListenPlayer({
   onSwitchToDevice,
 }: LifeLabListenPlayerProps) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [expanded, setExpanded] = useState(false);
+  const [sectionMenuOpen, setSectionMenuOpen] = useState(false);
   const [playbackRate, setPlaybackRate] = useState<SpeechRate>(
     preferences.speechRate,
   );
   const [showCancel, setShowCancel] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const sectionMenuRef = useRef<HTMLDivElement>(null);
   const provider = preferences.provider;
-  const useOpenAi =
-    provider === "OPENAI" && openAiNarrationAvailable;
+  const useOpenAi = provider === "OPENAI" && openAiNarrationAvailable;
+  const autoContinue = preferences.readAloudAutoContinue;
 
   useEffect(() => {
     setPlaybackRate(preferences.speechRate);
   }, [preferences.speechRate]);
 
-  const playbackChunks = useMemo(() => {
-    const sections = buildNarrationDocument({
+  const playbackPlan = useMemo(() => {
+    const sections = buildReadAloudSectionsFromNote({
       title,
       content,
       includeFlashcards,
+      inclusion: preferences.readAloudSectionInclusion,
     });
 
-    return buildNarrationPlaybackChunks(sections);
-  }, [title, content, includeFlashcards]);
+    return buildReadAloudPlaybackPlan(sections);
+  }, [title, content, includeFlashcards, preferences.readAloudSectionInclusion]);
 
-  const hasText = playbackChunks.length > 0;
-  const deviceSupported = isSpeechSynthesisSupported();
+  const readableSections = playbackPlan.sections;
+  const sectionCount = readableSections.length;
+  const defaultStartSectionId = useMemo(
+    () => resolveDefaultStartSectionId(fileId, readableSections.map((s) => s.id)),
+    [fileId, readableSections],
+  );
+  const [startSectionId, setStartSectionId] = useState(defaultStartSectionId);
+
+  useEffect(() => {
+    setStartSectionId(defaultStartSectionId);
+  }, [defaultStartSectionId]);
+
+  const handleSectionChange = useCallback(
+    (sectionIdValue: string | null) => {
+      if (sectionIdValue) {
+        writeStoredResumeSectionId(fileId, sectionIdValue);
+      }
+    },
+    [fileId],
+  );
 
   const deviceSpeech = useSpeechSynthesis({
     rate: playbackRate,
     initialVoiceId: preferences.speechVoiceId,
+    autoContinue,
+    onSectionChange: handleSectionChange,
   });
 
   const openAiNarration = useOpenAiNarration({
@@ -147,6 +201,8 @@ export function LifeLabListenPlayer({
     noteTitle: title,
     enabled: useOpenAi,
     playbackRate,
+    autoContinue,
+    onSectionChange: handleSectionChange,
   });
 
   const isPreparing = useOpenAi && openAiNarration.isPreparing;
@@ -160,15 +216,24 @@ export function LifeLabListenPlayer({
   const isFinished = useOpenAi
     ? openAiNarration.isFinished
     : deviceSpeech.isFinished;
-  const isActive = isPlaying || isPaused;
+  const awaitingSectionContinue = !useOpenAi && deviceSpeech.awaitingSectionContinue;
+  const isActive = isPlaying || isPaused || awaitingSectionContinue;
   const hasError =
     useOpenAi &&
     (openAiNarration.status === "error" ||
       openAiNarration.status === "unavailable");
 
-  const currentSectionLabel = useOpenAi
-    ? openAiNarration.sectionLabel
-    : playbackChunks[deviceSpeech.currentSequenceIndex]?.sectionLabel ?? null;
+  const currentSectionIndex = useOpenAi
+    ? openAiNarration.currentSectionIndex
+    : deviceSpeech.currentSectionIndex;
+  const currentSectionTitle =
+    readableSections[currentSectionIndex]?.title ??
+    readableSections[findReadAloudSectionIndex(readableSections, startSectionId)]
+      ?.title ??
+    null;
+
+  const canGoPrevious = currentSectionIndex > 0;
+  const canGoNext = currentSectionIndex < sectionCount - 1;
 
   useEffect(() => {
     if (!isPreparing) {
@@ -184,41 +249,77 @@ export function LifeLabListenPlayer({
   }, [isPreparing]);
 
   useEffect(() => {
-    if (!menuOpen) {
+    if (!menuOpen && !sectionMenuOpen) {
       return;
     }
 
     function handlePointerDown(event: MouseEvent) {
-      if (!menuRef.current?.contains(event.target as Node)) {
+      const target = event.target as Node;
+
+      if (
+        !menuRef.current?.contains(target) &&
+        !sectionMenuRef.current?.contains(target)
+      ) {
         setMenuOpen(false);
+        setSectionMenuOpen(false);
       }
     }
 
     document.addEventListener("mousedown", handlePointerDown);
     return () => document.removeEventListener("mousedown", handlePointerDown);
-  }, [menuOpen]);
+  }, [menuOpen, sectionMenuOpen]);
+
+  const beginPlayback = useCallback(
+    (options?: { startSectionId?: string; playOnlySection?: boolean }) => {
+      const resolvedStartSectionId =
+        options?.startSectionId ?? startSectionId ?? readableSections[0]?.id ?? "";
+
+      if (resolvedStartSectionId) {
+        writeStoredStartSectionId(fileId, resolvedStartSectionId);
+      }
+
+      if (useOpenAi) {
+        void openAiNarration.play(false, {
+          startSectionId: resolvedStartSectionId,
+          playOnlySection: options?.playOnlySection ?? false,
+        });
+        return;
+      }
+
+      if (isSpeechSynthesisSupported()) {
+        deviceSpeech.speakPlan(playbackPlan, {
+          startSectionId: resolvedStartSectionId,
+          playOnlySection: options?.playOnlySection ?? false,
+          autoContinue,
+        });
+      }
+    },
+    [
+      autoContinue,
+      deviceSpeech,
+      fileId,
+      openAiNarration,
+      playbackPlan,
+      readableSections,
+      startSectionId,
+      useOpenAi,
+    ],
+  );
 
   const handleStart = useCallback(() => {
-    if (useOpenAi) {
-      void openAiNarration.play(false);
-      return;
-    }
-
-    if (deviceSupported) {
-      deviceSpeech.speak(playbackChunks.map((chunk) => chunk.text));
-    }
-  }, [deviceSpeech, deviceSupported, openAiNarration, playbackChunks, useOpenAi]);
+    beginPlayback();
+  }, [beginPlayback]);
 
   const handleReplay = useCallback(() => {
     if (useOpenAi) {
       openAiNarration.stop();
-      void openAiNarration.play(false);
+      beginPlayback();
       return;
     }
 
     deviceSpeech.stop();
-    deviceSpeech.speak(playbackChunks.map((chunk) => chunk.text));
-  }, [deviceSpeech, openAiNarration, playbackChunks, useOpenAi]);
+    beginPlayback();
+  }, [beginPlayback, deviceSpeech, openAiNarration, useOpenAi]);
 
   const handleStop = useCallback(() => {
     if (useOpenAi) {
@@ -247,6 +348,54 @@ export function LifeLabListenPlayer({
     deviceSpeech.resume();
   }, [deviceSpeech, openAiNarration, useOpenAi]);
 
+  const handlePreviousSection = useCallback(() => {
+    if (useOpenAi) {
+      void openAiNarration.previousSection();
+      return;
+    }
+
+    deviceSpeech.previousSection();
+  }, [deviceSpeech, openAiNarration, useOpenAi]);
+
+  const handleNextSection = useCallback(() => {
+    if (useOpenAi) {
+      void openAiNarration.nextSection();
+      return;
+    }
+
+    deviceSpeech.nextSection();
+  }, [deviceSpeech, openAiNarration, useOpenAi]);
+
+  const handleJumpToSection = useCallback(
+    (sectionIdValue: string, playOnlySection: boolean) => {
+      setSectionMenuOpen(false);
+      setStartSectionId(sectionIdValue);
+      writeStoredStartSectionId(fileId, sectionIdValue);
+
+      if (isActive) {
+        if (useOpenAi) {
+          void openAiNarration.jumpToSection(sectionIdValue, playOnlySection);
+        } else {
+          deviceSpeech.jumpToSection(sectionIdValue, playOnlySection);
+        }
+        return;
+      }
+
+      beginPlayback({
+        startSectionId: sectionIdValue,
+        playOnlySection,
+      });
+    },
+    [
+      beginPlayback,
+      deviceSpeech,
+      fileId,
+      isActive,
+      openAiNarration,
+      useOpenAi,
+    ],
+  );
+
   const cyclePlaybackRate = useCallback(() => {
     setPlaybackRate((current) => {
       const index = SPEECH_RATE_OPTIONS.indexOf(current);
@@ -256,11 +405,11 @@ export function LifeLabListenPlayer({
     });
   }, [deviceSpeech]);
 
-  if (!hasText) {
+  if (sectionCount === 0) {
     return null;
   }
 
-  if (!deviceSupported && !openAiNarrationAvailable) {
+  if (!isSpeechSynthesisSupported() && !openAiNarrationAvailable) {
     return (
       <p className={`text-xs text-muted ${className}`}>
         Narration unavailable in this browser.
@@ -281,13 +430,16 @@ export function LifeLabListenPlayer({
 
   if (isPreparing) {
     primaryAriaLabel = "Preparing narration";
-  } else if (isPaused) {
+  } else if (isPaused || awaitingSectionContinue) {
     primaryAriaLabel = "Resume narration";
   } else if (isActive) {
     primaryAriaLabel = "Pause narration";
   } else if (isFinished) {
     primaryAriaLabel = "Replay narration";
   }
+
+  const progressCountLabel =
+    sectionCount > 1 ? `${currentSectionIndex + 1} of ${sectionCount}` : null;
 
   return (
     <div className={`space-y-1.5 ${className}`} ref={menuRef}>
@@ -378,24 +530,75 @@ export function LifeLabListenPlayer({
       ) : isActive ? (
         <div className="flex flex-wrap items-center gap-2 md:flex-nowrap">
           <IconButton
-            onClick={isPaused ? handleResume : handlePause}
+            onClick={
+              isPaused || awaitingSectionContinue ? handleResume : handlePause
+            }
             active
-            ariaLabel={isPaused ? "Resume narration" : "Pause narration"}
+            ariaLabel={
+              isPaused || awaitingSectionContinue
+                ? "Resume narration"
+                : "Pause narration"
+            }
           >
-            {isPaused ? (
+            {isPaused || awaitingSectionContinue ? (
               <Play className="size-3.5" aria-hidden="true" />
             ) : (
               <Pause className="size-3.5" aria-hidden="true" />
             )}
           </IconButton>
 
-          {currentSectionLabel ? (
+          {currentSectionTitle ? (
             <span
-              className="min-w-0 max-w-[12rem] truncate text-xs text-muted md:max-w-[16rem]"
-              title={currentSectionLabel}
+              className="min-w-0 max-w-[10rem] truncate text-xs text-muted md:max-w-[12rem]"
+              title={currentSectionTitle}
             >
-              {currentSectionLabel}
+              {currentSectionTitle}
             </span>
+          ) : null}
+
+          {progressCountLabel ? (
+            <span className="text-[0.6875rem] text-muted-light">{progressCountLabel}</span>
+          ) : null}
+
+          {sectionCount > 1 ? (
+            <>
+              <IconButton
+                onClick={() => void handlePreviousSection()}
+                disabled={!canGoPrevious}
+                ariaLabel="Previous narration section"
+              >
+                <ChevronLeft className="size-3.5" aria-hidden="true" />
+              </IconButton>
+              <IconButton
+                onClick={() => void handleNextSection()}
+                disabled={!canGoNext}
+                ariaLabel="Next narration section"
+              >
+                <ChevronRight className="size-3.5" aria-hidden="true" />
+              </IconButton>
+            </>
+          ) : null}
+
+          {sectionCount > 1 ? (
+            <div className="relative" ref={sectionMenuRef}>
+              <label className="sr-only" htmlFor={`read-aloud-section-${fileId}`}>
+                Section
+              </label>
+              <select
+                id={`read-aloud-section-${fileId}`}
+                value={readableSections[currentSectionIndex]?.id ?? startSectionId}
+                onChange={(event) => {
+                  handleJumpToSection(event.target.value, false);
+                }}
+                className="max-w-[9rem] rounded-full border border-border/70 bg-transparent px-2 py-1 text-xs text-muted"
+              >
+                {readableSections.map((section) => (
+                  <option key={section.id} value={section.id}>
+                    {section.title}
+                  </option>
+                ))}
+              </select>
+            </div>
           ) : null}
 
           <IconButton
@@ -417,6 +620,28 @@ export function LifeLabListenPlayer({
                 <p className="px-2.5 py-1.5 text-[0.6875rem] text-muted-light">
                   {providerLabel}
                 </p>
+                {sectionCount > 1
+                  ? readableSections.map((section) => (
+                      <div key={section.id} className="border-t border-border-soft/70">
+                        <button
+                          type="button"
+                          className="flex w-full items-center rounded-lg px-2.5 py-2 text-left text-xs text-muted hover:bg-accent-cream/50 hover:text-foreground"
+                          onClick={() =>
+                            handleJumpToSection(section.id, false)
+                          }
+                        >
+                          Play from {section.title}
+                        </button>
+                        <button
+                          type="button"
+                          className="flex w-full items-center rounded-lg px-2.5 py-2 text-left text-xs text-muted hover:bg-accent-cream/50 hover:text-foreground"
+                          onClick={() => handleJumpToSection(section.id, true)}
+                        >
+                          Play only {section.title}
+                        </button>
+                      </div>
+                    ))
+                  : null}
                 {useOpenAi ? (
                   <button
                     type="button"
@@ -465,20 +690,10 @@ export function LifeLabListenPlayer({
                       <SkipForward className="size-3.5" aria-hidden="true" />
                       Forward 15 sec
                     </button>
-                    <button
-                      type="button"
-                      className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-xs text-muted hover:bg-accent-cream/50 hover:text-foreground"
-                      onClick={() => {
-                        setMenuOpen(false);
-                        void openAiNarration.nextSection();
-                      }}
-                    >
-                      Next section
-                    </button>
                   </>
                 ) : null}
                 <Link
-                  href="/settings"
+                  href="/settings/voice-audio"
                   className="block rounded-lg px-2.5 py-2 text-xs text-muted hover:bg-accent-cream/50 hover:text-foreground"
                   onClick={() => setMenuOpen(false)}
                 >
@@ -487,29 +702,30 @@ export function LifeLabListenPlayer({
               </div>
             ) : null}
           </div>
-
-          {expanded && useOpenAi && openAiNarration.chunkCount > 0 ? (
-            <span className="w-full text-[0.6875rem] text-muted-light md:w-auto">
-              Section {openAiNarration.currentChunkIndex + 1} of{" "}
-              {openAiNarration.chunkCount}
-            </span>
-          ) : null}
-
-          {useOpenAi && openAiNarration.chunkCount > 1 ? (
-            <button
-              type="button"
-              onClick={() => setExpanded((value) => !value)}
-              className="text-[0.6875rem] text-muted-light underline-offset-2 hover:underline"
-            >
-              {expanded ? "Less" : "Expand"}
-            </button>
-          ) : null}
         </div>
       ) : (
-        <ListenPrimaryButton onClick={handleStart} ariaLabel={primaryAriaLabel}>
-          <Play className="size-3.5" aria-hidden="true" />
-          Listen
-        </ListenPrimaryButton>
+        <div className="flex flex-wrap items-center gap-2">
+          {sectionCount > 1 ? (
+            <label className="flex items-center gap-1.5 text-xs text-muted">
+              <span>Start from</span>
+              <select
+                value={startSectionId}
+                onChange={(event) => setStartSectionId(event.target.value)}
+                className="max-w-[10rem] rounded-full border border-border/70 bg-transparent px-2 py-1 text-xs text-foreground"
+              >
+                {readableSections.map((section) => (
+                  <option key={section.id} value={section.id}>
+                    {section.title}
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+          <ListenPrimaryButton onClick={handleStart} ariaLabel={primaryAriaLabel}>
+            <Play className="size-3.5" aria-hidden="true" />
+            Listen
+          </ListenPrimaryButton>
+        </div>
       )}
 
       {!useOpenAi && deviceSpeech.voiceUnavailableNotice ? (

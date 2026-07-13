@@ -7,9 +7,10 @@ import {
   hashNarrationContent,
 } from "@/lib/life-lab/narration-cache-key";
 import {
-  buildNarrationPlaybackChunks,
+  buildReadAloudPlaybackPlan,
   estimateNarrationInputCharacters,
   type NarrationPlaybackChunk,
+  type ReadAloudPlaybackPlan,
 } from "@/lib/life-lab/narration-chunks";
 import {
   getDefaultOpenAiNarrationModel,
@@ -32,7 +33,8 @@ import {
   narrationErrorHttpStatus,
   type NarrationErrorCategory,
 } from "@/lib/life-lab/narration-errors";
-import { buildNarrationDocument } from "@/lib/life-lab/narration-text";
+import { buildReadAloudSectionsFromNote } from "@/lib/life-lab/narration-text";
+import type { ReadAloudSectionInclusionPrefs } from "@/lib/life-lab/read-aloud-sections";
 import { getNarrationStorageDir } from "@/lib/life-lab/narration-storage-dir";
 import { prisma } from "@/lib/prisma";
 import {
@@ -50,6 +52,7 @@ export type NarrationChunkRequest = {
   chunkIndex: number;
   userId: string;
   narrationSettings: ResolvedOpenAiNarrationSettings;
+  sectionInclusion?: ReadAloudSectionInclusionPrefs;
   model?: string;
   regenerate?: boolean;
   includeFlashcards?: boolean;
@@ -59,6 +62,8 @@ export type NarrationChunkRequest = {
 export type NarrationChunkResult = {
   chunkIndex: number;
   chunkCount: number;
+  sectionId: string;
+  sectionIndex: number;
   sectionLabel: string;
   cacheKey: string;
   cached: boolean;
@@ -76,41 +81,58 @@ export type NarrationTextSummary = {
   isEmpty: boolean;
 };
 
+export function buildNoteReadAloudPlan(
+  note: Pick<LifeLabNote, "title" | "content" | "flashcards">,
+  options?: {
+    includeFlashcards?: boolean;
+    inclusion?: ReadAloudSectionInclusionPrefs;
+  },
+): ReadAloudPlaybackPlan {
+  const sections = buildReadAloudSectionsFromNote({
+    title: note.title,
+    content: note.content,
+    includeFlashcards: options?.includeFlashcards ?? true,
+    flashcards: note.flashcards,
+    inclusion: options?.inclusion,
+  });
+
+  return buildReadAloudPlaybackPlan(sections);
+}
+
 export function summarizeNoteNarrationText(
   note: Pick<LifeLabNote, "title" | "content" | "flashcards">,
   includeFlashcards = true,
+  inclusion?: ReadAloudSectionInclusionPrefs,
 ): NarrationTextSummary {
-  const chunks = buildNoteNarrationChunks(note, includeFlashcards);
+  const plan = buildNoteReadAloudPlan(note, { includeFlashcards, inclusion });
 
   return {
-    characterCount: estimateNarrationInputCharacters(chunks),
-    sectionCount: chunks.length,
-    firstSectionLabel: chunks[0]?.sectionLabel ?? null,
-    isEmpty: chunks.length === 0,
+    characterCount: estimateNarrationInputCharacters(plan.chunks),
+    sectionCount: plan.sections.length,
+    firstSectionLabel: plan.sections[0]?.title ?? null,
+    isEmpty: plan.chunks.length === 0,
   };
 }
 
 export function buildNoteNarrationChunks(
   note: Pick<LifeLabNote, "title" | "content" | "flashcards">,
   includeFlashcards = true,
+  inclusion?: ReadAloudSectionInclusionPrefs,
 ): NarrationPlaybackChunk[] {
-  const sections = buildNarrationDocument({
-    title: note.title,
-    content: note.content,
-    includeFlashcards,
-    flashcards: note.flashcards,
-  });
-
-  return buildNarrationPlaybackChunks(sections);
+  return buildNoteReadAloudPlan(note, { includeFlashcards, inclusion }).chunks;
 }
 
 export function getNoteNarrationContentHash(
   note: Pick<LifeLabNote, "title" | "content" | "flashcards">,
   includeFlashcards = true,
+  inclusion?: ReadAloudSectionInclusionPrefs,
 ): string {
-  const chunks = buildNoteNarrationChunks(note, includeFlashcards);
+  const plan = buildNoteReadAloudPlan(note, { includeFlashcards, inclusion });
+
   return hashNarrationContent(
-    chunks.map((chunk) => `${chunk.sectionLabel}:${chunk.text}`).join("\n"),
+    plan.chunks
+      .map((chunk) => `${chunk.sectionId}:${chunk.text}`)
+      .join("\n"),
   );
 }
 
@@ -170,16 +192,21 @@ export async function getOrCreateNarrationChunk(
   input: NarrationChunkRequest,
 ): Promise<NarrationChunkResult> {
   const noteId = input.note.fileId;
-  const chunks = buildNoteNarrationChunks(
-    input.note,
-    input.includeFlashcards ?? true,
-  );
+  const plan = buildNoteReadAloudPlan(input.note, {
+    includeFlashcards: input.includeFlashcards ?? true,
+    inclusion: input.sectionInclusion,
+  });
+  const chunks = plan.chunks;
 
   if (chunks.length === 0) {
     logNarrationDiagnostic({
       stage: "text-extraction",
       noteId,
-      ...summarizeNoteNarrationText(input.note, input.includeFlashcards ?? true),
+      ...summarizeNoteNarrationText(
+        input.note,
+        input.includeFlashcards ?? true,
+        input.sectionInclusion,
+      ),
       errorType: "empty_narration_text",
       errorMessage: "No readable narration text was extracted from the note.",
     });
@@ -199,6 +226,7 @@ export async function getOrCreateNarrationChunk(
   const contentHash = getNoteNarrationContentHash(
     input.note,
     input.includeFlashcards ?? true,
+    input.sectionInclusion,
   );
   const cacheKey = buildNarrationCacheKey({
     driveFileId: input.note.fileId,
@@ -208,6 +236,7 @@ export async function getOrCreateNarrationChunk(
     model,
     voice,
     narrationStyle: narrationStyleSlug,
+    readAloudSectionId: chunk.sectionId,
     instructionsFingerprint,
     instructionVersion,
     chunkIndex: chunk.index,
@@ -226,7 +255,9 @@ export async function getOrCreateNarrationChunk(
           return {
             chunkIndex: chunk.index,
             chunkCount: chunks.length,
-            sectionLabel: chunk.sectionLabel,
+            sectionId: chunk.sectionId,
+            sectionIndex: chunk.sectionIndex,
+            sectionLabel: chunk.sectionTitle,
             cacheKey,
             cached: true,
             cacheWriteFailed: false,
@@ -254,7 +285,11 @@ export async function getOrCreateNarrationChunk(
     stage: "text-extraction",
     noteId,
     inputLength: chunk.text.length,
-    ...summarizeNoteNarrationText(input.note, input.includeFlashcards ?? true),
+    ...summarizeNoteNarrationText(
+      input.note,
+      input.includeFlashcards ?? true,
+      input.sectionInclusion,
+    ),
   });
 
   const synthesized = await synthesizeSpeech({
@@ -279,7 +314,7 @@ export async function getOrCreateNarrationChunk(
         voice,
         instructionVersion,
         chunkIndex: chunk.index,
-        sectionLabel: chunk.sectionLabel,
+        sectionLabel: chunk.sectionTitle,
         audio: synthesized.audio,
       });
     } catch (error) {
@@ -302,7 +337,9 @@ export async function getOrCreateNarrationChunk(
   return {
     chunkIndex: chunk.index,
     chunkCount: chunks.length,
-    sectionLabel: chunk.sectionLabel,
+    sectionId: chunk.sectionId,
+    sectionIndex: chunk.sectionIndex,
+    sectionLabel: chunk.sectionTitle,
     cacheKey,
     cached: false,
     cacheWriteFailed,

@@ -2,7 +2,7 @@ import {
   buildNarrationPlaybackChunks,
 } from "@/lib/life-lab/narration-chunks";
 import {
-  buildNarrationDocument,
+  buildReadAloudSectionsFromNote,
 } from "@/lib/life-lab/narration-text";
 import { prepareLifeLabMarkdownForReading } from "@/lib/life-lab/markdown-display";
 
@@ -812,12 +812,16 @@ export function chunkSpeechText(
 export function prepareNoteSpeechChunks(
   title: string,
   content: string,
-  options: { includeFlashcards?: boolean } = {},
+  options: {
+    includeFlashcards?: boolean;
+    inclusion?: import("@/lib/life-lab/read-aloud-sections").ReadAloudSectionInclusionPrefs;
+  } = {},
 ): string[] {
-  const sections = buildNarrationDocument({
+  const sections = buildReadAloudSectionsFromNote({
     title,
     content,
     includeFlashcards: options.includeFlashcards ?? false,
+    inclusion: options.inclusion,
   });
 
   return buildNarrationPlaybackChunks(sections).map((chunk) => chunk.text);

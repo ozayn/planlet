@@ -6,6 +6,14 @@ import { getNarrationUserMessage } from "@/lib/life-lab/narration-errors";
 import type { NarrationErrorCategory } from "@/lib/life-lab/narration-errors";
 import { buildSameOriginNarrationChunkUrl } from "@/lib/life-lab/narration-audio-source";
 import {
+  getFirstChunkIndexForSectionId,
+  getNextChunkIndexFromRanges,
+  getNextSectionFirstChunkIndex,
+  getPreviousSectionFirstChunkIndex,
+  type ReadAloudPlaybackOptions,
+} from "@/lib/life-lab/read-aloud-navigation";
+import type { ReadAloudSectionChunkRange } from "@/lib/life-lab/narration-chunks";
+import {
   buildPlaybackDiagnostic,
   categorizePlaybackFailure,
   clearAudioSource,
@@ -37,17 +45,22 @@ type UseOpenAiNarrationOptions = {
   noteTitle: string;
   enabled: boolean;
   playbackRate?: number;
+  autoContinue?: boolean;
+  onSectionChange?: (sectionId: string | null) => void;
 };
+
+type NarrationPlanSection = ReadAloudSectionChunkRange;
 
 type NarrationPlan = {
   chunkCount: number;
+  sectionCount: number;
   openAiAvailable?: boolean;
   unavailable?: {
     error: string;
     category: NarrationErrorCategory;
     debugMessage?: string;
   };
-  sections: Array<{ index: number; sectionLabel: string }>;
+  sections: NarrationPlanSection[];
 };
 
 type NarrationErrorResponse = {
@@ -90,9 +103,15 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
     null,
   );
   const [debugMessage, setDebugMessage] = useState<string | null>(null);
+  const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
+  const [sectionCount, setSectionCount] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const objectUrlRef = useRef<string | null>(null);
   const planRef = useRef<NarrationPlan | null>(null);
+  const playbackOptionsRef = useRef<ReadAloudPlaybackOptions>({
+    autoContinue: options.autoContinue ?? true,
+    playOnlySection: false,
+  });
   const playingRef = useRef(false);
   const playbackRateRef = useRef(options.playbackRate ?? 1);
   const chunkEndedResolverRef = useRef<(() => void) | null>(null);
@@ -105,6 +124,17 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
       audioRef.current.playbackRate = playbackRateRef.current;
     }
   }, [options.playbackRate]);
+
+  useEffect(() => {
+    playbackOptionsRef.current.autoContinue = options.autoContinue ?? true;
+  }, [options.autoContinue]);
+
+  const notifySectionChange = useCallback(
+    (sectionId: string | null) => {
+      options.onSectionChange?.(sectionId);
+    },
+    [options.onSectionChange],
+  );
 
   const ensureAudioElement = useCallback(() => {
     if (!audioRef.current) {
@@ -212,7 +242,31 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
       });
     }
 
-    const plan = (await response.json()) as NarrationPlan;
+    const raw = (await response.json()) as Omit<NarrationPlan, "sections"> & {
+      sections: Array<{
+        id: string;
+        title: string;
+        order: number;
+        sectionIndex: number;
+        firstChunkIndex: number;
+        chunkCount: number;
+      }>;
+    };
+
+    const plan: NarrationPlan = {
+      chunkCount: raw.chunkCount,
+      sectionCount: raw.sectionCount,
+      openAiAvailable: raw.openAiAvailable,
+      unavailable: raw.unavailable,
+      sections: raw.sections.map((section) => ({
+        sectionId: section.id,
+        sectionTitle: section.title,
+        sectionOrder: section.order,
+        sectionIndex: section.sectionIndex,
+        firstChunkIndex: section.firstChunkIndex,
+        chunkCount: section.chunkCount,
+      })),
+    };
 
     if (plan.openAiAvailable === false && plan.unavailable) {
       throw Object.assign(new Error(plan.unavailable.error), {
@@ -223,6 +277,7 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
 
     planRef.current = plan;
     setChunkCount(plan.chunkCount);
+    setSectionCount(plan.sectionCount);
     return plan;
   }, [options.sectionId, options.slug]);
 
@@ -570,6 +625,18 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
       setChunkCount(result.chunkCount);
       setSectionLabel(result.sectionLabel);
       setFromCache(result.cached);
+
+      const activeRange = planRef.current?.sections.find(
+        (range) =>
+          chunkIndex >= range.firstChunkIndex &&
+          chunkIndex < range.firstChunkIndex + range.chunkCount,
+      );
+
+      if (activeRange) {
+        setCurrentSectionIndex(activeRange.sectionIndex);
+        notifySectionChange(activeRange.sectionId);
+      }
+
       updateMediaSession(result.sectionLabel);
 
       const playbackState = await attemptPlayback({
@@ -605,9 +672,17 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
         return;
       }
 
-      const nextIndex = chunkIndex + 1;
+      const plan = planRef.current;
+      const nextIndex =
+        plan != null
+          ? getNextChunkIndexFromRanges(
+              plan.sections,
+              chunkIndex,
+              playbackOptionsRef.current,
+            )
+          : null;
 
-      if (nextIndex < result.chunkCount) {
+      if (nextIndex != null) {
         await playChunk(nextIndex, false);
         return;
       }
@@ -619,10 +694,23 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
         navigator.mediaSession.playbackState = "none";
       }
 
+      const stoppedAfterSection =
+        playbackOptionsRef.current.playOnlySection ||
+        !playbackOptionsRef.current.autoContinue;
+
+      if (stoppedAfterSection && plan && chunkIndex < result.chunkCount - 1) {
+        setStatus("paused");
+        setStatusMessage("Section complete");
+        setNeedsUserGesture(false);
+        return;
+      }
+
       setStatus("finished");
       setStatusMessage(null);
       setSectionLabel(null);
       setCurrentChunkIndex(0);
+      setCurrentSectionIndex(0);
+      notifySectionChange(null);
       setFromCache(false);
       setNeedsUserGesture(false);
     },
@@ -633,13 +721,17 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
       fetchChunkAudio,
       options.enabled,
       setFailure,
+      notifySectionChange,
       updateMediaSession,
       waitForChunkEnded,
     ],
   );
 
   const play = useCallback(
-    async (regenerate = false) => {
+    async (
+      regenerate = false,
+      startOptions?: { startSectionId?: string; playOnlySection?: boolean },
+    ) => {
       if (!options.enabled) {
         setStatus("unavailable");
         setFailure(
@@ -655,8 +747,26 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
         setNeedsUserGesture(false);
         setStatus("preparing");
         setStatusMessage("Preparing narration…");
-        await fetchPlan();
-        await playChunk(0, regenerate);
+        playbackOptionsRef.current = {
+          autoContinue: options.autoContinue ?? true,
+          playOnlySection: startOptions?.playOnlySection ?? false,
+        };
+        const plan = await fetchPlan();
+        const startChunk =
+          getFirstChunkIndexForSectionId(
+            plan.sections,
+            startOptions?.startSectionId ?? "",
+          ) ?? plan.sections[0]?.firstChunkIndex ?? 0;
+        const startRange = plan.sections.find(
+          (range) => range.firstChunkIndex === startChunk,
+        );
+
+        if (startRange) {
+          setCurrentSectionIndex(startRange.sectionIndex);
+          notifySectionChange(startRange.sectionId);
+        }
+
+        await playChunk(startChunk, regenerate);
       } catch (caught) {
         const message =
           caught instanceof Error
@@ -680,7 +790,7 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
         setFailure(message, category, debug);
       }
     },
-    [ensureAudioElement, fetchPlan, options.enabled, playChunk, setFailure],
+    [ensureAudioElement, fetchPlan, notifySectionChange, options.autoContinue, options.enabled, playChunk, setFailure],
   );
 
   const pause = useCallback(() => {
@@ -782,18 +892,85 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
     audio.currentTime = Math.max(0, audio.currentTime - 15);
   }, []);
 
-  const nextSection = useCallback(async () => {
-    const plan = planRef.current;
-    const nextIndex = currentChunkIndex + 1;
+  const jumpToSection = useCallback(
+    async (sectionId: string, playOnlySection = false) => {
+      const plan = planRef.current;
 
-    if (!plan || nextIndex >= plan.chunkCount) {
+      if (!plan) {
+        return;
+      }
+
+      const targetChunk = getFirstChunkIndexForSectionId(plan.sections, sectionId);
+
+      if (targetChunk == null) {
+        return;
+      }
+
+      const targetRange = plan.sections.find(
+        (range) => range.sectionId === sectionId,
+      );
+
+      playingRef.current = true;
+      playbackOptionsRef.current.playOnlySection = playOnlySection;
+      audioRef.current?.pause();
+
+      if (targetRange) {
+        setCurrentSectionIndex(targetRange.sectionIndex);
+        notifySectionChange(targetRange.sectionId);
+      }
+
+      await playChunk(targetChunk, false);
+    },
+    [notifySectionChange, playChunk],
+  );
+
+  const previousSection = useCallback(async () => {
+    const plan = planRef.current;
+
+    if (!plan || currentSectionIndex <= 0) {
       return;
     }
 
+    const previousChunk = getPreviousSectionFirstChunkIndex(
+      plan.sections,
+      currentSectionIndex,
+    );
+
+    if (previousChunk == null) {
+      return;
+    }
+
+    playbackOptionsRef.current.playOnlySection = false;
     playingRef.current = true;
     audioRef.current?.pause();
-    await playChunk(nextIndex, false);
-  }, [currentChunkIndex, playChunk]);
+    setCurrentSectionIndex(currentSectionIndex - 1);
+    notifySectionChange(plan.sections[currentSectionIndex - 1]?.sectionId ?? null);
+    await playChunk(previousChunk, false);
+  }, [currentSectionIndex, notifySectionChange, playChunk]);
+
+  const nextSection = useCallback(async () => {
+    const plan = planRef.current;
+
+    if (!plan || currentSectionIndex >= plan.sections.length - 1) {
+      return;
+    }
+
+    const nextChunk = getNextSectionFirstChunkIndex(
+      plan.sections,
+      currentSectionIndex,
+    );
+
+    if (nextChunk == null) {
+      return;
+    }
+
+    playbackOptionsRef.current.playOnlySection = false;
+    playingRef.current = true;
+    audioRef.current?.pause();
+    setCurrentSectionIndex(currentSectionIndex + 1);
+    notifySectionChange(plan.sections[currentSectionIndex + 1]?.sectionId ?? null);
+    await playChunk(nextChunk, false);
+  }, [currentSectionIndex, notifySectionChange, playChunk]);
 
   const regenerate = useCallback(async () => {
     const response = await fetch("/api/life-lab/narration/regenerate", {
@@ -846,6 +1023,9 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
     sectionLabel,
     currentChunkIndex,
     chunkCount,
+    currentSectionIndex,
+    sectionCount,
+    sections: planRef.current?.sections ?? [],
     fromCache,
     needsUserGesture,
     error,
@@ -863,7 +1043,9 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
     cancel,
     skipForward,
     skipBackward,
+    previousSection,
     nextSection,
+    jumpToSection,
     regenerate,
     switchToDeviceMessage:
       error ??

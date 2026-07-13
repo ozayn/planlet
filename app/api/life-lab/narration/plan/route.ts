@@ -10,10 +10,11 @@ import {
   narrationErrorHttpStatus,
 } from "@/lib/life-lab/narration-errors";
 import {
-  buildNoteNarrationChunks,
+  buildNoteReadAloudPlan,
   getNoteNarrationContentHash,
   summarizeNoteNarrationText,
 } from "@/lib/life-lab/narration-service";
+import { getLifeLabReadAloudPreferencesForUser } from "@/lib/life-lab/read-aloud-preferences";
 import { canAccessLifeLabPage } from "@/lib/roles";
 
 type NarrationPlanBody = {
@@ -52,9 +53,19 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Note not found." }, { status: 404 });
   }
 
+  const readAloudPreferences = await getLifeLabReadAloudPreferencesForUser(
+    session.user.id,
+  );
   const config = validateOpenAiTtsConfiguration();
-  const textSummary = summarizeNoteNarrationText(note, true);
-  const chunks = buildNoteNarrationChunks(note, true);
+  const textSummary = summarizeNoteNarrationText(
+    note,
+    true,
+    readAloudPreferences.readAloudSectionInclusion,
+  );
+  const plan = buildNoteReadAloudPlan(note, {
+    includeFlashcards: readAloudPreferences.readAloudSectionInclusion.flashcards,
+    inclusion: readAloudPreferences.readAloudSectionInclusion,
+  });
 
   logNarrationDiagnostic({
     stage: "text-extraction",
@@ -82,11 +93,20 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({
-    chunkCount: chunks.length,
-    contentHash: getNoteNarrationContentHash(note, true),
-    sections: chunks.map((chunk) => ({
-      index: chunk.index,
-      sectionLabel: chunk.sectionLabel,
+    chunkCount: plan.chunks.length,
+    sectionCount: plan.sections.length,
+    contentHash: getNoteNarrationContentHash(
+      note,
+      true,
+      readAloudPreferences.readAloudSectionInclusion,
+    ),
+    sections: plan.sectionChunkRanges.map((range) => ({
+      id: range.sectionId,
+      title: range.sectionTitle,
+      order: range.sectionOrder,
+      sectionIndex: range.sectionIndex,
+      firstChunkIndex: range.firstChunkIndex,
+      chunkCount: range.chunkCount,
     })),
     openAiAvailable: config.ok,
     ...(config.ok

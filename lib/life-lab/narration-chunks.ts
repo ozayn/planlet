@@ -1,52 +1,149 @@
 import {
   OPENAI_NARRATION_CHUNK_MAX_CHARS,
 } from "@/lib/life-lab/narration-config";
-import type { NarrationSection } from "@/lib/life-lab/narration-text";
+import type { ReadAloudSection } from "@/lib/life-lab/read-aloud-sections";
 import { chunkSpeechText } from "@/lib/life-lab/speech";
 
 export type NarrationPlaybackChunk = {
   index: number;
-  sectionLabel: string;
+  sectionId: string;
+  sectionTitle: string;
+  sectionOrder: number;
+  sectionIndex: number;
+  sectionChunkIndex: number;
+  sectionChunkCount: number;
   text: string;
 };
 
+export type ReadAloudSectionChunkRange = {
+  sectionId: string;
+  sectionTitle: string;
+  sectionOrder: number;
+  sectionIndex: number;
+  firstChunkIndex: number;
+  chunkCount: number;
+};
+
+export type ReadAloudPlaybackPlan = {
+  sections: ReadAloudSection[];
+  chunks: NarrationPlaybackChunk[];
+  sectionChunkRanges: ReadAloudSectionChunkRange[];
+};
+
+/** @deprecated Use sectionTitle on NarrationPlaybackChunk */
+export type LegacyNarrationPlaybackChunk = NarrationPlaybackChunk & {
+  sectionLabel: string;
+};
+
 function splitSectionIntoChunks(
-  section: NarrationSection,
+  section: ReadAloudSection,
+  sectionIndex: number,
   startIndex: number,
   maxLength: number,
-): NarrationPlaybackChunk[] {
-  const prefix = `${section.label}. `;
-  const fullText = `${prefix}${section.body}`.trim();
+): Omit<NarrationPlaybackChunk, "index">[] {
+  const prefix = `${section.title}. `;
+  const fullText = `${prefix}${section.text}`.trim();
   const parts = chunkSpeechText(fullText, maxLength);
 
-  return parts.map((text, offset) => ({
-    index: startIndex + offset,
-    sectionLabel: section.label,
+  return parts.map((text, sectionChunkIndex) => ({
+    sectionId: section.id,
+    sectionTitle: section.title,
+    sectionOrder: section.order,
+    sectionIndex,
+    sectionChunkIndex,
+    sectionChunkCount: parts.length,
     text,
   }));
 }
 
-export function buildNarrationPlaybackChunks(
-  sections: NarrationSection[],
+export function buildReadAloudPlaybackPlan(
+  sections: ReadAloudSection[],
   maxLength = OPENAI_NARRATION_CHUNK_MAX_CHARS,
-): NarrationPlaybackChunk[] {
-  const chunks: NarrationPlaybackChunk[] = [];
+): ReadAloudPlaybackPlan {
+  const chunks: Omit<NarrationPlaybackChunk, "index">[] = [];
+  const sectionChunkRanges: ReadAloudSectionChunkRange[] = [];
   let nextIndex = 0;
 
-  for (const section of sections) {
-    const sectionChunks = splitSectionIntoChunks(section, nextIndex, maxLength);
+  sections.forEach((section, sectionIndex) => {
+    const firstChunkIndex = nextIndex;
+    const sectionChunks = splitSectionIntoChunks(
+      section,
+      sectionIndex,
+      nextIndex,
+      maxLength,
+    );
+
+    if (sectionChunks.length === 0) {
+      return;
+    }
+
+    sectionChunkRanges.push({
+      sectionId: section.id,
+      sectionTitle: section.title,
+      sectionOrder: section.order,
+      sectionIndex,
+      firstChunkIndex,
+      chunkCount: sectionChunks.length,
+    });
+
     chunks.push(...sectionChunks);
     nextIndex += sectionChunks.length;
-  }
+  });
 
-  return chunks.map((chunk, index) => ({
+  const indexedChunks = chunks.map((chunk, index) => ({
     ...chunk,
     index,
   }));
+
+  return {
+    sections,
+    chunks: indexedChunks,
+    sectionChunkRanges,
+  };
+}
+
+export function buildNarrationPlaybackChunks(
+  sections: ReadAloudSection[],
+  maxLength = OPENAI_NARRATION_CHUNK_MAX_CHARS,
+): NarrationPlaybackChunk[] {
+  return buildReadAloudPlaybackPlan(sections, maxLength).chunks;
 }
 
 export function estimateNarrationInputCharacters(
   chunks: NarrationPlaybackChunk[],
 ): number {
   return chunks.reduce((total, chunk) => total + chunk.text.length, 0);
+}
+
+export function getSectionIndexForChunk(
+  plan: ReadAloudPlaybackPlan,
+  chunkIndex: number,
+): number {
+  const chunk = plan.chunks[chunkIndex];
+
+  if (!chunk) {
+    return 0;
+  }
+
+  return chunk.sectionIndex;
+}
+
+export function getFirstChunkIndexForSection(
+  plan: ReadAloudPlaybackPlan,
+  sectionIndex: number,
+): number | null {
+  return plan.sectionChunkRanges[sectionIndex]?.firstChunkIndex ?? null;
+}
+
+export function getLastChunkIndexForSection(
+  plan: ReadAloudPlaybackPlan,
+  sectionIndex: number,
+): number | null {
+  const range = plan.sectionChunkRanges[sectionIndex];
+
+  if (!range) {
+    return null;
+  }
+
+  return range.firstChunkIndex + range.chunkCount - 1;
 }

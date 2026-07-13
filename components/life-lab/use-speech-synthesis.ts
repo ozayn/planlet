@@ -2,6 +2,18 @@
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 
+import type {
+  ReadAloudPlaybackPlan,
+  ReadAloudSectionChunkRange,
+} from "@/lib/life-lab/narration-chunks";
+import {
+  getFirstChunkIndexForSectionId,
+  getNextChunkIndexFromRanges,
+  getPreviousSectionFirstChunkIndex,
+  getNextSectionFirstChunkIndex,
+  type ReadAloudPlaybackOptions,
+} from "@/lib/life-lab/read-aloud-navigation";
+import type { ReadAloudSection } from "@/lib/life-lab/read-aloud-sections";
 import {
   chunkSpeechText,
   createSpeechUtterance,
@@ -30,6 +42,8 @@ import {
 type UseSpeechSynthesisOptions = {
   rate?: SpeechRate;
   initialVoiceId?: string;
+  autoContinue?: boolean;
+  onSectionChange?: (sectionId: string | null) => void;
 };
 
 // Uses browser-native speechSynthesis only.
@@ -62,7 +76,10 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
     options.rate ?? DEFAULT_SPEECH_RATE,
   );
   const [currentSequenceIndex, setCurrentSequenceIndex] = useState(0);
+  const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
+  const [sectionCount, setSectionCount] = useState(0);
   const [isFinished, setIsFinished] = useState(false);
+  const [awaitingSectionContinue, setAwaitingSectionContinue] = useState(false);
   const selectedVoiceIdRef = useRef(
     options.initialVoiceId ?? SPEECH_AUTO_VOICE_ID,
   );
@@ -72,6 +89,13 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
   const rateRef = useRef<SpeechRate>(rate);
   const sequenceIndexRef = useRef(0);
   const sequenceRef = useRef<string[]>([]);
+  const planModeRef = useRef(false);
+  const sectionRangesRef = useRef<ReadAloudSectionChunkRange[]>([]);
+  const planSectionsRef = useRef<ReadAloudSection[]>([]);
+  const playbackOptionsRef = useRef<ReadAloudPlaybackOptions>({
+    autoContinue: options.autoContinue ?? true,
+    playOnlySection: false,
+  });
   const speakGenerationRef = useRef(0);
   const activeUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const intentionalCancelRef = useRef<SpeechCancelReason>(null);
@@ -121,6 +145,33 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
   useEffect(() => {
     rateRef.current = rate;
   }, [rate]);
+
+  useEffect(() => {
+    playbackOptionsRef.current.autoContinue = options.autoContinue ?? true;
+  }, [options.autoContinue]);
+
+  const notifySectionChange = useCallback(
+    (sectionId: string | null) => {
+      options.onSectionChange?.(sectionId);
+    },
+    [options.onSectionChange],
+  );
+
+  const syncSectionIndexForChunk = useCallback(
+    (chunkIndex: number) => {
+      const range = sectionRangesRef.current.find(
+        (entry) =>
+          chunkIndex >= entry.firstChunkIndex &&
+          chunkIndex < entry.firstChunkIndex + entry.chunkCount,
+      );
+
+      if (range) {
+        setCurrentSectionIndex(range.sectionIndex);
+        notifySectionChange(range.sectionId);
+      }
+    },
+    [notifySectionChange],
+  );
 
   useEffect(() => {
     const storedVoiceId = options.initialVoiceId ?? readStoredSpeechVoiceId();
@@ -194,7 +245,13 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
     sequenceRef.current = [];
     sequenceIndexRef.current = 0;
     setCurrentSequenceIndex(0);
+    setCurrentSectionIndex(0);
+    setSectionCount(0);
     setIsFinished(false);
+    setAwaitingSectionContinue(false);
+    planModeRef.current = false;
+    sectionRangesRef.current = [];
+    planSectionsRef.current = [];
     sessionVoiceRef.current = null;
     sessionUsesVoiceRef.current = false;
     sessionActiveRef.current = false;
@@ -354,48 +411,80 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
     ],
   );
 
+  const finishSpeechSession = useCallback(
+    (generation: number, awaitingContinue = false) => {
+      if (
+        speakGenerationRef.current !== generation ||
+        activeSpeechOwnerId !== instanceId
+      ) {
+        return;
+      }
+
+      activeSpeechOwnerId = null;
+      sessionActiveRef.current = false;
+      setAwaitingSectionContinue(awaitingContinue);
+      setIsFinished(!awaitingContinue);
+      if (!awaitingContinue) {
+        notifySectionChange(null);
+      }
+      clearSpeakingState();
+    },
+    [clearSpeakingState, instanceId, notifySectionChange],
+  );
+
   const speakNextInSequence = useCallback(
     (generation: number) => {
-      const nextText = sequenceRef.current[sequenceIndexRef.current];
+      const chunkIndex = sequenceIndexRef.current;
+      const nextText = sequenceRef.current[chunkIndex];
 
       if (
         !nextText ||
         speakGenerationRef.current !== generation ||
         activeSpeechOwnerId !== instanceId
       ) {
-      if (
-        speakGenerationRef.current === generation &&
-        activeSpeechOwnerId === instanceId
-      ) {
-        activeSpeechOwnerId = null;
-        sessionActiveRef.current = false;
-        setIsFinished(true);
-        clearSpeakingState();
-      }
-
+        finishSpeechSession(generation);
         return;
       }
 
-      // Assign the locked session voice to EVERY chunk, not just the first.
-      // Otherwise chunks 2..N fall back to the browser default (often a male
-      // voice), which is the cause of the mid-note voice switch.
+      syncSectionIndexForChunk(chunkIndex);
+      setAwaitingSectionContinue(false);
+
       speakChunk(
         nextText,
         generation,
         sessionUsesVoiceRef.current,
         () => {
-          sequenceIndexRef.current += 1;
-          setCurrentSequenceIndex(sequenceIndexRef.current);
+          const nextIndex = planModeRef.current
+            ? getNextChunkIndexFromRanges(
+                sectionRangesRef.current,
+                chunkIndex,
+                playbackOptionsRef.current,
+              )
+            : chunkIndex + 1;
+
+          if (nextIndex == null) {
+            const stoppedMidNote =
+              planModeRef.current &&
+              (playbackOptionsRef.current.playOnlySection ||
+                !playbackOptionsRef.current.autoContinue) &&
+              chunkIndex < sequenceRef.current.length - 1;
+
+            finishSpeechSession(generation, stoppedMidNote);
+            return;
+          }
+
+          sequenceIndexRef.current = nextIndex;
+          setCurrentSequenceIndex(nextIndex);
           speakNextInSequence(generation);
         },
         true,
       );
     },
-    [clearSpeakingState, instanceId, speakChunk],
+    [finishSpeechSession, instanceId, speakChunk, syncSectionIndexForChunk],
   );
 
   const beginSpeechSession = useCallback(
-    async (segments: string[]) => {
+    async (segments: string[], startIndex = 0) => {
       clearStartTimeout();
       intentionalCancelRef.current = "replace";
 
@@ -437,9 +526,13 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
       activeSpeechOwnerId = instanceId;
       sessionActiveRef.current = true;
       sequenceRef.current = segments;
-      sequenceIndexRef.current = 0;
-      setCurrentSequenceIndex(0);
+      sequenceIndexRef.current = startIndex;
+      setCurrentSequenceIndex(startIndex);
       setIsFinished(false);
+      setAwaitingSectionContinue(false);
+      if (planModeRef.current) {
+        syncSectionIndexForChunk(startIndex);
+      }
       activeUtteranceRef.current = null;
       window.speechSynthesis.cancel();
 
@@ -448,8 +541,119 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
         speakNextInSequence(generation);
       }, 0);
     },
-    [clearStartTimeout, instanceId, speakNextInSequence],
+    [clearStartTimeout, instanceId, speakNextInSequence, syncSectionIndexForChunk],
   );
+
+  const speakPlan = useCallback(
+    (
+      plan: ReadAloudPlaybackPlan,
+      startOptions?: {
+        startSectionId?: string;
+        playOnlySection?: boolean;
+        autoContinue?: boolean;
+      },
+    ) => {
+      if (!isSpeechSynthesisSupported() || plan.chunks.length === 0) {
+        return;
+      }
+
+      planModeRef.current = true;
+      sectionRangesRef.current = plan.sectionChunkRanges;
+      planSectionsRef.current = plan.sections;
+      setSectionCount(plan.sectionChunkRanges.length);
+      playbackOptionsRef.current = {
+        autoContinue: startOptions?.autoContinue ?? options.autoContinue ?? true,
+        playOnlySection: startOptions?.playOnlySection ?? false,
+      };
+
+      const startChunk =
+        getFirstChunkIndexForSectionId(
+          plan.sectionChunkRanges,
+          startOptions?.startSectionId ?? "",
+        ) ?? plan.sectionChunkRanges[0]?.firstChunkIndex ?? 0;
+
+      primeSpeechSynthesis();
+      void beginSpeechSession(
+        plan.chunks.map((chunk) => chunk.text),
+        startChunk,
+      );
+    },
+    [beginSpeechSession, options.autoContinue],
+  );
+
+  const jumpToSection = useCallback(
+    (sectionId: string, playOnlySection = false) => {
+      if (
+        !isSpeechSynthesisSupported() ||
+        !planModeRef.current ||
+        sectionRangesRef.current.length === 0
+      ) {
+        return;
+      }
+
+      const targetChunk = getFirstChunkIndexForSectionId(
+        sectionRangesRef.current,
+        sectionId,
+      );
+
+      if (targetChunk == null) {
+        return;
+      }
+
+      playbackOptionsRef.current.playOnlySection = playOnlySection;
+      intentionalCancelRef.current = "replace";
+      speakGenerationRef.current += 1;
+      const generation = speakGenerationRef.current;
+      activeSpeechOwnerId = instanceId;
+      sessionActiveRef.current = true;
+      sequenceIndexRef.current = targetChunk;
+      setCurrentSequenceIndex(targetChunk);
+      setAwaitingSectionContinue(false);
+      setIsFinished(false);
+      syncSectionIndexForChunk(targetChunk);
+      window.speechSynthesis.cancel();
+
+      window.setTimeout(() => {
+        intentionalCancelRef.current = null;
+        speakNextInSequence(generation);
+      }, 0);
+    },
+    [instanceId, speakNextInSequence, syncSectionIndexForChunk],
+  );
+
+  const previousSection = useCallback(() => {
+    if (currentSectionIndex <= 0) {
+      return;
+    }
+
+    const previousChunk = getPreviousSectionFirstChunkIndex(
+      sectionRangesRef.current,
+      currentSectionIndex,
+    );
+    const previousSectionId =
+      sectionRangesRef.current[currentSectionIndex - 1]?.sectionId;
+
+    if (previousChunk == null || !previousSectionId) {
+      return;
+    }
+
+    jumpToSection(previousSectionId, false);
+  }, [currentSectionIndex, jumpToSection]);
+
+  const nextSection = useCallback(() => {
+    if (currentSectionIndex >= sectionRangesRef.current.length - 1) {
+      return;
+    }
+
+    const nextSectionId =
+      sectionRangesRef.current[currentSectionIndex + 1]?.sectionId;
+
+    if (!nextSectionId) {
+      return;
+    }
+
+    jumpToSection(nextSectionId, false);
+  }, [currentSectionIndex, jumpToSection]);
 
   const speak = useCallback(
     (text: string | string[]) => {
@@ -467,8 +671,13 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
         return;
       }
 
+      planModeRef.current = false;
+      sectionRangesRef.current = [];
+      planSectionsRef.current = [];
+      setSectionCount(0);
+
       primeSpeechSynthesis();
-      beginSpeechSession(segments);
+      void beginSpeechSession(segments);
     },
     [beginSpeechSession],
   );
@@ -513,7 +722,11 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
     isSpeaking,
     isPaused,
     isFinished,
+    awaitingSectionContinue,
     currentSequenceIndex,
+    currentSectionIndex,
+    sectionCount,
+    sections: planSectionsRef.current,
     playbackFailed,
     voiceFallbackNotice,
     voiceUnavailableNotice,
@@ -525,8 +738,12 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
     rate,
     setRate,
     speak,
+    speakPlan,
     stop,
     pause,
     resume,
+    previousSection,
+    nextSection,
+    jumpToSection,
   };
 }

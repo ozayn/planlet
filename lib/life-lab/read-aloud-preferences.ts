@@ -14,10 +14,18 @@ import {
   type ResolvedOpenAiNarrationSettings,
 } from "@/lib/life-lab/openai-narration-preferences";
 import {
+  DEFAULT_READ_ALOUD_SECTION_INCLUSION,
+  normalizeReadAloudSectionInclusion,
+  type ReadAloudSectionInclusionPrefs,
+} from "@/lib/life-lab/read-aloud-sections";
+import {
   DEFAULT_SPEECH_RATE,
   SPEECH_AUTO_VOICE_ID,
   type SpeechRate,
 } from "@/lib/life-lab/speech";
+
+export type { ReadAloudSectionInclusionPrefs } from "@/lib/life-lab/read-aloud-sections";
+export { DEFAULT_READ_ALOUD_SECTION_INCLUSION } from "@/lib/life-lab/read-aloud-sections";
 
 export type LifeLabReadAloudPreferences = {
   provider: LifeLabReadAloudProvider;
@@ -26,6 +34,8 @@ export type LifeLabReadAloudPreferences = {
   openAiTtsVoice: string;
   openAiNarrationStyle: OpenAiNarrationStyleId;
   customNarrationInstructions: string | null;
+  readAloudAutoContinue: boolean;
+  readAloudSectionInclusion: ReadAloudSectionInclusionPrefs;
 };
 
 const DEFAULT_PREFERENCES: LifeLabReadAloudPreferences = {
@@ -35,6 +45,8 @@ const DEFAULT_PREFERENCES: LifeLabReadAloudPreferences = {
   openAiTtsVoice: DEFAULT_OPENAI_NARRATION_PREFERENCES.voice,
   openAiNarrationStyle: DEFAULT_OPENAI_NARRATION_PREFERENCES.narrationStyle,
   customNarrationInstructions: null,
+  readAloudAutoContinue: true,
+  readAloudSectionInclusion: DEFAULT_READ_ALOUD_SECTION_INCLUSION,
 };
 
 function normalizeSpeechRate(value: number | null | undefined): SpeechRate {
@@ -75,6 +87,8 @@ export async function getLifeLabReadAloudPreferencesForUser(
       lifeLabOpenAiTtsVoice: true,
       lifeLabOpenAiNarrationStyle: true,
       lifeLabCustomNarrationInstructions: true,
+      lifeLabReadAloudAutoContinue: true,
+      lifeLabReadAloudSectionInclusion: true,
     },
   });
 
@@ -94,6 +108,10 @@ export async function getLifeLabReadAloudPreferencesForUser(
     openAiTtsVoice: openAi.voice,
     openAiNarrationStyle: openAi.narrationStyle,
     customNarrationInstructions: openAi.customNarrationInstructions,
+    readAloudAutoContinue: user.lifeLabReadAloudAutoContinue,
+    readAloudSectionInclusion: normalizeReadAloudSectionInclusion(
+      user.lifeLabReadAloudSectionInclusion,
+    ),
   };
 }
 
@@ -177,6 +195,30 @@ export async function updateLifeLabCustomNarrationInstructions(
     where: { id: userId },
     data: {
       lifeLabCustomNarrationInstructions: instructions?.trim() || null,
+    },
+  });
+}
+
+export async function updateLifeLabReadAloudAutoContinue(
+  userId: string,
+  autoContinue: boolean,
+): Promise<void> {
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      lifeLabReadAloudAutoContinue: autoContinue,
+    },
+  });
+}
+
+export async function updateLifeLabReadAloudSectionInclusion(
+  userId: string,
+  inclusion: ReadAloudSectionInclusionPrefs,
+): Promise<void> {
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      lifeLabReadAloudSectionInclusion: inclusion,
     },
   });
 }

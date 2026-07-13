@@ -13,7 +13,10 @@ import {
   getOrCreateNarrationChunk,
   mapNarrationServiceError,
 } from "@/lib/life-lab/narration-service";
-import { getResolvedOpenAiNarrationSettingsForUser } from "@/lib/life-lab/read-aloud-preferences";
+import {
+  getLifeLabReadAloudPreferencesForUser,
+  getResolvedOpenAiNarrationSettingsForUser,
+} from "@/lib/life-lab/read-aloud-preferences";
 import { canAccessLifeLabPage } from "@/lib/roles";
 import { isLifeLabDevToolsEnabled } from "@/lib/life-lab/dev";
 
@@ -119,14 +122,16 @@ async function serveNarrationChunk(params: NarrationChunkParams) {
   }
 
   try {
-    const narrationSettings = await getResolvedOpenAiNarrationSettingsForUser(
-      session.user.id,
-    );
+    const [narrationSettings, readAloudPreferences] = await Promise.all([
+      getResolvedOpenAiNarrationSettingsForUser(session.user.id),
+      getLifeLabReadAloudPreferencesForUser(session.user.id),
+    ]);
     const result = await getOrCreateNarrationChunk({
       note,
       chunkIndex: params.chunkIndex,
       userId: session.user.id,
       narrationSettings,
+      sectionInclusion: readAloudPreferences.readAloudSectionInclusion,
       regenerate: params.regenerate === true,
       skipCache: params.skipCache === true,
       model: params.model,

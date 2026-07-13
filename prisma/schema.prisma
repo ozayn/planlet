@@ -323,6 +323,8 @@ model User {
   lifeLabOpenAiTtsVoice       String?
   lifeLabOpenAiNarrationStyle OpenAiNarrationStyle @default(BRITISH_FEMALE_CALM)
   lifeLabCustomNarrationInstructions String? @db.Text
+  lifeLabReadAloudAutoContinue      Boolean @default(true)
+  lifeLabReadAloudSectionInclusion  Json?
   planItemView              PlanItemView @default(CHECKLIST)
   readingDensity            ReadingDensity @default(COMPACT)
   taskOrganizationDisplay   TaskOrganizationDisplay @default(ASSIGNED_ONLY)
