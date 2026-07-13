@@ -31,6 +31,12 @@ import {
   estimateNarrationInputCharacters,
   type ReadAloudPlaybackPlan,
 } from "@/lib/life-lab/narration-chunks";
+import {
+  buildCoachingNarrationSessionConfig,
+  isNarrationChunkCompatible,
+  logNarrationChunkDiagnostic,
+  type OpenAiNarrationSessionConfig,
+} from "@/lib/life-lab/narration-session";
 
 export type CoachingNarrationChunkRequest = {
   content: CoachingReadAloudContent;
@@ -38,6 +44,7 @@ export type CoachingNarrationChunkRequest = {
   chunkIndex: number;
   userId: string;
   narrationSettings: ResolvedCoachingNarrationSettings;
+  sessionConfig?: OpenAiNarrationSessionConfig;
   model?: string;
   regenerate?: boolean;
   skipCache?: boolean;
@@ -56,6 +63,11 @@ export type CoachingNarrationChunkResult = {
   contentHash: string;
   model: string;
   voice: string;
+  style: string;
+  instructionsFingerprint: string;
+  instructionVersion: number;
+  contentProfile: string;
+  sessionId: string;
 };
 
 export type CoachingNarrationTextSummary = {
@@ -141,15 +153,19 @@ export async function getOrCreateCoachingNarrationChunk(
     throw new Error("Narration chunk not found.");
   }
 
-  const model = input.model ?? getDefaultOpenAiNarrationModel();
-  const {
-    voice,
-    instructions,
-    narrationStyleSlug,
-    instructionsFingerprint,
-    instructionVersion,
-    contentProfileVersion,
-  } = input.narrationSettings;
+  const session =
+    input.sessionConfig ??
+    buildCoachingNarrationSessionConfig({
+      settings: input.narrationSettings,
+      model: input.model,
+    });
+  const model = session.model;
+  const voice = session.voice;
+  const instructions = session.instructions;
+  const narrationStyleSlug = session.style;
+  const instructionsFingerprint = session.instructionsFingerprint;
+  const instructionVersion = session.instructionVersion;
+  const contentProfileVersion = session.contentProfileVersion;
   const cacheKey = buildCoachingNarrationCacheKey({
     userId: input.userId,
     contentHash: computedHash,
@@ -173,28 +189,76 @@ export async function getOrCreateCoachingNarrationChunk(
       });
 
       if (cached) {
-        const audio = await readCoachingNarrationAudioFile(cached.storageKey);
-
-        if (audio) {
-          await touchCoachingNarrationCache({
-            userId: input.userId,
-            cacheKey,
-          });
-
-          return {
-            chunkIndex: chunk.index,
-            chunkCount: chunks.length,
-            sectionId: chunk.sectionId,
-            sectionIndex: chunk.sectionIndex,
-            sectionLabel: chunk.sectionTitle,
-            cacheKey,
-            cached: true,
-            cacheWriteFailed: false,
-            audio,
+        const compatible = isNarrationChunkCompatible(
+          {
+            model: cached.model,
+            voice: cached.voice,
+            narrationStyle: cached.narrationStyle,
+            instructionsFingerprint: cached.instructionsFingerprint,
+            instructionVersion: cached.instructionVersion,
+            contentProfile: NARRATION_CONTENT_PROFILES.COACHING,
+            contentProfileVersion: cached.contentProfileVersion,
+            contentHash: cached.contentHash,
+            sectionId: cached.readAloudSectionId,
+            chunkIndex: cached.chunkIndex,
+          },
+          session,
+          {
             contentHash: computedHash,
+            sectionId: chunk.sectionId,
+            chunkIndex: chunk.index,
+          },
+        );
+
+        logNarrationChunkDiagnostic({
+          sessionId: session.sessionId,
+          sectionId: chunk.sectionId,
+          chunkIndex: chunk.index,
+          source: "cache",
+          cachedVoice: cached.voice,
+          cachedStyle: cached.narrationStyle,
+          compatible,
+        });
+
+        if (compatible) {
+          const audio = await readCoachingNarrationAudioFile(cached.storageKey);
+
+          if (audio) {
+            await touchCoachingNarrationCache({
+              userId: input.userId,
+              cacheKey,
+            });
+
+            return {
+              chunkIndex: chunk.index,
+              chunkCount: chunks.length,
+              sectionId: chunk.sectionId,
+              sectionIndex: chunk.sectionIndex,
+              sectionLabel: chunk.sectionTitle,
+              cacheKey,
+              cached: true,
+              cacheWriteFailed: false,
+              audio,
+              contentHash: computedHash,
+              model,
+              voice,
+              style: narrationStyleSlug,
+              instructionsFingerprint,
+              instructionVersion,
+              contentProfile: session.contentProfile,
+              sessionId: session.sessionId,
+            };
+          }
+        } else {
+          logNarrationDiagnostic({
+            stage: "cache-read",
+            noteId: `coaching:${input.userId}`,
             model,
             voice,
-          };
+            errorType: "narration_configuration_mismatch",
+            errorMessage:
+              "Cached coaching narration chunk is incompatible with the locked session config.",
+          });
         }
       }
     } catch (error) {
@@ -240,6 +304,7 @@ export async function getOrCreateCoachingNarrationChunk(
         model,
         voice,
         narrationStyle: narrationStyleSlug,
+        instructionsFingerprint,
         instructionVersion,
         readAloudSectionId: chunk.sectionId,
         chunkIndex: chunk.index,
@@ -265,6 +330,16 @@ export async function getOrCreateCoachingNarrationChunk(
     }
   }
 
+  logNarrationChunkDiagnostic({
+    sessionId: session.sessionId,
+    sectionId: chunk.sectionId,
+    chunkIndex: chunk.index,
+    source: "fresh",
+    cachedVoice: voice,
+    cachedStyle: narrationStyleSlug,
+    compatible: true,
+  });
+
   return {
     chunkIndex: chunk.index,
     chunkCount: chunks.length,
@@ -278,6 +353,11 @@ export async function getOrCreateCoachingNarrationChunk(
     contentHash: computedHash,
     model,
     voice,
+    style: narrationStyleSlug,
+    instructionsFingerprint,
+    instructionVersion,
+    contentProfile: session.contentProfile,
+    sessionId: session.sessionId,
   };
 }
 

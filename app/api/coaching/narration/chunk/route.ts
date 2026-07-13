@@ -7,7 +7,15 @@ import {
   mapCoachingNarrationServiceError,
   parseCoachingReadAloudContent,
 } from "@/lib/coaching/narration-service";
-import { getResolvedCoachingNarrationSettingsForUser } from "@/lib/coaching/narration-preferences";
+import {
+  getResolvedCoachingNarrationSettingsForUser,
+  type ResolvedCoachingNarrationSettings,
+} from "@/lib/coaching/narration-preferences";
+import {
+  COACHING_OPENAI_NARRATION_STYLES,
+  type CoachingOpenAiNarrationStyleId,
+  isCoachingOpenAiNarrationStyle,
+} from "@/lib/coaching/narration-config";
 import { validateOpenAiTtsConfiguration } from "@/lib/env";
 import { logNarrationDiagnostic } from "@/lib/life-lab/narration-diagnostics";
 import {
@@ -15,6 +23,7 @@ import {
   narrationErrorHttpStatus,
   type NarrationErrorCategory,
 } from "@/lib/life-lab/narration-errors";
+import { parseOpenAiNarrationSessionConfig } from "@/lib/life-lab/narration-session";
 import { canUseCoachingFeatures } from "@/lib/roles";
 
 type CoachingNarrationChunkBody = {
@@ -27,6 +36,7 @@ type CoachingNarrationChunkBody = {
   skipCache?: boolean;
   voice?: string;
   model?: string;
+  sessionConfig?: unknown;
 };
 
 type CoachingNarrationChunkParams = {
@@ -39,6 +49,7 @@ type CoachingNarrationChunkParams = {
   skipCache?: boolean;
   voice?: string;
   model?: string;
+  sessionConfig?: unknown;
 };
 
 function narrationErrorResponse(
@@ -96,6 +107,32 @@ function parseChunkParams(
     skipCache: input.skipCache === true,
     voice: input.voice,
     model: input.model,
+    sessionConfig: input.sessionConfig,
+  };
+}
+
+function settingsFromLockedSession(
+  locked: NonNullable<ReturnType<typeof parseOpenAiNarrationSessionConfig>>,
+): ResolvedCoachingNarrationSettings {
+  const styleEntry = Object.entries(COACHING_OPENAI_NARRATION_STYLES).find(
+    ([, meta]) => meta.slug === locked.style,
+  );
+  const narrationStyle = (
+    styleEntry && isCoachingOpenAiNarrationStyle(styleEntry[0])
+      ? styleEntry[0]
+      : "KIND_BRITISH_MENTOR"
+  ) as CoachingOpenAiNarrationStyleId;
+
+  return {
+    voice: locked.voice,
+    requestedVoice: locked.voice,
+    narrationStyle,
+    narrationStyleSlug: locked.style,
+    instructions: locked.instructions,
+    instructionsFingerprint: locked.instructionsFingerprint,
+    instructionVersion: locked.instructionVersion,
+    contentProfileVersion: locked.contentProfileVersion,
+    voiceWarning: null,
   };
 }
 
@@ -126,18 +163,21 @@ async function serveCoachingNarrationChunk(params: CoachingNarrationChunkParams)
   };
 
   try {
-    const narrationSettings = await getResolvedCoachingNarrationSettingsForUser(
-      session.user.id,
-    );
+    const lockedSession = parseOpenAiNarrationSessionConfig(params.sessionConfig);
+    const narrationSettings = lockedSession
+      ? settingsFromLockedSession(lockedSession)
+      : await getResolvedCoachingNarrationSettingsForUser(session.user.id);
+
     const result = await getOrCreateCoachingNarrationChunk({
       content,
       contentHash: params.contentHash,
       chunkIndex: params.chunkIndex,
       userId: session.user.id,
       narrationSettings,
+      sessionConfig: lockedSession ?? undefined,
       regenerate: params.regenerate === true,
       skipCache: params.skipCache === true,
-      model: params.model,
+      model: lockedSession ? undefined : params.model ?? config.model,
     });
 
     logNarrationDiagnostic({
@@ -164,6 +204,13 @@ async function serveCoachingNarrationChunk(params: CoachingNarrationChunkParams)
         "X-Narration-Chunk-Count": String(result.chunkCount),
         "X-Narration-Section-Label": encodeURIComponent(result.sectionLabel),
         "X-Narration-Cache-Key": result.cacheKey,
+        "X-Narration-Model": result.model,
+        "X-Narration-Voice": result.voice,
+        "X-Narration-Style": result.style,
+        "X-Narration-Instructions-Fingerprint": result.instructionsFingerprint,
+        "X-Narration-Instruction-Version": String(result.instructionVersion),
+        "X-Narration-Content-Profile": result.contentProfile,
+        "X-Narration-Session-Id": result.sessionId,
         ...(result.cacheWriteFailed
           ? { "X-Narration-Cache-Write": "failed" }
           : {}),

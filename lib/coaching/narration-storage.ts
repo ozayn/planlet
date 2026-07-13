@@ -15,6 +15,7 @@ export type CoachingNarrationCacheRecordInput = {
   model: string;
   voice: string;
   narrationStyle: string;
+  instructionsFingerprint: string;
   instructionVersion: number;
   readAloudSectionId: string;
   chunkIndex: number;
@@ -84,6 +85,7 @@ export async function saveCoachingNarrationCacheRecord(
       model: input.model,
       voice: input.voice,
       narrationStyle: input.narrationStyle,
+      instructionsFingerprint: input.instructionsFingerprint,
       instructionVersion: input.instructionVersion,
       readAloudSectionId: input.readAloudSectionId,
       chunkIndex: input.chunkIndex,
@@ -94,6 +96,12 @@ export async function saveCoachingNarrationCacheRecord(
     },
     update: {
       contentHash: input.contentHash,
+      model: input.model,
+      voice: input.voice,
+      narrationStyle: input.narrationStyle,
+      instructionsFingerprint: input.instructionsFingerprint,
+      instructionVersion: input.instructionVersion,
+      contentProfileVersion: input.contentProfileVersion,
       sectionLabel: input.sectionLabel,
       storageKey,
       durationSeconds: input.durationSeconds ?? null,

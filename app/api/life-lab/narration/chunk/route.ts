@@ -14,11 +14,17 @@ import {
   mapNarrationServiceError,
 } from "@/lib/life-lab/narration-service";
 import {
+  narrationStyleIdFromSessionStyle,
+  parseOpenAiNarrationSessionConfig,
+} from "@/lib/life-lab/narration-session";
+import {
   getLifeLabReadAloudPreferencesForUser,
   getResolvedOpenAiNarrationSettingsForUser,
 } from "@/lib/life-lab/read-aloud-preferences";
+import type { ResolvedOpenAiNarrationSettings } from "@/lib/life-lab/openai-narration-preferences";
 import { canAccessLifeLabPage } from "@/lib/roles";
 import { isLifeLabDevToolsEnabled } from "@/lib/life-lab/dev";
+import { NARRATION_CONTENT_PROFILES } from "@/lib/life-lab/narration-config";
 
 type NarrationChunkBody = {
   sectionId?: string;
@@ -28,6 +34,7 @@ type NarrationChunkBody = {
   skipCache?: boolean;
   voice?: string;
   model?: string;
+  sessionConfig?: unknown;
 };
 
 type NarrationChunkParams = {
@@ -38,6 +45,7 @@ type NarrationChunkParams = {
   skipCache?: boolean;
   voice?: string;
   model?: string;
+  sessionConfig?: unknown;
 };
 
 function includeNarrationDebug(): boolean {
@@ -93,6 +101,7 @@ function parseChunkParams(input: NarrationChunkBody): NarrationChunkParams | nul
     skipCache: input.skipCache === true,
     voice: input.voice,
     model: input.model,
+    sessionConfig: input.sessionConfig,
   };
 }
 
@@ -122,19 +131,39 @@ async function serveNarrationChunk(params: NarrationChunkParams) {
   }
 
   try {
-    const [narrationSettings, readAloudPreferences] = await Promise.all([
-      getResolvedOpenAiNarrationSettingsForUser(session.user.id),
-      getLifeLabReadAloudPreferencesForUser(session.user.id),
-    ]);
+    const lockedSession = parseOpenAiNarrationSessionConfig(params.sessionConfig);
+    const readAloudPreferences = await getLifeLabReadAloudPreferencesForUser(
+      session.user.id,
+    );
+
+    // Locked session: synthesize settings from the session lock; do not re-read prefs.
+    const narrationSettings: ResolvedOpenAiNarrationSettings = lockedSession
+      ? {
+          voice: lockedSession.voice,
+          requestedVoice: lockedSession.voice,
+          narrationStyle:
+            narrationStyleIdFromSessionStyle(lockedSession.style) ?? "CUSTOM",
+          instructions: lockedSession.instructions,
+          instructionsFingerprint: lockedSession.instructionsFingerprint,
+          instructionVersion: lockedSession.instructionVersion,
+          contentProfile:
+            lockedSession.contentProfile === NARRATION_CONTENT_PROFILES.COACHING
+              ? NARRATION_CONTENT_PROFILES.COACHING
+              : NARRATION_CONTENT_PROFILES.LIFE_LAB,
+          voiceWarning: null,
+        }
+      : await getResolvedOpenAiNarrationSettingsForUser(session.user.id);
+
     const result = await getOrCreateNarrationChunk({
       note,
       chunkIndex: params.chunkIndex,
       userId: session.user.id,
       narrationSettings,
+      sessionConfig: lockedSession ?? undefined,
       sectionInclusion: readAloudPreferences.readAloudSectionInclusion,
       regenerate: params.regenerate === true,
       skipCache: params.skipCache === true,
-      model: params.model,
+      model: lockedSession ? undefined : params.model ?? config.model,
     });
 
     logNarrationDiagnostic({
@@ -161,6 +190,13 @@ async function serveNarrationChunk(params: NarrationChunkParams) {
         "X-Narration-Chunk-Count": String(result.chunkCount),
         "X-Narration-Section-Label": encodeURIComponent(result.sectionLabel),
         "X-Narration-Cache-Key": result.cacheKey,
+        "X-Narration-Model": result.model,
+        "X-Narration-Voice": result.voice,
+        "X-Narration-Style": result.style,
+        "X-Narration-Instructions-Fingerprint": result.instructionsFingerprint,
+        "X-Narration-Instruction-Version": String(result.instructionVersion),
+        "X-Narration-Content-Profile": result.contentProfile,
+        "X-Narration-Session-Id": result.sessionId,
         ...(result.cacheWriteFailed
           ? { "X-Narration-Cache-Write": "failed" }
           : {}),

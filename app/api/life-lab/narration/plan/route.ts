@@ -14,7 +14,15 @@ import {
   getNoteNarrationContentHash,
   summarizeNoteNarrationText,
 } from "@/lib/life-lab/narration-service";
-import { getLifeLabReadAloudPreferencesForUser } from "@/lib/life-lab/read-aloud-preferences";
+import {
+  buildLifeLabNarrationSessionConfig,
+  logNarrationSessionStart,
+  serializeNarrationSessionConfig,
+} from "@/lib/life-lab/narration-session";
+import {
+  getLifeLabReadAloudPreferencesForUser,
+  getResolvedOpenAiNarrationSettingsForUser,
+} from "@/lib/life-lab/read-aloud-preferences";
 import { logReadAloudSectionOrderDiagnostic } from "@/lib/life-lab/read-aloud-section-order";
 import { canAccessLifeLabPage } from "@/lib/roles";
 
@@ -54,9 +62,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Note not found." }, { status: 404 });
   }
 
-  const readAloudPreferences = await getLifeLabReadAloudPreferencesForUser(
-    session.user.id,
-  );
+  const [readAloudPreferences, narrationSettings] = await Promise.all([
+    getLifeLabReadAloudPreferencesForUser(session.user.id),
+    getResolvedOpenAiNarrationSettingsForUser(session.user.id),
+  ]);
   const config = validateOpenAiTtsConfiguration();
   const textSummary = summarizeNoteNarrationText(
     note,
@@ -66,6 +75,10 @@ export async function POST(request: Request) {
   const plan = buildNoteReadAloudPlan(note, {
     includeFlashcards: readAloudPreferences.readAloudSectionInclusion.flashcards,
     inclusion: readAloudPreferences.readAloudSectionInclusion,
+  });
+  const sessionConfig = buildLifeLabNarrationSessionConfig({
+    settings: narrationSettings,
+    model: config.ok ? config.model : undefined,
   });
 
   logReadAloudSectionOrderDiagnostic(note.fileId, {
@@ -81,6 +94,12 @@ export async function POST(request: Request) {
     stage: "text-extraction",
     noteId: note.fileId,
     ...textSummary,
+  });
+
+  logNarrationSessionStart({
+    session: sessionConfig,
+    contentId: note.fileId,
+    sectionCount: plan.sections.length,
   });
 
   if (!config.ok) {
@@ -110,6 +129,7 @@ export async function POST(request: Request) {
       true,
       readAloudPreferences.readAloudSectionInclusion,
     ),
+    sessionConfig: serializeNarrationSessionConfig(sessionConfig),
     sections: plan.sectionChunkRanges.map((range) => ({
       id: range.sectionId,
       title: range.sectionTitle,

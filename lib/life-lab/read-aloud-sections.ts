@@ -1,5 +1,6 @@
 import { isHiddenTechnicalHeading } from "@/lib/life-lab/hidden-markdown-sections";
 import { prepareLifeLabMarkdownForReading } from "@/lib/life-lab/markdown-display";
+import { isSameNarrationTitle } from "@/lib/life-lab/narration-title";
 import {
   markdownToSpeechText,
   plainTextToSpeechText,
@@ -120,6 +121,52 @@ function normalizeHeadingTitle(value: string): string {
     .replace(/[:#]+$/, "")
     .replace(/\s+/g, " ")
     .toLowerCase();
+}
+
+/**
+ * Strip a leading H1 that matches the document title.
+ * Returns remaining markdown and any body text that lived under that H1.
+ */
+export function stripMatchingDocumentTitleHeading(
+  content: string,
+  documentTitle: string,
+): { content: string; matchingH1Body: string } {
+  const normalized = content.replace(/\r\n/g, "\n");
+
+  if (!documentTitle.trim()) {
+    return { content: normalized, matchingH1Body: "" };
+  }
+
+  const match = normalized.match(/^\s*(#)\s+(.+?)\s*#*\s*(?:\n+|$)([\s\S]*)$/);
+
+  if (!match) {
+    return { content: normalized, matchingH1Body: "" };
+  }
+
+  const headingText = match[2]?.trim() ?? "";
+
+  if (!isSameNarrationTitle(documentTitle, headingText)) {
+    return { content: normalized, matchingH1Body: "" };
+  }
+
+  const afterHeading = match[3] ?? "";
+  const nextHeadingIndex = afterHeading.search(/^#{1,6}\s+/m);
+
+  if (nextHeadingIndex < 0) {
+    const body = cleanSectionBody(afterHeading);
+    return { content: "", matchingH1Body: body };
+  }
+
+  if (nextHeadingIndex === 0) {
+    return { content: afterHeading, matchingH1Body: "" };
+  }
+
+  const bodyMarkdown = afterHeading.slice(0, nextHeadingIndex);
+  const rest = afterHeading.slice(nextHeadingIndex);
+  return {
+    content: rest,
+    matchingH1Body: cleanSectionBody(bodyMarkdown),
+  };
 }
 
 function slugifyHeading(value: string): string {
@@ -350,31 +397,49 @@ export function buildReadAloudSections(
   input: BuildReadAloudSectionsInput,
 ): ReadAloudSection[] {
   const inclusion = resolveInclusion(input.inclusion);
-  const noteTitle = sanitizeSpeechText(input.title.trim());
-  const markdownSections = splitMarkdownSections(
-    prepareLifeLabMarkdownForReading(input.content),
-  );
+  const documentTitle = sanitizeSpeechText(input.title.trim());
+  const prepared = prepareLifeLabMarkdownForReading(input.content);
+  const { content: contentWithoutMatchingH1, matchingH1Body } =
+    stripMatchingDocumentTitleHeading(prepared, documentTitle);
+  const markdownSections = splitMarkdownSections(contentWithoutMatchingH1);
 
-  const firstMarkdownTitle = markdownSections[0]?.title ?? null;
-  const titleDuplicatesFirstSection =
-    noteTitle.length > 0 &&
-    firstMarkdownTitle != null &&
-    normalizeHeadingTitle(firstMarkdownTitle) === normalizeHeadingTitle(noteTitle);
+  // If stripping failed to apply but the first parsed section title matches,
+  // drop that section's heading echo (keep body as title preamble when needed).
+  let bodySections = markdownSections;
+  let titlePreamble = matchingH1Body;
+
+  if (
+    bodySections[0] &&
+    documentTitle &&
+    isSameNarrationTitle(documentTitle, bodySections[0].title)
+  ) {
+    const [first, ...rest] = bodySections;
+
+    if (!first.text.trim() || isSameNarrationTitle(documentTitle, first.text)) {
+      bodySections = rest;
+    } else if (!titlePreamble) {
+      titlePreamble = first.text;
+      bodySections = rest;
+    } else {
+      bodySections = rest;
+    }
+  }
 
   const draft: Array<Omit<ReadAloudSection, "order" | "id">> = [];
-  const titleOffset =
-    noteTitle && !titleDuplicatesFirstSection ? 1 : 0;
+  const includeDocumentTitle = documentTitle.length > 0;
+  const titleOffset = includeDocumentTitle ? 1 : 0;
 
-  if (noteTitle && !titleDuplicatesFirstSection) {
+  if (includeDocumentTitle) {
     draft.push({
-      title: noteTitle,
-      text: noteTitle,
+      title: documentTitle,
+      // Never set text to the title itself — chunk builder would speak it twice.
+      text: titlePreamble,
       category: "NOTE_TITLE",
       documentOrder: 0,
     });
   }
 
-  for (const section of markdownSections) {
+  for (const section of bodySections) {
     draft.push({
       title: section.title,
       text: section.text,
@@ -392,7 +457,7 @@ export function buildReadAloudSections(
       title: flashcardSection.title,
       text: flashcardSection.text,
       category: flashcardSection.category,
-      documentOrder: titleOffset + markdownSections.length,
+      documentOrder: titleOffset + bodySections.length,
     });
   }
 
@@ -455,6 +520,24 @@ export function normalizeReadAloudSectionInclusion(
 
 export function readAloudSectionsToPlainText(sections: ReadAloudSection[]): string {
   return sections
-    .map((section) => `${section.title}. ${section.text}`)
+    .map((section) => {
+      if (section.category === "NOTE_TITLE") {
+        if (!section.text.trim() || isSameNarrationTitle(section.title, section.text)) {
+          return section.title;
+        }
+
+        return `${section.title}. ${section.text}`;
+      }
+
+      if (!section.text.trim()) {
+        return section.title;
+      }
+
+      if (isSameNarrationTitle(section.title, section.text)) {
+        return section.title;
+      }
+
+      return `${section.title}. ${section.text}`;
+    })
     .join("\n\n");
 }

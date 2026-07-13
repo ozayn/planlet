@@ -5,9 +5,21 @@ import {
   buildReadAloudSectionsFromNote,
 } from "@/lib/life-lab/narration-text";
 import { prepareLifeLabMarkdownForReading } from "@/lib/life-lab/markdown-display";
+import {
+  isUrlOnlySpeechLine,
+  markdownToSpeechText,
+  plainTextToSpeechText,
+  sanitizeSpeechText,
+  stripBareUrlsFromSpeechText,
+} from "@/lib/life-lab/markdown-to-speech";
 
-const FLASHCARD_SECTION_PATTERN =
-  /^#{1,6}\s+(?:Optional Flashcards|Flashcards|Study Cards)\s*[\r\n]+[\s\S]*$/gim;
+export {
+  isUrlOnlySpeechLine,
+  markdownToSpeechText,
+  plainTextToSpeechText,
+  sanitizeSpeechText,
+  stripBareUrlsFromSpeechText,
+} from "@/lib/life-lab/markdown-to-speech";
 
 type VoicePreferenceRule = {
   langPrefix: string;
@@ -649,95 +661,6 @@ export function resolveDeviceVoiceWithFallback(
   }
 
   return { voice: pickSpeechVoice(voices), usedFallback: true };
-}
-
-const BARE_HTTPS_URL_PATTERN = /https?:\/\/[^\s<>"')\]]+/gi;
-const BARE_WWW_URL_PATTERN = /\bwww\.[^\s<>"')\]]+/gi;
-const ANGLE_BRACKET_URL_PATTERN = /<https?:\/\/[^>]+>/gi;
-const MARKDOWN_LINK_PATTERN = /!?\[([^\]]*)]\([^)]*\)/g;
-
-export function stripBareUrlsFromSpeechText(text: string): string {
-  return text
-    .replace(BARE_HTTPS_URL_PATTERN, "")
-    .replace(BARE_WWW_URL_PATTERN, "");
-}
-
-export function isUrlOnlySpeechLine(line: string): boolean {
-  const trimmed = line.trim();
-
-  if (!trimmed) {
-    return false;
-  }
-
-  return /^(https?:\/\/\S+|www\.\S+)$/i.test(trimmed);
-}
-
-function cleanupSpeechSpacing(text: string): string {
-  return text
-    .replace(/\(\s*\)/g, "")
-    .replace(/\s+([.,;:!?])/g, "$1")
-    .replace(/\s{2,}/g, " ")
-    .trim();
-}
-
-function sanitizeSpeechLine(line: string): string {
-  let cleaned = stripBareUrlsFromSpeechText(line.replace(ANGLE_BRACKET_URL_PATTERN, " "));
-
-  if (/^source\s*:/i.test(cleaned.trim())) {
-    const remainder = cleaned.replace(/^source\s*:\s*/i, "").trim();
-    return remainder ? cleaned : "";
-  }
-
-  return cleaned;
-}
-
-export function sanitizeSpeechText(text: string): string {
-  const cleaned = text
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0)
-    .filter((line) => !isUrlOnlySpeechLine(line))
-    .map((line) => sanitizeSpeechLine(line))
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0);
-
-  return cleanupSpeechSpacing(cleaned.join(" "));
-}
-
-export function plainTextToSpeechText(text: string): string {
-  let cleaned = text.trim();
-
-  if (!cleaned) {
-    return "";
-  }
-
-  cleaned = cleaned.replace(MARKDOWN_LINK_PATTERN, "$1");
-  cleaned = cleaned.replace(ANGLE_BRACKET_URL_PATTERN, " ");
-
-  return sanitizeSpeechText(cleaned);
-}
-
-export function markdownToSpeechText(content: string): string {
-  let text = content;
-
-  text = text.replace(/```mermaid[\s\S]*?```/gi, " ");
-  text = text.replace(/```[\s\S]*?```/g, " ");
-  text = text.replace(FLASHCARD_SECTION_PATTERN, " ");
-  text = text.replace(MARKDOWN_LINK_PATTERN, "$1");
-  text = text.replace(ANGLE_BRACKET_URL_PATTERN, " ");
-  text = text
-    .split(/\r?\n/)
-    .filter((line) => !isUrlOnlySpeechLine(line))
-    .map((line) => sanitizeSpeechLine(line))
-    .join("\n");
-  text = text.replace(/^#{1,6}\s+(.+?)\s*#*\s*$/gm, "$1. ");
-  text = text.replace(/`([^`]+)`/g, "$1");
-  text = text.replace(/^\s*[-*+]\s+/gm, "");
-  text = text.replace(/^\s*\d+\.\s+/gm, "");
-  text = text.replace(/[#>*_~|]/g, " ");
-  text = sanitizeSpeechText(text);
-
-  return text;
 }
 
 export function prepareNoteSpeechText(title: string, content: string): string {

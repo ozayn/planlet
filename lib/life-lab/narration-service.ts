@@ -13,7 +13,6 @@ import {
   type ReadAloudPlaybackPlan,
 } from "@/lib/life-lab/narration-chunks";
 import {
-  getDefaultOpenAiNarrationModel,
   NarrationSynthesisError,
   synthesizeSpeech,
 } from "@/lib/ai/synthesize-speech";
@@ -43,6 +42,12 @@ import {
   saveNarrationCacheRecord,
   touchNarrationCache,
 } from "@/lib/life-lab/narration-storage";
+import {
+  buildLifeLabNarrationSessionConfig,
+  isNarrationChunkCompatible,
+  logNarrationChunkDiagnostic,
+  type OpenAiNarrationSessionConfig,
+} from "@/lib/life-lab/narration-session";
 
 export type NarrationChunkRequest = {
   note: Pick<
@@ -52,6 +57,7 @@ export type NarrationChunkRequest = {
   chunkIndex: number;
   userId: string;
   narrationSettings: ResolvedOpenAiNarrationSettings;
+  sessionConfig?: OpenAiNarrationSessionConfig;
   sectionInclusion?: ReadAloudSectionInclusionPrefs;
   model?: string;
   regenerate?: boolean;
@@ -72,6 +78,11 @@ export type NarrationChunkResult = {
   contentHash: string;
   model: string;
   voice: string;
+  style: string;
+  instructionsFingerprint: string;
+  instructionVersion: number;
+  contentProfile: string;
+  sessionId: string;
 };
 
 export type NarrationTextSummary = {
@@ -219,10 +230,18 @@ export async function getOrCreateNarrationChunk(
     throw new Error("Narration chunk not found.");
   }
 
-  const model = input.model ?? getDefaultOpenAiNarrationModel();
-  const { voice, instructions, narrationStyle, instructionsFingerprint, instructionVersion } =
-    input.narrationSettings;
-  const narrationStyleSlug = OPENAI_NARRATION_STYLES[narrationStyle].slug;
+  const session =
+    input.sessionConfig ??
+    buildLifeLabNarrationSessionConfig({
+      settings: input.narrationSettings,
+      model: input.model,
+    });
+  const model = session.model;
+  const voice = session.voice;
+  const instructions = session.instructions;
+  const instructionsFingerprint = session.instructionsFingerprint;
+  const instructionVersion = session.instructionVersion;
+  const narrationStyleSlug = session.style;
   const contentHash = getNoteNarrationContentHash(
     input.note,
     input.includeFlashcards ?? true,
@@ -247,25 +266,72 @@ export async function getOrCreateNarrationChunk(
       const cached = await findNarrationCacheByKey(cacheKey);
 
       if (cached) {
-        const audio = await readNarrationAudioFile(cached.storageKey);
-
-        if (audio) {
-          await touchNarrationCache(cacheKey);
-
-          return {
-            chunkIndex: chunk.index,
-            chunkCount: chunks.length,
-            sectionId: chunk.sectionId,
-            sectionIndex: chunk.sectionIndex,
-            sectionLabel: chunk.sectionTitle,
-            cacheKey,
-            cached: true,
-            cacheWriteFailed: false,
-            audio,
+        const compatible = isNarrationChunkCompatible(
+          {
+            model: cached.model,
+            voice: cached.voice,
+            narrationStyle: cached.narrationStyle,
+            instructionsFingerprint: cached.instructionsFingerprint,
+            instructionVersion: cached.instructionVersion,
+            contentProfile: cached.contentProfile,
+            contentHash: cached.contentHash,
+            sectionId: cached.readAloudSectionId,
+            chunkIndex: cached.chunkIndex,
+          },
+          session,
+          {
             contentHash,
+            sectionId: chunk.sectionId,
+            chunkIndex: chunk.index,
+          },
+        );
+
+        logNarrationChunkDiagnostic({
+          sessionId: session.sessionId,
+          sectionId: chunk.sectionId,
+          chunkIndex: chunk.index,
+          source: "cache",
+          cachedVoice: cached.voice,
+          cachedStyle: cached.narrationStyle,
+          compatible,
+        });
+
+        if (compatible) {
+          const audio = await readNarrationAudioFile(cached.storageKey);
+
+          if (audio) {
+            await touchNarrationCache(cacheKey);
+
+            return {
+              chunkIndex: chunk.index,
+              chunkCount: chunks.length,
+              sectionId: chunk.sectionId,
+              sectionIndex: chunk.sectionIndex,
+              sectionLabel: chunk.sectionTitle,
+              cacheKey,
+              cached: true,
+              cacheWriteFailed: false,
+              audio,
+              contentHash,
+              model,
+              voice,
+              style: narrationStyleSlug,
+              instructionsFingerprint,
+              instructionVersion,
+              contentProfile: session.contentProfile,
+              sessionId: session.sessionId,
+            };
+          }
+        } else {
+          logNarrationDiagnostic({
+            stage: "cache-read",
+            noteId,
             model,
             voice,
-          };
+            errorType: "narration_configuration_mismatch",
+            errorMessage:
+              "Cached narration chunk is incompatible with the locked session config.",
+          });
         }
       }
     } catch (error) {
@@ -312,6 +378,10 @@ export async function getOrCreateNarrationChunk(
         contentHash,
         model,
         voice,
+        narrationStyle: narrationStyleSlug,
+        instructionsFingerprint,
+        contentProfile: session.contentProfile,
+        readAloudSectionId: chunk.sectionId,
         instructionVersion,
         chunkIndex: chunk.index,
         sectionLabel: chunk.sectionTitle,
@@ -334,6 +404,16 @@ export async function getOrCreateNarrationChunk(
     }
   }
 
+  logNarrationChunkDiagnostic({
+    sessionId: session.sessionId,
+    sectionId: chunk.sectionId,
+    chunkIndex: chunk.index,
+    source: "fresh",
+    cachedVoice: voice,
+    cachedStyle: narrationStyleSlug,
+    compatible: true,
+  });
+
   return {
     chunkIndex: chunk.index,
     chunkCount: chunks.length,
@@ -347,6 +427,11 @@ export async function getOrCreateNarrationChunk(
     contentHash,
     model,
     voice,
+    style: narrationStyleSlug,
+    instructionsFingerprint,
+    instructionVersion,
+    contentProfile: session.contentProfile,
+    sessionId: session.sessionId,
   };
 }
 

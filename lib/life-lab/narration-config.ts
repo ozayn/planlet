@@ -1,6 +1,6 @@
 import type { LifeLabReadAloudProvider } from "@/app/generated/prisma/client";
 
-export const NARRATION_INSTRUCTION_VERSION = 3;
+export const NARRATION_INSTRUCTION_VERSION = 6;
 
 export const NARRATION_PREVIEW_TEXT =
   "Personal identity asks what allows a person to remain the same over time. Philosophers disagree about whether continuity depends on the body, the mind, memory, or the soul.";
@@ -73,8 +73,8 @@ export const NARRATION_CONTENT_PROFILE_VERSIONS: Record<
   NarrationContentProfile,
   number
 > = {
-  "life-lab": 1,
-  coaching: 2,
+  "life-lab": 4,
+  coaching: 5,
 };
 
 /** @deprecated Use resolveNarrationInstructions() with a narration style instead. */

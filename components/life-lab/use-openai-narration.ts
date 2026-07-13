@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { getNarrationUserMessage } from "@/lib/life-lab/narration-errors";
-import type { NarrationErrorCategory } from "@/lib/life-lab/narration-errors";
+import {
+  getNarrationUserMessage,
+  type NarrationErrorCategory,
+} from "@/lib/life-lab/narration-errors";
 import { buildSameOriginNarrationChunkUrl } from "@/lib/life-lab/narration-audio-source";
 import {
   getFirstChunkIndexForSectionId,
@@ -13,6 +15,13 @@ import {
   type ReadAloudPlaybackOptions,
 } from "@/lib/life-lab/read-aloud-navigation";
 import type { ReadAloudSectionChunkRange } from "@/lib/life-lab/narration-chunks";
+import {
+  isNarrationChunkCompatible,
+  logNarrationConfigurationMismatch,
+  parseOpenAiNarrationSessionConfig,
+  serializeNarrationSessionConfig,
+  type OpenAiNarrationSessionConfig,
+} from "@/lib/life-lab/narration-session";
 import {
   buildPlaybackDiagnostic,
   categorizePlaybackFailure,
@@ -72,6 +81,7 @@ type NarrationPlan = {
   chunkCount: number;
   sectionCount: number;
   openAiAvailable?: boolean;
+  sessionConfig?: OpenAiNarrationSessionConfig | null;
   unavailable?: {
     error: string;
     category: NarrationErrorCategory;
@@ -161,6 +171,7 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const objectUrlRef = useRef<string | null>(null);
   const planRef = useRef<NarrationPlan | null>(null);
+  const sessionConfigRef = useRef<OpenAiNarrationSessionConfig | null>(null);
   const playbackOptionsRef = useRef<ReadAloudPlaybackOptions>({
     autoContinue: options.autoContinue ?? true,
     playOnlySection: false,
@@ -301,12 +312,16 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
         firstChunkIndex: number;
         chunkCount: number;
       }>;
+      sessionConfig?: unknown;
     };
+
+    const sessionConfig = parseOpenAiNarrationSessionConfig(raw.sessionConfig);
 
     const plan: NarrationPlan = {
       chunkCount: raw.chunkCount,
       sectionCount: raw.sectionCount,
       openAiAvailable: raw.openAiAvailable,
+      sessionConfig,
       unavailable: raw.unavailable,
       sections: raw.sections.map((section) => ({
         sectionId: section.id,
@@ -325,18 +340,57 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
       });
     }
 
+    // New Listen start resolves and locks one session config for all chunks.
+    sessionConfigRef.current = sessionConfig;
     planRef.current = plan;
     setChunkCount(plan.chunkCount);
     setSectionCount(plan.sectionCount);
     return plan;
   }, [api]);
 
+  const readChunkSessionMetadata = (
+    headers: Headers,
+  ): {
+    model: string | null;
+    voice: string | null;
+    narrationStyle: string | null;
+    instructionsFingerprint: string | null;
+    instructionVersion: number | null;
+    contentProfile: string | null;
+    sessionId: string | null;
+  } => {
+    const instructionVersionRaw = headers.get("X-Narration-Instruction-Version");
+    const instructionVersion = instructionVersionRaw
+      ? Number.parseInt(instructionVersionRaw, 10)
+      : Number.NaN;
+
+    return {
+      model: headers.get("X-Narration-Model"),
+      voice: headers.get("X-Narration-Voice"),
+      narrationStyle: headers.get("X-Narration-Style"),
+      instructionsFingerprint: headers.get("X-Narration-Instructions-Fingerprint"),
+      instructionVersion: Number.isInteger(instructionVersion)
+        ? instructionVersion
+        : null,
+      contentProfile: headers.get("X-Narration-Content-Profile"),
+      sessionId: headers.get("X-Narration-Session-Id"),
+    };
+  };
+
   const fetchChunkAudio = useCallback(
     async (chunkIndex: number, regenerate = false): Promise<ChunkAudioResult> => {
+      const sessionConfig = sessionConfigRef.current;
+      const requestBody = {
+        ...api.buildChunkBody(chunkIndex, regenerate),
+        ...(sessionConfig
+          ? { sessionConfig: serializeNarrationSessionConfig(sessionConfig) }
+          : {}),
+      };
+
       const response = await fetch(api.chunkUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(api.buildChunkBody(chunkIndex, regenerate)),
+        body: JSON.stringify(requestBody),
       });
 
       const responseContentType = response.headers.get("Content-Type");
@@ -355,6 +409,41 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
           category: payload.category ?? "unknown",
           debugMessage: payload.debugMessage,
         });
+      }
+
+      if (sessionConfig) {
+        const received = readChunkSessionMetadata(response.headers);
+        const compatible = isNarrationChunkCompatible(
+          {
+            model: received.model,
+            voice: received.voice,
+            narrationStyle: received.narrationStyle,
+            instructionsFingerprint: received.instructionsFingerprint,
+            instructionVersion: received.instructionVersion,
+            contentProfile: received.contentProfile,
+          },
+          sessionConfig,
+        );
+
+        if (!compatible) {
+          logNarrationConfigurationMismatch({
+            sessionId: sessionConfig.sessionId,
+            chunkIndex,
+            expected: sessionConfig,
+            received,
+          });
+
+          if (!regenerate) {
+            return fetchChunkAudio(chunkIndex, true);
+          }
+
+          throw Object.assign(
+            new Error(
+              "Narration returned a different voice or style than this session. Try again.",
+            ),
+            { category: "unknown" as NarrationErrorCategory },
+          );
+        }
       }
 
       const rawBlob = await response.blob();

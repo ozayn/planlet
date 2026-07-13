@@ -398,45 +398,51 @@ model AiUsageLog {
 }
 
 model LifeLabNarrationCache {
-  id                 String   @id @default(cuid())
-  cacheKey           String   @unique
-  driveFileId        String
-  noteModifiedTime   String?
-  contentHash        String
-  model              String
-  voice              String
-  instructionVersion Int
-  chunkIndex         Int
-  sectionLabel       String?
-  storageKey         String
-  durationSeconds    Float?
-  byteSize           Int?
-  createdAt          DateTime @default(now())
-  lastAccessedAt     DateTime @default(now())
+  id                      String   @id @default(cuid())
+  cacheKey                String   @unique
+  driveFileId             String
+  noteModifiedTime        String?
+  contentHash             String
+  model                   String
+  voice                   String
+  narrationStyle          String?
+  instructionsFingerprint String?
+  contentProfile          String?
+  readAloudSectionId      String?
+  instructionVersion      Int
+  chunkIndex              Int
+  sectionLabel            String?
+  storageKey              String
+  durationSeconds         Float?
+  byteSize                Int?
+  createdAt               DateTime @default(now())
+  lastAccessedAt          DateTime @default(now())
 
   @@index([driveFileId, model, voice, instructionVersion])
   @@index([driveFileId, contentHash])
+  @@index([driveFileId, voice, narrationStyle])
 }
 
 model CoachingNarrationCache {
-  id                    String   @id @default(cuid())
-  userId                String
-  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  cacheKey              String   @unique
-  contentHash           String
-  contentProfileVersion Int      @default(1)
-  model                 String
-  voice                 String
-  narrationStyle        String
-  instructionVersion    Int
-  readAloudSectionId    String
-  chunkIndex            Int
-  sectionLabel          String?
-  storageKey            String
-  durationSeconds       Float?
-  byteSize              Int?
-  createdAt             DateTime @default(now())
-  lastAccessedAt        DateTime @default(now())
+  id                      String   @id @default(cuid())
+  userId                  String
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cacheKey                String   @unique
+  contentHash             String
+  contentProfileVersion   Int      @default(1)
+  model                   String
+  voice                   String
+  narrationStyle          String
+  instructionsFingerprint String?
+  instructionVersion      Int
+  readAloudSectionId      String
+  chunkIndex              Int
+  sectionLabel            String?
+  storageKey              String
+  durationSeconds         Float?
+  byteSize                Int?
+  createdAt               DateTime @default(now())
+  lastAccessedAt          DateTime @default(now())
 
   @@index([userId, contentHash])
   @@index([userId, model, voice, instructionVersion])

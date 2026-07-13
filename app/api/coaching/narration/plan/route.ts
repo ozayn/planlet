@@ -7,12 +7,18 @@ import {
   parseCoachingReadAloudContent,
   summarizeCoachingNarrationText,
 } from "@/lib/coaching/narration-service";
+import { getResolvedCoachingNarrationSettingsForUser } from "@/lib/coaching/narration-preferences";
 import { validateOpenAiTtsConfiguration } from "@/lib/env";
 import { logNarrationDiagnostic } from "@/lib/life-lab/narration-diagnostics";
 import {
   buildNarrationErrorPayload,
   narrationErrorHttpStatus,
 } from "@/lib/life-lab/narration-errors";
+import {
+  buildCoachingNarrationSessionConfig,
+  logNarrationSessionStart,
+  serializeNarrationSessionConfig,
+} from "@/lib/life-lab/narration-session";
 import { canUseCoachingFeatures } from "@/lib/roles";
 
 type CoachingNarrationPlanBody = {
@@ -59,8 +65,15 @@ export async function POST(request: Request) {
   }
 
   const config = validateOpenAiTtsConfiguration();
+  const narrationSettings = await getResolvedCoachingNarrationSettingsForUser(
+    session.user.id,
+  );
   const textSummary = summarizeCoachingNarrationText(content);
   const plan = buildCoachingReadAloudPlan(content);
+  const sessionConfig = buildCoachingNarrationSessionConfig({
+    settings: narrationSettings,
+    model: config.ok ? config.model : undefined,
+  });
 
   logNarrationDiagnostic({
     stage: "text-extraction",
@@ -68,6 +81,12 @@ export async function POST(request: Request) {
     characterCount: textSummary.characterCount,
     sectionCount: textSummary.sectionCount,
     firstSectionLabel: textSummary.firstSectionLabel,
+  });
+
+  logNarrationSessionStart({
+    session: sessionConfig,
+    contentId: `coaching:${session.user.id}`,
+    sectionCount: plan.sections.length,
   });
 
   if (!config.ok) {
@@ -93,6 +112,7 @@ export async function POST(request: Request) {
     chunkCount: plan.chunks.length,
     sectionCount: plan.sections.length,
     contentHash,
+    sessionConfig: serializeNarrationSessionConfig(sessionConfig),
     sections: plan.sectionChunkRanges.map((range) => ({
       id: range.sectionId,
       title: range.sectionTitle,

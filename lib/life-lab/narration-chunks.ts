@@ -2,6 +2,7 @@ import {
   OPENAI_NARRATION_CHUNK_MAX_CHARS,
 } from "@/lib/life-lab/narration-config";
 import type { ReadAloudSection } from "@/lib/life-lab/read-aloud-sections";
+import { isSameNarrationTitle } from "@/lib/life-lab/narration-title";
 import { chunkSpeechText } from "@/lib/life-lab/speech";
 
 export type NarrationPlaybackChunk = {
@@ -35,14 +36,50 @@ export type LegacyNarrationPlaybackChunk = NarrationPlaybackChunk & {
   sectionLabel: string;
 };
 
+/**
+ * Build the spoken string for a section without duplicating the title.
+ * NOTE_TITLE (and any section whose body repeats the title) speaks once.
+ */
+export function buildSectionNarrationSpeechText(
+  section: Pick<ReadAloudSection, "title" | "text" | "category">,
+): string {
+  const title = section.title.trim();
+  const body = section.text.trim();
+
+  if (!title && !body) {
+    return "";
+  }
+
+  if (section.category === "NOTE_TITLE") {
+    if (!body || isSameNarrationTitle(title, body)) {
+      return title;
+    }
+
+    return `${title}. ${body}`;
+  }
+
+  if (!title) {
+    return body;
+  }
+
+  if (!body) {
+    return title;
+  }
+
+  if (isSameNarrationTitle(title, body)) {
+    return title;
+  }
+
+  return `${title}. ${body}`;
+}
+
 function splitSectionIntoChunks(
   section: ReadAloudSection,
   sectionIndex: number,
-  startIndex: number,
+  _startIndex: number,
   maxLength: number,
 ): Omit<NarrationPlaybackChunk, "index">[] {
-  const prefix = `${section.title}. `;
-  const fullText = `${prefix}${section.text}`.trim();
+  const fullText = buildSectionNarrationSpeechText(section);
   const parts = chunkSpeechText(fullText, maxLength);
 
   return parts.map((text, sectionChunkIndex) => ({

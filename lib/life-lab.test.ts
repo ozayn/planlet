@@ -1009,7 +1009,7 @@ describe("life lab speech", () => {
       "[BBC article](https://example.com/article)",
     );
 
-    assert.equal(spoken, "BBC article");
+    assert.equal(spoken, "BBC article.");
   });
 
   it("removes bare https URLs but keeps the rest of the sentence", () => {

@@ -12,6 +12,10 @@ export type NarrationCacheRecordInput = {
   contentHash: string;
   model: string;
   voice: string;
+  narrationStyle: string;
+  instructionsFingerprint: string;
+  contentProfile: string;
+  readAloudSectionId: string;
   instructionVersion: number;
   chunkIndex: number;
   sectionLabel: string | null;
@@ -73,6 +77,10 @@ export async function saveNarrationCacheRecord(
       contentHash: input.contentHash,
       model: input.model,
       voice: input.voice,
+      narrationStyle: input.narrationStyle,
+      instructionsFingerprint: input.instructionsFingerprint,
+      contentProfile: input.contentProfile,
+      readAloudSectionId: input.readAloudSectionId,
       instructionVersion: input.instructionVersion,
       chunkIndex: input.chunkIndex,
       sectionLabel: input.sectionLabel,
@@ -83,6 +91,13 @@ export async function saveNarrationCacheRecord(
     update: {
       noteModifiedTime: input.noteModifiedTime,
       contentHash: input.contentHash,
+      model: input.model,
+      voice: input.voice,
+      narrationStyle: input.narrationStyle,
+      instructionsFingerprint: input.instructionsFingerprint,
+      contentProfile: input.contentProfile,
+      readAloudSectionId: input.readAloudSectionId,
+      instructionVersion: input.instructionVersion,
       sectionLabel: input.sectionLabel,
       storageKey,
       durationSeconds: input.durationSeconds ?? null,
@@ -126,6 +141,42 @@ export async function invalidateNarrationCacheForNote(input: {
       voice: input.voice,
       instructionVersion:
         input.instructionVersion ?? undefined,
+    },
+  });
+
+  return result.count;
+}
+
+/** Drop cache rows that cannot prove session compatibility (legacy / incomplete). */
+export async function invalidateIncompleteNarrationCacheForNote(
+  driveFileId: string,
+): Promise<number> {
+  const records = await prisma.lifeLabNarrationCache.findMany({
+    where: {
+      driveFileId,
+      OR: [
+        { narrationStyle: null },
+        { instructionsFingerprint: null },
+        { contentProfile: null },
+        { readAloudSectionId: null },
+      ],
+    },
+    select: { id: true, storageKey: true },
+  });
+
+  await Promise.all(
+    records.map(async (record) => {
+      try {
+        await unlink(join(getNarrationStorageDir(), record.storageKey));
+      } catch {
+        // Ignore missing files.
+      }
+    }),
+  );
+
+  const result = await prisma.lifeLabNarrationCache.deleteMany({
+    where: {
+      id: { in: records.map((record) => record.id) },
     },
   });
 

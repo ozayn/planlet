@@ -7,7 +7,7 @@ import {
 } from "@/lib/life-lab/narration-config";
 
 /** Bump when Coaching instruction text / profile semantics change. */
-export const COACHING_NARRATION_INSTRUCTION_VERSION = 1;
+export const COACHING_NARRATION_INSTRUCTION_VERSION = 4;
 
 export const COACHING_DEFAULT_OPENAI_VOICE: OpenAiNarrationVoiceId = "fable";
 
