@@ -5,9 +5,12 @@ import {
   buildLifeLabNoteContentBlocks,
   type LifeLabNoteContentBlock,
 } from "@/lib/life-lab/note-content-blocks";
+import { isLectureNotesSectionId } from "@/lib/life-lab/lecture-notes";
+import type { LifeLabSectionId } from "@/lib/life-lab/constants";
 
 type LifeLabNoteContentProps = {
   content: string;
+  sectionId?: LifeLabSectionId;
 };
 
 function LifeLabNoteContentBlock({
@@ -27,6 +30,7 @@ function LifeLabNoteContentBlock({
         <LifeLabCollapsibleTranscript
           title={block.title}
           content={block.content}
+          summaryHint={block.summaryHint}
         />
       );
     default:
@@ -34,8 +38,15 @@ function LifeLabNoteContentBlock({
   }
 }
 
-export function LifeLabNoteContent({ content }: LifeLabNoteContentProps) {
-  const blocks = buildLifeLabNoteContentBlocks(content);
+export function LifeLabNoteContent({
+  content,
+  sectionId,
+}: LifeLabNoteContentProps) {
+  const isLectureNotes = isLectureNotesSectionId(sectionId);
+  const blocks = buildLifeLabNoteContentBlocks(content, {
+    prioritizeShortVersion: isLectureNotes,
+    collapseTranscriptNotes: isLectureNotes,
+  });
 
   return (
     <div className="space-y-3 md:space-y-4">

@@ -145,6 +145,26 @@ export function isRedundantMetadataChip(
   }
 
   if (
+    context.sectionId === "lecture-notes" &&
+    [
+      "lecture-notes",
+      "lecture notes",
+      "lecture",
+      "audio-note",
+      "audio note",
+      "audio",
+      "telegram",
+      "whatsapp",
+      "manual",
+      "zoom",
+      "transcript",
+      "zoom transcript",
+    ].includes(normalized)
+  ) {
+    return true;
+  }
+
+  if (
     context.sectionId === "film-lab" &&
     context.groupLabel &&
     normalizeChipValue(value) === normalizeChipValue(context.groupLabel)
@@ -197,6 +217,10 @@ export function isRedundantMetadataChip(
 
 function maxVisibleChips(context: LifeLabChipContext): number {
   if (context.variant === "card") {
+    if (context.sectionId === "lecture-notes") {
+      return 3;
+    }
+
     return 0;
   }
 
@@ -209,6 +233,22 @@ function maxVisibleChips(context: LifeLabChipContext): number {
   }
 
   return context.variant === "detail" ? 8 : 4;
+}
+
+function lectureNotesCardCandidates(
+  metadata: LifeLabNoteMetadata,
+): string[] {
+  const candidates: string[] = [];
+
+  if (metadata.topics) {
+    candidates.push(...metadata.topics);
+  }
+
+  if (metadata.tags) {
+    candidates.push(...metadata.tags);
+  }
+
+  return candidates;
 }
 
 function readingBriefCardCandidates(
@@ -278,7 +318,9 @@ export function selectVisibleMetadataChips(
         ? dictionaryCardCandidates(metadata)
         : context.sectionId === "film-lab" && context.variant === "card"
           ? filmLabCardCandidates(metadata)
-          : buildMetadataChipCandidates(metadata, context);
+          : context.sectionId === "lecture-notes" && context.variant === "card"
+            ? lectureNotesCardCandidates(metadata)
+            : buildMetadataChipCandidates(metadata, context);
 
   const seen = new Set<string>();
   const deduped: string[] = [];

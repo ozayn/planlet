@@ -8,6 +8,10 @@ import remarkGfm from "remark-gfm";
 import { MermaidBlock } from "@/components/life-lab/mermaid-block";
 import { prepareLifeLabMarkdownForReading } from "@/lib/life-lab/markdown-display";
 import { readingBriefHeadingAnchor } from "@/lib/life-lab/reading-briefs";
+import {
+  resolveTextDirection,
+  textDirectionLang,
+} from "@/lib/text-direction";
 
 type MarkdownContentProps = {
   content: string;
@@ -58,6 +62,17 @@ function getMermaidCode(child: ReactNode): string | null {
   return getCodeText(props.children);
 }
 
+function withTextDirection(
+  children: ReactNode,
+): { dir: ReturnType<typeof resolveTextDirection>; lang?: "fa" } {
+  const direction = resolveTextDirection(getPlainText(children));
+
+  return {
+    dir: direction,
+    lang: textDirectionLang(direction),
+  };
+}
+
 function createMarkdownComponents(
   readingBriefAnchors: boolean,
 ): Components {
@@ -78,20 +93,57 @@ function createMarkdownComponents(
         </code>
       );
     },
+    p({ children }) {
+      const direction = withTextDirection(children);
+
+      return <p {...direction}>{children}</p>;
+    },
+    blockquote({ children }) {
+      const direction = withTextDirection(children);
+
+      return <blockquote {...direction}>{children}</blockquote>;
+    },
+    ul({ children }) {
+      const direction = withTextDirection(children);
+
+      return <ul {...direction}>{children}</ul>;
+    },
+    ol({ children }) {
+      const direction = withTextDirection(children);
+
+      return <ol {...direction}>{children}</ol>;
+    },
+    li({ children }) {
+      const direction = withTextDirection(children);
+
+      return <li {...direction}>{children}</li>;
+    },
+    h1({ children }) {
+      const direction = withTextDirection(children);
+
+      return <h1 {...direction}>{children}</h1>;
+    },
     h2({ children }) {
       const headingText = getPlainText(children);
       const anchorId = readingBriefAnchors
         ? readingBriefHeadingAnchor(headingText)
         : undefined;
+      const direction = withTextDirection(children);
 
       return (
         <h2
           id={anchorId}
           className={anchorId ? "scroll-mt-20" : undefined}
+          {...direction}
         >
           {children}
         </h2>
       );
+    },
+    h3({ children }) {
+      const direction = withTextDirection(children);
+
+      return <h3 {...direction}>{children}</h3>;
     },
   };
 }

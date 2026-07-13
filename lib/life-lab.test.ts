@@ -236,6 +236,7 @@ describe("life lab sections", () => {
     assert.equal(isLifeLabSectionId("reading-briefs"), true);
     assert.equal(isLifeLabSectionId("learning-dictionary"), true);
     assert.equal(isLifeLabSectionId("film-lab"), true);
+    assert.equal(isLifeLabSectionId("lecture-notes"), true);
     assert.equal(isLifeLabSectionId("therapy-prep"), false);
   });
 
@@ -250,6 +251,7 @@ describe("life lab sections", () => {
     assert.equal(sectionIdFromFolderName("reading-briefs"), "reading-briefs");
     assert.equal(sectionIdFromFolderName("learning-dictionary"), "learning-dictionary");
     assert.equal(sectionIdFromFolderName("film-lab"), "film-lab");
+    assert.equal(sectionIdFromFolderName("lecture-notes"), "lecture-notes");
     assert.equal(sectionIdFromFolderName("therapy-prep"), null);
   });
 });

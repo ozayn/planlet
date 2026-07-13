@@ -5,6 +5,10 @@ import { useMemo, useState } from "react";
 
 import { FlashcardReadAloudControls } from "@/components/life-lab/read-aloud-controls";
 import type { LifeLabStudyCard } from "@/lib/life-lab/constants";
+import {
+  resolveTextDirection,
+  textDirectionLang,
+} from "@/lib/text-direction";
 
 type LifeLabFlashcardStudyProps = {
   cards: LifeLabStudyCard[];
@@ -24,6 +28,10 @@ export function LifeLabFlashcardStudy({
 
   const currentCard = cards[index];
   const total = cards.length;
+  const cardText = revealed
+    ? (currentCard?.answer ?? "")
+    : (currentCard?.question ?? "");
+  const cardDirection = resolveTextDirection(cardText);
 
   const progressLabel = useMemo(() => {
     if (total === 0) {
@@ -60,7 +68,9 @@ export function LifeLabFlashcardStudy({
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-lg font-semibold text-foreground">{title}</h2>
+          <h2 className="text-lg font-semibold text-foreground" dir="auto">
+            {title}
+          </h2>
           {subtitle ? (
             <p className="text-sm text-muted">{subtitle}</p>
           ) : null}
@@ -84,7 +94,11 @@ export function LifeLabFlashcardStudy({
         <p className="text-xs font-medium uppercase tracking-wide text-muted-light">
           {revealed ? "Answer" : "Question"}
         </p>
-        <p className="mt-3 text-base leading-relaxed text-foreground">
+        <p
+          className="mt-3 text-base leading-relaxed text-foreground"
+          dir={cardDirection}
+          lang={textDirectionLang(cardDirection)}
+        >
           {revealed ? currentCard.answer : currentCard.question}
         </p>
         <p className="mt-4 text-xs text-muted-light">
@@ -93,7 +107,9 @@ export function LifeLabFlashcardStudy({
       </button>
 
       <div className="rounded-xl border border-border/60 bg-background/50 px-3 py-2 text-xs text-muted">
-        <p className="font-medium text-foreground">{currentCard.noteTitle}</p>
+        <p className="font-medium text-foreground" dir="auto">
+          {currentCard.noteTitle}
+        </p>
         <p>
           {currentCard.sectionLabel}
           {currentCard.playlist ? ` · ${currentCard.playlist}` : ""}

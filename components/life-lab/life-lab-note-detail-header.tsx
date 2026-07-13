@@ -26,6 +26,11 @@ import {
   lifeLabNoteDisplayTitle,
   lifeLabNoteDisplayTitleDiffers,
 } from "@/lib/life-lab/youtube-learning";
+import { lectureNoteSourceLabel } from "@/lib/life-lab/lecture-notes";
+import {
+  resolveTextDirection,
+  textDirectionLang,
+} from "@/lib/text-direction";
 
 type LifeLabNoteDetailHeaderProps = {
   note: LifeLabNote;
@@ -62,7 +67,12 @@ export function LifeLabNoteDetailHeader({
 }: LifeLabNoteDetailHeaderProps) {
   const displayTitle = lifeLabNoteDisplayTitle(note);
   const showFullTitle = lifeLabNoteDisplayTitleDiffers(note);
+  const titleDirection = resolveTextDirection(displayTitle);
   const dateLine = note.dateLabel ?? note.modifiedAtLabel;
+  const lectureSourceLabel = lectureNoteSourceLabel({
+    relativePath: note.relativePath,
+    metadata: note.metadata,
+  });
   const statusLabel = resolveStudyStatusLabel(note.metadata);
   const flashcardCount =
     note.flashcards?.length ?? note.flashcardCount ?? 0;
@@ -101,12 +111,15 @@ export function LifeLabNoteDetailHeader({
       <div className="space-y-1">
         <h1
           className="line-clamp-2 text-base font-semibold leading-snug tracking-tight text-foreground [overflow-wrap:anywhere] md:text-[1.625rem] md:leading-tight"
-          dir="auto"
+          dir={titleDirection}
+          lang={textDirectionLang(titleDirection)}
         >
           {displayTitle}
         </h1>
         <p className="text-xs text-muted" dir="auto">
-          {[sectionLabel, dateLine].filter(Boolean).join(" · ")}
+          {[sectionLabel, lectureSourceLabel, dateLine]
+            .filter(Boolean)
+            .join(" · ")}
         </p>
         {resolvedSourceUrl ? <LifeLabSourceLink href={resolvedSourceUrl} /> : null}
       </div>

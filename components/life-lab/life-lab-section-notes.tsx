@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { LifeLabNoteCardMeta } from "@/components/life-lab/life-lab-note-card-meta";
 import { LifeLabNoteCardDevMenu } from "@/components/life-lab/life-lab-note-card-dev-menu";
+import { LifeLabMetadataChips } from "@/components/life-lab/life-lab-metadata-chips";
 import { LifeLabNoteImageFigure } from "@/components/life-lab/life-lab-note-image";
 import { LifeLabPlaylistCardList } from "@/components/life-lab/life-lab-playlist-card-list";
 import {
@@ -19,6 +20,7 @@ import type {
   LifeLabSectionId,
 } from "@/lib/life-lab/constants";
 import { selectCardPreview } from "@/lib/life-lab/card-preview";
+import { lectureNoteSourceLabel } from "@/lib/life-lab/lecture-notes";
 import {
   dictionaryCategoryLabel,
   resolveDictionaryCategory,
@@ -30,6 +32,10 @@ import {
   classifyVideoOwnershipForNote,
   resolvePlaylistContextLabel,
 } from "@/lib/life-lab/youtube-library";
+import {
+  resolveTextDirection,
+  textDirectionLang,
+} from "@/lib/text-direction";
 import type {
   LifeLabSectionView,
   PlaylistBrowseDebugInfo,
@@ -284,6 +290,67 @@ function CompactNoteMeta({
   );
 }
 
+function LifeLabLectureNoteCard({
+  sectionId,
+  note,
+}: {
+  sectionId: LifeLabSectionId;
+  note: LifeLabNoteSummary;
+}) {
+  const language = note.metadata?.language?.trim() || null;
+  const sourceLabel = lectureNoteSourceLabel({
+    relativePath: note.relativePath,
+    metadata: note.metadata,
+  });
+  const dateLabel = note.dateLabel ?? note.modifiedAtLabel;
+  const titleDirection = resolveTextDirection(note.title);
+
+  return (
+    <li>
+      <div className="relative rounded-lg border border-border/50 px-3 py-2.5 transition-colors hover:bg-accent-cream/20">
+        <div className="flex items-start justify-between gap-3 pr-8">
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              {sourceLabel ? (
+                <span className="rounded-full border border-border/70 px-2 py-0.5 text-[0.6875rem] font-medium text-muted">
+                  {sourceLabel}
+                </span>
+              ) : null}
+              {language ? (
+                <span className="rounded-full border border-border/70 px-2 py-0.5 text-[0.6875rem] font-medium text-muted">
+                  {language}
+                </span>
+              ) : null}
+              {dateLabel ? (
+                <span className="text-[0.6875rem] text-muted-light">
+                  {dateLabel}
+                </span>
+              ) : null}
+            </div>
+            <Link
+              href={`/life-lab/${sectionId}/${note.slug}`}
+              className="block line-clamp-2 text-sm font-medium leading-snug text-foreground transition-colors hover:text-foreground/80"
+              dir={titleDirection}
+              lang={textDirectionLang(titleDirection)}
+            >
+              {note.title}
+            </Link>
+            <LifeLabMetadataChips
+              metadata={note.metadata}
+              sectionId={sectionId}
+              variant="card"
+            />
+            <CompactNoteMeta sectionId={sectionId} note={note} />
+          </div>
+        </div>
+        <div className="absolute right-2.5 top-2.5">
+          <LifeLabNoteCardDevMenu sectionId={sectionId} note={note} />
+        </div>
+      </div>
+    </li>
+  );
+}
+
 function LifeLabDictionaryNoteCard({
   sectionId,
   note,
@@ -427,6 +494,12 @@ function LifeLabNoteList({
               sectionId={sectionId}
               note={note}
               searchQuery={searchQuery}
+            />
+          ) : sectionId === "lecture-notes" ? (
+            <LifeLabLectureNoteCard
+              key={note.slug}
+              sectionId={sectionId}
+              note={note}
             />
           ) : (
             <LifeLabNoteCard

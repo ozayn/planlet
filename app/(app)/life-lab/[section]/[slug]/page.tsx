@@ -173,7 +173,10 @@ export default async function LifeLabNotePage({
                     noteTitle={note.title}
                   />
                 ) : (
-                  <LifeLabNoteContent content={noteBodyContent} />
+                  <LifeLabNoteContent
+                    content={noteBodyContent}
+                    sectionId={note.sectionId}
+                  />
                 )}
                 {playlistNav ? (
                   <div className="mt-6 border-t border-border/50 pt-5">

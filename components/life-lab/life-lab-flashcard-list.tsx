@@ -1,10 +1,32 @@
 import type { LifeLabFlashcard } from "@/lib/life-lab/constants";
+import {
+  resolveTextDirection,
+  textDirectionLang,
+} from "@/lib/text-direction";
 
 type LifeLabFlashcardListProps = {
   cards: LifeLabFlashcard[];
   title?: string;
   showTitle?: boolean;
 };
+
+function FlashcardLine({
+  label,
+  text,
+  className,
+}: {
+  label: string;
+  text: string;
+  className: string;
+}) {
+  const direction = resolveTextDirection(text);
+
+  return (
+    <p className={className} dir={direction} lang={textDirectionLang(direction)}>
+      <strong dir="ltr">{label}</strong> {text}
+    </p>
+  );
+}
 
 export function LifeLabFlashcardList({
   cards,
@@ -27,12 +49,16 @@ export function LifeLabFlashcardList({
             key={`${index}-${card.question.slice(0, 24)}`}
             className="ui-life-lab-flashcard"
           >
-            <p className="ui-life-lab-question">
-              <strong>Q:</strong> {card.question}
-            </p>
-            <p className="ui-life-lab-answer">
-              <strong>A:</strong> {card.answer}
-            </p>
+            <FlashcardLine
+              label="Q:"
+              text={card.question}
+              className="ui-life-lab-question"
+            />
+            <FlashcardLine
+              label="A:"
+              text={card.answer}
+              className="ui-life-lab-answer"
+            />
           </div>
         ))}
       </div>

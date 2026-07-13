@@ -44,6 +44,10 @@ export const LIFE_LAB_ALLOWED_SECTIONS = {
     label: "Film Lab",
     folderName: "film-lab",
   },
+  "lecture-notes": {
+    label: "Lecture Notes",
+    folderName: "lecture-notes",
+  },
 } as const;
 
 export type LifeLabSectionId = keyof typeof LIFE_LAB_ALLOWED_SECTIONS;
@@ -76,6 +80,12 @@ export type LifeLabNoteMetadata = {
   type?: string;
   section?: string;
   source?: string;
+  input_source?: string;
+  language?: string;
+  transcript_available?: boolean;
+  speaker_count?: number;
+  privacy?: string;
+  privacy_classification?: string;
   channel?: string;
   channelName?: string;
   youtubeChannel?: string;

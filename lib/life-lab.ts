@@ -84,6 +84,10 @@ import {
   isFilmLabExcludedRelativePath,
 } from "@/lib/life-lab/film-lab";
 import {
+  isLectureNotesBlockedRelativePath,
+  shouldIncludeLectureNoteInPlanlet,
+} from "@/lib/life-lab/lecture-notes";
+import {
   classifyNoteGroup,
   groupLifeLabNotes,
   noteAssignmentPriority,
@@ -536,7 +540,12 @@ async function listSectionMarkdownFiles(
     shouldSkipFolder:
       sectionId === "film-lab"
         ? (folderName, prefix) => isFilmLabExcludedFolder(folderName, prefix)
-        : undefined,
+        : sectionId === "lecture-notes"
+          ? (folderName, prefix) => {
+              const nextPrefix = prefix ? `${prefix}/${folderName}` : folderName;
+              return isLectureNotesBlockedRelativePath(nextPrefix);
+            }
+          : undefined,
   });
 }
 
@@ -544,12 +553,35 @@ function filterSectionMarkdownEntries(
   entries: DriveMarkdownEntry[],
   sectionId: LifeLabSectionId,
 ): DriveMarkdownEntry[] {
-  if (sectionId !== "film-lab") {
-    return entries;
+  if (sectionId === "film-lab") {
+    return entries.filter(
+      (entry) => !isFilmLabExcludedRelativePath(entry.relativePath),
+    );
   }
 
-  return entries.filter(
-    (entry) => !isFilmLabExcludedRelativePath(entry.relativePath),
+  if (sectionId === "lecture-notes") {
+    return entries.filter(
+      (entry) => !isLectureNotesBlockedRelativePath(entry.relativePath),
+    );
+  }
+
+  return entries;
+}
+
+function filterEnrichedSectionRecords(
+  sectionId: LifeLabSectionId,
+  records: LifeLabSectionNoteRecord[],
+): LifeLabSectionNoteRecord[] {
+  if (sectionId !== "lecture-notes") {
+    return records;
+  }
+
+  return records.filter((record) =>
+    shouldIncludeLectureNoteInPlanlet({
+      sectionId,
+      relativePath: record.relativePath,
+      metadata: record.metadata,
+    }),
   );
 }
 
@@ -711,7 +743,13 @@ async function loadNotePayload(
   const rawContent = await downloadDriveFile(credentials, baseRecord.fileId);
 
   return {
-    record: processLifeLabNoteContent(baseRecord, rawContent),
+    record: processLifeLabNoteContent(
+      {
+        ...baseRecord,
+        sectionId,
+      },
+      rawContent,
+    ),
     rawContent,
   };
 }
@@ -795,7 +833,7 @@ async function getEnrichedSectionRecordsCached(
   );
 
   return {
-    records,
+    records: filterEnrichedSectionRecords(sectionId, records),
     listingDiagnostic: fileIndex.listingDiagnostic,
   };
 }
@@ -814,6 +852,17 @@ async function getNoteContentCached(
   const payload = await getNotePayloadCached(sectionId, baseRecord);
 
   if (!payload) {
+    return null;
+  }
+
+  if (
+    sectionId === "lecture-notes" &&
+    !shouldIncludeLectureNoteInPlanlet({
+      sectionId,
+      relativePath: payload.record.relativePath,
+      metadata: payload.record.metadata,
+    })
+  ) {
     return null;
   }
 
@@ -1627,6 +1676,17 @@ async function loadNoteContent(
     return null;
   }
 
+  if (
+    sectionId === "lecture-notes" &&
+    !shouldIncludeLectureNoteInPlanlet({
+      sectionId,
+      relativePath: payload.record.relativePath,
+      metadata: payload.record.metadata,
+    })
+  ) {
+    return null;
+  }
+
   return buildLifeLabNote(payload.record, sectionId, payload.rawContent);
 }
 
@@ -1637,7 +1697,13 @@ function buildLifeLabNote(
 ): LifeLabNote {
   const { body, technicalProvenance: frontmatterTechnical } =
     parseLifeLabFrontmatter(content);
-  const processed = processLifeLabNoteContent(record, content);
+  const processed = processLifeLabNoteContent(
+    {
+      ...record,
+      sectionId,
+    },
+    content,
+  );
   const summary = toNoteSummary(processed);
   const { dev: _summaryDev, ...baseSummary } = summary;
   const sourceUrl = resolveLifeLabSourceUrl({

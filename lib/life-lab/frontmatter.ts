@@ -136,6 +136,8 @@ function normalizeMetadata(raw: Record<string, unknown>): LifeLabNoteMetadata {
     "type",
     "section",
     "source",
+    "input_source",
+    "language",
     "channel",
     "channelName",
     "youtubeChannel",
@@ -229,6 +231,30 @@ function normalizeMetadata(raw: Record<string, unknown>): LifeLabNoteMetadata {
     metadata.reviewed = true;
   } else if (raw.reviewed === false) {
     metadata.reviewed = false;
+  }
+
+  if (raw.transcript_available === true) {
+    metadata.transcript_available = true;
+  } else if (raw.transcript_available === false) {
+    metadata.transcript_available = false;
+  }
+
+  if (typeof raw.speaker_count === "number" && Number.isFinite(raw.speaker_count)) {
+    metadata.speaker_count = Math.max(0, Math.round(raw.speaker_count));
+  } else if (typeof raw.speaker_count === "string" && raw.speaker_count.trim()) {
+    const parsed = Number.parseInt(raw.speaker_count.trim(), 10);
+
+    if (Number.isFinite(parsed)) {
+      metadata.speaker_count = Math.max(0, parsed);
+    }
+  }
+
+  for (const field of ["privacy", "privacy_classification"] as const) {
+    const value = raw[field];
+
+    if (typeof value === "string" && value.trim()) {
+      metadata[field] = value.trim();
+    }
   }
 
   if (typeof raw.sourceType === "string" && raw.sourceType.trim()) {

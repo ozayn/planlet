@@ -1,5 +1,6 @@
 import type { LifeLabNoteMetadata, LifeLabNoteSummary } from "@/lib/life-lab/constants";
 import { relativePathFilename } from "@/lib/life-lab/slug";
+import { normalizeSearchText } from "@/lib/text-direction";
 
 function metadataSearchValues(metadata: LifeLabNoteMetadata): string[] {
   const values: string[] = [];
@@ -8,6 +9,8 @@ function metadataSearchValues(metadata: LifeLabNoteMetadata): string[] {
     metadata.type,
     metadata.section,
     metadata.source,
+    metadata.input_source,
+    metadata.language,
     metadata.channel,
     metadata.channelName,
     metadata.youtubeChannel,
@@ -57,17 +60,18 @@ export function buildNoteSearchText(
     ...metadataSearchValues(note.metadata ?? {}),
   ];
 
-  return parts
-    .filter((value): value is string => Boolean(value?.trim()))
-    .join(" ")
-    .toLowerCase();
+  return normalizeSearchText(
+    parts
+      .filter((value): value is string => Boolean(value?.trim()))
+      .join(" "),
+  );
 }
 
 export function noteMatchesSearch(
   note: LifeLabNoteSummary,
   query: string,
 ): boolean {
-  const normalizedQuery = query.trim().toLowerCase();
+  const normalizedQuery = normalizeSearchText(query.trim());
 
   if (!normalizedQuery) {
     return true;

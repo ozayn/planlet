@@ -33,6 +33,10 @@ import {
   isFilmLabNote,
 } from "@/lib/life-lab/film-lab";
 import {
+  extractLectureNotePreview,
+  isLectureNote,
+} from "@/lib/life-lab/lecture-notes";
+import {
   extractSourceUrlFromBody,
   extractSourceUrlFromMetadata,
 } from "@/lib/life-lab/source-url";
@@ -52,6 +56,7 @@ export type LifeLabSectionNoteRecord = {
   relativePath: string;
   mimeType: string | null;
   fileSizeBytes: number | null;
+  sectionId?: string;
   metadata?: LifeLabNoteMetadata;
   searchText?: string;
   hasFlashcards?: boolean;
@@ -112,6 +117,11 @@ export function processLifeLabNoteContent(
     subfolderLabel: record.subfolderLabel,
     metadata: mergedMetadata,
   });
+  const isLecture = isLectureNote({
+    sectionId: record.sectionId,
+    relativePath: record.relativePath,
+    metadata: mergedMetadata,
+  });
   const isPlaylistIndex = isPlaylistIndexNote({
     sectionId: "youtube-learning",
     relativePath: record.relativePath,
@@ -126,7 +136,9 @@ export function processLifeLabNoteContent(
       ? extractDictionaryDefinition(body)
       : isFilmLab
         ? extractFilmLabPreview(body, mergedMetadata)
-        : markdownExcerpt(readableBody);
+        : isLecture
+          ? extractLectureNotePreview(body)
+          : markdownExcerpt(readableBody);
 
   if (isPlaylistIndex) {
     const playlistDisplay = parsePlaylistIndexNote({

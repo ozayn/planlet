@@ -1,4 +1,5 @@
 import type { LifeLabNoteSummary } from "@/lib/life-lab/constants";
+import { normalizeSearchText } from "@/lib/text-direction";
 
 export const CARD_PREVIEW_MAX_LENGTH = 120;
 
@@ -57,8 +58,8 @@ export function extractSearchSnippet(
     return null;
   }
 
-  const lowerSearch = normalizedSearch.toLowerCase();
-  const lowerQuery = normalizedQuery.toLowerCase();
+  const lowerSearch = normalizeSearchText(normalizedSearch);
+  const lowerQuery = normalizeSearchText(normalizedQuery);
   const index = lowerSearch.indexOf(lowerQuery);
 
   if (index === -1) {
@@ -67,16 +68,16 @@ export function extractSearchSnippet(
 
   const start = Math.max(0, index - 40);
   const end = Math.min(
-    normalizedSearch.length,
-    index + normalizedQuery.length + 60,
+    lowerSearch.length,
+    index + lowerQuery.length + 60,
   );
-  let snippet = normalizedSearch.slice(start, end).replace(/\s+/g, " ").trim();
+  let snippet = lowerSearch.slice(start, end).replace(/\s+/g, " ").trim();
 
   if (start > 0) {
     snippet = `…${snippet}`;
   }
 
-  if (end < normalizedSearch.length) {
+  if (end < lowerSearch.length) {
     snippet = `${snippet}…`;
   }
 
