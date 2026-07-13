@@ -14,6 +14,10 @@ import {
 } from "@/lib/life-lab/narration-service";
 import { canAccessLifeLabPage } from "@/lib/roles";
 
+export async function GET() {
+  return POST();
+}
+
 export async function POST() {
   if (!isLifeLabDevToolsEnabled()) {
     return NextResponse.json({ error: "Not found." }, { status: 404 });

@@ -65,10 +65,32 @@ describe("categorizePlaybackFailure", () => {
       "audio_decode_failure",
     );
     assert.equal(
+      mapMediaErrorCode(4, {
+        sourceScheme: "blob",
+        mediaErrorMessage: "Media load rejected by URL safety check",
+      }),
+      "audio_csp_blocked",
+    );
+    assert.equal(
       categorizePlaybackFailure({
         mediaError: { code: 2 } as MediaError,
       }),
       "audio_network_failure",
+    );
+  });
+
+  it("rejects invalid source strings before playback", () => {
+    assert.equal(
+      categorizePlaybackFailure({
+        sourceUrl: "[object Object]",
+      }),
+      "empty_audio_source",
+    );
+    assert.equal(
+      categorizePlaybackFailure({
+        sourceUrl: "data:audio/mpeg;base64,abc",
+      }),
+      "malformed_audio_url",
     );
   });
 });
@@ -82,7 +104,7 @@ describe("classifyAudioSrc", () => {
 });
 
 describe("object URL lifecycle helpers", () => {
-  it("replaceAudioObjectUrl revokes the previous URL once", () => {
+  it("replaceAudioObjectUrl revokes the previous blob URL once", () => {
     const revoked: string[] = [];
     const originalRevoke = URL.revokeObjectURL;
 
@@ -134,6 +156,39 @@ describe("object URL lifecycle helpers", () => {
       });
 
       assert.deepEqual(revoked, ["blob:active"]);
+    } finally {
+      URL.revokeObjectURL = originalRevoke;
+    }
+  });
+
+  it("does not revoke same-origin sources on replace", () => {
+    const revoked: string[] = [];
+    const originalRevoke = URL.revokeObjectURL;
+
+    URL.revokeObjectURL = (url: string) => {
+      revoked.push(url);
+    };
+
+    try {
+      const audio = {
+        pause: () => undefined,
+        load: () => undefined,
+        src: "",
+      } as HTMLAudioElement;
+      const activeUrlRef = { current: null as string | null };
+
+      replaceAudioObjectUrl({
+        audio,
+        nextUrl: "/api/life-lab/narration/chunk?sectionId=a&slug=b&chunkIndex=0",
+        activeUrlRef,
+      });
+
+      assert.deepEqual(revoked, []);
+      assert.equal(activeUrlRef.current, null);
+      assert.equal(
+        audio.src,
+        "/api/life-lab/narration/chunk?sectionId=a&slug=b&chunkIndex=0",
+      );
     } finally {
       URL.revokeObjectURL = originalRevoke;
     }

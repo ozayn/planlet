@@ -28,4 +28,12 @@ describe("content security policy", () => {
     assert.equal(tokens.includes("https:"), false);
     assert.equal(tokens.includes("*"), false);
   });
+
+  it("allows blob playback for narration media sources", () => {
+    const header = buildContentSecurityPolicyHeader("production");
+    const mediaSrc = directiveValue(header, "media-src");
+
+    assert.equal(mediaSrc, "'self' blob:");
+    assert.equal(mediaSrc.includes("*"), false);
+  });
 });

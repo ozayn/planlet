@@ -13,13 +13,24 @@ import {
   getOrCreateNarrationChunk,
   mapNarrationServiceError,
 } from "@/lib/life-lab/narration-service";
+import { getResolvedOpenAiNarrationSettingsForUser } from "@/lib/life-lab/read-aloud-preferences";
 import { canAccessLifeLabPage } from "@/lib/roles";
 import { isLifeLabDevToolsEnabled } from "@/lib/life-lab/dev";
 
 type NarrationChunkBody = {
   sectionId?: string;
   slug?: string;
-  chunkIndex?: number;
+  chunkIndex?: unknown;
+  regenerate?: boolean;
+  skipCache?: boolean;
+  voice?: string;
+  model?: string;
+};
+
+type NarrationChunkParams = {
+  sectionId: string;
+  slug: string;
+  chunkIndex: number;
   regenerate?: boolean;
   skipCache?: boolean;
   voice?: string;
@@ -46,7 +57,43 @@ function narrationErrorResponse(
   );
 }
 
-export async function POST(request: Request) {
+function parseChunkIndex(value: unknown): number | null {
+  if (typeof value === "number" && Number.isInteger(value) && value >= 0) {
+    return value;
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number.parseInt(value, 10);
+
+    if (Number.isInteger(parsed) && parsed >= 0) {
+      return parsed;
+    }
+  }
+
+  return null;
+}
+
+function parseChunkParams(input: NarrationChunkBody): NarrationChunkParams | null {
+  const sectionId = input.sectionId?.trim();
+  const slug = input.slug?.trim();
+  const chunkIndex = parseChunkIndex(input.chunkIndex);
+
+  if (!sectionId || !slug || chunkIndex == null) {
+    return null;
+  }
+
+  return {
+    sectionId,
+    slug,
+    chunkIndex,
+    regenerate: input.regenerate === true,
+    skipCache: input.skipCache === true,
+    voice: input.voice,
+    model: input.model,
+  };
+}
+
+async function serveNarrationChunk(params: NarrationChunkParams) {
   const session = await auth();
 
   if (!session?.user?.id || !canAccessLifeLabPage(session.user)) {
@@ -65,40 +112,24 @@ export async function POST(request: Request) {
     return narrationErrorResponse(config.reason);
   }
 
-  let body: NarrationChunkBody;
-
-  try {
-    body = (await request.json()) as NarrationChunkBody;
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
-  }
-
-  const sectionId = body.sectionId?.trim();
-  const slug = body.slug?.trim();
-  const chunkIndex = body.chunkIndex;
-
-  if (!sectionId || !slug || chunkIndex == null || chunkIndex < 0) {
-    return NextResponse.json(
-      { error: "sectionId, slug, and chunkIndex are required." },
-      { status: 400 },
-    );
-  }
-
-  const { note } = await getLifeLabNoteData(sectionId, slug);
+  const { note } = await getLifeLabNoteData(params.sectionId, params.slug);
 
   if (!note) {
     return NextResponse.json({ error: "Note not found." }, { status: 404 });
   }
 
   try {
+    const narrationSettings = await getResolvedOpenAiNarrationSettingsForUser(
+      session.user.id,
+    );
     const result = await getOrCreateNarrationChunk({
       note,
-      chunkIndex,
+      chunkIndex: params.chunkIndex,
       userId: session.user.id,
-      regenerate: body.regenerate === true,
-      skipCache: body.skipCache === true,
-      voice: body.voice,
-      model: body.model,
+      narrationSettings,
+      regenerate: params.regenerate === true,
+      skipCache: params.skipCache === true,
+      model: params.model,
     });
 
     logNarrationDiagnostic({
@@ -148,4 +179,47 @@ export async function POST(request: Request) {
 
     return NextResponse.json(mapped.body, { status: mapped.status });
   }
+}
+
+export async function GET(request: Request) {
+  const url = new URL(request.url);
+  const params = parseChunkParams({
+    sectionId: url.searchParams.get("sectionId") ?? undefined,
+    slug: url.searchParams.get("slug") ?? undefined,
+    chunkIndex: url.searchParams.get("chunkIndex") ?? undefined,
+    regenerate: url.searchParams.get("regenerate") === "1",
+    skipCache: url.searchParams.get("skipCache") === "1",
+    voice: url.searchParams.get("voice") ?? undefined,
+    model: url.searchParams.get("model") ?? undefined,
+  });
+
+  if (!params) {
+    return NextResponse.json(
+      { error: "sectionId, slug, and chunkIndex are required." },
+      { status: 400 },
+    );
+  }
+
+  return serveNarrationChunk(params);
+}
+
+export async function POST(request: Request) {
+  let body: NarrationChunkBody;
+
+  try {
+    body = (await request.json()) as NarrationChunkBody;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+  }
+
+  const params = parseChunkParams(body);
+
+  if (!params) {
+    return NextResponse.json(
+      { error: "sectionId, slug, and chunkIndex are required." },
+      { status: 400 },
+    );
+  }
+
+  return serveNarrationChunk(params);
 }

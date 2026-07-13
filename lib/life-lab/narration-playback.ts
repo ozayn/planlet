@@ -1,4 +1,13 @@
 import type { NarrationErrorCategory } from "@/lib/life-lab/narration-errors";
+import {
+  categorizeMediaErrorMessage,
+  isBlobNarrationAudioSource,
+  isSafeNarrationAudioSource,
+  parseNarrationAudioSourceScheme,
+  type NarrationAudioSourceOrigin,
+  type NarrationAudioSourceScheme,
+  validateAssignableAudioSource,
+} from "@/lib/life-lab/narration-audio-source";
 
 export const NARRATION_AUDIO_MIME = "audio/mpeg";
 
@@ -6,6 +15,12 @@ export type NarrationPlaybackDiagnostic = {
   errorName: string | null;
   errorMessage: string | null;
   srcKind: "blob" | "data" | "remote" | "none";
+  sourceScheme: NarrationAudioSourceScheme;
+  sourceLength: number;
+  sourceOrigin: NarrationAudioSourceOrigin;
+  sanitizedTransformed: boolean;
+  srcEqualsOriginal: boolean;
+  currentSrc: string | null;
   responseStatus: number | null;
   responseContentType: string | null;
   byteLength: number;
@@ -22,19 +37,29 @@ export type NarrationPlaybackDiagnostic = {
 };
 
 export function classifyAudioSrc(src: string): NarrationPlaybackDiagnostic["srcKind"] {
-  if (!src) {
-    return "none";
+  const scheme = parseNarrationAudioSourceScheme(src);
+
+  switch (scheme) {
+    case "blob":
+      return "blob";
+    case "data":
+      return "data";
+    case "https":
+    case "http":
+      return "remote";
+    default:
+      return "none";
+  }
+}
+
+export function createNarrationObjectUrl(blob: Blob): string {
+  const validationError = validateNarrationAudioBlob(blob);
+
+  if (validationError) {
+    throw Object.assign(new Error(validationError), { category: validationError });
   }
 
-  if (src.startsWith("blob:")) {
-    return "blob";
-  }
-
-  if (src.startsWith("data:")) {
-    return "data";
-  }
-
-  return "remote";
+  return URL.createObjectURL(blob);
 }
 
 export function looksLikeMp3(bytes: Uint8Array): boolean {
@@ -91,7 +116,76 @@ const MEDIA_ERR_NETWORK = 2;
 const MEDIA_ERR_DECODE = 3;
 const MEDIA_ERR_SRC_NOT_SUPPORTED = 4;
 
-export function mapMediaErrorCode(code: number | null | undefined): NarrationErrorCategory {
+export function categorizePlaybackFailure(input: {
+  playError?: unknown;
+  mediaError?: MediaError | null;
+  blobSize?: number;
+  sourceUrl?: string | null;
+}): NarrationErrorCategory {
+  if (input.blobSize === 0) {
+    return "empty_audio_response";
+  }
+
+  const sourceUrl = input.sourceUrl ?? null;
+
+  if (sourceUrl) {
+    const sourceValidation = validateAssignableAudioSource(sourceUrl);
+
+    if (sourceValidation === "empty_audio_source") {
+      return "empty_audio_source";
+    }
+
+    if (sourceValidation === "malformed_audio_url") {
+      return "malformed_audio_url";
+    }
+  }
+
+  const sourceScheme = parseNarrationAudioSourceScheme(sourceUrl ?? "");
+  const mediaMessageCategory = categorizeMediaErrorMessage(
+    input.mediaError?.message,
+    sourceScheme,
+  );
+
+  if (mediaMessageCategory) {
+    return mediaMessageCategory;
+  }
+
+  if (input.playError instanceof DOMException) {
+    if (input.playError.name === "NotAllowedError") {
+      return "playback_requires_user_gesture";
+    }
+
+    if (input.playError.name === "NotSupportedError") {
+      return "unsupported_audio_format";
+    }
+  }
+
+  if (input.mediaError?.code) {
+    return mapMediaErrorCode(input.mediaError.code, {
+      sourceScheme,
+      mediaErrorMessage: input.mediaError.message,
+    });
+  }
+
+  return "audio_playback_failure";
+}
+
+export function mapMediaErrorCode(
+  code: number | null | undefined,
+  context?: {
+    sourceScheme?: NarrationAudioSourceScheme;
+    mediaErrorMessage?: string | null;
+  },
+): NarrationErrorCategory {
+  const messageCategory = categorizeMediaErrorMessage(
+    context?.mediaErrorMessage,
+    context?.sourceScheme ?? "empty",
+  );
+
+  if (messageCategory) {
+    return messageCategory;
+  }
+
   switch (code) {
     case MEDIA_ERR_ABORTED:
       return "playback_aborted";
@@ -106,32 +200,6 @@ export function mapMediaErrorCode(code: number | null | undefined): NarrationErr
   }
 }
 
-export function categorizePlaybackFailure(input: {
-  playError?: unknown;
-  mediaError?: MediaError | null;
-  blobSize?: number;
-}): NarrationErrorCategory {
-  if (input.blobSize === 0) {
-    return "empty_audio_response";
-  }
-
-  if (input.playError instanceof DOMException) {
-    if (input.playError.name === "NotAllowedError") {
-      return "playback_requires_user_gesture";
-    }
-
-    if (input.playError.name === "NotSupportedError") {
-      return "unsupported_audio_format";
-    }
-  }
-
-  if (input.mediaError?.code) {
-    return mapMediaErrorCode(input.mediaError.code);
-  }
-
-  return "audio_playback_failure";
-}
-
 export function buildPlaybackDiagnostic(input: {
   audio?: HTMLAudioElement | null;
   blob: Blob;
@@ -141,9 +209,14 @@ export function buildPlaybackDiagnostic(input: {
   chunkIndex: number;
   playError?: unknown;
   playRejected?: boolean;
+  assignedSource?: string | null;
+  sourceOrigin?: NarrationAudioSourceOrigin;
+  sanitizedTransformed?: boolean;
 }): NarrationPlaybackDiagnostic {
   const mediaError = input.audio?.error ?? null;
   const playError = input.playError;
+  const assignedSource = input.assignedSource ?? input.audio?.src ?? "";
+  const sourceScheme = parseNarrationAudioSourceScheme(assignedSource);
 
   return {
     errorName:
@@ -156,7 +229,13 @@ export function buildPlaybackDiagnostic(input: {
       playError instanceof Error
         ? playError.message
         : mediaError?.message ?? null,
-    srcKind: classifyAudioSrc(input.audio?.src ?? ""),
+    srcKind: classifyAudioSrc(assignedSource),
+    sourceScheme,
+    sourceLength: assignedSource.length,
+    sourceOrigin: input.sourceOrigin ?? "unknown",
+    sanitizedTransformed: input.sanitizedTransformed ?? false,
+    srcEqualsOriginal: assignedSource === (input.assignedSource ?? assignedSource),
+    currentSrc: input.audio?.currentSrc ?? null,
     responseStatus: input.responseStatus,
     responseContentType: input.responseContentType,
     byteLength: input.blob.size,
@@ -212,21 +291,57 @@ export function waitForAudioCanPlay(audio: HTMLAudioElement): Promise<void> {
   });
 }
 
+export function assignNarrationAudioSource(input: {
+  audio: HTMLAudioElement;
+  source: string;
+  activeUrlRef: { current: string | null };
+  pageOrigin?: string;
+}): void {
+  const validationError = validateAssignableAudioSource(input.source);
+
+  if (validationError) {
+    throw Object.assign(new Error(validationError), { category: validationError });
+  }
+
+  if (
+    !isSafeNarrationAudioSource(input.source, {
+      pageOrigin: input.pageOrigin,
+    })
+  ) {
+    throw Object.assign(new Error("unsafe_audio_url"), {
+      category: "unsafe_audio_url" satisfies NarrationErrorCategory,
+    });
+  }
+
+  input.audio.pause();
+  revokeActiveNarrationObjectUrl(input.activeUrlRef);
+
+  input.audio.src = input.source;
+  input.activeUrlRef.current = isBlobNarrationAudioSource(input.source)
+    ? input.source
+    : null;
+  input.audio.load();
+}
+
+function revokeActiveNarrationObjectUrl(activeUrlRef: { current: string | null }) {
+  if (activeUrlRef.current && isBlobNarrationAudioSource(activeUrlRef.current)) {
+    URL.revokeObjectURL(activeUrlRef.current);
+    activeUrlRef.current = null;
+  }
+}
+
 export function replaceAudioObjectUrl(input: {
   audio: HTMLAudioElement;
   nextUrl: string;
   activeUrlRef: { current: string | null };
+  pageOrigin?: string;
 }): void {
-  input.audio.pause();
-
-  if (input.activeUrlRef.current) {
-    URL.revokeObjectURL(input.activeUrlRef.current);
-    input.activeUrlRef.current = null;
-  }
-
-  input.audio.src = input.nextUrl;
-  input.activeUrlRef.current = input.nextUrl;
-  input.audio.load();
+  assignNarrationAudioSource({
+    audio: input.audio,
+    source: input.nextUrl,
+    activeUrlRef: input.activeUrlRef,
+    pageOrigin: input.pageOrigin,
+  });
 }
 
 export function clearAudioSource(input: {
@@ -240,9 +355,5 @@ export function clearAudioSource(input: {
   input.audio.pause();
   input.audio.removeAttribute("src");
   input.audio.load();
-
-  if (input.activeUrlRef.current) {
-    URL.revokeObjectURL(input.activeUrlRef.current);
-    input.activeUrlRef.current = null;
-  }
+  revokeActiveNarrationObjectUrl(input.activeUrlRef);
 }

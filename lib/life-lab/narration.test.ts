@@ -99,12 +99,15 @@ describe("life lab narration chunks", () => {
 
 describe("life lab narration cache keys", () => {
   it("changes cache key when voice changes", () => {
+    const instructionsFingerprint = hashNarrationContent("instructions");
     const base = {
       driveFileId: "file-1",
       noteModifiedTime: "2026-07-11T10:00:00.000Z",
       contentHash: hashNarrationContent("hello"),
       provider: "OPENAI",
       model: "gpt-4o-mini-tts",
+      narrationStyle: "british-female-calm",
+      instructionsFingerprint,
       instructionVersion: NARRATION_INSTRUCTION_VERSION,
       chunkIndex: 0,
     };
@@ -116,12 +119,15 @@ describe("life lab narration cache keys", () => {
   });
 
   it("changes cache key when modified time changes", () => {
+    const instructionsFingerprint = hashNarrationContent("instructions");
     const base = {
       driveFileId: "file-1",
       contentHash: hashNarrationContent("hello"),
       provider: "OPENAI",
       model: "gpt-4o-mini-tts",
-      voice: "coral",
+      voice: "marin",
+      narrationStyle: "british-female-calm",
+      instructionsFingerprint,
       instructionVersion: NARRATION_INSTRUCTION_VERSION,
       chunkIndex: 0,
     };

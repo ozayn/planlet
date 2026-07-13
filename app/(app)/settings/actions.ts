@@ -362,3 +362,79 @@ export async function updateLifeLabSpeechRateAction(
     };
   }
 }
+
+export async function updateLifeLabOpenAiTtsVoiceAction(
+  voice: string,
+): Promise<SettingsActionResult> {
+  try {
+    const userId = await requireUserId();
+    const { updateLifeLabOpenAiTtsVoice } = await import(
+      "@/lib/life-lab/read-aloud-preferences"
+    );
+    await updateLifeLabOpenAiTtsVoice(userId, voice);
+    revalidateSettingsSurfaces();
+    revalidatePath("/life-lab", "layout");
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : "Failed to update OpenAI voice.",
+    };
+  }
+}
+
+export async function updateLifeLabOpenAiNarrationStyleAction(
+  style: string,
+): Promise<SettingsActionResult> {
+  try {
+    const userId = await requireUserId();
+    const { isOpenAiNarrationStyle } = await import("@/lib/life-lab/narration-config");
+    const { updateLifeLabOpenAiNarrationStyle } = await import(
+      "@/lib/life-lab/read-aloud-preferences"
+    );
+
+    if (!isOpenAiNarrationStyle(style)) {
+      return { success: false, error: "Invalid narration style." };
+    }
+
+    await updateLifeLabOpenAiNarrationStyle(userId, style);
+    revalidateSettingsSurfaces();
+    revalidatePath("/life-lab", "layout");
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to update narration style.",
+    };
+  }
+}
+
+export async function updateLifeLabCustomNarrationInstructionsAction(
+  instructions: string,
+): Promise<SettingsActionResult> {
+  try {
+    const userId = await requireUserId();
+    const { updateLifeLabCustomNarrationInstructions } = await import(
+      "@/lib/life-lab/read-aloud-preferences"
+    );
+    await updateLifeLabCustomNarrationInstructions(
+      userId,
+      instructions.trim() ? instructions : null,
+    );
+    revalidateSettingsSurfaces();
+    revalidatePath("/life-lab", "layout");
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to update custom narration instructions.",
+    };
+  }
+}

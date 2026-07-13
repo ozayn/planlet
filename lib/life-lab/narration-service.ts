@@ -1,3 +1,6 @@
+import { unlink } from "node:fs/promises";
+import { join } from "node:path";
+
 import type { LifeLabNote } from "@/lib/life-lab/constants";
 import {
   buildNarrationCacheKey,
@@ -10,14 +13,19 @@ import {
 } from "@/lib/life-lab/narration-chunks";
 import {
   getDefaultOpenAiNarrationModel,
-  getDefaultOpenAiNarrationVoice,
   NarrationSynthesisError,
   synthesizeSpeech,
 } from "@/lib/ai/synthesize-speech";
 import {
-  NARRATION_INSTRUCTION_VERSION,
   LIFE_LAB_READ_ALOUD_PROVIDERS,
+  OPENAI_NARRATION_STYLES,
 } from "@/lib/life-lab/narration-config";
+import type { ResolvedOpenAiNarrationSettings } from "@/lib/life-lab/openai-narration-preferences";
+import {
+  getNarrationPreviewText,
+  resolveOpenAiNarrationSettings,
+  type OpenAiNarrationPreferences,
+} from "@/lib/life-lab/openai-narration-preferences";
 import { logNarrationDiagnostic } from "@/lib/life-lab/narration-diagnostics";
 import {
   buildNarrationErrorPayload,
@@ -25,9 +33,10 @@ import {
   type NarrationErrorCategory,
 } from "@/lib/life-lab/narration-errors";
 import { buildNarrationDocument } from "@/lib/life-lab/narration-text";
+import { getNarrationStorageDir } from "@/lib/life-lab/narration-storage-dir";
+import { prisma } from "@/lib/prisma";
 import {
   findNarrationCacheByKey,
-  invalidateNarrationCacheForNote,
   readNarrationAudioFile,
   saveNarrationCacheRecord,
   touchNarrationCache,
@@ -40,7 +49,7 @@ export type NarrationChunkRequest = {
   >;
   chunkIndex: number;
   userId: string;
-  voice?: string;
+  narrationSettings: ResolvedOpenAiNarrationSettings;
   model?: string;
   regenerate?: boolean;
   includeFlashcards?: boolean;
@@ -109,6 +118,7 @@ export async function synthesizeNarrationTestAudio(input: {
   userId: string;
   voice?: string;
   model?: string;
+  instructions?: string;
 }): Promise<{
   audio: Buffer;
   model: string;
@@ -119,12 +129,40 @@ export async function synthesizeNarrationTestAudio(input: {
     userId: input.userId,
     voice: input.voice,
     model: input.model,
+    instructions: input.instructions,
   });
 
   return {
     audio: synthesized.audio,
     model: synthesized.model,
     voice: synthesized.voice,
+  };
+}
+
+export async function synthesizeNarrationPreviewAudio(input: {
+  userId: string;
+  preferences: OpenAiNarrationPreferences;
+  model?: string;
+}): Promise<{
+  audio: Buffer;
+  model: string;
+  voice: string;
+  narrationStyle: string;
+}> {
+  const settings = resolveOpenAiNarrationSettings(input.preferences);
+  const synthesized = await synthesizeSpeech({
+    text: getNarrationPreviewText(),
+    userId: input.userId,
+    model: input.model,
+    voice: settings.voice,
+    instructions: settings.instructions,
+  });
+
+  return {
+    audio: synthesized.audio,
+    model: synthesized.model,
+    voice: synthesized.voice,
+    narrationStyle: OPENAI_NARRATION_STYLES[settings.narrationStyle].slug,
   };
 }
 
@@ -155,7 +193,9 @@ export async function getOrCreateNarrationChunk(
   }
 
   const model = input.model ?? getDefaultOpenAiNarrationModel();
-  const voice = input.voice ?? getDefaultOpenAiNarrationVoice();
+  const { voice, instructions, narrationStyle, instructionsFingerprint, instructionVersion } =
+    input.narrationSettings;
+  const narrationStyleSlug = OPENAI_NARRATION_STYLES[narrationStyle].slug;
   const contentHash = getNoteNarrationContentHash(
     input.note,
     input.includeFlashcards ?? true,
@@ -167,7 +207,9 @@ export async function getOrCreateNarrationChunk(
     provider: LIFE_LAB_READ_ALOUD_PROVIDERS.OPENAI,
     model,
     voice,
-    instructionVersion: NARRATION_INSTRUCTION_VERSION,
+    narrationStyle: narrationStyleSlug,
+    instructionsFingerprint,
+    instructionVersion,
     chunkIndex: chunk.index,
   });
 
@@ -220,6 +262,7 @@ export async function getOrCreateNarrationChunk(
     userId: input.userId,
     model,
     voice,
+    instructions,
     noteId,
   });
 
@@ -234,7 +277,7 @@ export async function getOrCreateNarrationChunk(
         contentHash,
         model,
         voice,
-        instructionVersion: NARRATION_INSTRUCTION_VERSION,
+        instructionVersion,
         chunkIndex: chunk.index,
         sectionLabel: chunk.sectionLabel,
         audio: synthesized.audio,
@@ -303,13 +346,29 @@ export function mapNarrationServiceError(
 
 export async function regenerateNarrationForNote(input: {
   driveFileId: string;
-  voice?: string;
-  model?: string;
 }): Promise<number> {
-  return invalidateNarrationCacheForNote({
-    driveFileId: input.driveFileId,
-    model: input.model ?? getDefaultOpenAiNarrationModel(),
-    voice: input.voice ?? getDefaultOpenAiNarrationVoice(),
-    instructionVersion: NARRATION_INSTRUCTION_VERSION,
+  const records = await prisma.lifeLabNarrationCache.findMany({
+    where: {
+      driveFileId: input.driveFileId,
+    },
+    select: { cacheKey: true, storageKey: true },
   });
+
+  await Promise.all(
+    records.map(async (record) => {
+      try {
+        await unlink(join(getNarrationStorageDir(), record.storageKey));
+      } catch {
+        // Ignore missing files.
+      }
+    }),
+  );
+
+  const result = await prisma.lifeLabNarrationCache.deleteMany({
+    where: {
+      driveFileId: input.driveFileId,
+    },
+  });
+
+  return result.count;
 }

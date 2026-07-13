@@ -96,6 +96,13 @@ enum LifeLabReadAloudProvider {
   OPENAI
 }
 
+enum OpenAiNarrationStyle {
+  BRITISH_FEMALE_CALM
+  NEUTRAL_EDUCATIONAL
+  WARM_CONVERSATIONAL
+  CUSTOM
+}
+
 enum PlanSharePermission {
   VIEW
 }
@@ -313,6 +320,9 @@ model User {
   lifeLabReadAloudProvider    LifeLabReadAloudProvider @default(DEVICE)
   lifeLabSpeechVoiceId        String?
   lifeLabSpeechRate           Float     @default(1)
+  lifeLabOpenAiTtsVoice       String?
+  lifeLabOpenAiNarrationStyle OpenAiNarrationStyle @default(BRITISH_FEMALE_CALM)
+  lifeLabCustomNarrationInstructions String? @db.Text
   planItemView              PlanItemView @default(CHECKLIST)
   readingDensity            ReadingDensity @default(COMPACT)
   taskOrganizationDisplay   TaskOrganizationDisplay @default(ASSIGNED_ONLY)

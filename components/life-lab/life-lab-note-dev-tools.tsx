@@ -5,6 +5,18 @@ import { useEffect, useId, useRef, useState } from "react";
 
 import type { LifeLabNoteDevMeta } from "@/lib/life-lab/constants";
 import {
+  buildSameOriginNarrationChunkUrl,
+  buildSameOriginNarrationTestUrl,
+} from "@/lib/life-lab/narration-audio-source";
+import {
+  categorizePlaybackFailure,
+  createNarrationObjectUrl,
+  logNarrationPlaybackDiagnostic,
+  normalizeNarrationAudioBlob,
+  replaceAudioObjectUrl,
+  waitForAudioCanPlay,
+} from "@/lib/life-lab/narration-playback";
+import {
   lifeLabDebugDownloadUrl,
   lifeLabDebugRawUrl,
   lifeLabNoteRefreshUrl,
@@ -85,44 +97,142 @@ export function LifeLabNoteDevTools({
     }
   }
 
-  async function runTtsTest() {
-    setStatus("Generating TTS test…");
+  async function playDiagnosticSource(input: {
+    label: string;
+    source: string;
+    sourceOrigin: "fresh_blob" | "same_origin_route" | "direct_api_route";
+    blob?: Blob;
+  }) {
+    setStatus(`Running ${input.label}…`);
+
+    const audio = new Audio();
+    const activeUrlRef = { current: null as string | null };
 
     try {
-      const response = await fetch("/api/life-lab/narration/test", {
+      replaceAudioObjectUrl({
+        audio,
+        nextUrl: input.source,
+        activeUrlRef,
+        pageOrigin: window.location.origin,
+      });
+
+      await waitForAudioCanPlay(audio);
+      await audio.play();
+
+      logNarrationPlaybackDiagnostic(`${input.label} succeeded`, {
+        errorName: null,
+        errorMessage: null,
+        srcKind: input.source.startsWith("blob:") ? "blob" : "remote",
+        sourceScheme: input.source.startsWith("blob:") ? "blob" : "https",
+        sourceLength: input.source.length,
+        sourceOrigin: input.sourceOrigin,
+        sanitizedTransformed: false,
+        srcEqualsOriginal: audio.src === input.source,
+        currentSrc: audio.currentSrc || null,
+        responseStatus: 200,
+        responseContentType: input.blob?.type ?? "audio/mpeg",
+        byteLength: input.blob?.size ?? 0,
+        readyState: audio.readyState,
+        networkState: audio.networkState,
+        mediaErrorCode: null,
+        mediaErrorMessage: null,
+        playRejected: false,
+        playRejectionName: null,
+        playRejectionMessage: null,
+        fromCache: false,
+        chunkIndex: 0,
+        chunkSource: "unknown",
+      });
+
+      audio.addEventListener("ended", () => {
+        if (activeUrlRef.current) {
+          URL.revokeObjectURL(activeUrlRef.current);
+          activeUrlRef.current = null;
+        }
+      });
+
+      setStatus(`${input.label} playing`);
+      setOpen(false);
+    } catch (error) {
+      const category = categorizePlaybackFailure({
+        playError: error,
+        mediaError: audio.error,
+        blobSize: input.blob?.size,
+        sourceUrl: input.source,
+      });
+
+      setStatus(`${input.label} failed (${category})`);
+      setOpen(false);
+    }
+  }
+
+  async function runBlobPlaybackTest() {
+    try {
+      const response = await fetch(buildSameOriginNarrationTestUrl(), {
         method: "POST",
       });
 
       if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as
-          | { error?: string; category?: string; debugMessage?: string }
-          | null;
-        setStatus(
-          payload?.category
-            ? `TTS failed (${payload.category})`
-            : payload?.error ?? "TTS test failed",
-        );
+        setStatus("Blob test fetch failed");
         setOpen(false);
         return;
       }
 
-      const blob = await response.blob();
-      const objectUrl = URL.createObjectURL(blob);
-      const audio = new Audio(objectUrl);
+      const blob = normalizeNarrationAudioBlob(
+        await response.blob(),
+        response.headers.get("Content-Type"),
+      );
+      const objectUrl = createNarrationObjectUrl(blob);
 
-      audio.addEventListener("ended", () => {
-        URL.revokeObjectURL(objectUrl);
+      await playDiagnosticSource({
+        label: "Blob playback test",
+        source: objectUrl,
+        sourceOrigin: "fresh_blob",
+        blob,
       });
-
-      await audio.play();
-      setStatus("TTS test playing");
-      setOpen(false);
     } catch {
-      setStatus("TTS test failed");
+      setStatus("Blob playback test failed");
+      setOpen(false);
     }
   }
 
+  async function runDirectRoutePlaybackTest() {
+    await playDiagnosticSource({
+      label: "Direct route playback test",
+      source: buildSameOriginNarrationTestUrl(),
+      sourceOrigin: "direct_api_route",
+    });
+  }
+
+  async function runCachedChunkPlaybackTest() {
+    await playDiagnosticSource({
+      label: "Cached chunk playback test",
+      source: buildSameOriginNarrationChunkUrl({
+        sectionId,
+        slug,
+        chunkIndex: 0,
+      }),
+      sourceOrigin: "same_origin_route",
+    });
+  }
+
+  async function runTtsTest() {
+    await runBlobPlaybackTest();
+  }
+
   const menuItems: MenuItem[] = [
+    {
+      label: "Play Blob test",
+      onClick: runBlobPlaybackTest,
+    },
+    {
+      label: "Play direct route test",
+      onClick: runDirectRoutePlaybackTest,
+    },
+    {
+      label: "Play cached chunk test",
+      onClick: runCachedChunkPlaybackTest,
+    },
     {
       label: "Generate TTS test",
       onClick: runTtsTest,

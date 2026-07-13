@@ -12,6 +12,12 @@ export type NarrationErrorCategory =
   | "playback_requires_user_gesture"
   | "unsupported_audio_format"
   | "unsupported_audio_source"
+  | "unsafe_audio_url"
+  | "blocked_blob_url"
+  | "malformed_audio_url"
+  | "expired_cached_audio_url"
+  | "audio_csp_blocked"
+  | "empty_audio_source"
   | "playback_aborted"
   | "audio_network_failure"
   | "audio_decode_failure"
@@ -42,6 +48,13 @@ const USER_MESSAGES: Record<NarrationErrorCategory, string> = {
   playback_requires_user_gesture: "Audio is ready. Tap Play to begin.",
   unsupported_audio_format: "This browser does not support the narration audio format.",
   unsupported_audio_source: "This browser could not load the narration audio source.",
+  unsafe_audio_url: "This narration audio URL is not allowed.",
+  blocked_blob_url: "This browser blocked the narration blob URL.",
+  malformed_audio_url: "The narration audio URL was malformed.",
+  expired_cached_audio_url: "Cached narration audio is no longer available.",
+  audio_csp_blocked:
+    "Narration playback was blocked by the browser content security policy.",
+  empty_audio_source: "Narration audio source was missing.",
   playback_aborted: "Narration playback was interrupted.",
   audio_network_failure: "Narration audio could not be loaded over the network.",
   audio_decode_failure: "Narration audio could not be decoded in this browser.",
@@ -193,6 +206,12 @@ export function narrationErrorHttpStatus(
     case "audio_playback_failure":
     case "unsupported_audio_format":
     case "unsupported_audio_source":
+    case "unsafe_audio_url":
+    case "blocked_blob_url":
+    case "malformed_audio_url":
+    case "expired_cached_audio_url":
+    case "audio_csp_blocked":
+    case "empty_audio_source":
     case "playback_aborted":
     case "audio_network_failure":
     case "audio_decode_failure":

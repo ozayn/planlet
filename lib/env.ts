@@ -106,7 +106,7 @@ export function getOpenAiTtsModel(): string {
 }
 
 export function getOpenAiTtsVoice(): string {
-  return process.env.OPENAI_TTS_VOICE?.trim() || "coral";
+  return process.env.OPENAI_TTS_VOICE?.trim() || "marin";
 }
 
 export function isWebPushConfigured(): boolean {

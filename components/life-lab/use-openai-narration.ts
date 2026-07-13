@@ -4,10 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { getNarrationUserMessage } from "@/lib/life-lab/narration-errors";
 import type { NarrationErrorCategory } from "@/lib/life-lab/narration-errors";
+import { buildSameOriginNarrationChunkUrl } from "@/lib/life-lab/narration-audio-source";
 import {
   buildPlaybackDiagnostic,
   categorizePlaybackFailure,
   clearAudioSource,
+  createNarrationObjectUrl,
   logNarrationPlaybackDiagnostic,
   looksLikeMp3,
   normalizeNarrationAudioBlob,
@@ -272,6 +274,12 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
           errorName: "InvalidMp3Header",
           errorMessage: "Audio bytes do not look like MP3.",
           srcKind: "none",
+          sourceScheme: "empty",
+          sourceLength: 0,
+          sourceOrigin: "unknown",
+          sanitizedTransformed: false,
+          srcEqualsOriginal: true,
+          currentSrc: null,
           responseStatus: response.status,
           responseContentType,
           byteLength: blob.size,
@@ -306,6 +314,12 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
         errorName: null,
         errorMessage: null,
         srcKind: "none",
+        sourceScheme: "empty",
+        sourceLength: 0,
+        sourceOrigin: cached ? "cached_blob" : "fresh_blob",
+        sanitizedTransformed: false,
+        srcEqualsOriginal: true,
+        currentSrc: null,
         responseStatus: response.status,
         responseContentType,
         byteLength: blob.size,
@@ -352,18 +366,20 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
     });
   }, []);
 
-  const attemptPlayback = useCallback(
+  const attemptPlaybackWithSource = useCallback(
     async (input: {
       audio: HTMLAudioElement;
       blob: Blob;
       chunkIndex: number;
       result: ChunkAudioResult;
+      source: string;
+      sourceOrigin: "fresh_blob" | "cached_blob" | "same_origin_route";
     }): Promise<"playing" | "requires_gesture"> => {
-      const objectUrl = URL.createObjectURL(input.blob);
       replaceAudioObjectUrl({
         audio: input.audio,
-        nextUrl: objectUrl,
+        nextUrl: input.source,
         activeUrlRef: objectUrlRef,
+        pageOrigin: typeof window !== "undefined" ? window.location.origin : undefined,
       });
       input.audio.playbackRate = playbackRateRef.current;
 
@@ -373,6 +389,7 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
         const category = categorizePlaybackFailure({
           mediaError: input.audio.error,
           blobSize: input.blob.size,
+          sourceUrl: input.source,
         });
         const diagnostic = buildPlaybackDiagnostic({
           audio: input.audio,
@@ -383,6 +400,8 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
           chunkIndex: input.chunkIndex,
           playError: loadError,
           playRejected: true,
+          assignedSource: input.source,
+          sourceOrigin: input.sourceOrigin,
         });
 
         logNarrationPlaybackDiagnostic("audio load failed", diagnostic);
@@ -391,6 +410,7 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
           category,
           debugMessage: diagnostic.mediaErrorMessage ?? diagnostic.errorMessage,
           fromCache: input.result.cached,
+          sourceUrl: input.source,
         });
       }
 
@@ -401,6 +421,7 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
           playError,
           mediaError: input.audio.error,
           blobSize: input.blob.size,
+          sourceUrl: input.source,
         });
         const diagnostic = buildPlaybackDiagnostic({
           audio: input.audio,
@@ -411,6 +432,8 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
           chunkIndex: input.chunkIndex,
           playError,
           playRejected: true,
+          assignedSource: input.source,
+          sourceOrigin: input.sourceOrigin,
         });
 
         logNarrationPlaybackDiagnostic("audio.play rejected", diagnostic);
@@ -423,22 +446,103 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
           category,
           debugMessage: diagnostic.playRejectionMessage ?? diagnostic.errorMessage,
           fromCache: input.result.cached,
+          sourceUrl: input.source,
         });
       }
 
-      logNarrationPlaybackDiagnostic("audio.play started", buildPlaybackDiagnostic({
-        audio: input.audio,
-        blob: input.blob,
-        responseStatus: 200,
-        responseContentType: input.result.responseContentType,
-        fromCache: input.result.cached,
-        chunkIndex: input.chunkIndex,
-        playRejected: false,
-      }));
+      logNarrationPlaybackDiagnostic(
+        "audio.play started",
+        buildPlaybackDiagnostic({
+          audio: input.audio,
+          blob: input.blob,
+          responseStatus: 200,
+          responseContentType: input.result.responseContentType,
+          fromCache: input.result.cached,
+          chunkIndex: input.chunkIndex,
+          playRejected: false,
+          assignedSource: input.source,
+          sourceOrigin: input.sourceOrigin,
+        }),
+      );
 
       return "playing";
     },
     [],
+  );
+
+  const attemptPlayback = useCallback(
+    async (input: {
+      audio: HTMLAudioElement;
+      blob: Blob;
+      chunkIndex: number;
+      result: ChunkAudioResult;
+    }): Promise<"playing" | "requires_gesture"> => {
+      const blobSourceOrigin = input.result.cached ? "cached_blob" : "fresh_blob";
+      const objectUrl = createNarrationObjectUrl(input.blob);
+
+      try {
+        return await attemptPlaybackWithSource({
+          ...input,
+          source: objectUrl,
+          sourceOrigin: blobSourceOrigin,
+        });
+      } catch (firstError) {
+        const firstCategory =
+          typeof firstError === "object" &&
+          firstError != null &&
+          "category" in firstError &&
+          typeof firstError.category === "string"
+            ? (firstError.category as NarrationErrorCategory)
+            : null;
+
+        const shouldFallback =
+          firstCategory === "audio_csp_blocked" ||
+          firstCategory === "blocked_blob_url" ||
+          firstCategory === "unsupported_audio_source";
+
+        if (!shouldFallback) {
+          throw firstError;
+        }
+
+        const sameOriginUrl = buildSameOriginNarrationChunkUrl({
+          sectionId: options.sectionId,
+          slug: options.slug,
+          chunkIndex: input.chunkIndex,
+        });
+
+        logNarrationPlaybackDiagnostic("falling back to same-origin audio route", {
+          errorName: firstError instanceof Error ? firstError.name : null,
+          errorMessage: firstError instanceof Error ? firstError.message : null,
+          srcKind: "remote",
+          sourceScheme: "https",
+          sourceLength: sameOriginUrl.length,
+          sourceOrigin: "same_origin_route",
+          sanitizedTransformed: false,
+          srcEqualsOriginal: true,
+          currentSrc: input.audio.currentSrc || null,
+          responseStatus: 200,
+          responseContentType: input.result.responseContentType,
+          byteLength: input.blob.size,
+          readyState: input.audio.readyState,
+          networkState: input.audio.networkState,
+          mediaErrorCode: input.audio.error?.code ?? null,
+          mediaErrorMessage: input.audio.error?.message ?? null,
+          playRejected: true,
+          playRejectionName: null,
+          playRejectionMessage: null,
+          fromCache: input.result.cached,
+          chunkIndex: input.chunkIndex,
+          chunkSource: input.result.cached ? "cache" : "fresh",
+        });
+
+        return attemptPlaybackWithSource({
+          ...input,
+          source: sameOriginUrl,
+          sourceOrigin: "same_origin_route",
+        });
+      }
+    },
+    [attemptPlaybackWithSource, options.sectionId, options.slug],
   );
 
   const playChunk = useCallback(
@@ -635,6 +739,7 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
       const category = categorizePlaybackFailure({
         playError,
         mediaError: audio.error,
+        sourceUrl: audio.src,
       });
 
       if (category === "playback_requires_user_gesture") {

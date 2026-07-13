@@ -9,6 +9,8 @@ export type NarrationCacheKeyInput = {
   provider: string;
   model: string;
   voice: string;
+  narrationStyle: string;
+  instructionsFingerprint: string;
   instructionVersion?: number;
   chunkIndex: number;
 };
@@ -25,6 +27,8 @@ export function buildNarrationCacheKey(input: NarrationCacheKeyInput): string {
     input.provider,
     input.model,
     input.voice,
+    input.narrationStyle,
+    input.instructionsFingerprint,
     String(input.instructionVersion ?? NARRATION_INSTRUCTION_VERSION),
     String(input.chunkIndex),
   ].join("|");

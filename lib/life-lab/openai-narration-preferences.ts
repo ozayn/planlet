@@ -1,0 +1,130 @@
+import type { OpenAiNarrationStyle } from "@/app/generated/prisma/client";
+
+import { getOpenAiTtsVoice } from "@/lib/env";
+import {
+  hashNarrationContent,
+} from "@/lib/life-lab/narration-cache-key";
+import {
+  MIXED_LANGUAGE_NARRATION_APPENDIX,
+  NARRATION_INSTRUCTION_VERSION,
+  NARRATION_PREVIEW_TEXT,
+  OPENAI_NARRATION_STYLES,
+  OPENAI_NARRATION_VOICES,
+  type OpenAiNarrationStyleId,
+  isOpenAiNarrationStyle,
+  isSupportedOpenAiNarrationVoice,
+} from "@/lib/life-lab/narration-config";
+
+export type OpenAiNarrationPreferences = {
+  voice: string;
+  narrationStyle: OpenAiNarrationStyleId;
+  customNarrationInstructions: string | null;
+};
+
+export type ResolvedOpenAiNarrationSettings = {
+  voice: string;
+  requestedVoice: string;
+  narrationStyle: OpenAiNarrationStyleId;
+  instructions: string;
+  instructionsFingerprint: string;
+  instructionVersion: number;
+  voiceWarning: string | null;
+};
+
+export const DEFAULT_OPENAI_NARRATION_PREFERENCES: OpenAiNarrationPreferences = {
+  voice: getOpenAiTtsVoice(),
+  narrationStyle: "BRITISH_FEMALE_CALM",
+  customNarrationInstructions: null,
+};
+
+export function normalizeOpenAiNarrationStyle(
+  value: OpenAiNarrationStyle | string | null | undefined,
+): OpenAiNarrationStyleId {
+  if (value && isOpenAiNarrationStyle(value)) {
+    return value;
+  }
+
+  return DEFAULT_OPENAI_NARRATION_PREFERENCES.narrationStyle;
+}
+
+export function resolveOpenAiNarrationVoice(input: {
+  userVoice: string | null | undefined;
+  serverDefault?: string;
+}): { voice: string; requestedVoice: string; voiceWarning: string | null } {
+  const serverDefault = input.serverDefault?.trim() || getOpenAiTtsVoice();
+  const requested = input.userVoice?.trim() || serverDefault;
+
+  if (isSupportedOpenAiNarrationVoice(requested)) {
+    return {
+      voice: requested,
+      requestedVoice: requested,
+      voiceWarning: null,
+    };
+  }
+
+  const fallback = isSupportedOpenAiNarrationVoice(serverDefault)
+    ? serverDefault
+    : OPENAI_NARRATION_VOICES[0]?.id ?? "marin";
+
+  return {
+    voice: fallback,
+    requestedVoice: requested,
+    voiceWarning: `Voice "${requested}" is not supported for OpenAI narration. Using ${fallback}.`,
+  };
+}
+
+export function resolveNarrationInstructions(input: {
+  narrationStyle: OpenAiNarrationStyleId;
+  customNarrationInstructions?: string | null;
+}): string {
+  if (input.narrationStyle === "CUSTOM") {
+    const custom = input.customNarrationInstructions?.trim();
+
+    if (!custom) {
+      return `${OPENAI_NARRATION_STYLES.NEUTRAL_EDUCATIONAL.instructions}\n\n${MIXED_LANGUAGE_NARRATION_APPENDIX}`;
+    }
+
+    return `${custom}\n\n${MIXED_LANGUAGE_NARRATION_APPENDIX}`;
+  }
+
+  const style = OPENAI_NARRATION_STYLES[input.narrationStyle];
+  return `${style.instructions}\n\n${MIXED_LANGUAGE_NARRATION_APPENDIX}`;
+}
+
+export function resolveOpenAiNarrationSettings(
+  preferences: OpenAiNarrationPreferences,
+): ResolvedOpenAiNarrationSettings {
+  const narrationStyle = normalizeOpenAiNarrationStyle(preferences.narrationStyle);
+  const voiceResolution = resolveOpenAiNarrationVoice({
+    userVoice: preferences.voice,
+  });
+  const instructions = resolveNarrationInstructions({
+    narrationStyle,
+    customNarrationInstructions: preferences.customNarrationInstructions,
+  });
+
+  return {
+    voice: voiceResolution.voice,
+    requestedVoice: voiceResolution.requestedVoice,
+    narrationStyle,
+    instructions,
+    instructionsFingerprint: hashNarrationContent(instructions),
+    instructionVersion: NARRATION_INSTRUCTION_VERSION,
+    voiceWarning: voiceResolution.voiceWarning,
+  };
+}
+
+export function getNarrationPreviewText(): string {
+  return NARRATION_PREVIEW_TEXT;
+}
+
+export function formatOpenAiNarrationVoiceLabel(voiceId: string): string {
+  const match = OPENAI_NARRATION_VOICES.find((voice) => voice.id === voiceId);
+  return match?.label ?? voiceId;
+}
+
+export function formatOpenAiNarrationStyleLabel(
+  style: OpenAiNarrationStyleId,
+): string {
+  return OPENAI_NARRATION_STYLES[style].label;
+}

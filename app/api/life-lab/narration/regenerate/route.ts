@@ -61,8 +61,6 @@ export async function POST(request: Request) {
 
   const invalidated = await regenerateNarrationForNote({
     driveFileId,
-    voice: body.voice,
-    model: body.model,
   });
 
   return NextResponse.json({ invalidated });
