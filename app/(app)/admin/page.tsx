@@ -1,4 +1,5 @@
 import { AdminCoachingReflectionLimitSetting } from "@/components/admin/admin-coaching-reflection-limit-setting";
+import Link from "next/link";
 import { AdminFeedbackSummary } from "@/components/admin/admin-feedback-summary";
 import { AdminIdeasDebug } from "@/components/admin/admin-ideas-debug";
 import { AdminLifeLabDebug } from "@/components/admin/admin-life-lab-debug";
@@ -65,6 +66,12 @@ export default async function AdminPage() {
       />
 
       <AdminSummaryLine totals={totals} />
+
+      <p className="text-sm">
+        <Link href="/admin/narration-voice-preview" className="ui-text-link">
+          OpenAI narration voice preview
+        </Link>
+      </p>
 
       <AdminFeedbackSummary
         openCount={feedbackCounts.openCount}
