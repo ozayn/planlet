@@ -9,8 +9,14 @@ import {
 import { ActivityTimerDurationPicker } from "@/components/activity-timer/activity-timer-duration-picker";
 import { ActivityTimerPresetIconPicker } from "@/components/activity-timer/activity-timer-preset-icon-picker";
 import { SimpleSheet } from "@/components/ui/simple-sheet";
-import type { SerializedActivityTimerPresetManagement } from "@/lib/activity-timer/constants";
-import { QUICK_TARGET_DURATION_OPTIONS } from "@/lib/activity-timer/constants";
+import type {
+  ActivityTimerMode,
+  SerializedActivityTimerPresetManagement,
+} from "@/lib/activity-timer/constants";
+import {
+  QUICK_COUNTDOWN_DURATION_OPTIONS,
+  QUICK_TARGET_DURATION_OPTIONS,
+} from "@/lib/activity-timer/constants";
 
 type ActivityTimerPresetFormSheetProps = {
   preset: SerializedActivityTimerPresetManagement | null;
@@ -20,9 +26,10 @@ type ActivityTimerPresetFormSheetProps = {
 };
 
 function resolveCustomMinutes(
+  timerMode: ActivityTimerMode,
   targetDurationSeconds: number | null,
 ): string {
-  if (targetDurationSeconds == null) {
+  if (targetDurationSeconds == null || timerMode === "countDown") {
     return "";
   }
 
@@ -37,6 +44,29 @@ function resolveCustomMinutes(
   return String(Math.round(targetDurationSeconds / 60));
 }
 
+function resolveCustomSeconds(
+  timerMode: ActivityTimerMode,
+  targetDurationSeconds: number | null,
+): string {
+  if (targetDurationSeconds == null || timerMode !== "countDown") {
+    return "";
+  }
+
+  const isQuick = QUICK_COUNTDOWN_DURATION_OPTIONS.some(
+    (option) => option.seconds === targetDurationSeconds,
+  );
+
+  if (isQuick) {
+    return "";
+  }
+
+  return String(targetDurationSeconds);
+}
+
+function segmentClass(active: boolean): string {
+  return active ? "ui-segment-active" : "ui-segment";
+}
+
 export function ActivityTimerPresetFormSheet({
   preset,
   open,
@@ -47,10 +77,12 @@ export function ActivityTimerPresetFormSheet({
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("");
   const [iconName, setIconName] = useState<string | null>(null);
+  const [timerMode, setTimerMode] = useState<ActivityTimerMode>("countUp");
   const [targetDurationSeconds, setTargetDurationSeconds] = useState<
     number | null
   >(null);
   const [customMinutes, setCustomMinutes] = useState("");
+  const [customSeconds, setCustomSeconds] = useState("");
   const [isArchived, setIsArchived] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -60,20 +92,45 @@ export function ActivityTimerPresetFormSheet({
       return;
     }
 
+    const nextTimerMode = preset?.timerMode ?? "countUp";
+    const nextTarget = preset?.targetDurationSeconds ?? null;
+
     setTitle(preset?.title ?? "");
     setCategory(preset?.category ?? "");
     setIconName(preset?.iconName ?? null);
-    setTargetDurationSeconds(preset?.targetDurationSeconds ?? null);
-    setCustomMinutes(resolveCustomMinutes(preset?.targetDurationSeconds ?? null));
+    setTimerMode(nextTimerMode);
+    setTargetDurationSeconds(nextTarget);
+    setCustomMinutes(resolveCustomMinutes(nextTimerMode, nextTarget));
+    setCustomSeconds(resolveCustomSeconds(nextTimerMode, nextTarget));
     setIsArchived(preset?.isArchived ?? false);
     setError(null);
   }, [open, preset]);
+
+  function handleTimerModeChange(nextMode: ActivityTimerMode) {
+    setTimerMode(nextMode);
+
+    if (nextMode === "countDown") {
+      setTargetDurationSeconds((current) => current ?? 40);
+      setCustomMinutes("");
+      return;
+    }
+
+    setCustomSeconds("");
+  }
 
   function handleSave() {
     const trimmedTitle = title.trim();
 
     if (!trimmedTitle) {
       setError("Title is required.");
+      return;
+    }
+
+    if (
+      timerMode === "countDown" &&
+      (targetDurationSeconds == null || targetDurationSeconds <= 0)
+    ) {
+      setError("Countdown presets need a duration.");
       return;
     }
 
@@ -84,7 +141,9 @@ export function ActivityTimerPresetFormSheet({
         title: trimmedTitle,
         category: category.trim() || null,
         iconName,
-        targetDurationSeconds,
+        timerMode,
+        targetDurationSeconds:
+          timerMode === "countDown" ? targetDurationSeconds : targetDurationSeconds,
         isArchived,
       };
 
@@ -166,11 +225,40 @@ export function ActivityTimerPresetFormSheet({
           disabled={isPending}
         />
 
+        <div className="space-y-2">
+          <p className="text-sm font-medium text-foreground">Timer type</p>
+          <div className="flex flex-wrap gap-1.5">
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => handleTimerModeChange("countUp")}
+              className={`min-h-9 rounded-xl px-3 text-sm transition-colors ${segmentClass(
+                timerMode === "countUp",
+              )}`}
+            >
+              Count up
+            </button>
+            <button
+              type="button"
+              disabled={isPending}
+              onClick={() => handleTimerModeChange("countDown")}
+              className={`min-h-9 rounded-xl px-3 text-sm transition-colors ${segmentClass(
+                timerMode === "countDown",
+              )}`}
+            >
+              Countdown
+            </button>
+          </div>
+        </div>
+
         <ActivityTimerDurationPicker
+          timerMode={timerMode}
           targetDurationSeconds={targetDurationSeconds}
           customMinutes={customMinutes}
+          customSeconds={customSeconds}
           onTargetChange={setTargetDurationSeconds}
           onCustomMinutesChange={setCustomMinutes}
+          onCustomSecondsChange={setCustomSeconds}
           disabled={isPending}
         />
 

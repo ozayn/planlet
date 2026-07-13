@@ -16,5 +16,6 @@ describe("activity timer preset icons", () => {
     assert.equal(resolvePresetIconName(null), "circle");
     assert.equal(resolvePresetIconName("not-a-real-icon"), "circle");
     assert.equal(resolvePresetIconName("foot"), "foot");
+    assert.equal(resolvePresetIconName("smile"), "smile");
   });
 });

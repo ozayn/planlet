@@ -25,9 +25,11 @@ type ActivityTimerPresetSettingsProps = {
 };
 
 function presetDetail(preset: SerializedActivityTimerPresetManagement): string {
-  return [preset.category, preset.targetDurationLabel]
-    .filter(Boolean)
-    .join(" · ");
+  if (preset.timerMode === "countDown") {
+    return [preset.targetDurationLabel, preset.category].filter(Boolean).join(" · ");
+  }
+
+  return [preset.category, preset.targetDurationLabel].filter(Boolean).join(" · ");
 }
 
 export function ActivityTimerPresetSettings({

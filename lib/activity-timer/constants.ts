@@ -6,54 +6,73 @@ export {
   VOICE_TRANSCRIPTION_PRIVACY_TEXT,
 } from "@/lib/activity-timer/session-notes";
 
+export type ActivityTimerMode = "countUp" | "countDown";
+
+export const ACTIVITY_TIMER_MODES = ["countUp", "countDown"] as const;
+
 export const DEFAULT_ACTIVITY_TIMER_PRESETS = [
   {
     title: "Foot tapping (R)",
     category: "Movement",
     targetDurationSeconds: null,
+    timerMode: "countUp" as const,
     iconName: "foot",
   },
   {
     title: "Foot tapping (L)",
     category: "Movement",
     targetDurationSeconds: null,
+    timerMode: "countUp" as const,
     iconName: "foot",
   },
   {
     title: "Tapping",
     category: "Movement",
     targetDurationSeconds: null,
+    timerMode: "countUp" as const,
     iconName: "foot",
   },
   {
     title: "Wash face",
     category: "Care",
     targetDurationSeconds: null,
+    timerMode: "countUp" as const,
     iconName: "droplets",
   },
   {
     title: "Walk apartment stairs",
     category: "Movement",
     targetDurationSeconds: 600,
+    timerMode: "countUp" as const,
     iconName: "stairs",
   },
   {
     title: "Tidy room",
     category: "Chores",
     targetDurationSeconds: null,
+    timerMode: "countUp" as const,
     iconName: "home",
   },
   {
     title: "Learning session",
     category: "Focus",
     targetDurationSeconds: null,
+    timerMode: "countUp" as const,
     iconName: "book-open",
   },
   {
     title: "Stretching",
     category: "Movement",
     targetDurationSeconds: 300,
+    timerMode: "countUp" as const,
     iconName: "stretch",
+  },
+  {
+    title: "Tongue extension",
+    category: "Nervous system",
+    targetDurationSeconds: 40,
+    timerMode: "countDown" as const,
+    iconName: "smile",
   },
 ] as const;
 
@@ -75,11 +94,21 @@ export const MAX_ACTIVITY_CATEGORY_LENGTH = 60;
 export const MAX_TARGET_DURATION_SECONDS = 24 * 60 * 60;
 export const RECENT_ACTIVITY_SESSION_LIMIT = 20;
 
+/** Optional targets for count-up presets (progress ring). */
 export const QUICK_TARGET_DURATION_OPTIONS = [
   { label: "No target", seconds: null },
   { label: "5 min", seconds: 300 },
   { label: "10 min", seconds: 600 },
   { label: "15 min", seconds: 900 },
+] as const;
+
+/** Countdown preset duration choices in Settings. */
+export const QUICK_COUNTDOWN_DURATION_OPTIONS = [
+  { label: "30 sec", seconds: 30 },
+  { label: "40 sec", seconds: 40 },
+  { label: "1 min", seconds: 60 },
+  { label: "5 min", seconds: 300 },
+  { label: "10 min", seconds: 600 },
 ] as const;
 
 export type SerializedActivityTimerPreset = {
@@ -88,6 +117,7 @@ export type SerializedActivityTimerPreset = {
   category: string | null;
   targetDurationSeconds: number | null;
   targetDurationLabel: string | null;
+  timerMode: ActivityTimerMode;
   iconName: string | null;
   sortOrder: number;
 };
@@ -110,6 +140,9 @@ export type SerializedActiveActivityTimerSession = {
   startedAt: string;
   notes: string | null;
   targetDurationSeconds: number | null;
+  timerMode: ActivityTimerMode;
+  pausedAt: string | null;
+  accumulatedPausedSeconds: number;
   sessionNotes: SerializedActivityTimerSessionNote[];
 };
 
@@ -120,6 +153,8 @@ export type SerializedActivityTimerSession = {
   category: string | null;
   notes: string | null;
   targetDurationSeconds: number | null;
+  timerMode: ActivityTimerMode;
+  completed: boolean;
   startedAt: string;
   stoppedAt: string | null;
   durationSeconds: number | null;
@@ -162,11 +197,14 @@ export type StartActivityTimerInput = {
   presetId?: string | null;
   notes?: string | null;
   targetDurationSeconds?: number | null;
+  timerMode?: ActivityTimerMode;
 };
 
 export type StopActivityTimerInput = {
   sessionId: string;
   notes?: string | null;
+  completed?: boolean;
+  discard?: boolean;
 };
 
 export type UpdateActivityTimerSessionInput = {
@@ -191,6 +229,7 @@ export type CreateActivityTimerPresetInput = {
   title: string;
   category?: string | null;
   targetDurationSeconds?: number | null;
+  timerMode?: ActivityTimerMode;
   iconName?: string | null;
 };
 
@@ -199,6 +238,9 @@ export type UpdateActivityTimerPresetInput = {
   title?: string;
   category?: string | null;
   targetDurationSeconds?: number | null;
+  timerMode?: ActivityTimerMode;
   iconName?: string | null;
   isArchived?: boolean;
 };
+
+export const ACTIVITY_TIMER_SOUNDS_STORAGE_KEY = "activity-timer-sounds-enabled";

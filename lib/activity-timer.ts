@@ -12,6 +12,7 @@ import {
   MAX_ACTIVITY_TITLE_LENGTH,
   MAX_TARGET_DURATION_SECONDS,
   RECENT_ACTIVITY_SESSION_LIMIT,
+  type ActivityTimerMode,
   type ActivityTimerInsights,
   type ActivityTimerPageData,
   type ActivityTimerPresetSettingsData,
@@ -37,6 +38,7 @@ import {
   serializeActivityTimerSessionNote,
 } from "@/lib/activity-timer/session-notes";
 import { normalizePresetIconName } from "@/lib/activity-timer/preset-icons";
+import { activeElapsedSecondsFromSession } from "@/lib/activity-timer/countdown";
 import {
   formatActivityDuration,
   formatActivityDurationShort,
@@ -44,6 +46,7 @@ import {
   formatSessionClockTime,
   formatSessionTimeRange,
   formatTargetDurationLabel,
+  formatCountdownPresetDurationLabel,
   durationSecondsBetween,
   truncateActivityNotesPreview,
 } from "@/lib/activity-timer/format";
@@ -154,6 +157,25 @@ function normalizeOptionalTargetDuration(
   return normalized;
 }
 
+function normalizeTimerMode(
+  value: string | null | undefined,
+): ActivityTimerMode {
+  return value === "countDown" ? "countDown" : "countUp";
+}
+
+function resolvePresetDurationLabel(
+  timerMode: ActivityTimerMode,
+  targetDurationSeconds: number | null,
+): string | null {
+  if (targetDurationSeconds == null) {
+    return null;
+  }
+
+  return timerMode === "countDown"
+    ? formatCountdownPresetDurationLabel(targetDurationSeconds)
+    : formatTargetDurationLabel(targetDurationSeconds);
+}
+
 function formatSessionDayLabel(
   date: Date,
   timezone: string,
@@ -218,14 +240,18 @@ function formatSessionTimeLabel(
 }
 
 function serializePreset(preset: ActivityTimerPreset): SerializedActivityTimerPreset {
+  const timerMode = normalizeTimerMode(preset.timerMode);
+
   return {
     id: preset.id,
     title: preset.title,
     category: preset.category,
     targetDurationSeconds: preset.targetDurationSeconds,
-    targetDurationLabel: preset.targetDurationSeconds
-      ? formatTargetDurationLabel(preset.targetDurationSeconds)
-      : null,
+    targetDurationLabel: resolvePresetDurationLabel(
+      timerMode,
+      preset.targetDurationSeconds,
+    ),
+    timerMode,
     iconName: preset.iconName,
     sortOrder: preset.sortOrder,
   };
@@ -296,6 +322,7 @@ function serializeSession(
     (stoppedAt
       ? durationSecondsBetween(session.startedAt, stoppedAt)
       : null);
+  const timerMode = normalizeTimerMode(session.timerMode);
 
   const displayDate = stoppedAt ?? session.startedAt;
   const sessionNotes = (session.sessionNotes ?? []).map((note) =>
@@ -309,6 +336,8 @@ function serializeSession(
     category: session.category,
     notes: session.notes,
     targetDurationSeconds: session.targetDurationSeconds,
+    timerMode,
+    completed: session.completed,
     startedAt: session.startedAt.toISOString(),
     stoppedAt: stoppedAt?.toISOString() ?? null,
     durationSeconds,
@@ -340,6 +369,9 @@ export async function serializeActiveActivityTimerSessionWithNotes(
     startedAt: session.startedAt.toISOString(),
     notes: session.notes,
     targetDurationSeconds: session.targetDurationSeconds,
+    timerMode: normalizeTimerMode(session.timerMode),
+    pausedAt: session.pausedAt?.toISOString() ?? null,
+    accumulatedPausedSeconds: session.accumulatedPausedSeconds,
     sessionNotes: sessionNotes.map((note) =>
       serializeActivityTimerSessionNote(note, timezone),
     ),
@@ -358,6 +390,9 @@ export function serializeActiveActivityTimerSession(
     startedAt: session.startedAt.toISOString(),
     notes: session.notes,
     targetDurationSeconds: session.targetDurationSeconds,
+    timerMode: normalizeTimerMode(session.timerMode),
+    pausedAt: session.pausedAt?.toISOString() ?? null,
+    accumulatedPausedSeconds: session.accumulatedPausedSeconds,
     sessionNotes,
   };
 }
@@ -486,6 +521,7 @@ async function ensureDefaultPresets(userId: string): Promise<void> {
       title: preset.title,
       category: preset.category,
       targetDurationSeconds: preset.targetDurationSeconds,
+      timerMode: preset.timerMode,
       iconName: preset.iconName,
       sortOrder: index,
     })),
@@ -537,6 +573,7 @@ async function ensureMissingDefaultPresets(userId: string): Promise<void> {
         title: preset.title,
         category: preset.category,
         targetDurationSeconds: preset.targetDurationSeconds,
+        timerMode: preset.timerMode,
         iconName: preset.iconName,
         sortOrder: nextSort,
       },
@@ -677,6 +714,16 @@ export async function startActivityTimerSession(
     preset != null
       ? preset.targetDurationSeconds
       : targetDurationSeconds;
+  const timerMode = normalizeTimerMode(
+    preset?.timerMode ?? input.timerMode ?? "countUp",
+  );
+
+  if (
+    timerMode === "countDown" &&
+    (sessionTargetDurationSeconds == null || sessionTargetDurationSeconds <= 0)
+  ) {
+    throw new ActivityTimerError("Countdown activities need a duration.");
+  }
 
   return prisma.activityTimerSession.create({
     data: {
@@ -686,7 +733,106 @@ export async function startActivityTimerSession(
       category: preset?.category ?? null,
       notes,
       targetDurationSeconds: sessionTargetDurationSeconds,
+      timerMode,
       startedAt: new Date(),
+      accumulatedPausedSeconds: 0,
+      completed: false,
+    },
+  });
+}
+
+function computeActiveSessionDurationSeconds(
+  session: Pick<
+    ActivityTimerSession,
+    | "startedAt"
+    | "pausedAt"
+    | "accumulatedPausedSeconds"
+    | "timerMode"
+    | "targetDurationSeconds"
+  >,
+  stoppedAt: Date,
+  completed: boolean,
+): number {
+  const elapsed = activeElapsedSecondsFromSession({
+    startedAt: session.startedAt,
+    pausedAt: session.pausedAt,
+    accumulatedPausedSeconds: session.accumulatedPausedSeconds,
+    nowMs: stoppedAt.getTime(),
+  });
+
+  if (
+    completed &&
+    normalizeTimerMode(session.timerMode) === "countDown" &&
+    session.targetDurationSeconds != null &&
+    session.targetDurationSeconds > 0
+  ) {
+    return session.targetDurationSeconds;
+  }
+
+  return elapsed;
+}
+
+export async function pauseActivityTimerSession(
+  userId: string,
+  sessionId: string,
+) {
+  const session = await prisma.activityTimerSession.findFirst({
+    where: {
+      id: sessionId,
+      userId,
+      stoppedAt: null,
+    },
+  });
+
+  if (!session) {
+    throw new ActivityTimerError("Active timer not found.");
+  }
+
+  if (session.pausedAt) {
+    return session;
+  }
+
+  return prisma.activityTimerSession.update({
+    where: { id: session.id },
+    data: {
+      pausedAt: new Date(),
+    },
+  });
+}
+
+export async function resumeActivityTimerSession(
+  userId: string,
+  sessionId: string,
+) {
+  const session = await prisma.activityTimerSession.findFirst({
+    where: {
+      id: sessionId,
+      userId,
+      stoppedAt: null,
+    },
+  });
+
+  if (!session) {
+    throw new ActivityTimerError("Active timer not found.");
+  }
+
+  if (!session.pausedAt) {
+    return session;
+  }
+
+  const pausedMs = session.pausedAt.getTime();
+  const resumeMs = Date.now();
+  const pauseSegmentSeconds = Math.max(
+    0,
+    Math.floor((resumeMs - pausedMs) / 1000),
+  );
+
+  return prisma.activityTimerSession.update({
+    where: { id: session.id },
+    data: {
+      pausedAt: null,
+      accumulatedPausedSeconds:
+        session.accumulatedPausedSeconds + pauseSegmentSeconds,
     },
   });
 }
@@ -707,14 +853,32 @@ export async function stopActivityTimerSession(
     throw new ActivityTimerError("Active timer not found.");
   }
 
+  if (input.discard) {
+    await prisma.activityTimerSession.delete({
+      where: { id: session.id },
+    });
+    return null;
+  }
+
   const stoppedAt = new Date();
-  const durationSeconds = durationSecondsBetween(session.startedAt, stoppedAt);
+  const completed = Boolean(input.completed);
+  const durationSeconds = computeActiveSessionDurationSeconds(
+    session,
+    stoppedAt,
+    completed,
+  );
 
   return prisma.activityTimerSession.update({
     where: { id: session.id },
     data: {
       stoppedAt,
       durationSeconds,
+      completed,
+      pausedAt: null,
+      notes:
+        input.notes !== undefined
+          ? normalizeOptionalNotes(input.notes)
+          : undefined,
     },
   });
 }
@@ -885,6 +1049,22 @@ export async function updateActivityTimerPreset(
     throw new ActivityTimerError("Activity preset not found.");
   }
 
+  const nextTimerMode =
+    input.timerMode !== undefined
+      ? normalizeTimerMode(input.timerMode)
+      : normalizeTimerMode(preset.timerMode);
+  const nextTargetDurationSeconds =
+    input.targetDurationSeconds !== undefined
+      ? normalizeOptionalTargetDuration(input.targetDurationSeconds)
+      : preset.targetDurationSeconds;
+
+  if (
+    nextTimerMode === "countDown" &&
+    (nextTargetDurationSeconds == null || nextTargetDurationSeconds <= 0)
+  ) {
+    throw new ActivityTimerError("Countdown presets need a duration.");
+  }
+
   return prisma.activityTimerPreset.update({
     where: { id: preset.id },
     data: {
@@ -896,6 +1076,10 @@ export async function updateActivityTimerPreset(
       targetDurationSeconds:
         input.targetDurationSeconds !== undefined
           ? normalizeOptionalTargetDuration(input.targetDurationSeconds)
+          : undefined,
+      timerMode:
+        input.timerMode !== undefined
+          ? normalizeTimerMode(input.timerMode)
           : undefined,
       iconName:
         input.iconName !== undefined
@@ -992,10 +1176,19 @@ export async function createActivityTimerPreset(
 ) {
   const title = normalizeTitle(input.title);
   const category = normalizeOptionalCategory(input.category);
+  const timerMode = normalizeTimerMode(input.timerMode);
   const targetDurationSeconds = normalizeOptionalTargetDuration(
     input.targetDurationSeconds,
   );
   const iconName = normalizePresetIconName(input.iconName);
+
+  if (
+    timerMode === "countDown" &&
+    (targetDurationSeconds == null || targetDurationSeconds <= 0)
+  ) {
+    throw new ActivityTimerError("Countdown presets need a duration.");
+  }
+
   const maxSort = await prisma.activityTimerPreset.aggregate({
     where: { userId, isArchived: false },
     _max: { sortOrder: true },
@@ -1007,6 +1200,7 @@ export async function createActivityTimerPreset(
       title,
       category,
       targetDurationSeconds,
+      timerMode,
       iconName,
       sortOrder: (maxSort._max.sortOrder ?? -1) + 1,
     },

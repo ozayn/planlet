@@ -57,11 +57,16 @@ function PresetCard({
 }
 
 function buildPresetDetail(
-  category: string | null,
-  targetDurationLabel: string | null,
+  preset: SerializedActivityTimerPreset,
 ): string | null {
-  const parts = [category, targetDurationLabel].filter(Boolean);
+  const { category, targetDurationLabel, timerMode } = preset;
 
+  if (timerMode === "countDown") {
+    const parts = [targetDurationLabel, category].filter(Boolean);
+    return parts.length > 0 ? parts.join(" · ") : null;
+  }
+
+  const parts = [category, targetDurationLabel].filter(Boolean);
   return parts.length > 0 ? parts.join(" · ") : null;
 }
 
@@ -80,10 +85,7 @@ export function ActivityTimerPresetGrid({
             key={preset.id}
             title={preset.title}
             iconName={preset.iconName}
-            detail={buildPresetDetail(
-              preset.category,
-              preset.targetDurationLabel,
-            )}
+            detail={buildPresetDetail(preset)}
             disabled={disabled}
             onClick={() => onSelectPreset(preset)}
           />

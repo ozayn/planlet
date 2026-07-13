@@ -19,7 +19,9 @@ import {
   PersonStanding,
   Search,
   Shirt,
+  Smile,
   Sparkles,
+  Timer,
   Utensils,
 } from "lucide-react";
 
@@ -69,6 +71,8 @@ const PRESET_ICON_MAP: Record<string, IconComponent> = {
   map: Map,
   dumbbell: Dumbbell,
   sparkles: Sparkles,
+  smile: Smile,
+  timer: Timer,
   circle: Circle,
 };
 

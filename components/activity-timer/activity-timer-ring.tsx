@@ -2,15 +2,23 @@
 
 import { useId } from "react";
 
-import { useWallClockElapsed } from "@/components/activity-timer/use-wall-clock-elapsed";
-import type { ActivityTimerTargetDuration } from "@/lib/activity-timer/constants";
+import { useActivityTimerClock } from "@/components/activity-timer/use-activity-timer-clock";
+import type {
+  ActivityTimerMode,
+  ActivityTimerTargetDuration,
+} from "@/lib/activity-timer/constants";
+import { countdownProgressRatio } from "@/lib/activity-timer/countdown";
 import { formatActivityClock } from "@/lib/activity-timer/format";
 
 type ActivityTimerRingProps = {
   startedAt?: string | null;
   running?: boolean;
-  /** When set, the ring shows completion progress instead of the elapsed animation. */
+  timerMode?: ActivityTimerMode;
   targetDurationSeconds?: ActivityTimerTargetDuration;
+  pausedAt?: string | null;
+  accumulatedPausedSeconds?: number;
+  /** Static display when armed but not yet started (countdown presets). */
+  previewSeconds?: number | null;
   className?: string;
 };
 
@@ -24,18 +32,48 @@ const CENTER = VIEWBOX_SIZE / 2;
 export function ActivityTimerRing({
   startedAt = null,
   running = false,
+  timerMode = "countUp",
   targetDurationSeconds = null,
+  pausedAt = null,
+  accumulatedPausedSeconds = 0,
+  previewSeconds = null,
   className = "",
 }: ActivityTimerRingProps) {
   const gradientId = useId();
-  const elapsedSeconds = useWallClockElapsed(startedAt, running);
+  const clock = useActivityTimerClock(
+    running && startedAt
+      ? {
+          startedAt,
+          pausedAt,
+          accumulatedPausedSeconds,
+          timerMode,
+          targetDurationSeconds,
+        }
+      : null,
+    running && Boolean(startedAt),
+  );
+  const isCountdown =
+    timerMode === "countDown" &&
+    targetDurationSeconds != null &&
+    targetDurationSeconds > 0;
   const hasTarget =
     targetDurationSeconds != null && targetDurationSeconds > 0;
-  const progress = hasTarget
-    ? Math.min(1, elapsedSeconds / targetDurationSeconds)
-    : 0;
+  const displaySeconds =
+    previewSeconds != null
+      ? previewSeconds
+      : isCountdown
+        ? clock.displaySeconds
+        : clock.activeElapsedSeconds;
+  const progress = isCountdown
+    ? countdownProgressRatio(
+        targetDurationSeconds!,
+        clock.activeElapsedSeconds,
+      )
+    : hasTarget
+      ? Math.min(1, clock.activeElapsedSeconds / targetDurationSeconds!)
+      : 0;
   const progressOffset = CIRCUMFERENCE * (1 - progress);
-  const elapsedLabel = formatActivityClock(elapsedSeconds);
+  const displayLabel = formatActivityClock(displaySeconds);
 
   return (
     <div
@@ -63,7 +101,7 @@ export function ActivityTimerRing({
           className="opacity-80"
         />
 
-        {hasTarget ? (
+        {hasTarget && (running || previewSeconds != null) ? (
           <circle
             cx={CENTER}
             cy={CENTER}
@@ -73,7 +111,7 @@ export function ActivityTimerRing({
             strokeWidth={STROKE_WIDTH}
             strokeLinecap="round"
             strokeDasharray={CIRCUMFERENCE}
-            strokeDashoffset={progressOffset}
+            strokeDashoffset={previewSeconds != null ? CIRCUMFERENCE : progressOffset}
             transform={`rotate(-90 ${CENTER} ${CENTER})`}
             className="transition-[stroke-dashoffset] duration-700 ease-out"
           />
@@ -100,7 +138,7 @@ export function ActivityTimerRing({
         aria-live="polite"
         aria-atomic="true"
       >
-        {elapsedLabel}
+        {displayLabel}
       </p>
     </div>
   );

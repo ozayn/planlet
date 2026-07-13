@@ -20,6 +20,8 @@ export const ACTIVITY_PRESET_ICON_NAMES = [
   "dumbbell",
   "sparkles",
   "circle",
+  "smile",
+  "timer",
 ] as const;
 
 export type ActivityPresetIconName =
@@ -47,6 +49,8 @@ export const PRESET_ICON_OPTIONS: Array<{
   { value: "map", label: "Map" },
   { value: "dumbbell", label: "Exercise" },
   { value: "sparkles", label: "Custom" },
+  { value: "smile", label: "Smile" },
+  { value: "timer", label: "Timer" },
 ];
 
 export function normalizePresetIconName(

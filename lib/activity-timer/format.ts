@@ -105,6 +105,10 @@ export function formatTargetDurationLabel(seconds: number): string {
   return minutes === 1 ? "1 min" : `${minutes} min`;
 }
 
+export function formatCountdownPresetDurationLabel(seconds: number): string {
+  return formatActivityDurationShort(seconds);
+}
+
 export function remainingSecondsFromTarget(
   elapsedSeconds: number,
   targetDurationSeconds: number,

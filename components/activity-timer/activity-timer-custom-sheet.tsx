@@ -30,6 +30,7 @@ export function ActivityTimerCustomSheet({
     number | null
   >(null);
   const [customMinutes, setCustomMinutes] = useState("");
+  const [customSeconds, setCustomSeconds] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -43,6 +44,7 @@ export function ActivityTimerCustomSheet({
     setNotes("");
     setTargetDurationSeconds(null);
     setCustomMinutes("");
+    setCustomSeconds("");
     setError(null);
   }, [open]);
 
@@ -131,10 +133,13 @@ export function ActivityTimerCustomSheet({
         />
 
         <ActivityTimerDurationPicker
+          timerMode="countUp"
           targetDurationSeconds={targetDurationSeconds}
           customMinutes={customMinutes}
+          customSeconds={customSeconds}
           onTargetChange={setTargetDurationSeconds}
           onCustomMinutesChange={setCustomMinutes}
+          onCustomSecondsChange={setCustomSeconds}
           disabled={isPending}
         />
 

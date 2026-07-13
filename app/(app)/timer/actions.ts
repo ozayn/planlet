@@ -10,8 +10,10 @@ import {
   createActivityTimerPreset,
   deleteActivityTimerPreset,
   deleteActivityTimerSession,
+  pauseActivityTimerSession,
   reorderActivityTimerPresets,
   restoreActivityTimerPreset,
+  resumeActivityTimerSession,
   serializeActiveActivityTimerSessionWithNotes,
   startActivityTimerSession,
   stopActivityTimerSession,
@@ -102,6 +104,56 @@ export async function stopActivityTimerAction(
         error instanceof ActivityTimerError
           ? error.message
           : "Failed to stop timer.",
+    };
+  }
+}
+
+export async function pauseActivityTimerAction(
+  sessionId: string,
+): Promise<ActivityTimerStartResult> {
+  try {
+    const session = await requireActivityTimerSession();
+    const updated = await pauseActivityTimerSession(session.user.id, sessionId);
+    revalidateTimer();
+    return {
+      success: true,
+      activeSession: await serializeActiveActivityTimerSessionWithNotes(
+        updated,
+        session.user.id,
+      ),
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof ActivityTimerError
+          ? error.message
+          : "Failed to pause timer.",
+    };
+  }
+}
+
+export async function resumeActivityTimerAction(
+  sessionId: string,
+): Promise<ActivityTimerStartResult> {
+  try {
+    const session = await requireActivityTimerSession();
+    const updated = await resumeActivityTimerSession(session.user.id, sessionId);
+    revalidateTimer();
+    return {
+      success: true,
+      activeSession: await serializeActiveActivityTimerSessionWithNotes(
+        updated,
+        session.user.id,
+      ),
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof ActivityTimerError
+          ? error.message
+          : "Failed to resume timer.",
     };
   }
 }
