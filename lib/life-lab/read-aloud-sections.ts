@@ -35,6 +35,8 @@ export type ReadAloudSection = {
   title: string;
   text: string;
   order: number;
+  /** Encounter order in the source document before inclusion filtering. */
+  documentOrder: number;
   category: ReadAloudSectionCategory;
 };
 
@@ -110,22 +112,6 @@ const CATEGORY_PATTERNS: Array<{
     category: "FLASHCARDS",
     pattern: /^(?:optional flashcards|flashcards|study cards)$/i,
   },
-];
-
-const PREFERRED_CATEGORY_ORDER: ReadAloudSectionCategory[] = [
-  "NOTE_TITLE",
-  "SHORT_VERSION",
-  "SUMMARY",
-  "CORE_ARGUMENT",
-  "KEY_IDEAS",
-  "PEOPLE_CONCEPTS",
-  "MAIN_LESSONS",
-  "QUESTIONS",
-  "WHAT_TO_REMEMBER",
-  "TIMELINE",
-  "FULL_TRANSCRIPT",
-  "OTHER",
-  "FLASHCARDS",
 ];
 
 function normalizeHeadingTitle(value: string): string {
@@ -244,25 +230,11 @@ function createStableSectionIds(
   });
 }
 
-function orderReadAloudSections(
-  sections: Array<Omit<ReadAloudSection, "order">>,
-): Array<Omit<ReadAloudSection, "order">> {
-  return [...sections].sort((left, right) => {
-    const leftIndex = PREFERRED_CATEGORY_ORDER.indexOf(left.category);
-    const rightIndex = PREFERRED_CATEGORY_ORDER.indexOf(right.category);
-
-    if (leftIndex !== rightIndex) {
-      return leftIndex - rightIndex;
-    }
-
-    return 0;
-  });
-}
-
 function splitMarkdownSections(content: string): Array<{
   title: string;
   text: string;
   category: ReadAloudSectionCategory;
+  documentOrder: number;
 }> {
   const normalized = content.replace(/\r\n/g, "\n").trim();
 
@@ -275,9 +247,11 @@ function splitMarkdownSections(content: string): Array<{
     title: string;
     text: string;
     category: ReadAloudSectionCategory;
+    documentOrder: number;
   }> = [];
   let currentTitle = "";
   let currentLines: string[] = [];
+  let nextDocumentOrder = 0;
 
   function pushCurrentSection(): void {
     if (!currentTitle) {
@@ -292,7 +266,9 @@ function splitMarkdownSections(content: string): Array<{
         title: currentTitle,
         text,
         category: categorizeReadAloudSectionTitle(currentTitle),
+        documentOrder: nextDocumentOrder,
       });
+      nextDocumentOrder += 1;
     }
 
     currentLines = [];
@@ -323,6 +299,18 @@ function splitMarkdownSections(content: string): Array<{
 
   pushCurrentSection();
   return sections;
+}
+
+export function listMarkdownReadableSectionTitles(content: string): string[] {
+  return splitMarkdownSections(prepareLifeLabMarkdownForReading(content)).map(
+    (section) => section.title,
+  );
+}
+
+export function getReadAloudSectionIds(
+  input: BuildReadAloudSectionsInput,
+): string[] {
+  return buildReadAloudSections(input).map((section) => section.id);
 }
 
 function buildFlashcardSection(
@@ -373,23 +361,25 @@ export function buildReadAloudSections(
     firstMarkdownTitle != null &&
     normalizeHeadingTitle(firstMarkdownTitle) === normalizeHeadingTitle(noteTitle);
 
-  const draft: Array<Omit<ReadAloudSection, "order">> = [];
+  const draft: Array<Omit<ReadAloudSection, "order" | "id">> = [];
+  const titleOffset =
+    noteTitle && !titleDuplicatesFirstSection ? 1 : 0;
 
   if (noteTitle && !titleDuplicatesFirstSection) {
     draft.push({
-      id: "",
       title: noteTitle,
       text: noteTitle,
       category: "NOTE_TITLE",
+      documentOrder: 0,
     });
   }
 
   for (const section of markdownSections) {
     draft.push({
-      id: "",
       title: section.title,
       text: section.text,
       category: section.category,
+      documentOrder: section.documentOrder + titleOffset,
     });
   }
 
@@ -399,15 +389,15 @@ export function buildReadAloudSections(
 
   if (flashcardSection) {
     draft.push({
-      id: "",
       title: flashcardSection.title,
       text: flashcardSection.text,
       category: flashcardSection.category,
+      documentOrder: titleOffset + markdownSections.length,
     });
   }
 
-  const filtered = orderReadAloudSections(
-    draft.filter((section) => isCategoryIncluded(section.category, inclusion)),
+  const filtered = draft.filter((section) =>
+    isCategoryIncluded(section.category, inclusion),
   );
 
   const ids = createStableSectionIds(filtered);

@@ -109,3 +109,33 @@ export function buildLifeLabNoteContentBlocks(
 
   return blocks.length > 0 ? blocks : [{ kind: "markdown", content: body }];
 }
+
+function extractH2TitlesFromMarkdown(content: string): string[] {
+  const regex = /^##\s+(.+?)\s*$/gm;
+
+  return [...content.matchAll(regex)].map((match) => match[1].trim());
+}
+
+/** Visible section titles in the same order as the note detail page renders them. */
+export function listRenderedVisibleSectionTitles(body: string): string[] {
+  const blocks = buildLifeLabNoteContentBlocks(body);
+  const titles: string[] = [];
+
+  for (const block of blocks) {
+    switch (block.kind) {
+      case "markdown":
+        titles.push(...extractH2TitlesFromMarkdown(block.content));
+        break;
+      case "flashcards":
+        titles.push(block.title);
+        break;
+      case "transcript":
+        titles.push(block.title);
+        break;
+      default:
+        break;
+    }
+  }
+
+  return titles;
+}

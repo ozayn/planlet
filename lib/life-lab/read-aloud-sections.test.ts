@@ -151,4 +151,105 @@ describe("read aloud sections", () => {
     assert.equal(plan.chunks[summaryRange.firstChunkIndex]?.sectionId, summaryRange.sectionId);
     assert.match(plan.chunks[summaryRange.firstChunkIndex]?.text ?? "", /^Summary\./);
   });
+
+  it("preserves Markdown heading order instead of category priority", () => {
+    const sections = buildReadAloudSections({
+      title: "Study note",
+      content: [
+        "## Short version",
+        "Short.",
+        "## Summary",
+        "Summary body.",
+        "## Key ideas",
+        "Ideas body.",
+        "## Learning Map",
+        "Map body.",
+        "## Connections",
+        "Connections body.",
+        "## Questions",
+        "Questions body.",
+      ].join("\n"),
+      inclusion: {
+        questions: true,
+      },
+    });
+
+    assert.deepEqual(
+      sections
+        .filter((section) => section.category !== "NOTE_TITLE")
+        .map((section) => section.title),
+      [
+        "Short version",
+        "Summary",
+        "Key ideas",
+        "Learning Map",
+        "Connections",
+        "Questions",
+      ],
+    );
+  });
+
+  it("removes hidden sections without reordering remaining sections", () => {
+    const sections = buildReadAloudSections({
+      title: "Study note",
+      content: [
+        "## Summary",
+        "Summary body.",
+        "## Developer information",
+        "Hidden.",
+        "## Key ideas",
+        "Ideas body.",
+        "## Questions",
+        "Questions body.",
+      ].join("\n"),
+      inclusion: {
+        questions: true,
+      },
+    });
+
+    assert.deepEqual(
+      sections
+        .filter((section) => section.category !== "NOTE_TITLE")
+        .map((section) => section.title),
+      ["Summary", "Key ideas", "Questions"],
+    );
+  });
+
+  it("keeps duplicate headings in source order", () => {
+    const sections = buildReadAloudSections({
+      title: "Study note",
+      content: [
+        "## Summary",
+        "First summary.",
+        "## Key ideas",
+        "Ideas.",
+        "## Summary",
+        "Second summary.",
+      ].join("\n"),
+    });
+
+    assert.deepEqual(
+      sections
+        .filter((section) => section.category !== "NOTE_TITLE")
+        .map((section) => section.title),
+      ["Summary", "Key ideas", "Summary"],
+    );
+  });
+
+  it("assigns increasing documentOrder in source sequence", () => {
+    const sections = buildReadAloudSections({
+      title: "Study note",
+      content: [
+        "## Summary",
+        "Summary body.",
+        "## Key ideas",
+        "Ideas body.",
+      ].join("\n"),
+    });
+
+    const documentOrders = sections.map((section) => section.documentOrder);
+
+    assert.deepEqual(documentOrders, documentOrders.toSorted((left, right) => left - right));
+    assert.equal(new Set(documentOrders).size, documentOrders.length);
+  });
 });

@@ -15,6 +15,7 @@ import {
   summarizeNoteNarrationText,
 } from "@/lib/life-lab/narration-service";
 import { getLifeLabReadAloudPreferencesForUser } from "@/lib/life-lab/read-aloud-preferences";
+import { logReadAloudSectionOrderDiagnostic } from "@/lib/life-lab/read-aloud-section-order";
 import { canAccessLifeLabPage } from "@/lib/roles";
 
 type NarrationPlanBody = {
@@ -64,6 +65,15 @@ export async function POST(request: Request) {
   );
   const plan = buildNoteReadAloudPlan(note, {
     includeFlashcards: readAloudPreferences.readAloudSectionInclusion.flashcards,
+    inclusion: readAloudPreferences.readAloudSectionInclusion,
+  });
+
+  logReadAloudSectionOrderDiagnostic(note.fileId, {
+    title: note.title,
+    content: note.content,
+    flashcards: readAloudPreferences.readAloudSectionInclusion.flashcards
+      ? note.flashcards
+      : undefined,
     inclusion: readAloudPreferences.readAloudSectionInclusion,
   });
 

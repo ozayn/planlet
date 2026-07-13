@@ -32,11 +32,15 @@ describe("read aloud navigation", () => {
   it("starts playback at the selected section", () => {
     const plan = buildSamplePlan();
     const keyIdeas = plan.sections.find((section) => section.title === "Key ideas");
+    const keyIdeasRange = plan.sectionChunkRanges.find(
+      (range) => range.sectionTitle === "Key ideas",
+    );
 
     assert.ok(keyIdeas);
+    assert.ok(keyIdeasRange);
     assert.equal(
       getFirstChunkIndexForSectionId(plan.sectionChunkRanges, keyIdeas.id),
-      plan.sectionChunkRanges[keyIdeas.order - 1]?.firstChunkIndex ?? null,
+      keyIdeasRange?.firstChunkIndex ?? null,
     );
   });
 
