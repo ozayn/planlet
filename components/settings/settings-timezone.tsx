@@ -20,6 +20,7 @@ import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 type SettingsTimezoneProps = {
   timezone: string;
   timezoneMode: TimezoneMode;
+  embedded?: boolean;
 };
 
 function getBrowserTimezone(): string | null {
@@ -40,6 +41,7 @@ function getModeLabel(mode: TimezoneMode): string {
 export function SettingsTimezone({
   timezone,
   timezoneMode,
+  embedded = false,
 }: SettingsTimezoneProps) {
   const router = useRouter();
   const [selectedTimezone, setSelectedTimezone] = useState(timezone);
@@ -132,8 +134,8 @@ export function SettingsTimezone({
     ? SETTINGS_TIMEZONE_OPTIONS
     : ([selectedTimezone, ...SETTINGS_TIMEZONE_OPTIONS] as const);
 
-  return (
-    <SettingsSection title="Timezone">
+  const content = (
+    <>
       <div className="space-y-1">
         <p className="text-sm text-foreground">
           <span className="text-muted">Mode:</span> {getModeLabel(selectedMode)}
@@ -230,6 +232,12 @@ export function SettingsTimezone({
           {error}
         </p>
       ) : null}
-    </SettingsSection>
+    </>
   );
+
+  if (embedded) {
+    return content;
+  }
+
+  return <SettingsSection title="Timezone">{content}</SettingsSection>;
 }

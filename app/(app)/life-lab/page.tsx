@@ -24,7 +24,7 @@ export default async function LifeLabPage() {
   const isAdmin = isAdminRole(session.user.role);
 
   return (
-    <section className="ui-page-stack space-y-6">
+    <section className="ui-life-lab-surface ui-page-stack space-y-6">
       <PageHeader
         title="Life Lab"
         subtitle="Learning notes from selected Life Lab folders."

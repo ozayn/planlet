@@ -44,7 +44,7 @@ export default async function LifeLabNoteStudyPage({
   }));
 
   return (
-    <section className="ui-page-stack space-y-6">
+    <section className="ui-life-lab-surface ui-page-stack space-y-6">
       <PageHeader
         title="Study flashcards"
         subtitle={note.title}

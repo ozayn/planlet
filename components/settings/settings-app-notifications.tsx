@@ -9,15 +9,17 @@ import type { SerializedNotificationPreferences } from "@/lib/notification-prefe
 
 type SettingsAppNotificationsProps = {
   preferences: SerializedNotificationPreferences;
+  embedded?: boolean;
 };
 
 export function SettingsAppNotifications({
   preferences,
+  embedded = false,
 }: SettingsAppNotificationsProps) {
   const [pushSubscribed, setPushSubscribed] = useState(false);
 
-  return (
-    <SettingsSection title="Notifications">
+  const content = (
+    <>
       <PushNotificationSettings
         embedded
         showInstallHints={false}
@@ -27,6 +29,12 @@ export function SettingsAppNotifications({
         preferences={preferences}
         pushSubscribed={pushSubscribed}
       />
-    </SettingsSection>
+    </>
   );
+
+  if (embedded) {
+    return content;
+  }
+
+  return <SettingsSection title="Notifications">{content}</SettingsSection>;
 }

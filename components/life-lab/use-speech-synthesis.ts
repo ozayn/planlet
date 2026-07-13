@@ -61,6 +61,8 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
   const [rate, setRate] = useState<SpeechRate>(
     options.rate ?? DEFAULT_SPEECH_RATE,
   );
+  const [currentSequenceIndex, setCurrentSequenceIndex] = useState(0);
+  const [isFinished, setIsFinished] = useState(false);
   const selectedVoiceIdRef = useRef(
     options.initialVoiceId ?? SPEECH_AUTO_VOICE_ID,
   );
@@ -191,6 +193,8 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
     speakGenerationRef.current += 1;
     sequenceRef.current = [];
     sequenceIndexRef.current = 0;
+    setCurrentSequenceIndex(0);
+    setIsFinished(false);
     sessionVoiceRef.current = null;
     sessionUsesVoiceRef.current = false;
     sessionActiveRef.current = false;
@@ -359,14 +363,15 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
         speakGenerationRef.current !== generation ||
         activeSpeechOwnerId !== instanceId
       ) {
-        if (
-          speakGenerationRef.current === generation &&
-          activeSpeechOwnerId === instanceId
-        ) {
-          activeSpeechOwnerId = null;
-          sessionActiveRef.current = false;
-          clearSpeakingState();
-        }
+      if (
+        speakGenerationRef.current === generation &&
+        activeSpeechOwnerId === instanceId
+      ) {
+        activeSpeechOwnerId = null;
+        sessionActiveRef.current = false;
+        setIsFinished(true);
+        clearSpeakingState();
+      }
 
         return;
       }
@@ -380,6 +385,7 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
         sessionUsesVoiceRef.current,
         () => {
           sequenceIndexRef.current += 1;
+          setCurrentSequenceIndex(sequenceIndexRef.current);
           speakNextInSequence(generation);
         },
         true,
@@ -432,6 +438,8 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
       sessionActiveRef.current = true;
       sequenceRef.current = segments;
       sequenceIndexRef.current = 0;
+      setCurrentSequenceIndex(0);
+      setIsFinished(false);
       activeUtteranceRef.current = null;
       window.speechSynthesis.cancel();
 
@@ -504,6 +512,8 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
     isSupported,
     isSpeaking,
     isPaused,
+    isFinished,
+    currentSequenceIndex,
     playbackFailed,
     voiceFallbackNotice,
     voiceUnavailableNotice,

@@ -1,9 +1,15 @@
 import type {
   PlanItemView,
+  ReadingDensity,
   TaskOrganizationDisplay,
 } from "@/app/generated/prisma/client";
 
 import { DEFAULT_TASK_ORGANIZATION_DISPLAY } from "@/lib/task-organization-display";
+import {
+  readingDensityFromPrisma,
+  readingDensityToPrisma,
+  type ReadingDensityValue,
+} from "@/lib/reading-density";
 import { prisma } from "@/lib/prisma";
 
 export type PlanningPreferences = {
@@ -72,5 +78,26 @@ export async function updateMobileNavItems(
   await prisma.user.update({
     where: { id: userId },
     data: { mobileNavItems },
+  });
+}
+
+export async function getReadingDensityForUser(
+  userId: string,
+): Promise<ReadingDensityValue> {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { readingDensity: true },
+  });
+
+  return readingDensityFromPrisma(user?.readingDensity);
+}
+
+export async function updateReadingDensity(
+  userId: string,
+  value: ReadingDensityValue,
+): Promise<void> {
+  await prisma.user.update({
+    where: { id: userId },
+    data: { readingDensity: readingDensityToPrisma(value) },
   });
 }

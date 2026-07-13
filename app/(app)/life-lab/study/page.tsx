@@ -69,7 +69,7 @@ export default async function LifeLabStudyPage({
     : "/life-lab";
 
   return (
-    <section className="ui-page-stack space-y-6">
+    <section className="ui-life-lab-surface ui-page-stack space-y-6">
       <PageHeader
         title="Study flashcards"
         subtitle="Across all Life Lab sections"

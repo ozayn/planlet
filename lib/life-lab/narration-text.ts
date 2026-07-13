@@ -170,19 +170,29 @@ function buildFlashcardSections(
   return [{ label: "Flashcards", body }];
 }
 
+function normalizeHeadingTitle(value: string): string {
+  return value.trim().toLowerCase();
+}
+
 export function buildNarrationDocument(
   input: NarrationDocumentInput,
 ): NarrationSection[] {
   const title = sanitizeSpeechText(input.title.trim());
   const sections: NarrationSection[] = [];
 
-  if (title) {
-    sections.push({ label: "Title", body: title });
-  }
-
   const markdownSections = orderNarrationSections(
     splitMarkdownSections(prepareLifeLabMarkdownForReading(input.content)),
   );
+
+  const firstMarkdownLabel = markdownSections[0]?.label ?? null;
+  const titleDuplicatesFirstSection =
+    title.length > 0 &&
+    firstMarkdownLabel != null &&
+    normalizeHeadingTitle(firstMarkdownLabel) === normalizeHeadingTitle(title);
+
+  if (title && !titleDuplicatesFirstSection) {
+    sections.push({ label: title, body: title });
+  }
 
   sections.push(...markdownSections);
 

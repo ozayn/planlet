@@ -4,6 +4,7 @@ import {
   frequencyCloudStyle,
   type FrequencyCloudItem,
 } from "@/lib/life-lab/frequency-cloud";
+import { useDensityTokenNumber } from "@/lib/use-density-token";
 
 export type FrequencyCloudDisplayItem = FrequencyCloudItem & {
   weight?: number;
@@ -34,9 +35,14 @@ export function LifeLabFrequencyCloud({
   items,
   countItems,
   ariaLabel,
-  minFontSize = 14,
-  maxFontSize = 28,
+  minFontSize,
+  maxFontSize,
 }: LifeLabFrequencyCloudProps) {
+  const densityCloudMin = useDensityTokenNumber("--density-cloud-min", 14);
+  const densityCloudMax = useDensityTokenNumber("--density-cloud-max", 28);
+  const resolvedMinFontSize = minFontSize ?? densityCloudMin;
+  const resolvedMaxFontSize = maxFontSize ?? densityCloudMax;
+
   if (items.length === 0) {
     return null;
   }
@@ -50,7 +56,7 @@ export function LifeLabFrequencyCloud({
   }));
 
   return (
-    <div className="space-y-2">
+    <div className="ui-life-lab-surface space-y-2">
       <div
         className="flex flex-wrap gap-x-4 gap-y-2.5"
         role="list"
@@ -64,8 +70,8 @@ export function LifeLabFrequencyCloud({
             minWeight,
             maxWeight,
             {
-              minFontSize,
-              maxFontSize,
+              minFontSize: resolvedMinFontSize,
+              maxFontSize: resolvedMaxFontSize,
             },
           );
 

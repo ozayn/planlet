@@ -96,6 +96,16 @@ export function LifeLabReadingBriefHeader({
         >
           Back
         </Link>
+        <LifeLabNoteListen
+          title={note.title}
+          content={note.content}
+          sectionId={sectionId}
+          slug={note.slug}
+          fileId={note.fileId}
+          preferences={readAloudPreferences}
+          openAiNarrationAvailable={openAiNarrationAvailable}
+          includeFlashcards
+        />
         {allChips.length > mobileVisible.length ? (
           <details className="ui-settings-details group md:hidden">
             <summary className="ui-settings-details-summary !inline-flex !rounded-full !border !border-border/70 !bg-transparent !py-1.5 !px-3 !text-xs !font-medium !normal-case !tracking-normal !text-muted hover:!bg-accent-cream/50 hover:!text-foreground">
@@ -163,17 +173,6 @@ export function LifeLabReadingBriefHeader({
           </div>
         </details>
       ) : null}
-
-      <LifeLabNoteListen
-        title={note.title}
-        content={note.content}
-        sectionId={sectionId}
-        slug={note.slug}
-        fileId={note.fileId}
-        preferences={readAloudPreferences}
-        openAiNarrationAvailable={openAiNarrationAvailable}
-        includeFlashcards
-      />
     </header>
   );
 }

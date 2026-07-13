@@ -134,6 +134,16 @@ export function LifeLabNoteDetailHeader({
           Back
         </Link>
         <LifeLabNoteDevToolbar note={note} />
+        <LifeLabNoteListen
+          title={note.title}
+          content={note.content}
+          sectionId={sectionId}
+          slug={note.slug}
+          fileId={note.fileId}
+          preferences={readAloudPreferences}
+          openAiNarrationAvailable={openAiNarrationAvailable}
+          includeFlashcards
+        />
       </div>
 
       {statusLabel || mobileVisible.length > 0 ? (
@@ -210,22 +220,6 @@ export function LifeLabNoteDetailHeader({
           </div>
         </details>
       ) : null}
-
-      <details className="ui-settings-details group">
-        <summary className="ui-settings-details-summary">Listen</summary>
-        <div className="ui-settings-details-body">
-          <LifeLabNoteListen
-            title={note.title}
-            content={note.content}
-            sectionId={sectionId}
-            slug={note.slug}
-            fileId={note.fileId}
-            preferences={readAloudPreferences}
-            openAiNarrationAvailable={openAiNarrationAvailable}
-            includeFlashcards
-          />
-        </div>
-      </details>
     </header>
   );
 }

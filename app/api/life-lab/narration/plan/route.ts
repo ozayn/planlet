@@ -1,14 +1,19 @@
 import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
+import { validateOpenAiTtsConfiguration } from "@/lib/env";
 import { getLifeLabNoteData } from "@/lib/life-lab";
+import { isLifeLabDevToolsEnabled } from "@/lib/life-lab/dev";
+import { logNarrationDiagnostic } from "@/lib/life-lab/narration-diagnostics";
+import {
+  buildNarrationErrorPayload,
+  narrationErrorHttpStatus,
+} from "@/lib/life-lab/narration-errors";
 import {
   buildNoteNarrationChunks,
   getNoteNarrationContentHash,
+  summarizeNoteNarrationText,
 } from "@/lib/life-lab/narration-service";
-import {
-  isLifeLabOpenAiTtsEnabled,
-} from "@/lib/env";
 import { canAccessLifeLabPage } from "@/lib/roles";
 
 type NarrationPlanBody = {
@@ -47,7 +52,34 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Note not found." }, { status: 404 });
   }
 
+  const config = validateOpenAiTtsConfiguration();
+  const textSummary = summarizeNoteNarrationText(note, true);
   const chunks = buildNoteNarrationChunks(note, true);
+
+  logNarrationDiagnostic({
+    stage: "text-extraction",
+    noteId: note.fileId,
+    ...textSummary,
+  });
+
+  if (!config.ok) {
+    logNarrationDiagnostic({
+      stage: "feature-check",
+      noteId: note.fileId,
+      errorType: config.reason,
+      errorMessage: `OpenAI TTS configuration check failed: ${config.reason}`,
+    });
+  }
+
+  if (textSummary.isEmpty) {
+    return NextResponse.json(
+      buildNarrationErrorPayload({
+        category: "empty_narration_text",
+        includeDebug: isLifeLabDevToolsEnabled(),
+      }),
+      { status: narrationErrorHttpStatus("empty_narration_text") },
+    );
+  }
 
   return NextResponse.json({
     chunkCount: chunks.length,
@@ -56,6 +88,14 @@ export async function POST(request: Request) {
       index: chunk.index,
       sectionLabel: chunk.sectionLabel,
     })),
-    openAiAvailable: isLifeLabOpenAiTtsEnabled(),
+    openAiAvailable: config.ok,
+    ...(config.ok
+      ? {}
+      : {
+          unavailable: buildNarrationErrorPayload({
+            category: config.reason,
+            includeDebug: isLifeLabDevToolsEnabled(),
+          }),
+        }),
   });
 }

@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
+import { validateOpenAiTtsConfiguration } from "@/lib/env";
+import { logNarrationDiagnostic } from "@/lib/life-lab/narration-diagnostics";
+import {
+  buildNarrationErrorPayload,
+  narrationErrorHttpStatus,
+} from "@/lib/life-lab/narration-errors";
 import { regenerateNarrationForNote } from "@/lib/life-lab/narration-service";
-import { isLifeLabOpenAiTtsEnabled } from "@/lib/env";
 import { canAccessLifeLabPage } from "@/lib/roles";
+import { isLifeLabDevToolsEnabled } from "@/lib/life-lab/dev";
 
 type RegenerateBody = {
   driveFileId?: string;
@@ -18,10 +24,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!isLifeLabOpenAiTtsEnabled()) {
+  const config = validateOpenAiTtsConfiguration();
+
+  if (!config.ok) {
+    logNarrationDiagnostic({
+      stage: "feature-check",
+      errorType: config.reason,
+      errorMessage: `OpenAI TTS configuration check failed: ${config.reason}`,
+    });
+
     return NextResponse.json(
-      { error: "OpenAI narration is unavailable." },
-      { status: 503 },
+      buildNarrationErrorPayload({
+        category: config.reason,
+        includeDebug: isLifeLabDevToolsEnabled(),
+      }),
+      { status: narrationErrorHttpStatus(config.reason) },
     );
   }
 

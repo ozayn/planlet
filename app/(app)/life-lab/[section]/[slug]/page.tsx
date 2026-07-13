@@ -87,7 +87,7 @@ export default async function LifeLabNotePage({
 
   return (
     <section
-      className={`ui-page-stack ${
+      className={`ui-life-lab-surface ui-page-stack ${
         isReadingBrief || isPlaylistIndex
           ? "space-y-3 md:space-y-4"
           : "space-y-4 md:space-y-6"

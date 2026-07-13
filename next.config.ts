@@ -3,6 +3,9 @@ import type { NextConfig } from "next";
 import { buildContentSecurityPolicyHeader } from "./lib/security/content-security-policy";
 
 const nextConfig: NextConfig = {
+  devIndicators: {
+    position: "bottom-right",
+  },
   async headers() {
     return [
       {

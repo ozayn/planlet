@@ -85,7 +85,48 @@ export function LifeLabNoteDevTools({
     }
   }
 
+  async function runTtsTest() {
+    setStatus("Generating TTS test…");
+
+    try {
+      const response = await fetch("/api/life-lab/narration/test", {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as
+          | { error?: string; category?: string; debugMessage?: string }
+          | null;
+        setStatus(
+          payload?.category
+            ? `TTS failed (${payload.category})`
+            : payload?.error ?? "TTS test failed",
+        );
+        setOpen(false);
+        return;
+      }
+
+      const blob = await response.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const audio = new Audio(objectUrl);
+
+      audio.addEventListener("ended", () => {
+        URL.revokeObjectURL(objectUrl);
+      });
+
+      await audio.play();
+      setStatus("TTS test playing");
+      setOpen(false);
+    } catch {
+      setStatus("TTS test failed");
+    }
+  }
+
   const menuItems: MenuItem[] = [
+    {
+      label: "Generate TTS test",
+      onClick: runTtsTest,
+    },
     {
       label: "Open raw Markdown",
       href: lifeLabDebugRawUrl(sectionId, slug),

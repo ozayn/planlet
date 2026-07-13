@@ -67,6 +67,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
+      data-reading-density="compact"
       className={`${plusJakarta.variable} ${vazirmatn.variable} h-full antialiased`}
     >
       <head>

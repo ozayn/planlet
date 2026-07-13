@@ -9,10 +9,12 @@ import { TASK_ORGANIZATION_DISPLAY_OPTIONS } from "@/lib/task-organization-displ
 
 type TaskOrganizationDisplaySettingsProps = {
   value: TaskOrganizationDisplay;
+  embedded?: boolean;
 };
 
 export function TaskOrganizationDisplaySettings({
   value,
+  embedded = false,
 }: TaskOrganizationDisplaySettingsProps) {
   const router = useRouter();
   const [selected, setSelected] = useState(value);
@@ -43,7 +45,9 @@ export function TaskOrganizationDisplaySettings({
   return (
     <fieldset className="ui-settings-fieldset">
       <legend className="sr-only">Task organization</legend>
-      <p className="text-sm font-medium text-foreground">Task organization</p>
+      {!embedded ? (
+        <p className="text-sm font-medium text-foreground">Task organization</p>
+      ) : null}
 
       <div className="flex flex-col gap-1.5">
         {TASK_ORGANIZATION_DISPLAY_OPTIONS.map((option) => (

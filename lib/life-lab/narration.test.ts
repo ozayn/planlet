@@ -10,6 +10,10 @@ import {
 } from "@/lib/life-lab/narration-chunks";
 import { NARRATION_INSTRUCTION_VERSION } from "@/lib/life-lab/narration-config";
 import {
+  buildNoteNarrationChunks,
+  summarizeNoteNarrationText,
+} from "@/lib/life-lab/narration-service";
+import {
   buildNarrationDocument,
   narrationDocumentToPlainText,
 } from "@/lib/life-lab/narration-text";
@@ -38,7 +42,10 @@ describe("life lab narration text", () => {
       ].join("\n"),
     });
 
-    assert.equal(sections[0]?.label, "Title");
+    assert.equal(
+      sections.some((section) => section.label === "Title"),
+      false,
+    );
     assert.equal(sections.some((section) => section.label === "Summary"), true);
     assert.equal(
       sections.some((section) => section.label === "Source notes"),
@@ -64,6 +71,16 @@ describe("life lab narration text", () => {
 
     assert.equal(sections.at(-1)?.label, "Flashcards");
     assert.match(sections.at(-1)?.body ?? "", /chiaroscuro/i);
+  });
+  it("reports empty narration text summaries", () => {
+    const summary = summarizeNoteNarrationText({
+      title: "   ",
+      content: "```mermaid\ngraph TD\nA-->B\n```",
+      flashcards: [],
+    });
+
+    assert.equal(summary.isEmpty, true);
+    assert.equal(summary.sectionCount, 0);
   });
 });
 

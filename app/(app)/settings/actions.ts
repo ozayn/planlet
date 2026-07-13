@@ -14,7 +14,12 @@ import {
   updatePlanItemView,
   updateTaskOrganizationDisplay,
   updateMobileNavItems,
+  updateReadingDensity,
 } from "@/lib/user-preferences";
+import {
+  isReadingDensityValue,
+  type ReadingDensityValue,
+} from "@/lib/reading-density";
 import { TASK_ORGANIZATION_DISPLAY_MODES } from "@/lib/task-organization-display";
 import { isAdminRole } from "@/lib/auth-roles";
 import type { AppNavAccess } from "@/lib/app-nav";
@@ -42,15 +47,19 @@ async function requireUserId(): Promise<string> {
   return session.user.id;
 }
 
+function revalidateSettingsSurfaces() {
+  revalidatePath("/settings", "layout");
+}
+
 function revalidatePlanSurfaces() {
-  revalidatePath("/settings");
+  revalidateSettingsSurfaces();
   revalidatePath("/today");
   revalidatePath("/plans", "layout");
   revalidatePath("/dashboard");
 }
 
 function revalidateAppNavigation() {
-  revalidatePath("/settings");
+  revalidateSettingsSurfaces();
   revalidatePath("/today", "layout");
 }
 
@@ -106,7 +115,7 @@ export async function updateUserTimezoneModeAction(
   try {
     const userId = await requireUserId();
     await updateUserTimezoneMode(userId, mode, browserTimezone);
-    revalidatePath("/settings");
+    revalidateSettingsSurfaces();
     return { success: true };
   } catch (error) {
     return {
@@ -126,7 +135,7 @@ export async function updateUserTimezoneAction(
     const userId = await requireUserId();
     normalizeTimezone(timezone);
     await updateUserTimezone(userId, timezone);
-    revalidatePath("/settings");
+    revalidateSettingsSurfaces();
     return { success: true };
   } catch (error) {
     return {
@@ -143,7 +152,7 @@ export async function updateNotificationPreferencesAction(
   try {
     const userId = await requireUserId();
     await updateNotificationPreferences(userId, input);
-    revalidatePath("/settings");
+    revalidateSettingsSurfaces();
     return { success: true };
   } catch (error) {
     return {
@@ -229,6 +238,34 @@ export async function updateTaskOrganizationDisplayAction(
   }
 }
 
+function revalidateReadingDensitySurfaces() {
+  revalidateSettingsSurfaces();
+  revalidatePath("/", "layout");
+}
+
+export async function updateReadingDensityAction(
+  value: ReadingDensityValue,
+): Promise<SettingsActionResult> {
+  if (!isReadingDensityValue(value)) {
+    return { success: false, error: "Invalid reading density." };
+  }
+
+  try {
+    const userId = await requireUserId();
+    await updateReadingDensity(userId, value);
+    revalidateReadingDensitySurfaces();
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to update reading density.",
+    };
+  }
+}
+
 export async function updateMobileNavItemsAction(
   items: string[],
 ): Promise<SettingsActionResult> {
@@ -268,7 +305,7 @@ export async function updateLifeLabReadAloudProviderAction(
       "@/lib/life-lab/read-aloud-preferences"
     );
     await updateLifeLabReadAloudProvider(userId, provider);
-    revalidatePath("/settings");
+    revalidateSettingsSurfaces();
     revalidatePath("/life-lab", "layout");
     return { success: true };
   } catch (error) {
@@ -291,7 +328,7 @@ export async function updateLifeLabSpeechVoiceAction(
       "@/lib/life-lab/read-aloud-preferences"
     );
     await updateLifeLabSpeechVoiceId(userId, speechVoiceId);
-    revalidatePath("/settings");
+    revalidateSettingsSurfaces();
     return { success: true };
   } catch (error) {
     return {
@@ -313,7 +350,7 @@ export async function updateLifeLabSpeechRateAction(
       "@/lib/life-lab/read-aloud-preferences"
     );
     await updateLifeLabSpeechRate(userId, speechRate as 0.8 | 1 | 1.15 | 1.3 | 1.5);
-    revalidatePath("/settings");
+    revalidateSettingsSurfaces();
     return { success: true };
   } catch (error) {
     return {

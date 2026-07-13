@@ -1,4 +1,5 @@
 import { auth } from "@/auth";
+import { ReadingDensityApplier } from "@/components/reading-density-applier";
 import { ActivityTimerFloatingPill } from "@/components/activity-timer/activity-timer-floating-pill";
 import { ActivityTimerProvider } from "@/components/activity-timer/activity-timer-context";
 import { AppLayoutShell } from "@/components/app-layout-shell";
@@ -27,7 +28,7 @@ import {
 import {
   getHeaderUnreadCount,
 } from "@/lib/poke";
-import { getMobileNavItemsForUser } from "@/lib/user-preferences";
+import { getMobileNavItemsForUser, getReadingDensityForUser } from "@/lib/user-preferences";
 import { getActiveActivityTimerSession } from "@/lib/activity-timer";
 
 export default async function AppLayout({
@@ -41,14 +42,15 @@ export default async function AppLayout({
 
   const timerAccess = canUseActivityTimerFeatures(session?.user ?? {});
 
-  const [unreadNotificationCount, notifications, storedMobileNavItems, activeTimerSession] = userId
+  const [unreadNotificationCount, notifications, storedMobileNavItems, activeTimerSession, readingDensity] = userId
     ? await Promise.all([
         getHeaderUnreadCount(userId),
         getNotificationsForUser(userId),
         getMobileNavItemsForUser(userId),
         timerAccess ? getActiveActivityTimerSession(userId) : Promise.resolve(null),
+        getReadingDensityForUser(userId),
       ])
-    : [0, [], [], null];
+    : [0, [], [], null, "compact" as const];
 
   const serializedNotifications = notifications.map(serializeNotification);
   const access = {
@@ -75,6 +77,7 @@ export default async function AppLayout({
 
   return (
     <>
+      <ReadingDensityApplier density={readingDensity} />
       {session?.user?.timezoneMode === "AUTOMATIC" ? (
         <BrowserTimezoneDetector enabled />
       ) : null}

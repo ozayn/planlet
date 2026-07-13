@@ -20,9 +20,14 @@ import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 type MobileNavSettingsProps = {
   value: AppNavItemKey[];
   access: AppNavAccess;
+  embedded?: boolean;
 };
 
-export function MobileNavSettings({ value, access }: MobileNavSettingsProps) {
+export function MobileNavSettings({
+  value,
+  access,
+  embedded = false,
+}: MobileNavSettingsProps) {
   const router = useRouter();
   const [selected, setSelected] = useState<AppNavItemKey[]>(value);
   const [error, setError] = useState<string | null>(null);
@@ -90,15 +95,20 @@ export function MobileNavSettings({ value, access }: MobileNavSettingsProps) {
     });
   }
 
-  return (
-    <SettingsSection title="Navigation">
+  const content = (
       <div className="space-y-4">
-        <div className="space-y-1">
-          <p className="text-sm font-medium text-foreground">Quick access tabs</p>
+        {!embedded ? (
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-foreground">Quick access tabs</p>
+            <p className="text-sm text-muted">
+              Choose up to 4 sections to show in the mobile navigation bar.
+            </p>
+          </div>
+        ) : (
           <p className="text-sm text-muted">
             Choose up to 4 sections to show in the mobile navigation bar.
           </p>
-        </div>
+        )}
 
         <div className="space-y-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-muted-light">
@@ -212,6 +222,11 @@ export function MobileNavSettings({ value, access }: MobileNavSettingsProps) {
           </p>
         ) : null}
       </div>
-    </SettingsSection>
   );
+
+  if (embedded) {
+    return content;
+  }
+
+  return <SettingsSection title="Navigation">{content}</SettingsSection>;
 }

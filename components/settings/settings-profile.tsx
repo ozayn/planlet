@@ -6,15 +6,17 @@ type SettingsProfileProps = {
   name?: string | null;
   email?: string | null;
   image?: string | null;
+  embedded?: boolean;
 };
 
 export function SettingsProfile({
   name,
   email,
   image,
+  embedded = false,
 }: SettingsProfileProps) {
-  return (
-    <SettingsSection title="Account">
+  const content = (
+    <>
       <div className="ui-settings-profile flex items-center gap-3">
         <UserAvatar name={name} email={email} image={image} size="lg" />
         <div className="min-w-0 flex-1">
@@ -28,7 +30,13 @@ export function SettingsProfile({
           ) : null}
         </div>
       </div>
-      <SignOutButton variant="quiet" />
-    </SettingsSection>
+      {!embedded ? <SignOutButton variant="quiet" /> : null}
+    </>
   );
+
+  if (embedded) {
+    return content;
+  }
+
+  return <SettingsSection title="Account">{content}</SettingsSection>;
 }

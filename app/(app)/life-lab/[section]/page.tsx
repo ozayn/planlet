@@ -47,7 +47,7 @@ export default async function LifeLabSectionPage({
   const noteCount = notes.length;
 
   return (
-    <section className="ui-page-stack space-y-6">
+    <section className="ui-life-lab-surface ui-page-stack space-y-6">
       <PageHeader
         title={sectionLabel}
         subtitle="Notes from this Life Lab folder."

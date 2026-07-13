@@ -14,9 +14,13 @@ import { getStatusIcon } from "@/lib/plan-status";
 
 type PlanItemViewSettingsProps = {
   value: PlanItemView;
+  embedded?: boolean;
 };
 
-export function PlanItemViewSettings({ value }: PlanItemViewSettingsProps) {
+export function PlanItemViewSettings({
+  value,
+  embedded = false,
+}: PlanItemViewSettingsProps) {
   const router = useRouter();
   const [selected, setSelected] = useState(value);
   const [error, setError] = useState<string | null>(null);
@@ -47,7 +51,9 @@ export function PlanItemViewSettings({ value }: PlanItemViewSettingsProps) {
     <>
       <fieldset className="ui-settings-fieldset">
         <legend className="sr-only">Item style</legend>
-        <p className="text-sm font-medium text-foreground">Item style</p>
+        {!embedded ? (
+          <p className="text-sm font-medium text-foreground">Item style</p>
+        ) : null}
 
         <div className="flex flex-wrap gap-1.5">
           {PLAN_ITEM_VIEW_OPTIONS.map((option) => (

@@ -25,7 +25,32 @@ function InstallSteps({ steps }: { steps: readonly string[] }) {
   );
 }
 
-export function SettingsInstallPlanlet() {
+type SettingsInstallPlanletProps = {
+  embedded?: boolean;
+};
+
+export function SettingsInstallPlanlet({ embedded = false }: SettingsInstallPlanletProps) {
+  const content = (
+    <>
+      <p className="text-xs leading-relaxed text-muted-light">
+        Install Planlet for a more app-like experience and reliable phone
+        notifications.
+      </p>
+      <div className="ui-settings-platform-rows">
+        <SettingsPlatformDetails label="Apple / iPhone">
+          <InstallSteps steps={APPLE_STEPS} />
+        </SettingsPlatformDetails>
+        <SettingsPlatformDetails label="Android">
+          <InstallSteps steps={ANDROID_STEPS} />
+        </SettingsPlatformDetails>
+      </div>
+    </>
+  );
+
+  if (embedded) {
+    return content;
+  }
+
   return (
     <SettingsSection title="Install app">
       <details className="ui-settings-instruction-details group">
@@ -35,20 +60,7 @@ export function SettingsInstallPlanlet() {
             ›
           </span>
         </summary>
-        <div className="space-y-2 pb-1 pt-1">
-          <p className="text-xs leading-relaxed text-muted-light">
-            Install Planlet for a more app-like experience and reliable phone
-            notifications.
-          </p>
-          <div className="ui-settings-platform-rows">
-            <SettingsPlatformDetails label="Apple / iPhone">
-              <InstallSteps steps={APPLE_STEPS} />
-            </SettingsPlatformDetails>
-            <SettingsPlatformDetails label="Android">
-              <InstallSteps steps={ANDROID_STEPS} />
-            </SettingsPlatformDetails>
-          </div>
-        </div>
+        <div className="space-y-2 pb-1 pt-1">{content}</div>
       </details>
     </SettingsSection>
   );

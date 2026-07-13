@@ -6,6 +6,7 @@ type SettingsReflectionCoachingProps = {
   canUseCoachingFeatures: boolean;
   canUseReflectionFeatures: boolean;
   canUseTherapyThoughts: boolean;
+  embedded?: boolean;
 };
 
 type ReflectionLink = {
@@ -18,6 +19,7 @@ export function SettingsReflectionCoaching({
   canUseCoachingFeatures,
   canUseReflectionFeatures,
   canUseTherapyThoughts,
+  embedded = false,
 }: SettingsReflectionCoachingProps) {
   const links: ReflectionLink[] = [];
 
@@ -49,20 +51,24 @@ export function SettingsReflectionCoaching({
     return null;
   }
 
-  return (
-    <SettingsSection title="Reflection & coaching">
-      <ul className="space-y-3">
-        {links.map((link) => (
-          <li key={link.href}>
-            <Link href={link.href} className="ui-text-link text-sm font-medium">
-              {link.label}
-            </Link>
-            <p className="mt-0.5 text-xs leading-relaxed text-muted-light">
-              {link.description}
-            </p>
-          </li>
-        ))}
-      </ul>
-    </SettingsSection>
+  const content = (
+    <ul className="space-y-3">
+      {links.map((link) => (
+        <li key={link.href}>
+          <Link href={link.href} className="ui-text-link text-sm font-medium">
+            {link.label}
+          </Link>
+          <p className="mt-0.5 text-xs leading-relaxed text-muted-light">
+            {link.description}
+          </p>
+        </li>
+      ))}
+    </ul>
   );
+
+  if (embedded) {
+    return content;
+  }
+
+  return <SettingsSection title="Reflection & coaching">{content}</SettingsSection>;
 }

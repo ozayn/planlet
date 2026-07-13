@@ -22,6 +22,7 @@ import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 
 type ActivityTimerPresetSettingsProps = {
   data: ActivityTimerPresetSettingsData;
+  embedded?: boolean;
 };
 
 function presetDetail(preset: SerializedActivityTimerPresetManagement): string {
@@ -34,6 +35,7 @@ function presetDetail(preset: SerializedActivityTimerPresetManagement): string {
 
 export function ActivityTimerPresetSettings({
   data,
+  embedded = false,
 }: ActivityTimerPresetSettingsProps) {
   const router = useRouter();
   const [activePresets, setActivePresets] = useState(data.activePresets);
@@ -142,8 +144,8 @@ export function ActivityTimerPresetSettings({
     setFormOpen(true);
   }
 
-  return (
-    <SettingsSection title="Timer presets">
+  const content = (
+    <>
       <div className="space-y-4">
         <div className="space-y-1">
           <p className="text-sm text-muted">
@@ -337,6 +339,12 @@ export function ActivityTimerPresetSettings({
           Confirm permanent deletion of this timer preset.
         </span>
       </ConfirmDialog>
-    </SettingsSection>
+    </>
   );
+
+  if (embedded) {
+    return content;
+  }
+
+  return <SettingsSection title="Timer presets">{content}</SettingsSection>;
 }

@@ -282,7 +282,7 @@ export function ActivityTimerPage({ data }: ActivityTimerPageProps) {
   const showTimerSection = isRunning || isArmed;
 
   return (
-    <div className="space-y-5 sm:space-y-8">
+    <div className="ui-activity-timer-page space-y-5 sm:space-y-8">
       <section className="flex flex-col items-center space-y-3 py-0 text-center sm:space-y-4">
         {showTimerSection ? (
           <h2 className="max-w-md px-2 text-base font-medium text-foreground sm:text-lg">
@@ -320,7 +320,7 @@ export function ActivityTimerPage({ data }: ActivityTimerPageProps) {
               type="button"
               onClick={handleStartArmedCountdown}
               disabled={isPending}
-              className="ui-btn-primary min-h-12 w-full rounded-2xl px-8 text-base sm:min-h-14 sm:min-w-40 sm:w-auto"
+              className="ui-btn-primary w-full rounded-2xl px-8 sm:min-w-40 sm:w-auto"
             >
               Start
             </button>
@@ -342,7 +342,7 @@ export function ActivityTimerPage({ data }: ActivityTimerPageProps) {
                 type="button"
                 onClick={handlePauseToggle}
                 disabled={isPending || showComplete}
-                className="ui-btn-secondary min-h-12 w-full rounded-2xl px-8 text-base sm:min-h-14 sm:min-w-32 sm:w-auto"
+                className="ui-btn-secondary w-full rounded-2xl px-8 sm:min-w-32 sm:w-auto"
               >
                 {clock.isPaused ? "Resume" : "Pause"}
               </button>
@@ -350,7 +350,7 @@ export function ActivityTimerPage({ data }: ActivityTimerPageProps) {
                 type="button"
                 onClick={handleStopRequest}
                 disabled={isPending || showComplete}
-                className="ui-btn-primary min-h-12 w-full rounded-2xl px-8 text-base sm:min-h-14 sm:min-w-32 sm:w-auto"
+                className="ui-btn-primary w-full rounded-2xl px-8 sm:min-w-32 sm:w-auto"
               >
                 Stop
               </button>

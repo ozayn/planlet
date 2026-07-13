@@ -158,6 +158,11 @@ enum PlanItemView {
   CHECKLIST
 }
 
+enum ReadingDensity {
+  COMPACT
+  COMFORTABLE
+}
+
 enum TaskOrganizationDisplay {
   MINIMAL
   ASSIGNED_ONLY
@@ -309,6 +314,7 @@ model User {
   lifeLabSpeechVoiceId        String?
   lifeLabSpeechRate           Float     @default(1)
   planItemView              PlanItemView @default(CHECKLIST)
+  readingDensity            ReadingDensity @default(COMPACT)
   taskOrganizationDisplay   TaskOrganizationDisplay @default(ASSIGNED_ONLY)
   mobileNavItems            String[]    @default([])
   timezone                  String?

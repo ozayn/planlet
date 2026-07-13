@@ -33,11 +33,13 @@ const VOICE_PREVIEW_TEXT =
 type SettingsReadAloudProps = {
   preferences: LifeLabReadAloudPreferences;
   openAiNarrationAvailable: boolean;
+  embedded?: boolean;
 };
 
 export function SettingsReadAloud({
   preferences,
   openAiNarrationAvailable,
+  embedded = false,
 }: SettingsReadAloudProps) {
   const router = useRouter();
   const [provider, setProvider] = useState(preferences.provider);
@@ -171,9 +173,9 @@ export function SettingsReadAloud({
     });
   }
 
-  return (
-    <SettingsSection title="Read aloud" className="space-y-4">
-      <fieldset className="space-y-3">
+  const content = (
+    <>
+      <fieldset id="narration-provider" className="space-y-3 scroll-mt-4">
         <legend className="sr-only">Read aloud provider</legend>
         {(["DEVICE", "OPENAI"] as const).map((option) => {
           const disabled =
@@ -216,7 +218,7 @@ export function SettingsReadAloud({
       </fieldset>
 
       {provider === "DEVICE" ? (
-        <div className="space-y-3 border-t border-border-soft pt-4">
+        <div id="narration-voice" className="space-y-3 border-t border-border-soft pt-4 scroll-mt-4">
           <label className="flex flex-col gap-1.5 text-sm">
             <span className="font-medium text-foreground">Device voice</span>
             <select
@@ -254,7 +256,7 @@ export function SettingsReadAloud({
             </span>
           </div>
 
-          <div className="space-y-2">
+          <div id="playback-speed" className="space-y-2 scroll-mt-4">
             <p className="text-sm font-medium text-foreground">Speaking rate</p>
             <div className="flex flex-wrap gap-2">
               {SPEECH_RATE_OPTIONS.map((option) => (
@@ -283,6 +285,16 @@ export function SettingsReadAloud({
       )}
 
       {error ? <p className="text-xs text-red-600">{error}</p> : null}
+    </>
+  );
+
+  if (embedded) {
+    return content;
+  }
+
+  return (
+    <SettingsSection title="Read aloud" className="space-y-4">
+      {content}
     </SettingsSection>
   );
 }

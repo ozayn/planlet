@@ -1,19 +1,50 @@
 import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
+import { validateOpenAiTtsConfiguration } from "@/lib/env";
 import { getLifeLabNoteData } from "@/lib/life-lab";
-import { getOrCreateNarrationChunk } from "@/lib/life-lab/narration-service";
-import { isLifeLabOpenAiTtsEnabled } from "@/lib/env";
+import { logNarrationDiagnostic } from "@/lib/life-lab/narration-diagnostics";
+import {
+  buildNarrationErrorPayload,
+  narrationErrorHttpStatus,
+  type NarrationErrorCategory,
+} from "@/lib/life-lab/narration-errors";
+import {
+  getOrCreateNarrationChunk,
+  mapNarrationServiceError,
+} from "@/lib/life-lab/narration-service";
 import { canAccessLifeLabPage } from "@/lib/roles";
+import { isLifeLabDevToolsEnabled } from "@/lib/life-lab/dev";
 
 type NarrationChunkBody = {
   sectionId?: string;
   slug?: string;
   chunkIndex?: number;
   regenerate?: boolean;
+  skipCache?: boolean;
   voice?: string;
   model?: string;
 };
+
+function includeNarrationDebug(): boolean {
+  return isLifeLabDevToolsEnabled();
+}
+
+function narrationErrorResponse(
+  category: NarrationErrorCategory,
+  debugMessage?: string,
+) {
+  const status = narrationErrorHttpStatus(category);
+
+  return NextResponse.json(
+    buildNarrationErrorPayload({
+      category,
+      debugMessage,
+      includeDebug: includeNarrationDebug(),
+    }),
+    { status },
+  );
+}
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -22,11 +53,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  if (!isLifeLabOpenAiTtsEnabled()) {
-    return NextResponse.json(
-      { error: "OpenAI narration is unavailable." },
-      { status: 503 },
-    );
+  const config = validateOpenAiTtsConfiguration();
+
+  if (!config.ok) {
+    logNarrationDiagnostic({
+      stage: "feature-check",
+      errorType: config.reason,
+      errorMessage: `OpenAI TTS configuration check failed: ${config.reason}`,
+    });
+
+    return narrationErrorResponse(config.reason);
   }
 
   let body: NarrationChunkBody;
@@ -60,26 +96,56 @@ export async function POST(request: Request) {
       chunkIndex,
       userId: session.user.id,
       regenerate: body.regenerate === true,
+      skipCache: body.skipCache === true,
       voice: body.voice,
       model: body.model,
+    });
+
+    logNarrationDiagnostic({
+      stage: "response",
+      noteId: note.fileId,
+      model: result.model,
+      voice: result.voice,
+      inputLength: result.audio.byteLength,
+      audioByteSize: result.audio.byteLength,
+      cacheWriteFailed: result.cacheWriteFailed,
+      statusCode: 200,
     });
 
     return new NextResponse(new Uint8Array(result.audio), {
       status: 200,
       headers: {
         "Content-Type": "audio/mpeg",
-        "Cache-Control": result.cached ? "private, max-age=3600" : "private, no-store",
+        "Content-Length": String(result.audio.byteLength),
+        "Cache-Control": result.cached
+          ? "private, max-age=3600"
+          : "private, no-store",
         "X-Narration-Cache": result.cached ? "hit" : "miss",
         "X-Narration-Chunk-Index": String(result.chunkIndex),
         "X-Narration-Chunk-Count": String(result.chunkCount),
         "X-Narration-Section-Label": encodeURIComponent(result.sectionLabel),
         "X-Narration-Cache-Key": result.cacheKey,
+        ...(result.cacheWriteFailed
+          ? { "X-Narration-Cache-Write": "failed" }
+          : {}),
       },
     });
   } catch (error) {
-    const message =
-      error instanceof Error ? error.message : "Narration generation failed.";
+    const mapped = mapNarrationServiceError(error, includeNarrationDebug());
 
-    return NextResponse.json({ error: message }, { status: 500 });
+    logNarrationDiagnostic({
+      stage:
+        mapped.body.category === "empty_narration_text"
+          ? "text-extraction"
+          : "openai-request",
+      noteId: note.fileId,
+      model: config.ok ? config.model : null,
+      voice: config.ok ? config.voice : null,
+      statusCode: mapped.status,
+      errorType: mapped.body.category,
+      errorMessage: mapped.body.debugMessage ?? mapped.body.error,
+    });
+
+    return NextResponse.json(mapped.body, { status: mapped.status });
   }
 }

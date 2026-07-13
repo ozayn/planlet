@@ -8,6 +8,42 @@ export function isOpenAIConfigured(): boolean {
   return Boolean(process.env.OPENAI_API_KEY?.trim());
 }
 
+export function getOpenAiTtsConfigurationStatus() {
+  const flag = process.env.LIFE_LAB_OPENAI_TTS_ENABLED?.trim().toLowerCase() ?? null;
+  const hasOpenAIKey = isOpenAIConfigured();
+
+  return {
+    hasOpenAIKey,
+    ttsEnabledFlag: flag,
+    isEnabled: isLifeLabOpenAiTtsEnabled(),
+    model: getOpenAiTtsModel(),
+    voice: getOpenAiTtsVoice(),
+  };
+}
+
+export function validateOpenAiTtsConfiguration():
+  | { ok: true; model: string; voice: string }
+  | { ok: false; reason: "feature_disabled" | "configuration_missing" | "invalid_model_or_voice" } {
+  if (!isLifeLabOpenAiTtsEnabled()) {
+    const flag = process.env.LIFE_LAB_OPENAI_TTS_ENABLED?.trim().toLowerCase();
+
+    if (flag === "false" || flag === "0") {
+      return { ok: false, reason: "feature_disabled" };
+    }
+
+    return { ok: false, reason: "configuration_missing" };
+  }
+
+  const model = getOpenAiTtsModel();
+  const voice = getOpenAiTtsVoice();
+
+  if (!model || !voice) {
+    return { ok: false, reason: "invalid_model_or_voice" };
+  }
+
+  return { ok: true, model, voice };
+}
+
 export function isAnthropicConfigured(): boolean {
   return Boolean(process.env.ANTHROPIC_API_KEY?.trim());
 }

@@ -2,13 +2,29 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { getNarrationUserMessage } from "@/lib/life-lab/narration-errors";
+import type { NarrationErrorCategory } from "@/lib/life-lab/narration-errors";
+import {
+  buildPlaybackDiagnostic,
+  categorizePlaybackFailure,
+  clearAudioSource,
+  logNarrationPlaybackDiagnostic,
+  looksLikeMp3,
+  normalizeNarrationAudioBlob,
+  replaceAudioObjectUrl,
+  validateNarrationAudioBlob,
+  waitForAudioCanPlay,
+} from "@/lib/life-lab/narration-playback";
+
 type OpenAiNarrationStatus =
   | "idle"
   | "preparing"
   | "generating"
+  | "ready"
   | "playing"
   | "paused"
   | "cached"
+  | "finished"
   | "unavailable"
   | "error";
 
@@ -23,8 +39,41 @@ type UseOpenAiNarrationOptions = {
 
 type NarrationPlan = {
   chunkCount: number;
+  openAiAvailable?: boolean;
+  unavailable?: {
+    error: string;
+    category: NarrationErrorCategory;
+    debugMessage?: string;
+  };
   sections: Array<{ index: number; sectionLabel: string }>;
 };
+
+type NarrationErrorResponse = {
+  error: string;
+  category?: NarrationErrorCategory;
+  debugMessage?: string;
+};
+
+type ChunkAudioResult = {
+  blob: Blob;
+  sectionLabel: string;
+  cached: boolean;
+  chunkCount: number;
+  cacheWriteFailed: boolean;
+  responseContentType: string | null;
+};
+
+async function readNarrationError(response: Response): Promise<NarrationErrorResponse> {
+  const payload = (await response.json().catch(() => null)) as
+    | NarrationErrorResponse
+    | null;
+
+  return {
+    error: payload?.error ?? "OpenAI narration is unavailable.",
+    category: payload?.category,
+    debugMessage: payload?.debugMessage,
+  };
+}
 
 export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
   const [status, setStatus] = useState<OpenAiNarrationStatus>("idle");
@@ -33,12 +82,19 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
   const [sectionLabel, setSectionLabel] = useState<string | null>(null);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [fromCache, setFromCache] = useState(false);
+  const [needsUserGesture, setNeedsUserGesture] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [errorCategory, setErrorCategory] = useState<NarrationErrorCategory | null>(
+    null,
+  );
+  const [debugMessage, setDebugMessage] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const objectUrlRef = useRef<string | null>(null);
   const planRef = useRef<NarrationPlan | null>(null);
   const playingRef = useRef(false);
   const playbackRateRef = useRef(options.playbackRate ?? 1);
+  const chunkEndedResolverRef = useRef<(() => void) | null>(null);
+  const chunkEndedRejecterRef = useRef<((error: unknown) => void) | null>(null);
 
   useEffect(() => {
     playbackRateRef.current = options.playbackRate ?? 1;
@@ -48,21 +104,57 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
     }
   }, [options.playbackRate]);
 
-  const cleanupObjectUrl = useCallback(() => {
-    if (objectUrlRef.current) {
-      URL.revokeObjectURL(objectUrlRef.current);
-      objectUrlRef.current = null;
+  const ensureAudioElement = useCallback(() => {
+    if (!audioRef.current) {
+      audioRef.current = new Audio();
+      audioRef.current.preload = "auto";
+
+      audioRef.current.addEventListener("ended", () => {
+        chunkEndedResolverRef.current?.();
+      });
+
+      audioRef.current.addEventListener("error", () => {
+        const audio = audioRef.current;
+
+        if (!audio) {
+          return;
+        }
+
+        chunkEndedRejecterRef.current?.(audio.error ?? new Error("Audio playback failed."));
+      });
     }
+
+    return audioRef.current;
   }, []);
+
+  const clearAudio = useCallback(() => {
+    clearAudioSource({
+      audio: audioRef.current,
+      activeUrlRef: objectUrlRef,
+    });
+  }, []);
+
+  const setFailure = useCallback(
+    (
+      message: string,
+      category: NarrationErrorCategory | null = null,
+      debug?: string | null,
+    ) => {
+      playingRef.current = false;
+      setNeedsUserGesture(false);
+      setStatus("error");
+      setError(message);
+      setErrorCategory(category);
+      setDebugMessage(debug ?? null);
+      setStatusMessage("Narration unavailable");
+    },
+    [],
+  );
 
   const stop = useCallback(() => {
     playingRef.current = false;
-    cleanupObjectUrl();
-
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.src = "";
-    }
+    setNeedsUserGesture(false);
+    clearAudio();
 
     if ("mediaSession" in navigator) {
       navigator.mediaSession.playbackState = "none";
@@ -73,7 +165,10 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
     setSectionLabel(null);
     setCurrentChunkIndex(0);
     setFromCache(false);
-  }, [cleanupObjectUrl]);
+    setError(null);
+    setErrorCategory(null);
+    setDebugMessage(null);
+  }, [clearAudio]);
 
   const updateMediaSession = useCallback(
     (label: string) => {
@@ -108,22 +203,29 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
     });
 
     if (!response.ok) {
-      throw new Error("OpenAI narration is unavailable.");
+      const payload = await readNarrationError(response);
+      throw Object.assign(new Error(payload.error), {
+        category: payload.category ?? "unknown",
+        debugMessage: payload.debugMessage,
+      });
     }
 
     const plan = (await response.json()) as NarrationPlan;
+
+    if (plan.openAiAvailable === false && plan.unavailable) {
+      throw Object.assign(new Error(plan.unavailable.error), {
+        category: plan.unavailable.category,
+        debugMessage: plan.unavailable.debugMessage,
+      });
+    }
+
     planRef.current = plan;
     setChunkCount(plan.chunkCount);
     return plan;
   }, [options.sectionId, options.slug]);
 
   const fetchChunkAudio = useCallback(
-    async (chunkIndex: number, regenerate = false): Promise<{
-      blob: Blob;
-      sectionLabel: string;
-      cached: boolean;
-      chunkCount: number;
-    }> => {
+    async (chunkIndex: number, regenerate = false): Promise<ChunkAudioResult> => {
       const response = await fetch("/api/life-lab/narration/chunk", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -135,15 +237,61 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
         }),
       });
 
+      const responseContentType = response.headers.get("Content-Type");
+
       if (!response.ok) {
-        const payload = (await response.json().catch(() => null)) as
-          | { error?: string }
-          | null;
-        throw new Error(payload?.error ?? "Narration generation failed.");
+        const payload = await readNarrationError(response);
+        throw Object.assign(new Error(payload.error), {
+          category: payload.category ?? "unknown",
+          debugMessage: payload.debugMessage,
+        });
       }
 
-      const blob = await response.blob();
+      if (responseContentType?.includes("application/json")) {
+        const payload = await readNarrationError(response);
+        throw Object.assign(new Error(payload.error), {
+          category: payload.category ?? "unknown",
+          debugMessage: payload.debugMessage,
+        });
+      }
+
+      const rawBlob = await response.blob();
+      const blob = normalizeNarrationAudioBlob(rawBlob, responseContentType);
+      const validationError = validateNarrationAudioBlob(blob, responseContentType);
+
+      if (validationError) {
+        throw Object.assign(new Error(getNarrationUserMessage(validationError)), {
+          category: validationError,
+        });
+      }
+
+      const sample = new Uint8Array(await blob.slice(0, 4).arrayBuffer());
+
+      if (!looksLikeMp3(sample) && process.env.NODE_ENV === "development") {
+        logNarrationPlaybackDiagnostic("unexpected audio header", {
+          errorName: "InvalidMp3Header",
+          errorMessage: "Audio bytes do not look like MP3.",
+          srcKind: "none",
+          responseStatus: response.status,
+          responseContentType,
+          byteLength: blob.size,
+          readyState: null,
+          networkState: null,
+          mediaErrorCode: null,
+          mediaErrorMessage: null,
+          playRejected: false,
+          playRejectionName: null,
+          playRejectionMessage: null,
+          fromCache: response.headers.get("X-Narration-Cache") === "hit",
+          chunkIndex,
+          chunkSource:
+            response.headers.get("X-Narration-Cache") === "hit" ? "cache" : "fresh",
+        });
+      }
+
       const cached = response.headers.get("X-Narration-Cache") === "hit";
+      const cacheWriteFailed =
+        response.headers.get("X-Narration-Cache-Write") === "failed";
       const chunkCount = Number.parseInt(
         response.headers.get("X-Narration-Chunk-Count") ?? "0",
         10,
@@ -152,71 +300,202 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
       const section =
         encodedLabel != null
           ? decodeURIComponent(encodedLabel)
-          : "Section";
+          : options.noteTitle;
 
-      return { blob, sectionLabel: section, cached, chunkCount };
+      logNarrationPlaybackDiagnostic("chunk received", {
+        errorName: null,
+        errorMessage: null,
+        srcKind: "none",
+        responseStatus: response.status,
+        responseContentType,
+        byteLength: blob.size,
+        readyState: null,
+        networkState: null,
+        mediaErrorCode: null,
+        mediaErrorMessage: null,
+        playRejected: false,
+        playRejectionName: null,
+        playRejectionMessage: null,
+        fromCache: cached,
+        chunkIndex,
+        chunkSource: cached ? "cache" : "fresh",
+      });
+
+      return {
+        blob,
+        sectionLabel: section,
+        cached,
+        chunkCount,
+        cacheWriteFailed,
+        responseContentType,
+      };
     },
-    [options.sectionId, options.slug],
+    [options.noteTitle, options.sectionId, options.slug],
+  );
+
+  const waitForChunkEnded = useCallback((audio: HTMLAudioElement) => {
+    return new Promise<void>((resolve, reject) => {
+      chunkEndedResolverRef.current = () => {
+        chunkEndedResolverRef.current = null;
+        chunkEndedRejecterRef.current = null;
+        resolve();
+      };
+      chunkEndedRejecterRef.current = (playbackError) => {
+        chunkEndedResolverRef.current = null;
+        chunkEndedRejecterRef.current = null;
+        reject(playbackError);
+      };
+
+      if (audio.ended) {
+        chunkEndedResolverRef.current();
+      }
+    });
+  }, []);
+
+  const attemptPlayback = useCallback(
+    async (input: {
+      audio: HTMLAudioElement;
+      blob: Blob;
+      chunkIndex: number;
+      result: ChunkAudioResult;
+    }): Promise<"playing" | "requires_gesture"> => {
+      const objectUrl = URL.createObjectURL(input.blob);
+      replaceAudioObjectUrl({
+        audio: input.audio,
+        nextUrl: objectUrl,
+        activeUrlRef: objectUrlRef,
+      });
+      input.audio.playbackRate = playbackRateRef.current;
+
+      try {
+        await waitForAudioCanPlay(input.audio);
+      } catch (loadError) {
+        const category = categorizePlaybackFailure({
+          mediaError: input.audio.error,
+          blobSize: input.blob.size,
+        });
+        const diagnostic = buildPlaybackDiagnostic({
+          audio: input.audio,
+          blob: input.blob,
+          responseStatus: 200,
+          responseContentType: input.result.responseContentType,
+          fromCache: input.result.cached,
+          chunkIndex: input.chunkIndex,
+          playError: loadError,
+          playRejected: true,
+        });
+
+        logNarrationPlaybackDiagnostic("audio load failed", diagnostic);
+
+        throw Object.assign(new Error(getNarrationUserMessage(category)), {
+          category,
+          debugMessage: diagnostic.mediaErrorMessage ?? diagnostic.errorMessage,
+          fromCache: input.result.cached,
+        });
+      }
+
+      try {
+        await input.audio.play();
+      } catch (playError) {
+        const category = categorizePlaybackFailure({
+          playError,
+          mediaError: input.audio.error,
+          blobSize: input.blob.size,
+        });
+        const diagnostic = buildPlaybackDiagnostic({
+          audio: input.audio,
+          blob: input.blob,
+          responseStatus: 200,
+          responseContentType: input.result.responseContentType,
+          fromCache: input.result.cached,
+          chunkIndex: input.chunkIndex,
+          playError,
+          playRejected: true,
+        });
+
+        logNarrationPlaybackDiagnostic("audio.play rejected", diagnostic);
+
+        if (category === "playback_requires_user_gesture") {
+          return "requires_gesture";
+        }
+
+        throw Object.assign(new Error(getNarrationUserMessage(category)), {
+          category,
+          debugMessage: diagnostic.playRejectionMessage ?? diagnostic.errorMessage,
+          fromCache: input.result.cached,
+        });
+      }
+
+      logNarrationPlaybackDiagnostic("audio.play started", buildPlaybackDiagnostic({
+        audio: input.audio,
+        blob: input.blob,
+        responseStatus: 200,
+        responseContentType: input.result.responseContentType,
+        fromCache: input.result.cached,
+        chunkIndex: input.chunkIndex,
+        playRejected: false,
+      }));
+
+      return "playing";
+    },
+    [],
   );
 
   const playChunk = useCallback(
     async (chunkIndex: number, regenerate = false) => {
       if (!options.enabled) {
         setStatus("unavailable");
-        setError("OpenAI narration is unavailable.");
+        setFailure(
+          "OpenAI narration is disabled on this server.",
+          "feature_disabled",
+        );
         return;
       }
 
       setError(null);
+      setErrorCategory(null);
+      setDebugMessage(null);
+      setNeedsUserGesture(false);
       setCurrentChunkIndex(chunkIndex);
       setStatus(chunkIndex === 0 ? "preparing" : "generating");
-      setStatusMessage(
-        chunkIndex === 0
-          ? "Generating first section…"
-          : "Preparing narration…",
-      );
+      setStatusMessage("Preparing narration…");
 
+      const audio = ensureAudioElement();
       const result = await fetchChunkAudio(chunkIndex, regenerate);
-      cleanupObjectUrl();
-      const objectUrl = URL.createObjectURL(result.blob);
-      objectUrlRef.current = objectUrl;
 
-      if (!audioRef.current) {
-        audioRef.current = new Audio();
-      }
-
-      const audio = audioRef.current;
-      audio.src = objectUrl;
-      audio.playbackRate = playbackRateRef.current;
       setChunkCount(result.chunkCount);
       setSectionLabel(result.sectionLabel);
       setFromCache(result.cached);
-      setStatus(result.cached ? "cached" : "playing");
-      setStatusMessage(
-        result.cached ? "Playing cached narration" : "Playing OpenAI narration",
-      );
       updateMediaSession(result.sectionLabel);
 
-      await new Promise<void>((resolve, reject) => {
-        function handleEnded() {
-          cleanupListeners();
-          resolve();
-        }
-
-        function handleError() {
-          cleanupListeners();
-          reject(new Error("Audio playback failed."));
-        }
-
-        function cleanupListeners() {
-          audio.removeEventListener("ended", handleEnded);
-          audio.removeEventListener("error", handleError);
-        }
-
-        audio.addEventListener("ended", handleEnded);
-        audio.addEventListener("error", handleError);
-        void audio.play().catch(reject);
+      const playbackState = await attemptPlayback({
+        audio,
+        blob: result.blob,
+        chunkIndex,
+        result,
       });
+
+      if (playbackState === "requires_gesture") {
+        setNeedsUserGesture(true);
+        setStatus("ready");
+        setStatusMessage(getNarrationUserMessage("playback_requires_user_gesture"));
+        return;
+      }
+
+      setStatus(result.cached ? "cached" : "playing");
+      setStatusMessage(
+        result.cacheWriteFailed
+          ? "Playing narration (cache unavailable)"
+          : result.cached
+            ? "Playing cached narration"
+            : "Playing OpenAI narration",
+      );
+
+      if ("mediaSession" in navigator) {
+        navigator.mediaSession.playbackState = "playing";
+      }
+
+      await waitForChunkEnded(audio);
 
       if (!playingRef.current) {
         return;
@@ -229,14 +508,29 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
         return;
       }
 
-      stop();
+      playingRef.current = false;
+      clearAudio();
+
+      if ("mediaSession" in navigator) {
+        navigator.mediaSession.playbackState = "none";
+      }
+
+      setStatus("finished");
+      setStatusMessage(null);
+      setSectionLabel(null);
+      setCurrentChunkIndex(0);
+      setFromCache(false);
+      setNeedsUserGesture(false);
     },
     [
-      cleanupObjectUrl,
+      attemptPlayback,
+      clearAudio,
+      ensureAudioElement,
       fetchChunkAudio,
       options.enabled,
-      stop,
+      setFailure,
       updateMediaSession,
+      waitForChunkEnded,
     ],
   );
 
@@ -244,28 +538,45 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
     async (regenerate = false) => {
       if (!options.enabled) {
         setStatus("unavailable");
-        setError("OpenAI narration is unavailable.");
+        setFailure(
+          "OpenAI narration is disabled on this server.",
+          "feature_disabled",
+        );
         return;
       }
 
       try {
+        ensureAudioElement();
         playingRef.current = true;
+        setNeedsUserGesture(false);
         setStatus("preparing");
         setStatusMessage("Preparing narration…");
         await fetchPlan();
         await playChunk(0, regenerate);
       } catch (caught) {
-        playingRef.current = false;
-        setStatus("error");
-        setError(
+        const message =
           caught instanceof Error
             ? caught.message
-            : "OpenAI narration is unavailable.",
-        );
-        setStatusMessage("Narration unavailable");
+            : "OpenAI narration is unavailable.";
+        const category =
+          typeof caught === "object" &&
+          caught != null &&
+          "category" in caught &&
+          typeof caught.category === "string"
+            ? (caught.category as NarrationErrorCategory)
+            : "unknown";
+        const debug =
+          typeof caught === "object" &&
+          caught != null &&
+          "debugMessage" in caught &&
+          typeof caught.debugMessage === "string"
+            ? caught.debugMessage
+            : null;
+
+        setFailure(message, category, debug);
       }
     },
-    [fetchPlan, options.enabled, playChunk],
+    [ensureAudioElement, fetchPlan, options.enabled, playChunk, setFailure],
   );
 
   const pause = useCallback(() => {
@@ -278,17 +589,73 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
     }
   }, []);
 
-  const resume = useCallback(() => {
-    void audioRef.current?.play();
-    setStatus(fromCache ? "cached" : "playing");
-    setStatusMessage(
-      fromCache ? "Playing cached narration" : "Playing OpenAI narration",
-    );
+  const resume = useCallback(async () => {
+    const audio = audioRef.current;
 
-    if ("mediaSession" in navigator) {
-      navigator.mediaSession.playbackState = "playing";
+    if (!audio) {
+      return;
     }
-  }, [fromCache]);
+
+    try {
+      await audio.play();
+      setNeedsUserGesture(false);
+      setStatus(fromCache ? "cached" : "playing");
+      setStatusMessage(
+        fromCache ? "Playing cached narration" : "Playing OpenAI narration",
+      );
+
+      if ("mediaSession" in navigator) {
+        navigator.mediaSession.playbackState = "playing";
+      }
+
+      if (status === "ready") {
+        playingRef.current = true;
+        await waitForChunkEnded(audio);
+
+        if (!playingRef.current) {
+          return;
+        }
+
+        const nextIndex = currentChunkIndex + 1;
+
+        if (nextIndex < chunkCount) {
+          await playChunk(nextIndex, false);
+          return;
+        }
+
+        playingRef.current = false;
+        clearAudio();
+        setStatus("finished");
+        setStatusMessage(null);
+        setSectionLabel(null);
+        setCurrentChunkIndex(0);
+        setFromCache(false);
+      }
+    } catch (playError) {
+      const category = categorizePlaybackFailure({
+        playError,
+        mediaError: audio.error,
+      });
+
+      if (category === "playback_requires_user_gesture") {
+        setNeedsUserGesture(true);
+        setStatus("ready");
+        setStatusMessage(getNarrationUserMessage(category));
+        return;
+      }
+
+      setFailure(getNarrationUserMessage(category), category);
+    }
+  }, [
+    chunkCount,
+    clearAudio,
+    currentChunkIndex,
+    fromCache,
+    playChunk,
+    setFailure,
+    status,
+    waitForChunkEnded,
+  ]);
 
   const skipForward = useCallback(() => {
     const audio = audioRef.current;
@@ -320,30 +687,53 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
 
     playingRef.current = true;
     audioRef.current?.pause();
-    cleanupObjectUrl();
     await playChunk(nextIndex, false);
-  }, [cleanupObjectUrl, currentChunkIndex, playChunk]);
+  }, [currentChunkIndex, playChunk]);
 
   const regenerate = useCallback(async () => {
-    await fetch("/api/life-lab/narration/regenerate", {
+    const response = await fetch("/api/life-lab/narration/regenerate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ driveFileId: options.driveFileId }),
     });
 
+    if (!response.ok) {
+      const payload = await readNarrationError(response);
+      setFailure(
+        payload.error,
+        payload.category ?? "unknown",
+        payload.debugMessage ?? null,
+      );
+      return;
+    }
+
     stop();
     await play(true);
-  }, [options.driveFileId, play, stop]);
+  }, [options.driveFileId, play, setFailure, stop]);
 
   useEffect(() => () => {
     playingRef.current = false;
-    cleanupObjectUrl();
+    clearAudio();
+  }, [clearAudio]);
 
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.src = "";
+  const cancel = useCallback(() => {
+    playingRef.current = false;
+    setNeedsUserGesture(false);
+    clearAudio();
+
+    if ("mediaSession" in navigator) {
+      navigator.mediaSession.playbackState = "none";
     }
-  }, [cleanupObjectUrl]);
+
+    setStatus("idle");
+    setStatusMessage(null);
+    setSectionLabel(null);
+    setCurrentChunkIndex(0);
+    setFromCache(false);
+    setError(null);
+    setErrorCategory(null);
+    setDebugMessage(null);
+  }, [clearAudio]);
 
   return {
     status,
@@ -352,18 +742,26 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
     currentChunkIndex,
     chunkCount,
     fromCache,
+    needsUserGesture,
     error,
+    errorCategory,
+    debugMessage,
+    isPreparing: status === "preparing" || status === "generating",
+    isReady: status === "ready",
     isPlaying: status === "playing" || status === "cached",
     isPaused: status === "paused",
+    isFinished: status === "finished",
     play,
     pause,
     resume,
     stop,
+    cancel,
     skipForward,
     skipBackward,
     nextSection,
     regenerate,
     switchToDeviceMessage:
+      error ??
       "OpenAI narration is unavailable. Use device voice instead.",
   };
 }
