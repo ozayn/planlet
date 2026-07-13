@@ -371,6 +371,7 @@ model User {
   activityTimerSessionNotes     ActivityTimerSessionNote[]
   planItemReflections           PlanItemReflection[]
   aiUsageLogs                   AiUsageLog[]
+  coachingNarrationCaches       CoachingNarrationCache[]
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 }
@@ -409,6 +410,30 @@ model LifeLabNarrationCache {
 
   @@index([driveFileId, model, voice, instructionVersion])
   @@index([driveFileId, contentHash])
+}
+
+model CoachingNarrationCache {
+  id                    String   @id @default(cuid())
+  userId                String
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  cacheKey              String   @unique
+  contentHash           String
+  contentProfileVersion Int      @default(1)
+  model                 String
+  voice                 String
+  narrationStyle        String
+  instructionVersion    Int
+  readAloudSectionId    String
+  chunkIndex            Int
+  sectionLabel          String?
+  storageKey            String
+  durationSeconds       Float?
+  byteSize              Int?
+  createdAt             DateTime @default(now())
+  lastAccessedAt        DateTime @default(now())
+
+  @@index([userId, contentHash])
+  @@index([userId, model, voice, instructionVersion])
 }
 
 model PushSubscription {

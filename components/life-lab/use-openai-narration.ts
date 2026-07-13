@@ -38,11 +38,28 @@ type OpenAiNarrationStatus =
   | "unavailable"
   | "error";
 
+type OpenAiNarrationApiConfig = {
+  planUrl: string;
+  chunkUrl: string;
+  regenerateUrl?: string;
+  mediaSessionTitle: string;
+  mediaSessionAlbum?: string;
+  buildPlanBody: () => Record<string, unknown>;
+  buildChunkBody: (
+    chunkIndex: number,
+    regenerate: boolean,
+  ) => Record<string, unknown>;
+  buildRegenerateBody?: () => Record<string, unknown>;
+  buildSameOriginChunkUrl?: (chunkIndex: number) => string;
+};
+
 type UseOpenAiNarrationOptions = {
-  sectionId: string;
-  slug: string;
-  driveFileId: string;
-  noteTitle: string;
+  sectionId?: string;
+  slug?: string;
+  driveFileId?: string;
+  noteTitle?: string;
+  api?: OpenAiNarrationApiConfig;
+  mediaSessionAlbum?: string;
   enabled: boolean;
   playbackRate?: number;
   autoContinue?: boolean;
@@ -90,7 +107,43 @@ async function readNarrationError(response: Response): Promise<NarrationErrorRes
   };
 }
 
+function resolveOpenAiNarrationApi(
+  options: UseOpenAiNarrationOptions,
+): OpenAiNarrationApiConfig {
+  if (options.api) {
+    return options.api;
+  }
+
+  const sectionId = options.sectionId?.trim() ?? "";
+  const slug = options.slug?.trim() ?? "";
+  const noteTitle = options.noteTitle?.trim() || "Planlet";
+  const driveFileId = options.driveFileId?.trim() ?? "";
+
+  return {
+    planUrl: "/api/life-lab/narration/plan",
+    chunkUrl: "/api/life-lab/narration/chunk",
+    regenerateUrl: "/api/life-lab/narration/regenerate",
+    mediaSessionTitle: noteTitle,
+    mediaSessionAlbum: options.mediaSessionAlbum ?? "Life Lab",
+    buildPlanBody: () => ({ sectionId, slug }),
+    buildChunkBody: (chunkIndex, regenerate) => ({
+      sectionId,
+      slug,
+      chunkIndex,
+      regenerate,
+    }),
+    buildRegenerateBody: () => ({ driveFileId }),
+    buildSameOriginChunkUrl: (chunkIndex) =>
+      buildSameOriginNarrationChunkUrl({
+        sectionId,
+        slug,
+        chunkIndex,
+      }),
+  };
+}
+
 export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
+  const api = resolveOpenAiNarrationApi(options);
   const [status, setStatus] = useState<OpenAiNarrationStatus>("idle");
   const [currentChunkIndex, setCurrentChunkIndex] = useState(0);
   const [chunkCount, setChunkCount] = useState(0);
@@ -209,9 +262,9 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
       }
 
       navigator.mediaSession.metadata = new MediaMetadata({
-        title: options.noteTitle,
+        title: api.mediaSessionTitle,
         artist: label,
-        album: "Life Lab",
+        album: api.mediaSessionAlbum ?? "Planlet",
       });
 
       navigator.mediaSession.setActionHandler("play", () => {
@@ -221,17 +274,14 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
         audioRef.current?.pause();
       });
     },
-    [options.noteTitle],
+    [api.mediaSessionAlbum, api.mediaSessionTitle],
   );
 
   const fetchPlan = useCallback(async (): Promise<NarrationPlan> => {
-    const response = await fetch("/api/life-lab/narration/plan", {
+    const response = await fetch(api.planUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        sectionId: options.sectionId,
-        slug: options.slug,
-      }),
+      body: JSON.stringify(api.buildPlanBody()),
     });
 
     if (!response.ok) {
@@ -279,19 +329,14 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
     setChunkCount(plan.chunkCount);
     setSectionCount(plan.sectionCount);
     return plan;
-  }, [options.sectionId, options.slug]);
+  }, [api]);
 
   const fetchChunkAudio = useCallback(
     async (chunkIndex: number, regenerate = false): Promise<ChunkAudioResult> => {
-      const response = await fetch("/api/life-lab/narration/chunk", {
+      const response = await fetch(api.chunkUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sectionId: options.sectionId,
-          slug: options.slug,
-          chunkIndex,
-          regenerate,
-        }),
+        body: JSON.stringify(api.buildChunkBody(chunkIndex, regenerate)),
       });
 
       const responseContentType = response.headers.get("Content-Type");
@@ -363,7 +408,7 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
       const section =
         encodedLabel != null
           ? decodeURIComponent(encodedLabel)
-          : options.noteTitle;
+          : api.mediaSessionTitle;
 
       logNarrationPlaybackDiagnostic("chunk received", {
         errorName: null,
@@ -399,7 +444,7 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
         responseContentType,
       };
     },
-    [options.noteTitle, options.sectionId, options.slug],
+    [api],
   );
 
   const waitForChunkEnded = useCallback((audio: HTMLAudioElement) => {
@@ -559,11 +604,11 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
           throw firstError;
         }
 
-        const sameOriginUrl = buildSameOriginNarrationChunkUrl({
-          sectionId: options.sectionId,
-          slug: options.slug,
-          chunkIndex: input.chunkIndex,
-        });
+        const sameOriginUrl = api.buildSameOriginChunkUrl?.(input.chunkIndex);
+
+        if (!sameOriginUrl) {
+          throw firstError;
+        }
 
         logNarrationPlaybackDiagnostic("falling back to same-origin audio route", {
           errorName: firstError instanceof Error ? firstError.name : null,
@@ -597,7 +642,7 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
         });
       }
     },
-    [attemptPlaybackWithSource, options.sectionId, options.slug],
+    [api, attemptPlaybackWithSource],
   );
 
   const playChunk = useCallback(
@@ -973,10 +1018,16 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
   }, [currentSectionIndex, notifySectionChange, playChunk]);
 
   const regenerate = useCallback(async () => {
-    const response = await fetch("/api/life-lab/narration/regenerate", {
+    if (!api.regenerateUrl || !api.buildRegenerateBody) {
+      stop();
+      await play(true);
+      return;
+    }
+
+    const response = await fetch(api.regenerateUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ driveFileId: options.driveFileId }),
+      body: JSON.stringify(api.buildRegenerateBody()),
     });
 
     if (!response.ok) {
@@ -991,7 +1042,7 @@ export function useOpenAiNarration(options: UseOpenAiNarrationOptions) {
 
     stop();
     await play(true);
-  }, [options.driveFileId, play, setFailure, stop]);
+  }, [api, play, setFailure, stop]);
 
   useEffect(() => () => {
     playingRef.current = false;

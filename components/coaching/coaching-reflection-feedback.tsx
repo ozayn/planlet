@@ -1,5 +1,9 @@
 "use client";
 
+import { CoachingListenPlayer } from "@/components/coaching/coaching-listen-player";
+import type { CoachingReadAloudContent } from "@/lib/coaching/read-aloud-sections";
+import type { LifeLabReadAloudPreferences } from "@/lib/life-lab/read-aloud-preferences";
+
 type CoachingReflectionFeedbackProps = {
   reflection: string;
   question: string | null;
@@ -8,6 +12,8 @@ type CoachingReflectionFeedbackProps = {
   hasInfluences: boolean;
   canGenerate: boolean;
   remainingLabel: string;
+  readAloudPreferences: LifeLabReadAloudPreferences;
+  openAiNarrationAvailable: boolean;
   onRegenerate: () => void;
 };
 
@@ -19,13 +25,28 @@ export function CoachingReflectionFeedback({
   hasInfluences,
   canGenerate,
   remainingLabel,
+  readAloudPreferences,
+  openAiNarrationAvailable,
   onRegenerate,
 }: CoachingReflectionFeedbackProps) {
+  const readAloudContent: CoachingReadAloudContent = {
+    reflection,
+    question,
+    experiment,
+  };
+
   return (
     <section className="space-y-5" aria-live="polite">
-      <div className="space-y-5 border-s-2 border-border-soft ps-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <p className="text-sm font-medium text-foreground">Teacher feedback</p>
+        <CoachingListenPlayer
+          content={readAloudContent}
+          preferences={readAloudPreferences}
+          openAiNarrationAvailable={openAiNarrationAvailable}
+        />
+      </div>
 
+      <div className="space-y-5 border-s-2 border-border-soft ps-5">
         <section className="space-y-2">
           <h3 className="text-xs font-medium uppercase tracking-wide text-muted-light">
             Reflection

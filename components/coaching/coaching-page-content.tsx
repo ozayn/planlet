@@ -13,6 +13,7 @@ import {
   formatCoachingReflectionRemainingLabel,
   type CoachingReflectionLimitStatusView,
 } from "@/lib/coaching/reflection-limit-ui";
+import type { LifeLabReadAloudPreferences } from "@/lib/life-lab/read-aloud-preferences";
 import {
   getAllSelectedInfluenceIds,
   type ReflectionInfluencePreferences,
@@ -24,11 +25,15 @@ export type SerializedCoachingReflectionLimitStatus =
 type CoachingPageContentProps = {
   initialPreferences: ReflectionInfluencePreferences;
   initialLimitStatus: SerializedCoachingReflectionLimitStatus;
+  readAloudPreferences: LifeLabReadAloudPreferences;
+  openAiNarrationAvailable: boolean;
 };
 
 export function CoachingPageContent({
   initialPreferences,
   initialLimitStatus,
+  readAloudPreferences,
+  openAiNarrationAvailable,
 }: CoachingPageContentProps) {
   const [preferences, setPreferences] =
     useState<ReflectionInfluencePreferences>(initialPreferences);
@@ -150,6 +155,8 @@ export function CoachingPageContent({
               hasInfluences={hasInfluences}
               canGenerate={canGenerate}
               remainingLabel={remainingLabel}
+              readAloudPreferences={readAloudPreferences}
+              openAiNarrationAvailable={openAiNarrationAvailable}
               onRegenerate={handleGenerate}
             />
           </>

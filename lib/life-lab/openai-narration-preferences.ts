@@ -5,11 +5,14 @@ import {
   hashNarrationContent,
 } from "@/lib/life-lab/narration-cache-key";
 import {
+  COACHING_NARRATION_CONTENT_PROFILE,
   MIXED_LANGUAGE_NARRATION_APPENDIX,
+  NARRATION_CONTENT_PROFILES,
   NARRATION_INSTRUCTION_VERSION,
   NARRATION_PREVIEW_TEXT,
   OPENAI_NARRATION_STYLES,
   OPENAI_NARRATION_VOICES,
+  type NarrationContentProfile,
   type OpenAiNarrationStyleId,
   isOpenAiNarrationStyle,
   isSupportedOpenAiNarrationVoice,
@@ -28,6 +31,7 @@ export type ResolvedOpenAiNarrationSettings = {
   instructions: string;
   instructionsFingerprint: string;
   instructionVersion: number;
+  contentProfile: NarrationContentProfile;
   voiceWarning: string | null;
 };
 
@@ -76,31 +80,52 @@ export function resolveOpenAiNarrationVoice(input: {
 export function resolveNarrationInstructions(input: {
   narrationStyle: OpenAiNarrationStyleId;
   customNarrationInstructions?: string | null;
+  contentProfile?: NarrationContentProfile;
 }): string {
-  if (input.narrationStyle === "CUSTOM") {
-    const custom = input.customNarrationInstructions?.trim();
+  const baseInstructions = (() => {
+    if (input.narrationStyle === "CUSTOM") {
+      const custom = input.customNarrationInstructions?.trim();
 
-    if (!custom) {
-      return `${OPENAI_NARRATION_STYLES.NEUTRAL_EDUCATIONAL.instructions}\n\n${MIXED_LANGUAGE_NARRATION_APPENDIX}`;
+      if (!custom) {
+        return OPENAI_NARRATION_STYLES.NEUTRAL_EDUCATIONAL.instructions;
+      }
+
+      return custom;
     }
 
-    return `${custom}\n\n${MIXED_LANGUAGE_NARRATION_APPENDIX}`;
-  }
+    return OPENAI_NARRATION_STYLES[input.narrationStyle].instructions;
+  })();
 
-  const style = OPENAI_NARRATION_STYLES[input.narrationStyle];
-  return `${style.instructions}\n\n${MIXED_LANGUAGE_NARRATION_APPENDIX}`;
+  const profileAppendix =
+    input.contentProfile === NARRATION_CONTENT_PROFILES.COACHING
+      ? COACHING_NARRATION_CONTENT_PROFILE
+      : null;
+
+  return [
+    baseInstructions,
+    profileAppendix,
+    MIXED_LANGUAGE_NARRATION_APPENDIX,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 export function resolveOpenAiNarrationSettings(
   preferences: OpenAiNarrationPreferences,
+  options?: {
+    contentProfile?: NarrationContentProfile;
+  },
 ): ResolvedOpenAiNarrationSettings {
   const narrationStyle = normalizeOpenAiNarrationStyle(preferences.narrationStyle);
+  const contentProfile =
+    options?.contentProfile ?? NARRATION_CONTENT_PROFILES.LIFE_LAB;
   const voiceResolution = resolveOpenAiNarrationVoice({
     userVoice: preferences.voice,
   });
   const instructions = resolveNarrationInstructions({
     narrationStyle,
     customNarrationInstructions: preferences.customNarrationInstructions,
+    contentProfile,
   });
 
   return {
@@ -110,6 +135,7 @@ export function resolveOpenAiNarrationSettings(
     instructions,
     instructionsFingerprint: hashNarrationContent(instructions),
     instructionVersion: NARRATION_INSTRUCTION_VERSION,
+    contentProfile,
     voiceWarning: voiceResolution.voiceWarning,
   };
 }

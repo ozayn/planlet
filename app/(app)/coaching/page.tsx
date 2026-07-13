@@ -5,6 +5,8 @@ import { CoachingPageContent } from "@/components/coaching/coaching-page-content
 import { PageHeader } from "@/components/page-header";
 import { getCoachingReflectionLimitStatus } from "@/lib/ai/reflection-limits";
 import { isAdminRole } from "@/lib/auth-roles";
+import { isLifeLabOpenAiTtsEnabled } from "@/lib/env";
+import { getLifeLabReadAloudPreferencesForUser } from "@/lib/life-lab/read-aloud-preferences";
 import { getReflectionInfluencePreferencesForUser } from "@/lib/reflection-influence-preferences";
 import { canUseCoachingFeatures } from "@/lib/roles";
 
@@ -16,13 +18,15 @@ export default async function CoachingPage() {
     notFound();
   }
 
-  const [preferences, limitStatus] = await Promise.all([
+  const [preferences, limitStatus, readAloudPreferences] = await Promise.all([
     getReflectionInfluencePreferencesForUser(userId, session.user),
     getCoachingReflectionLimitStatus(userId, {
       isAdmin: isAdminRole(session.user.role),
       timezone: session.user.timezone,
     }),
+    getLifeLabReadAloudPreferencesForUser(userId),
   ]);
+  const openAiNarrationAvailable = isLifeLabOpenAiTtsEnabled();
 
   return (
     <section className="ui-page-stack space-y-6">
@@ -41,6 +45,8 @@ export default async function CoachingPage() {
             isUnlimited: limitStatus.isUnlimited,
             isAdminUser: limitStatus.isAdminUser,
           }}
+          readAloudPreferences={readAloudPreferences}
+          openAiNarrationAvailable={openAiNarrationAvailable}
         />
       </div>
     </section>
