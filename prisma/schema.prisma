@@ -325,7 +325,7 @@ model User {
   lifeLabSpeechVoiceId        String?
   lifeLabSpeechRate           Float     @default(1)
   lifeLabOpenAiTtsVoice       String?
-  lifeLabOpenAiNarrationStyle OpenAiNarrationStyle @default(BRITISH_FEMALE_CALM)
+  lifeLabOpenAiNarrationStyle OpenAiNarrationStyle @default(NEUTRAL_EDUCATIONAL)
   lifeLabCustomNarrationInstructions String? @db.Text
   lifeLabReadAloudAutoContinue      Boolean @default(true)
   lifeLabReadAloudSectionInclusion  Json?

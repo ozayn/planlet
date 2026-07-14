@@ -177,6 +177,8 @@ function normalizeMetadata(raw: Record<string, unknown>): LifeLabNoteMetadata {
     "date",
     "study_status",
     "term",
+    "display_title",
+    "meaning",
     "category",
     "summary",
     "presenter",
@@ -199,12 +201,24 @@ function normalizeMetadata(raw: Record<string, unknown>): LifeLabNoteMetadata {
     metadata.episode = raw.episode;
   }
 
+  if (typeof raw.occurrences === "number" && Number.isFinite(raw.occurrences)) {
+    metadata.occurrences = Math.max(0, Math.round(raw.occurrences));
+  } else if (typeof raw.occurrences === "string" && raw.occurrences.trim()) {
+    const parsed = Number.parseInt(raw.occurrences.trim(), 10);
+
+    if (Number.isFinite(parsed)) {
+      metadata.occurrences = Math.max(0, parsed);
+    }
+  }
+
   const arrayFields = [
     "topics",
     "people",
     "places",
     "tags",
     "related",
+    "aliases",
+    "source_notes",
     "presenters",
     "instructors",
     "lecturers",

@@ -61,6 +61,7 @@ These strings are **not present** in Planlet source (repo search: `voice-trace`,
 | `Cannot destructure property 'pageViewId'…` | Extension page-tracking code |
 | `A listener indicated an asynchronous response…` | Extension async message handler |
 | `SettingsRoutes [voice-trace]…` | Extension settings / voice feature (not Planlet) |
+| `FeatureLifecycle:sentence-player` | Extension sentence/player tooling (not Planlet) |
 
 **Action:** Ignore in Planlet development. Disable the offending extension or use Incognito when debugging app issues.
 
@@ -75,6 +76,7 @@ These strings are **not present** in Planlet source (repo search: `voice-trace`,
 
 | Message | Notes |
 |---------|-------|
+| `[HMR] connected` / Fast Refresh | **Dev only** — Next.js HMR; ignore |
 | `<link rel="preload" as="script">` for Turbopack HMR client | **Dev only** — injected by Next.js 16 + Turbopack |
 | Plus Jakarta Sans `as="font"` preload | **Expected** — `next/font` manages primary UI font; correct `type` and `crossOrigin` |
 | Next.js Dev Tools overlay button | **Dev only** |

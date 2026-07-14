@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { afterEach, beforeEach, describe, it } from "node:test";
 
 import {
   lifeLabNotePayloadCacheKey,
@@ -19,6 +19,18 @@ import {
   redactLifeLabCacheLogForTests,
   runLifeLabRequestTelemetry,
 } from "@/lib/life-lab/cache-telemetry";
+import {
+  resetLifeLabLogLevelForTests,
+  setLifeLabLogLevelForTests,
+} from "@/lib/life-lab/log-level";
+
+beforeEach(() => {
+  setLifeLabLogLevelForTests("off");
+});
+
+afterEach(() => {
+  resetLifeLabLogLevelForTests();
+});
 
 describe("life lab cache telemetry", () => {
   it("tracks cache miss and hit within a request scope", async () => {
@@ -125,6 +137,8 @@ describe("life lab cache telemetry", () => {
     const originalInfo = console.info;
     const messages: string[] = [];
 
+    setLifeLabLogLevelForTests("verbose");
+
     console.info = (...args: unknown[]) => {
       messages.push(args.map(String).join(" "));
     };
@@ -144,6 +158,7 @@ describe("life lab cache telemetry", () => {
       assert.equal(messages[0]?.includes("private_key"), false);
     } finally {
       console.info = originalInfo;
+      resetLifeLabLogLevelForTests();
     }
   });
 });

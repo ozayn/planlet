@@ -19,6 +19,8 @@ function metadataSearchValues(metadata: LifeLabNoteMetadata): string[] {
     metadata.study_status,
     metadata.date,
     metadata.term,
+    metadata.display_title,
+    metadata.meaning,
     metadata.category,
     metadata.summary,
     typeof metadata.episode === "string" || typeof metadata.episode === "number"
@@ -34,6 +36,8 @@ function metadataSearchValues(metadata: LifeLabNoteMetadata): string[] {
     metadata.places,
     metadata.tags,
     metadata.related,
+    metadata.aliases,
+    metadata.source_notes,
   ]) {
     if (list) {
       values.push(...list);

@@ -42,7 +42,7 @@ function coachingSettings(
 ): ResolvedCoachingNarrationSettings {
   const instructions =
     overrides.instructions ??
-    "Speak with the calm kindness of an experienced British mentor.";
+    "Speak with the calm kindness of an experienced mentor.";
 
   return {
     voice: "fable",

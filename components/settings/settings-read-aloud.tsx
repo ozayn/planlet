@@ -42,6 +42,7 @@ import {
   formatOpenAiNarrationStyleLabel,
   formatOpenAiNarrationVoiceLabel,
 } from "@/lib/life-lab/openai-narration-preferences";
+import { NarrationVoicePreviewMatrix } from "@/components/settings/narration-voice-preview-matrix";
 import {
   createSpeechUtterance,
   encodeDeviceVoiceId,
@@ -99,6 +100,9 @@ export function SettingsReadAloud({
   const [speechVoiceId, setSpeechVoiceId] = useState(preferences.speechVoiceId);
   const [speechRate, setSpeechRate] = useState<SpeechRate>(preferences.speechRate);
   const [openAiVoice, setOpenAiVoice] = useState(preferences.openAiTtsVoice);
+  const [hasExplicitOpenAiVoice, setHasExplicitOpenAiVoice] = useState(
+    preferences.hasExplicitOpenAiVoice,
+  );
   const [openAiStyle, setOpenAiStyle] = useState<OpenAiNarrationStyleId>(
     preferences.openAiNarrationStyle,
   );
@@ -136,6 +140,7 @@ export function SettingsReadAloud({
     setSpeechVoiceId(preferences.speechVoiceId);
     setSpeechRate(preferences.speechRate);
     setOpenAiVoice(preferences.openAiTtsVoice);
+    setHasExplicitOpenAiVoice(preferences.hasExplicitOpenAiVoice);
     setOpenAiStyle(preferences.openAiNarrationStyle);
     setCustomInstructions(preferences.customNarrationInstructions ?? "");
     setAutoContinue(preferences.readAloudAutoContinue);
@@ -221,11 +226,12 @@ export function SettingsReadAloud({
   }
 
   function saveOpenAiVoice(nextVoice: string) {
-    if (nextVoice === openAiVoice || isPending) {
+    if ((nextVoice === openAiVoice && hasExplicitOpenAiVoice) || isPending) {
       return;
     }
 
     setOpenAiVoice(nextVoice);
+    setHasExplicitOpenAiVoice(true);
     setError(null);
     setOpenAiVoiceWarning(null);
 
@@ -234,6 +240,7 @@ export function SettingsReadAloud({
 
       if (!result.success) {
         setOpenAiVoice(openAiVoice);
+        setHasExplicitOpenAiVoice(preferences.hasExplicitOpenAiVoice);
         setError(result.error ?? "Couldn't save OpenAI voice.");
         return;
       }
@@ -698,8 +705,13 @@ export function SettingsReadAloud({
                         onChange={() => saveOpenAiStyle(styleId)}
                         className="mt-1"
                       />
-                      <span className="text-sm text-foreground">
-                        {OPENAI_NARRATION_STYLES[styleId].label}
+                      <span className="space-y-0.5">
+                        <span className="block text-sm text-foreground">
+                          {OPENAI_NARRATION_STYLES[styleId].label}
+                        </span>
+                        <span className="block text-xs leading-relaxed text-muted">
+                          {OPENAI_NARRATION_STYLES[styleId].description}
+                        </span>
                       </span>
                     </label>
                   ))}
@@ -727,7 +739,7 @@ export function SettingsReadAloud({
                 id="openai-voice"
                 className="flex flex-col gap-1.5 text-sm scroll-mt-4"
               >
-                <span className="font-medium text-foreground">Life Lab OpenAI voice</span>
+                <span className="font-medium text-foreground">OpenAI voice</span>
                 <select
                   value={openAiVoice}
                   disabled={isPending}
@@ -741,6 +753,15 @@ export function SettingsReadAloud({
                   ))}
                 </select>
               </label>
+              <p className="text-xs leading-relaxed text-muted">
+                {hasExplicitOpenAiVoice
+                  ? `Saved voice: ${formatOpenAiNarrationVoiceLabel(openAiVoice)}. Changes apply the next time you start narration.`
+                  : `No saved voice yet — currently falling back to ${formatOpenAiNarrationVoiceLabel(openAiVoice)}. Choose a voice to stop using the server default.`}
+              </p>
+              <p className="text-xs leading-relaxed text-muted">
+                Changing voice or style uses a new cache key. On a note that still
+                plays older audio, use Regenerate narration.
+              </p>
 
               <div className="space-y-2">
                 <button
@@ -761,6 +782,17 @@ export function SettingsReadAloud({
                   <p className="text-xs text-red-600">{openAiVoiceWarning}</p>
                 ) : null}
               </div>
+
+              {openAiNarrationAvailable ? (
+                <div className="border-t border-border-soft pt-4">
+                  <NarrationVoicePreviewMatrix
+                    selectedVoice={hasExplicitOpenAiVoice ? openAiVoice : undefined}
+                    selectedStyle={openAiStyle}
+                    onUseVoice={saveOpenAiVoice}
+                    disabled={isPending}
+                  />
+                </div>
+              ) : null}
             </>
           ) : null}
         </div>
@@ -800,8 +832,13 @@ export function SettingsReadAloud({
                     onChange={() => saveCoachingStyle(styleId)}
                     className="mt-1"
                   />
-                  <span className="text-sm text-foreground">
-                    {COACHING_OPENAI_NARRATION_STYLES[styleId].label}
+                  <span className="space-y-0.5">
+                    <span className="block text-sm text-foreground">
+                      {COACHING_OPENAI_NARRATION_STYLES[styleId].label}
+                    </span>
+                    <span className="block text-xs leading-relaxed text-muted">
+                      {COACHING_OPENAI_NARRATION_STYLES[styleId].description}
+                    </span>
                   </span>
                 </label>
               ))}
@@ -809,7 +846,7 @@ export function SettingsReadAloud({
           </fieldset>
 
           <label className="flex flex-col gap-1.5 text-sm">
-            <span className="font-medium text-foreground">Voice</span>
+            <span className="font-medium text-foreground">OpenAI voice</span>
             <select
               value={coachingVoice}
               disabled={isPending || !openAiNarrationAvailable}
@@ -823,6 +860,11 @@ export function SettingsReadAloud({
               ))}
             </select>
           </label>
+          <p className="text-xs leading-relaxed text-muted">
+            {coachingPreferences?.hasExplicitOpenAiVoice
+              ? `Saved Coaching voice: ${formatOpenAiNarrationVoiceLabel(coachingVoice)}. Changes apply the next time you start narration.`
+              : `Saved Coaching voice: ${formatOpenAiNarrationVoiceLabel(coachingVoice)} (default until you change it).`}
+          </p>
 
           <div className="space-y-2">
             <button

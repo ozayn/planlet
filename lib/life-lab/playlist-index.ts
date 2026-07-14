@@ -22,6 +22,7 @@ import {
 } from "@/lib/life-lab/collection-metadata";
 import { filterVisiblePlaylistVideos } from "@/lib/life-lab/playlist-video-availability";
 import { cleanLifeLabExcerpt } from "@/lib/life-lab/excerpt";
+import { stripPlanletHiddenBlocks } from "@/lib/life-lab/hidden-markdown-sections";
 import { resolvePlaylistVideoRowThumbnail } from "@/lib/life-lab/playlist-video-thumbnail";
 import type { ResolvedLifeLabNoteImage } from "@/lib/life-lab/note-image";
 import { isInternalPlaylistTitle } from "@/lib/life-lab/youtube-browse";
@@ -382,10 +383,11 @@ function extractBatchNotes(body: string): string[] {
     return [];
   }
 
-  return section
+  return stripPlanletHiddenBlocks(section)
+    .visible
     .split("\n")
     .map((line) => line.replace(/^[-*•]\s*/, "").trim())
-    .filter(Boolean);
+    .filter((line) => line.length > 0 && !line.startsWith("<!--"));
 }
 
 function extractPlaylistFocus(

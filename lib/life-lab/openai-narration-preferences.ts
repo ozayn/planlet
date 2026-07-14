@@ -5,6 +5,8 @@ import {
   hashNarrationContent,
 } from "@/lib/life-lab/narration-cache-key";
 import {
+  BRITISH_LEANING_MIXED_LANGUAGE_APPENDIX,
+  DEFAULT_OPENAI_NARRATION_VOICE,
   MIXED_LANGUAGE_NARRATION_APPENDIX,
   NARRATION_CONTENT_PROFILES,
   NARRATION_INSTRUCTION_VERSION,
@@ -35,8 +37,8 @@ export type ResolvedOpenAiNarrationSettings = {
 };
 
 export const DEFAULT_OPENAI_NARRATION_PREFERENCES: OpenAiNarrationPreferences = {
-  voice: getOpenAiTtsVoice(),
-  narrationStyle: "BRITISH_FEMALE_CALM",
+  voice: DEFAULT_OPENAI_NARRATION_VOICE,
+  narrationStyle: "NEUTRAL_EDUCATIONAL",
   customNarrationInstructions: null,
 };
 
@@ -54,7 +56,10 @@ export function resolveOpenAiNarrationVoice(input: {
   userVoice: string | null | undefined;
   serverDefault?: string;
 }): { voice: string; requestedVoice: string; voiceWarning: string | null } {
-  const serverDefault = input.serverDefault?.trim() || getOpenAiTtsVoice();
+  const serverDefault =
+    input.serverDefault?.trim() ||
+    getOpenAiTtsVoice() ||
+    DEFAULT_OPENAI_NARRATION_VOICE;
   const requested = input.userVoice?.trim() || serverDefault;
 
   if (isSupportedOpenAiNarrationVoice(requested)) {
@@ -67,7 +72,9 @@ export function resolveOpenAiNarrationVoice(input: {
 
   const fallback = isSupportedOpenAiNarrationVoice(serverDefault)
     ? serverDefault
-    : OPENAI_NARRATION_VOICES[0]?.id ?? "marin";
+    : isSupportedOpenAiNarrationVoice(DEFAULT_OPENAI_NARRATION_VOICE)
+      ? DEFAULT_OPENAI_NARRATION_VOICE
+      : OPENAI_NARRATION_VOICES[0]?.id ?? "fable";
 
   return {
     voice: fallback,
@@ -80,18 +87,23 @@ export function resolveNarrationInstructions(input: {
   narrationStyle: OpenAiNarrationStyleId;
   customNarrationInstructions?: string | null;
 }): string {
+  const appendix =
+    input.narrationStyle === "BRITISH_FEMALE_CALM"
+      ? BRITISH_LEANING_MIXED_LANGUAGE_APPENDIX
+      : MIXED_LANGUAGE_NARRATION_APPENDIX;
+
   if (input.narrationStyle === "CUSTOM") {
     const custom = input.customNarrationInstructions?.trim();
 
     if (!custom) {
-      return `${OPENAI_NARRATION_STYLES.NEUTRAL_EDUCATIONAL.instructions}\n\n${MIXED_LANGUAGE_NARRATION_APPENDIX}`;
+      return `${OPENAI_NARRATION_STYLES.NEUTRAL_EDUCATIONAL.instructions}\n\n${appendix}`;
     }
 
-    return `${custom}\n\n${MIXED_LANGUAGE_NARRATION_APPENDIX}`;
+    return `${custom}\n\n${appendix}`;
   }
 
   const style = OPENAI_NARRATION_STYLES[input.narrationStyle];
-  return `${style.instructions}\n\n${MIXED_LANGUAGE_NARRATION_APPENDIX}`;
+  return `${style.instructions}\n\n${appendix}`;
 }
 
 export function resolveOpenAiNarrationSettings(
@@ -136,4 +148,10 @@ export function formatOpenAiNarrationStyleLabel(
   style: OpenAiNarrationStyleId,
 ): string {
   return OPENAI_NARRATION_STYLES[style].label;
+}
+
+export function formatOpenAiNarrationStyleDescription(
+  style: OpenAiNarrationStyleId,
+): string {
+  return OPENAI_NARRATION_STYLES[style].description;
 }

@@ -251,7 +251,11 @@ function buildPlaylistCards(
   sectionId: LifeLabSectionId,
   notes: LifeLabNoteSummary[],
   groups: LifeLabNoteGroup[],
-  options: { driveFolderId?: string | null } = {},
+  options: {
+    driveFolderId?: string | null;
+    records?: import("@/lib/life-lab/enrichment").LifeLabSectionNoteRecord[];
+    indexBodies?: Map<string, string>;
+  } = {},
 ): {
   cards: LifeLabPlaylistCard[];
   unresolved: UnresolvedPlaylistDebug[];
@@ -278,6 +282,8 @@ function buildPlaylistCards(
       sectionId,
       indexNote: note,
       resolution,
+      records: options.records,
+      body: options.indexBodies?.get(note.fileId),
     });
 
     diagnosticEntries.push(browseDiagnostic);
@@ -445,12 +451,18 @@ export function diagnoseYoutubePlaylistBrowse(input: {
   notes: LifeLabNoteSummary[];
   groups: LifeLabNoteGroup[];
   driveFolderId?: string | null;
+  records?: import("@/lib/life-lab/enrichment").LifeLabSectionNoteRecord[];
+  indexBodies?: Map<string, string>;
 }): PlaylistBrowseDebugInfo {
   return buildPlaylistCards(
     input.sectionId,
     input.notes,
     input.groups,
-    { driveFolderId: input.driveFolderId },
+    {
+      driveFolderId: input.driveFolderId,
+      records: input.records,
+      indexBodies: input.indexBodies,
+    },
   ).debug;
 }
 

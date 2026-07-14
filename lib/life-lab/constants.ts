@@ -125,6 +125,11 @@ export type LifeLabNoteMetadata = {
   places?: string[];
   tags?: string[];
   term?: string;
+  display_title?: string;
+  aliases?: string[];
+  meaning?: string;
+  occurrences?: number | string;
+  source_notes?: string[];
   category?: string;
   related?: string[];
   presenters?: string[];

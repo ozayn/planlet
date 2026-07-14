@@ -8,23 +8,17 @@ import {
   isLifeLabOpenAiTtsEnabled,
 } from "@/lib/env";
 import { NARRATION_INSTRUCTION_VERSION } from "@/lib/life-lab/narration-config";
-import { resolveOpenAiNarrationSettings } from "@/lib/life-lab/openai-narration-preferences";
 
 export default async function AdminNarrationVoicePreviewPage() {
   await requireAdminUser();
 
   const ttsStatus = getOpenAiTtsConfigurationStatus();
-  const britishSettings = resolveOpenAiNarrationSettings({
-    voice: ttsStatus.voice,
-    narrationStyle: "BRITISH_FEMALE_CALM",
-    customNarrationInstructions: null,
-  });
 
   return (
     <section className="space-y-5">
       <PageHeader
         title="Voice preview"
-        subtitle="Compare OpenAI narration voices and styles without cache."
+        subtitle="Compare OpenAI narration voices and styles without cache. Accent is best-effort."
       />
 
       <div className="space-y-2 rounded-xl border border-border/70 px-3 py-3 text-xs text-muted">
@@ -39,8 +33,9 @@ export default async function AdminNarrationVoicePreviewPage() {
           instruction version {NARRATION_INSTRUCTION_VERSION}
         </p>
         <p>
-          <span className="font-medium text-foreground">British sample instructions:</span>{" "}
-          {britishSettings.instructions}
+          Prefer Settings → Voice & Audio → Preview voices when choosing a
+          personal OpenAI voice. British pronunciation requests are best-effort
+          and vary by model/voice.
         </p>
       </div>
 

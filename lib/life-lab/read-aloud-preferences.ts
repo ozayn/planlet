@@ -3,6 +3,7 @@ import type { LifeLabReadAloudProvider } from "@/app/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import {
   isLifeLabReadAloudProvider,
+  isSupportedOpenAiNarrationVoice,
   LIFE_LAB_READ_ALOUD_PROVIDERS,
   type OpenAiNarrationStyleId,
 } from "@/lib/life-lab/narration-config";
@@ -32,6 +33,8 @@ export type LifeLabReadAloudPreferences = {
   speechVoiceId: string;
   speechRate: SpeechRate;
   openAiTtsVoice: string;
+  /** True when the user has an explicitly saved OpenAI voice (not env fallback). */
+  hasExplicitOpenAiVoice: boolean;
   openAiNarrationStyle: OpenAiNarrationStyleId;
   customNarrationInstructions: string | null;
   readAloudAutoContinue: boolean;
@@ -43,6 +46,7 @@ const DEFAULT_PREFERENCES: LifeLabReadAloudPreferences = {
   speechVoiceId: SPEECH_AUTO_VOICE_ID,
   speechRate: DEFAULT_SPEECH_RATE,
   openAiTtsVoice: DEFAULT_OPENAI_NARRATION_PREFERENCES.voice,
+  hasExplicitOpenAiVoice: false,
   openAiNarrationStyle: DEFAULT_OPENAI_NARRATION_PREFERENCES.narrationStyle,
   customNarrationInstructions: null,
   readAloudAutoContinue: true,
@@ -100,12 +104,14 @@ export async function getLifeLabReadAloudPreferencesForUser(
     ? user.lifeLabReadAloudProvider
     : DEFAULT_PREFERENCES.provider;
   const openAi = mapUserToOpenAiPreferences(user);
+  const explicitVoice = user.lifeLabOpenAiTtsVoice?.trim() || "";
 
   return {
     provider,
     speechVoiceId: user.lifeLabSpeechVoiceId?.trim() || SPEECH_AUTO_VOICE_ID,
     speechRate: normalizeSpeechRate(user.lifeLabSpeechRate),
     openAiTtsVoice: openAi.voice,
+    hasExplicitOpenAiVoice: Boolean(explicitVoice),
     openAiNarrationStyle: openAi.narrationStyle,
     customNarrationInstructions: openAi.customNarrationInstructions,
     readAloudAutoContinue: user.lifeLabReadAloudAutoContinue,
@@ -167,10 +173,16 @@ export async function updateLifeLabOpenAiTtsVoice(
   userId: string,
   voice: string,
 ): Promise<void> {
+  const trimmed = voice.trim();
+
+  if (!trimmed || !isSupportedOpenAiNarrationVoice(trimmed)) {
+    throw new Error("Unsupported OpenAI narration voice.");
+  }
+
   await prisma.user.update({
     where: { id: userId },
     data: {
-      lifeLabOpenAiTtsVoice: voice.trim() || null,
+      lifeLabOpenAiTtsVoice: trimmed,
     },
   });
 }

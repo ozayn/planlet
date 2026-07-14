@@ -2,13 +2,13 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
 import { synthesizeSpeech } from "@/lib/ai/synthesize-speech";
-import { isAdminRole } from "@/lib/auth-roles";
 import { validateOpenAiTtsConfiguration } from "@/lib/env";
 import {
   isOpenAiNarrationStyle,
   isSupportedOpenAiNarrationVoice,
   NARRATION_PREVIEW_TEXT,
   OPENAI_NARRATION_STYLES,
+  OPENAI_NARRATION_SUGGESTED_VOICES,
   OPENAI_NARRATION_VOICES,
   type OpenAiNarrationStyleId,
 } from "@/lib/life-lab/narration-config";
@@ -29,18 +29,15 @@ type VoicePreviewBody = {
   narrationStyle?: string;
 };
 
-const PREVIEW_VOICE_IDS = new Set(
-  OPENAI_NARRATION_VOICES.map((voice) => voice.id),
-);
+const PREVIEW_VOICE_IDS = new Set<string>([
+  ...OPENAI_NARRATION_SUGGESTED_VOICES,
+  ...OPENAI_NARRATION_VOICES.map((voice) => voice.id),
+]);
 
-/** Legacy admin path; Settings uses /api/life-lab/narration/voice-preview. */
 export async function POST(request: Request) {
   const session = await auth();
 
-  if (
-    !session?.user?.id ||
-    (!isAdminRole(session.user.role) && !canAccessLifeLabPage(session.user))
-  ) {
+  if (!session?.user?.id || !canAccessLifeLabPage(session.user)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -74,7 +71,7 @@ export async function POST(request: Request) {
 
   if (narrationStyle === "CUSTOM") {
     return NextResponse.json(
-      { error: "Custom style is not supported on the voice preview page." },
+      { error: "Custom style is not supported in the voice preview matrix." },
       { status: 400 },
     );
   }
@@ -100,7 +97,7 @@ export async function POST(request: Request) {
         "Content-Type": "audio/mpeg",
         "Content-Length": String(result.audio.byteLength),
         "Cache-Control": "private, no-store",
-        "X-Narration-Preview": "admin-matrix",
+        "X-Narration-Preview": "voice-matrix",
         "X-Narration-Cache": "bypass",
         "X-Narration-Model": result.model,
         "X-Narration-Voice": result.voice,
@@ -115,7 +112,7 @@ export async function POST(request: Request) {
       },
     });
   } catch (error) {
-    const mapped = mapNarrationServiceError(error, true);
+    const mapped = mapNarrationServiceError(error, false);
     return NextResponse.json(mapped.body, { status: mapped.status });
   }
 }

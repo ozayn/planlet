@@ -141,28 +141,29 @@ describe("coaching narration cache", () => {
     );
   });
 
-  it("uses Kind British Mentor instructions instead of Life Lab styles", () => {
+  it("uses Kind mentor instructions instead of Life Lab styles", () => {
     const coaching = resolveCoachingOpenAiNarrationSettings({
       openAiTtsVoice: "fable",
       openAiNarrationStyle: "KIND_BRITISH_MENTOR",
+      hasExplicitOpenAiVoice: true,
     });
     const lifeLab = resolveOpenAiNarrationSettings({
       voice: "coral",
-      narrationStyle: "BRITISH_FEMALE_CALM",
+      narrationStyle: "NEUTRAL_EDUCATIONAL",
       customNarrationInstructions: null,
     });
 
     assert.equal(coaching.voice, "fable");
     assert.equal(coaching.narrationStyle, "KIND_BRITISH_MENTOR");
-    assert.match(coaching.instructions, /experienced British therapist or mentor/i);
+    assert.match(coaching.instructions, /experienced therapist or mentor/i);
     assert.match(coaching.instructions, /feel listened to, not lectured/i);
     assert.match(coaching.instructions, /gentle pauses after each instruction/i);
     assert.match(coaching.instructions, /Persian/i);
-    assert.doesNotMatch(coaching.instructions, /documentary narrator/i);
+    assert.doesNotMatch(coaching.instructions, /documentary tone/i);
     assert.doesNotMatch(coaching.instructions, /nonjudgmental tone/i);
     assert.notEqual(coaching.instructionsFingerprint, lifeLab.instructionsFingerprint);
     assert.equal(lifeLab.contentProfile, "life-lab");
-    assert.match(lifeLab.instructions, /documentary narrator/i);
+    assert.match(lifeLab.instructions, /educational documentary/i);
   });
 
   it("defaults Coaching voice to fable independently of Life Lab env defaults", () => {

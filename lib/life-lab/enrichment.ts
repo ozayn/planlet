@@ -27,6 +27,7 @@ import {
   isPlaylistIndexNote,
   parsePlaylistIndexNote,
 } from "@/lib/life-lab/playlist-index";
+import { resolvePlaylistAssetsFolder } from "@/lib/life-lab/playlist-asset-resolution";
 import {
   extractFilmLabPreview,
   filmLabDisplayTitle,
@@ -133,7 +134,7 @@ export function processLifeLabNoteContent(
   let excerpt = isReadingBrief
     ? extractReadingBriefPreview(body)
     : isDictionaryEntry
-      ? extractDictionaryDefinition(body)
+      ? mergedMetadata?.meaning?.trim() || extractDictionaryDefinition(body)
       : isFilmLab
         ? extractFilmLabPreview(body, mergedMetadata)
         : isLecture
@@ -151,6 +152,28 @@ export function processLifeLabNoteContent(
 
     if (playlistDisplay.parseSucceeded) {
       excerpt = formatPlaylistProcessingSummary(playlistDisplay.summary);
+    }
+
+    const folder = resolvePlaylistAssetsFolder({
+      indexNote: {
+        slug: record.slug,
+        title: record.title,
+        excerpt: record.excerpt,
+        subfolderLabel: record.subfolderLabel,
+        fileId: record.fileId,
+        relativePath: record.relativePath,
+        metadata: mergedMetadata,
+      },
+      body,
+    });
+
+    if (folder.status === "resolved") {
+      mergedMetadata = {
+        ...(mergedMetadata ?? {}),
+        playlistId: folder.playlistId,
+        playlist_id: folder.playlistId,
+        playlistAssetPath: folder.relativePath,
+      };
     }
   }
   const title = isDictionaryEntry

@@ -92,6 +92,7 @@ export async function getCoachingNarrationPreferencesForUser(
     openAiNarrationStyle: normalizeCoachingOpenAiNarrationStyle(
       user.coachingOpenAiNarrationStyle,
     ),
+    hasExplicitOpenAiVoice: Boolean(user.coachingOpenAiTtsVoice?.trim()),
   };
 }
 
@@ -108,14 +109,14 @@ export async function updateCoachingOpenAiTtsVoice(
 ): Promise<void> {
   const trimmed = voice.trim();
 
-  if (trimmed && !isSupportedOpenAiNarrationVoice(trimmed)) {
+  if (!trimmed || !isSupportedOpenAiNarrationVoice(trimmed)) {
     throw new Error("Unsupported Coaching OpenAI voice.");
   }
 
   await prisma.user.update({
     where: { id: userId },
     data: {
-      coachingOpenAiTtsVoice: trimmed || COACHING_DEFAULT_OPENAI_VOICE,
+      coachingOpenAiTtsVoice: trimmed,
     },
   });
 }

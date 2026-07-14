@@ -7,6 +7,7 @@ import {
   getLifeLabNoteCacheSeconds,
   lifeLabFolderMapCacheKey,
   lifeLabNoteCacheTag,
+  lifeLabListingMetadataCacheKey,
   lifeLabNotePayloadCacheKey,
   lifeLabPlaylistAssetsBundleCacheKey,
   lifeLabPlaylistAssetCacheTag,
@@ -21,6 +22,7 @@ import {
   LIFE_LAB_SECTIONS_CACHE_TAG,
   LIFE_LAB_SECTION_FILE_INDEX_CACHE_VERSION,
   LIFE_LAB_NOTE_PAYLOAD_CACHE_VERSION,
+  LIFE_LAB_LISTING_METADATA_CACHE_VERSION,
   lifeLabSectionPlaylistsCacheTag,
 } from "@/lib/life-lab/cache";
 import {
@@ -39,6 +41,7 @@ import {
   getLifeLabCacheResult,
   logLifeLabPlaylistCacheSummary,
   runLifeLabRequestTelemetry,
+  setLifeLabRequestMeta,
 } from "@/lib/life-lab/cache-telemetry";
 import {
   LIFE_LAB_CACHE_SECONDS,
@@ -64,6 +67,13 @@ import {
 import { collectLifeLabFilterOptions, type LifeLabFilterOptions, type LifeLabNoteFilters, filterLifeLabNotes } from "@/lib/life-lab/filters";
 import { parseLifeLabFrontmatter } from "@/lib/life-lab/frontmatter";
 import { extractFlashcardsFromMarkdown } from "@/lib/life-lab/flashcards";
+import {
+  extractLifeLabListingMetadata,
+  hasListingThumbnailInputs,
+  mergeListingMetadata,
+  type LifeLabListingMetadata,
+} from "@/lib/life-lab/listing-metadata";
+import { isPlaylistAssetRelativePath } from "@/lib/life-lab/playlist-asset-paths";
 import {
   resolveLifeLabSourceUrl,
   stripSourceUrlLineFromMarkdown,
@@ -109,6 +119,7 @@ import {
   titleFromFilename,
 } from "@/lib/life-lab/slug";
 import {
+  isPlaylistIndexNote,
   isPlaylistIndexSummaryRecord,
   isYoutubeVideoNote,
   parsePlaylistIndexNote,
@@ -807,6 +818,157 @@ async function enrichSectionRecordsFromCache(
   return enriched;
 }
 
+async function enrichPlaylistIndexRecordsForBrowse(
+  sectionId: LifeLabSectionId,
+  baseRecords: LifeLabSectionNoteRecord[],
+): Promise<{
+  records: LifeLabSectionNoteRecord[];
+  indexBodies: Map<string, string>;
+}> {
+  const indexBodies = new Map<string, string>();
+  const enrichedByFileId = new Map<string, LifeLabSectionNoteRecord>();
+
+  await Promise.all(
+    baseRecords.map(async (baseRecord) => {
+      if (
+        !isPlaylistIndexNote({
+          sectionId,
+          relativePath: baseRecord.relativePath,
+          subfolderLabel: baseRecord.subfolderLabel,
+          metadata: baseRecord.metadata,
+        })
+      ) {
+        return;
+      }
+
+      const payload = await getNotePayloadCached(sectionId, baseRecord);
+
+      if (!payload) {
+        return;
+      }
+
+      enrichedByFileId.set(baseRecord.fileId, payload.record);
+      const { body } = parseLifeLabFrontmatter(payload.rawContent);
+      indexBodies.set(baseRecord.fileId, body);
+    }),
+  );
+
+  return {
+    records: baseRecords.map(
+      (record) => enrichedByFileId.get(record.fileId) ?? record,
+    ),
+    indexBodies,
+  };
+}
+
+async function loadListingMetadata(
+  baseRecord: LifeLabSectionNoteRecord,
+): Promise<LifeLabListingMetadata | null> {
+  const credentials = getLifeLabDriveCredentials();
+
+  if (!credentials) {
+    return null;
+  }
+
+  const rawContent = await downloadDriveFile(credentials, baseRecord.fileId);
+
+  return extractLifeLabListingMetadata(rawContent);
+}
+
+async function getListingMetadataCached(
+  sectionId: LifeLabSectionId,
+  baseRecord: LifeLabSectionNoteRecord,
+): Promise<LifeLabListingMetadata | null> {
+  const cacheKey = lifeLabListingMetadataCacheKey(baseRecord.fileId);
+  const tags = [
+    lifeLabNoteCacheTag(baseRecord.fileId),
+    lifeLabSectionCacheTag(sectionId),
+    LIFE_LAB_CACHE_TAG,
+  ];
+  const startedAt = Date.now();
+
+  const result = await unstable_cache(
+    async () => {
+      beginLifeLabCacheMiss({
+        type: "note",
+        key: cacheKey,
+        tags,
+      });
+      return loadListingMetadata(baseRecord);
+    },
+    [
+      "life-lab-listing-metadata",
+      LIFE_LAB_LISTING_METADATA_CACHE_VERSION,
+      baseRecord.fileId,
+    ],
+    {
+      revalidate: getLifeLabNoteCacheSeconds(),
+      tags,
+    },
+  )();
+
+  finishLifeLabCacheLookup({
+    type: "note",
+    key: cacheKey,
+    durationMs: Date.now() - startedAt,
+    tags,
+  });
+
+  return result;
+}
+
+/**
+ * Attaches slim thumbnail/source metadata for browse cards without full
+ * note enrichment. Listing fields are extracted once and cached per file.
+ */
+async function attachListingMetadataToBrowseRecords(
+  sectionId: LifeLabSectionId,
+  baseRecords: LifeLabSectionNoteRecord[],
+): Promise<LifeLabSectionNoteRecord[]> {
+  return Promise.all(
+    baseRecords.map(async (baseRecord) => {
+      if (isPlaylistAssetRelativePath(baseRecord.relativePath)) {
+        return baseRecord;
+      }
+
+      if (hasListingThumbnailInputs(baseRecord.metadata)) {
+        return baseRecord;
+      }
+
+      const listing = await getListingMetadataCached(sectionId, baseRecord);
+
+      if (!listing) {
+        return baseRecord;
+      }
+
+      return {
+        ...baseRecord,
+        metadata: mergeListingMetadata(baseRecord.metadata, listing),
+      };
+    }),
+  );
+}
+
+async function prepareYoutubeBrowseRecords(
+  sectionId: LifeLabSectionId,
+  baseRecords: LifeLabSectionNoteRecord[],
+): Promise<{
+  records: LifeLabSectionNoteRecord[];
+  indexBodies: Map<string, string>;
+}> {
+  const { records: withIndexes, indexBodies } =
+    await enrichPlaylistIndexRecordsForBrowse(sectionId, baseRecords);
+  const withListingMetadata = await attachListingMetadataToBrowseRecords(
+    sectionId,
+    withIndexes,
+  );
+
+  return {
+    records: withListingMetadata,
+    indexBodies,
+  };
+}
+
 async function loadSectionNotes(
   sectionId: LifeLabSectionId,
   options: { useCachedFolderMap?: boolean } = {},
@@ -1404,6 +1566,11 @@ export async function getLifeLabSectionData(
 }> {
   return runLifeLabRequestTelemetry(
     async () => {
+      setLifeLabRequestMeta({
+        route: `/life-lab/${sectionId}`,
+        sectionId,
+      });
+
       const availability = getLifeLabAvailability();
 
       if (
@@ -1465,6 +1632,58 @@ export async function getLifeLabSectionData(
             await loadSectionNotes(sectionId, { useCachedFolderMap: false });
           }
 
+          // Listing uses the file index, slim listing metadata for thumbnails,
+          // and full payloads only for playlist indexes (not every video note).
+          const cached = await getSectionNotesCached(sectionId);
+          const { records: browseRecords, indexBodies } =
+            await prepareYoutubeBrowseRecords(sectionId, cached.records);
+          records = filterEnrichedSectionRecords(sectionId, browseRecords);
+          listingDiagnosticBase = cached.listingDiagnostic;
+
+          const notes = records.map(toNoteSummary);
+          const groups = groupLifeLabNotes(notes, { sectionId });
+          const folderMap = resolveLifeLabFolderMap(mapResult);
+          const driveFolderId = folderMap?.get(sectionId) ?? null;
+
+          diagnoseYoutubePlaylistBrowse({
+            sectionId,
+            notes,
+            groups,
+            driveFolderId,
+            records,
+            indexBodies,
+          });
+
+          const listingDiagnostic = options.includeListingDiagnostic
+            ? {
+                ...listingDiagnosticBase,
+                cache: resolveSectionCacheDiagnostic(
+                  sectionId,
+                  loadedAt,
+                  options.refresh ?? false,
+                ),
+              }
+            : null;
+
+          return {
+            availability,
+            sectionId,
+            sectionLabel: getLifeLabSectionLabel(sectionId),
+            notes,
+            groups,
+            filterOptions: collectLifeLabFilterOptions(notes),
+            flashcardNoteCount: notes.filter((note) => note.hasFlashcards)
+              .length,
+            listingDiagnostic,
+          };
+        }
+
+        // Learning Dictionary needs note bodies for definitions/tags on cards.
+        if (sectionId === "learning-dictionary") {
+          if (options.refresh) {
+            await loadSectionNotes(sectionId, { useCachedFolderMap: false });
+          }
+
           const enriched = await getEnrichedSectionRecordsCached(sectionId);
           records = enriched.records;
           listingDiagnosticBase = enriched.listingDiagnostic;
@@ -1482,17 +1701,6 @@ export async function getLifeLabSectionData(
 
         const notes = records.map(toNoteSummary);
         const groups = groupLifeLabNotes(notes, { sectionId });
-        const folderMap = resolveLifeLabFolderMap(mapResult);
-        const driveFolderId = folderMap?.get(sectionId) ?? null;
-
-        if (sectionId === "youtube-learning") {
-          diagnoseYoutubePlaylistBrowse({
-            sectionId,
-            notes,
-            groups,
-            driveFolderId,
-          });
-        }
 
         const listingDiagnostic = options.includeListingDiagnostic
           ? {
@@ -1876,38 +2084,55 @@ export async function getLifeLabBrowseData(): Promise<{
   filterOptions: LifeLabFilterOptions;
   flashcardNoteCount: number;
 }> {
-  const availability = getLifeLabAvailability();
+  return runLifeLabRequestTelemetry(
+    async () => {
+      setLifeLabRequestMeta({ route: "/life-lab" });
 
-  if (availability.status !== "ready") {
-    return {
-      availability,
-      notes: [],
-      filterOptions: collectLifeLabFilterOptions([]),
-      flashcardNoteCount: 0,
-    };
-  }
+      const availability = getLifeLabAvailability();
 
-  const sections = await Promise.all(
-    getAllowedLifeLabSectionIds().map(async (sectionId) => {
-      const { records } = await getEnrichedSectionRecordsCached(sectionId);
-      const sectionLabel = getLifeLabSectionLabel(sectionId);
+      if (availability.status !== "ready") {
+        return {
+          availability,
+          notes: [],
+          filterOptions: collectLifeLabFilterOptions([]),
+          flashcardNoteCount: 0,
+        };
+      }
 
-      return records.map((record) => ({
-        ...toNoteSummary(record),
-        sectionId,
-        sectionLabel,
-      }));
-    }),
+      const sections = await Promise.all(
+        getAllowedLifeLabSectionIds().map(async (sectionId) => {
+          const { records } = await getSectionNotesCached(sectionId);
+          const browseRecords =
+            sectionId === "youtube-learning"
+              ? (
+                  await prepareYoutubeBrowseRecords(sectionId, records)
+                ).records
+              : records;
+          const filtered = filterEnrichedSectionRecords(
+            sectionId,
+            browseRecords,
+          );
+          const sectionLabel = getLifeLabSectionLabel(sectionId);
+
+          return filtered.map((record) => ({
+            ...toNoteSummary(record),
+            sectionId,
+            sectionLabel,
+          }));
+        }),
+      );
+
+      const notes = sections.flat();
+
+      return {
+        availability,
+        notes,
+        filterOptions: collectLifeLabFilterOptions(notes),
+        flashcardNoteCount: notes.filter((note) => note.hasFlashcards).length,
+      };
+    },
+    { meta: { route: "/life-lab" } },
   );
-
-  const notes = sections.flat();
-
-  return {
-    availability,
-    notes,
-    filterOptions: collectLifeLabFilterOptions(notes),
-    flashcardNoteCount: notes.filter((note) => note.hasFlashcards).length,
-  };
 }
 
 export async function getLifeLabAllStudyData(
@@ -1916,49 +2141,54 @@ export async function getLifeLabAllStudyData(
   availability: LifeLabAvailability;
   cards: LifeLabStudyCard[];
 }> {
-  const browseData = await getLifeLabBrowseData();
+  return runLifeLabRequestTelemetry(
+    async () => {
+      setLifeLabRequestMeta({ route: "/life-lab/study" });
 
-  if (browseData.availability.status !== "ready") {
-    return {
-      availability: browseData.availability,
-      cards: [],
-    };
-  }
+      const availability = getLifeLabAvailability();
 
-  const filteredNotes = filterLifeLabNotes(
-    browseData.notes,
-    filters,
-  ) as LifeLabBrowseNote[];
-  const cards: LifeLabStudyCard[] = [];
-
-  await Promise.all(
-    getAllowedLifeLabSectionIds().map(async (sectionId) => {
-      const sectionSlugs = new Set(
-        filteredNotes
-          .filter((note) => note.sectionId === sectionId)
-          .map((note) => note.slug),
-      );
-
-      if (sectionSlugs.size === 0) {
-        return;
+      if (availability.status !== "ready") {
+        return {
+          availability,
+          cards: [],
+        };
       }
 
-      const { records } = await getEnrichedSectionRecordsCached(sectionId);
-      cards.push(
-        ...recordsToStudyCards(
-          records.filter(
-            (record) => sectionSlugs.has(record.slug) && record.flashcards?.length,
-          ),
-          sectionId,
-        ),
-      );
-    }),
-  );
+      const cards: LifeLabStudyCard[] = [];
 
-  return {
-    availability: browseData.availability,
-    cards,
-  };
+      await Promise.all(
+        getAllowedLifeLabSectionIds().map(async (sectionId) => {
+          const { records } = await getEnrichedSectionRecordsCached(sectionId);
+          const summaries = records.map((record) => ({
+            ...toNoteSummary(record),
+            sectionId,
+            sectionLabel: getLifeLabSectionLabel(sectionId),
+          }));
+          const filteredNotes = filterLifeLabNotes(
+            summaries,
+            filters,
+          ) as LifeLabBrowseNote[];
+          const allowedSlugs = new Set(filteredNotes.map((note) => note.slug));
+
+          cards.push(
+            ...recordsToStudyCards(
+              records.filter(
+                (record) =>
+                  allowedSlugs.has(record.slug) && record.flashcards?.length,
+              ),
+              sectionId,
+            ),
+          );
+        }),
+      );
+
+      return {
+        availability,
+        cards,
+      };
+    },
+    { meta: { route: "/life-lab/study" } },
+  );
 }
 
 export async function fetchFreshLifeLabHome(): Promise<void> {

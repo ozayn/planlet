@@ -1,3 +1,5 @@
+import { shouldLogLifeLab } from "@/lib/life-lab/log-level";
+
 export type NarrationDiagnosticStage =
   | "feature-check"
   | "text-extraction"
@@ -24,7 +26,22 @@ export type NarrationDiagnosticLog = {
 };
 
 export function logNarrationDiagnostic(log: NarrationDiagnosticLog): void {
-  console.error("[life-lab-narration]", JSON.stringify(log));
+  const isError = Boolean(log.errorType || log.errorMessage);
+
+  if (isError) {
+    if (!shouldLogLifeLab("error")) {
+      return;
+    }
+
+    console.error("[life-lab-narration]", JSON.stringify(log));
+    return;
+  }
+
+  if (!shouldLogLifeLab("verbose")) {
+    return;
+  }
+
+  console.info("[life-lab-narration]", JSON.stringify(log));
 }
 
 export function summarizeNarrationText(input: {

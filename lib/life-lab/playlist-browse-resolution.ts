@@ -8,6 +8,8 @@ import { classifyLifeLabFile } from "@/lib/life-lab/file-classification";
 import { isPlaylistIndexNote } from "@/lib/life-lab/playlist-index";
 import { resolvePlaylistAssetsFolder } from "@/lib/life-lab/playlist-asset-resolution";
 import { isInternalPlaylistTitle } from "@/lib/life-lab/youtube-browse";
+import type { LifeLabSectionNoteRecord } from "@/lib/life-lab/enrichment";
+import { shouldLogLifeLab } from "@/lib/life-lab/log-level";
 
 export type PlaylistBrowseResolutionState =
   | "resolved"
@@ -183,9 +185,13 @@ export function buildPlaylistBrowseDiagnosticEntry(input: {
   sectionId: LifeLabSectionId;
   indexNote: LifeLabNoteSummary;
   resolution: PlaylistBrowseResolution;
+  records?: LifeLabSectionNoteRecord[];
+  body?: string;
 }): PlaylistBrowseDiagnosticEntry {
   const assetFolder = resolvePlaylistAssetsFolder({
     indexNote: input.indexNote,
+    records: input.records,
+    body: input.body,
   });
   const playlistId =
     assetFolder.status === "resolved" ? assetFolder.playlistId : null;
@@ -206,6 +212,40 @@ export function buildPlaylistBrowseDiagnosticEntry(input: {
   };
 }
 
+/**
+ * Single canonical playlist identity for browse, detail, assets, and cache keys.
+ * Uses the same resolution path as playlist asset loading (metadata → body → records).
+ */
+export function resolveCanonicalPlaylistId(input: {
+  indexNote: LifeLabNoteSummary;
+  records?: LifeLabSectionNoteRecord[];
+  body?: string;
+}): {
+  playlistId: string | null;
+  assetPath: string | null;
+  source: string | null;
+} {
+  const folder = resolvePlaylistAssetsFolder({
+    indexNote: input.indexNote,
+    records: input.records,
+    body: input.body,
+  });
+
+  if (folder.status === "resolved") {
+    return {
+      playlistId: folder.playlistId,
+      assetPath: folder.relativePath,
+      source: folder.source,
+    };
+  }
+
+  return {
+    playlistId: null,
+    assetPath: null,
+    source: null,
+  };
+}
+
 export function logPlaylistBrowseDiagnostics(input: {
   sectionId: LifeLabSectionId;
   entries: PlaylistBrowseDiagnosticEntry[];
@@ -213,6 +253,10 @@ export function logPlaylistBrowseDiagnostics(input: {
   cardsShown: number;
   driveFolderId?: string | null;
 }): void {
+  if (!shouldLogLifeLab("verbose")) {
+    return;
+  }
+
   const payload = {
     scope: "life-lab:playlist-browse",
     sectionId: input.sectionId,

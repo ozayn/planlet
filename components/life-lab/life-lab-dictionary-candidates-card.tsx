@@ -55,8 +55,8 @@ export function LifeLabDictionaryCandidatesCard({
             </h2>
             {compactPreview && previewItems.length > 0 ? (
               <ul className="space-y-0.5 text-xs text-muted">
-                {previewItems.map((item) => (
-                  <li key={item} className="truncate">
+                {previewItems.map((item, index) => (
+                  <li key={`dictionary-preview-${index}`} className="truncate">
                     {item}
                   </li>
                 ))}

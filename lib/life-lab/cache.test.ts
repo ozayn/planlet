@@ -7,6 +7,7 @@ import {
   getLifeLabNoteCacheSeconds,
   lifeLabCacheExpiresAt,
   lifeLabFolderMapCacheKey,
+  lifeLabListingMetadataCacheKey,
   lifeLabNotePayloadCacheKey,
   lifeLabPlaylistAssetsBundleCacheKey,
   lifeLabSectionFileIndexCacheKey,
@@ -165,11 +166,15 @@ describe("life lab listing cache keys", () => {
 
     assert.equal(
       lifeLabSectionFileIndexCacheKey(sectionId),
-      "life-lab-section-file-index:v5-standalone-series:youtube-learning",
+      "life-lab-section-file-index:v6-listing-thumbs:youtube-learning",
     );
     assert.equal(
       lifeLabNotePayloadCacheKey(fileId),
-      "life-lab-note-payload:v4-youtube-thumbnails:drive-file-1",
+      "life-lab-note-payload:v5-listing-thumbs:drive-file-1",
+    );
+    assert.equal(
+      lifeLabListingMetadataCacheKey(fileId),
+      "life-lab-listing-metadata:v1-listing-thumbs:drive-file-1",
     );
     assert.equal(
       lifeLabPlaylistAssetsBundleCacheKey({

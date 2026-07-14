@@ -377,7 +377,7 @@ function LifeLabDictionaryNoteCard({
                 ) : null}
               </div>
               <Link
-                href={`/life-lab/${sectionId}/${note.slug}`}
+                href={`/learning-dictionary/${note.slug}`}
                 className="block line-clamp-2 text-sm font-medium leading-snug text-foreground transition-colors hover:text-foreground/80"
               >
                 {note.title}

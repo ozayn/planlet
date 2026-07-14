@@ -4,10 +4,13 @@ export const LIFE_LAB_CACHE_TAG = "life-lab";
 export const LIFE_LAB_SECTIONS_CACHE_TAG = "life-lab:sections";
 
 /** Bump when section listing or playlist browse logic changes materially. */
-export const LIFE_LAB_SECTION_FILE_INDEX_CACHE_VERSION = "v5-standalone-series";
+export const LIFE_LAB_SECTION_FILE_INDEX_CACHE_VERSION = "v6-listing-thumbs";
 
 /** Bump when note payload enrichment or serialized metadata shape changes. */
-export const LIFE_LAB_NOTE_PAYLOAD_CACHE_VERSION = "v4-youtube-thumbnails";
+export const LIFE_LAB_NOTE_PAYLOAD_CACHE_VERSION = "v5-listing-thumbs";
+
+/** Bump when browse listing metadata (thumbnail/source fields) shape changes. */
+export const LIFE_LAB_LISTING_METADATA_CACHE_VERSION = "v1-listing-thumbs";
 
 export function lifeLabSectionPlaylistsCacheTag(sectionId: string): string {
   return `life-lab:playlists:${sectionId}`;
@@ -82,6 +85,14 @@ export function lifeLabNotePayloadCacheKey(fileId: string): string {
   return [
     "life-lab-note-payload",
     LIFE_LAB_NOTE_PAYLOAD_CACHE_VERSION,
+    fileId,
+  ].join(":");
+}
+
+export function lifeLabListingMetadataCacheKey(fileId: string): string {
+  return [
+    "life-lab-listing-metadata",
+    LIFE_LAB_LISTING_METADATA_CACHE_VERSION,
     fileId,
   ].join(":");
 }

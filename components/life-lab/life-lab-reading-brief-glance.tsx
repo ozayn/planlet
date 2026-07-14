@@ -39,9 +39,9 @@ function GlanceBulletList({
     <div className="space-y-1.5">
       <p className="text-sm font-semibold text-foreground">{label}</p>
       <ul className="space-y-1.5">
-        {items.map((item) => (
+        {items.map((item, index) => (
           <li
-            key={item}
+            key={`${label}-${index}`}
             className="flex gap-2 text-sm leading-relaxed text-foreground"
           >
             <span className="shrink-0 text-muted" aria-hidden="true">

@@ -57,7 +57,7 @@ export async function POST(request: Request) {
   const narrationStyle =
     body.narrationStyle && isOpenAiNarrationStyle(body.narrationStyle)
       ? body.narrationStyle
-      : "BRITISH_FEMALE_CALM";
+      : "NEUTRAL_EDUCATIONAL";
 
   const preferences = {
     voice: body.voice?.trim() || config.voice,

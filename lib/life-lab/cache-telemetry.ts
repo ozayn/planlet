@@ -1,5 +1,11 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 
+import {
+  resolveLifeLabLogLevel,
+  shouldLogLifeLab,
+  type LifeLabLogLevel,
+} from "@/lib/life-lab/log-level";
+
 export type LifeLabCacheEventType =
   | "home"
   | "section"
@@ -21,6 +27,12 @@ export type LifeLabCacheLogEvent = {
   tags?: string[];
 };
 
+export type LifeLabRequestMeta = {
+  route?: string;
+  playlistId?: string;
+  sectionId?: string;
+};
+
 type LifeLabRequestTelemetry = {
   cacheMisses: Set<string>;
   cacheResults: Map<string, LifeLabCacheEventResult>;
@@ -28,12 +40,36 @@ type LifeLabRequestTelemetry = {
   filesFetched: string[];
   staleFallback: boolean;
   refreshRequested: boolean;
+  startedAt: number;
+  meta: LifeLabRequestMeta;
+};
+
+export type LifeLabRequestSummary = {
+  route: string | null;
+  playlistId: string | null;
+  sectionId: string | null;
+  cacheHits: number;
+  cacheMisses: number;
+  notePayloadHits: number;
+  notePayloadMisses: number;
+  sectionIndex: LifeLabCacheEventResult | null;
+  noteList: LifeLabCacheEventResult | null;
+  playlistAssets: LifeLabCacheEventResult | null;
+  driveCalls: number;
+  notesLoaded: number;
+  durationMs: number;
+  refreshRequested: boolean;
+  staleFallback: boolean;
 };
 
 const requestTelemetry = new AsyncLocalStorage<LifeLabRequestTelemetry>();
 
 function createRequestTelemetry(
-  options: { staleFallback?: boolean; refreshRequested?: boolean } = {},
+  options: {
+    staleFallback?: boolean;
+    refreshRequested?: boolean;
+    meta?: LifeLabRequestMeta;
+  } = {},
 ): LifeLabRequestTelemetry {
   return {
     cacheMisses: new Set(),
@@ -42,6 +78,8 @@ function createRequestTelemetry(
     filesFetched: [],
     staleFallback: options.staleFallback ?? false,
     refreshRequested: options.refreshRequested ?? false,
+    startedAt: Date.now(),
+    meta: { ...(options.meta ?? {}) },
   };
 }
 
@@ -53,11 +91,31 @@ export function canViewLifeLabCacheDiagnostics(isAdmin: boolean): boolean {
   return process.env.NODE_ENV === "development" || isAdmin;
 }
 
+export function setLifeLabRequestMeta(meta: LifeLabRequestMeta): void {
+  const store = requestTelemetry.getStore();
+
+  if (!store) {
+    return;
+  }
+
+  store.meta = { ...store.meta, ...meta };
+}
+
 export function runLifeLabRequestTelemetry<T>(
   fn: () => Promise<T>,
-  options: { staleFallback?: boolean; refreshRequested?: boolean } = {},
+  options: {
+    staleFallback?: boolean;
+    refreshRequested?: boolean;
+    meta?: LifeLabRequestMeta;
+  } = {},
 ): Promise<T> {
-  return requestTelemetry.run(createRequestTelemetry(options), fn);
+  return requestTelemetry.run(createRequestTelemetry(options), async () => {
+    try {
+      return await fn();
+    } finally {
+      emitLifeLabRequestSummaryIfNeeded();
+    }
+  });
 }
 
 export function getLifeLabRequestTelemetrySnapshot():
@@ -112,13 +170,15 @@ export function beginLifeLabCacheMiss(event: {
   store?.cacheMisses.add(lookupKey);
   store?.cacheResults.set(lookupKey, "miss");
 
-  logLifeLabCacheEvent({
-    type: event.type,
-    key: event.key,
-    result: "miss",
-    driveCalls: store?.driveCalls ?? 0,
-    tags: event.tags,
-  });
+  if (shouldLogLifeLab("verbose")) {
+    logLifeLabCacheEvent({
+      type: event.type,
+      key: event.key,
+      result: "miss",
+      driveCalls: store?.driveCalls ?? 0,
+      tags: event.tags,
+    });
+  }
 }
 
 export function finishLifeLabCacheLookup(event: {
@@ -136,7 +196,11 @@ export function finishLifeLabCacheLookup(event: {
     ? "miss"
     : "hit";
 
-  if (result === "hit" && event.type !== "playlist") {
+  if (
+    result === "hit" &&
+    event.type !== "playlist" &&
+    shouldLogLifeLab("verbose")
+  ) {
     logLifeLabCacheEvent({
       type: event.type,
       key: event.key,
@@ -150,12 +214,20 @@ export function finishLifeLabCacheLookup(event: {
     });
   }
 
+  if (event.playlistId) {
+    setLifeLabRequestMeta({ playlistId: event.playlistId });
+  }
+
   store?.cacheResults.set(lookupKey, result);
 
   return result;
 }
 
 export function logLifeLabCacheEvent(event: LifeLabCacheLogEvent): void {
+  if (!shouldLogLifeLab("verbose")) {
+    return;
+  }
+
   const payload = {
     type: event.type,
     key: event.key,
@@ -169,6 +241,85 @@ export function logLifeLabCacheEvent(event: LifeLabCacheLogEvent): void {
   };
 
   console.info("[life-lab-cache]", JSON.stringify(payload));
+}
+
+export function buildLifeLabRequestSummary(
+  snapshot: LifeLabRequestTelemetry,
+): LifeLabRequestSummary {
+  let cacheHits = 0;
+  let cacheMisses = 0;
+  let notePayloadHits = 0;
+  let notePayloadMisses = 0;
+  let sectionIndex: LifeLabCacheEventResult | null = null;
+  let noteList: LifeLabCacheEventResult | null = null;
+  let playlistAssets: LifeLabCacheEventResult | null = null;
+
+  for (const [lookupKey, result] of snapshot.cacheResults) {
+    if (result === "hit") {
+      cacheHits += 1;
+    } else {
+      cacheMisses += 1;
+    }
+
+    if (lookupKey.startsWith("note:")) {
+      if (result === "hit") {
+        notePayloadHits += 1;
+      } else {
+        notePayloadMisses += 1;
+      }
+    }
+
+    if (lookupKey.startsWith("section:")) {
+      sectionIndex = result;
+      noteList = result;
+    }
+
+    if (lookupKey.startsWith("playlist:")) {
+      playlistAssets = result;
+    }
+
+    if (lookupKey.startsWith("home:")) {
+      sectionIndex = sectionIndex ?? result;
+    }
+  }
+
+  return {
+    route: snapshot.meta.route ?? null,
+    playlistId: snapshot.meta.playlistId ?? null,
+    sectionId: snapshot.meta.sectionId ?? null,
+    cacheHits,
+    cacheMisses,
+    notePayloadHits,
+    notePayloadMisses,
+    sectionIndex,
+    noteList,
+    playlistAssets,
+    driveCalls: snapshot.driveCalls,
+    notesLoaded: notePayloadHits + notePayloadMisses,
+    durationMs: Math.max(0, Date.now() - snapshot.startedAt),
+    refreshRequested: snapshot.refreshRequested,
+    staleFallback: snapshot.staleFallback,
+  };
+}
+
+function emitLifeLabRequestSummaryIfNeeded(): void {
+  const store = requestTelemetry.getStore();
+
+  if (!store || !shouldLogLifeLab("summary")) {
+    return;
+  }
+
+  const summary = buildLifeLabRequestSummary(store);
+
+  if (
+    summary.cacheHits === 0 &&
+    summary.cacheMisses === 0 &&
+    summary.driveCalls === 0
+  ) {
+    return;
+  }
+
+  console.info("[life-lab-summary]", JSON.stringify(summary));
 }
 
 export function buildLifeLabCacheDiagnostic(input: {
@@ -190,6 +341,7 @@ export function buildLifeLabCacheDiagnostic(input: {
   staleFallback: boolean;
   refreshRequested: boolean;
   durationMs?: number;
+  logLevel: LifeLabLogLevel;
 } {
   const snapshot = input.snapshot ?? getLifeLabRequestTelemetrySnapshot();
 
@@ -205,6 +357,7 @@ export function buildLifeLabCacheDiagnostic(input: {
     filesFetched: [...(snapshot?.filesFetched ?? [])],
     staleFallback: snapshot?.staleFallback ?? false,
     refreshRequested: snapshot?.refreshRequested ?? false,
+    logLevel: resolveLifeLabLogLevel(),
   };
 }
 
@@ -215,16 +368,30 @@ export function logLifeLabPlaylistCacheSummary(event: {
   noteListHit: boolean;
 }): void {
   const snapshot = getLifeLabRequestTelemetrySnapshot();
+  setLifeLabRequestMeta({ playlistId: event.playlistId });
 
-  logLifeLabCacheEvent({
-    type: "playlist",
-    key: event.bundleCacheKey,
-    result: event.assetsHit ? "hit" : "miss",
-    playlistId: event.playlistId,
-    assetsHit: event.assetsHit,
-    noteListHit: event.noteListHit,
-    driveCalls: snapshot?.driveCalls ?? 0,
-  });
+  if (shouldLogLifeLab("verbose")) {
+    logLifeLabCacheEvent({
+      type: "playlist",
+      key: event.bundleCacheKey,
+      result: event.assetsHit ? "hit" : "miss",
+      playlistId: event.playlistId,
+      assetsHit: event.assetsHit,
+      noteListHit: event.noteListHit,
+      driveCalls: snapshot?.driveCalls ?? 0,
+    });
+  }
+}
+
+export function logLifeLabError(
+  scope: string,
+  payload: Record<string, unknown>,
+): void {
+  if (!shouldLogLifeLab("error")) {
+    return;
+  }
+
+  console.error(`[${scope}]`, JSON.stringify(payload));
 }
 
 export function redactLifeLabCacheLogForTests(

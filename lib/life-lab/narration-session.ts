@@ -14,6 +14,10 @@ import {
 import type { ResolvedOpenAiNarrationSettings } from "@/lib/life-lab/openai-narration-preferences";
 import type { ResolvedCoachingNarrationSettings } from "@/lib/coaching/narration-preferences";
 import { COACHING_NARRATION_INSTRUCTION_VERSION } from "@/lib/coaching/narration-config";
+import {
+  resolveLifeLabLogLevel,
+  shouldLogLifeLab,
+} from "@/lib/life-lab/log-level";
 
 /** Default TTS model when a session does not override it. */
 export const DEFAULT_OPENAI_NARRATION_SESSION_MODEL = "gpt-4o-mini-tts";
@@ -297,25 +301,56 @@ export function narrationStyleIdFromSessionStyle(
   return null;
 }
 
+export type NarrationSessionChunkTotals = {
+  cacheHits: number;
+  cacheMisses: number;
+};
+
+const sessionChunkTotals = new Map<string, NarrationSessionChunkTotals>();
+
 export function logNarrationSessionStart(input: {
   session: OpenAiNarrationSessionConfig;
   contentId: string;
   sectionCount: number;
 }): void {
-  console.info(
-    "[life-lab-narration-session]",
-    JSON.stringify({
-      sessionId: input.session.sessionId,
-      contentId: input.contentId,
-      profile: input.session.contentProfile,
-      model: input.session.model,
-      voice: input.session.voice,
-      style: input.session.style,
-      instructionsFingerprint: input.session.instructionsFingerprint,
-      instructionVersion: input.session.instructionVersion,
-      sectionCount: input.sectionCount,
-    }),
-  );
+  sessionChunkTotals.set(input.session.sessionId, {
+    cacheHits: 0,
+    cacheMisses: 0,
+  });
+
+  if (shouldLogLifeLab("verbose")) {
+    console.info(
+      "[life-lab-narration-session]",
+      JSON.stringify({
+        sessionId: input.session.sessionId,
+        contentId: input.contentId,
+        profile: input.session.contentProfile,
+        model: input.session.model,
+        voice: input.session.voice,
+        style: input.session.style,
+        instructionsFingerprint: input.session.instructionsFingerprint,
+        instructionVersion: input.session.instructionVersion,
+        sectionCount: input.sectionCount,
+      }),
+    );
+  }
+
+  if (shouldLogLifeLab("summary")) {
+    console.info(
+      "[narration-summary]",
+      JSON.stringify({
+        profile: input.session.contentProfile,
+        model: input.session.model,
+        voice: input.session.voice,
+        style: input.session.style,
+        sections: input.sectionCount,
+        cacheHits: 0,
+        cacheMisses: 0,
+        sessionId: input.session.sessionId,
+        logLevel: resolveLifeLabLogLevel(),
+      }),
+    );
+  }
 }
 
 export function logNarrationChunkDiagnostic(input: {
@@ -327,6 +362,39 @@ export function logNarrationChunkDiagnostic(input: {
   cachedStyle?: string | null;
   compatible: boolean;
 }): void {
+  const totals = sessionChunkTotals.get(input.sessionId) ?? {
+    cacheHits: 0,
+    cacheMisses: 0,
+  };
+
+  if (input.source === "cache") {
+    totals.cacheHits += 1;
+  } else {
+    totals.cacheMisses += 1;
+  }
+
+  sessionChunkTotals.set(input.sessionId, totals);
+
+  if (!input.compatible && shouldLogLifeLab("error")) {
+    console.warn(
+      "[narration-chunk]",
+      JSON.stringify({
+        sessionId: input.sessionId,
+        sectionId: input.sectionId,
+        chunkIndex: input.chunkIndex,
+        source: input.source,
+        cachedVoice: input.cachedVoice ?? null,
+        cachedStyle: input.cachedStyle ?? null,
+        compatible: false,
+      }),
+    );
+    return;
+  }
+
+  if (!shouldLogLifeLab("verbose")) {
+    return;
+  }
+
   console.info(
     "[narration-chunk]",
     JSON.stringify({
@@ -348,6 +416,10 @@ export function logNarrationConfigurationMismatch(input: {
   expected: Partial<OpenAiNarrationSessionConfig>;
   received: Partial<NarrationChunkCompatibilityInput>;
 }): void {
+  if (!shouldLogLifeLab("error")) {
+    return;
+  }
+
   console.warn(
     "narration_configuration_mismatch",
     JSON.stringify({

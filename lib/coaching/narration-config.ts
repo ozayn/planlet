@@ -7,16 +7,16 @@ import {
 } from "@/lib/life-lab/narration-config";
 
 /** Bump when Coaching instruction text / profile semantics change. */
-export const COACHING_NARRATION_INSTRUCTION_VERSION = 4;
+export const COACHING_NARRATION_INSTRUCTION_VERSION = 5;
 
 export const COACHING_DEFAULT_OPENAI_VOICE: OpenAiNarrationVoiceId = "fable";
 
 export const COACHING_PREFERRED_OPENAI_VOICES = [
   "fable",
-  "cedar",
-  "marin",
   "shimmer",
+  "marin",
   "coral",
+  "cedar",
 ] as const satisfies readonly OpenAiNarrationVoiceId[];
 
 export const COACHING_OPENAI_NARRATION_STYLE_IDS = [
@@ -28,15 +28,15 @@ export type CoachingOpenAiNarrationStyleId =
 
 export const COACHING_OPENAI_NARRATION_STYLES: Record<
   CoachingOpenAiNarrationStyleId,
-  { slug: string; label: string; instructions: string }
+  { slug: string; label: string; description: string; instructions: string }
 > = {
   KIND_BRITISH_MENTOR: {
-    slug: "kind-british-mentor",
-    label: "Kind British Mentor",
+    slug: "kind-mentor",
+    label: "Kind mentor",
+    description: "Warm, reflective delivery. Accent may vary.",
     instructions: [
-      "Speak with the calm kindness of an experienced British therapist or mentor.",
-      "Use clear, natural Southern British English pronunciation where the model supports it.",
-      "Sound warm, emotionally present, reassuring, and thoughtful.",
+      "Speak with the calm kindness of an experienced therapist or mentor.",
+      "Sound warm, emotionally present, reassuring, patient, and thoughtful.",
       "Never sound robotic, promotional, theatrical, overly cheerful, or like a customer-service representative.",
       "Read slowly enough to allow reflection.",
       "Pause naturally after reflective questions.",
@@ -109,10 +109,13 @@ export function formatCoachingOpenAiNarrationStyleLabel(
 export type CoachingNarrationPreferences = {
   openAiTtsVoice: string;
   openAiNarrationStyle: CoachingOpenAiNarrationStyleId;
+  hasExplicitOpenAiVoice?: boolean;
 };
 
 export const DEFAULT_COACHING_NARRATION_PREFERENCES: CoachingNarrationPreferences =
   {
     openAiTtsVoice: COACHING_DEFAULT_OPENAI_VOICE,
     openAiNarrationStyle: "KIND_BRITISH_MENTOR",
+    hasExplicitOpenAiVoice: false,
   };
+

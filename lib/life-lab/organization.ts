@@ -414,7 +414,11 @@ function groupLabelForSectionId(
   notes: LifeLabNoteSummary[],
   sectionId?: LifeLabSectionId,
 ): string {
-  if (sectionId === "learning-dictionary" && isDictionaryCategoryId(id)) {
+  if (sectionId === "learning-dictionary") {
+    if (id === "about" || id === "reference") {
+      return groupLabelForId(id, notes, sectionId);
+    }
+
     return dictionaryCategoryLabel(id);
   }
 

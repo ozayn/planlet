@@ -24,6 +24,7 @@ export type AppNavItemKey =
   | "ideas"
   | "timer"
   | "life-lab"
+  | "learning-dictionary"
   | "body-journey"
   | "nudges"
   | "jobs"
@@ -88,6 +89,11 @@ function reflectionItems(access: AppNavAccess): AppNavItem[] {
       label: "Life Lab",
       href: "/life-lab",
     });
+    items.push({
+      key: "learning-dictionary",
+      label: "Learning Dictionary",
+      href: "/learning-dictionary",
+    });
   }
 
   if (canShowBodyJourneyInProfileMenu(access)) {
@@ -143,6 +149,7 @@ export const ALL_APP_NAV_ITEM_KEYS: AppNavItemKey[] = [
   "ideas",
   "timer",
   "life-lab",
+  "learning-dictionary",
   "body-journey",
   "nudges",
   "jobs",
@@ -177,6 +184,8 @@ export function canAccessAppNavItem(
     case "timer":
       return canShowActivityTimerInProfileMenu(access);
     case "life-lab":
+      return canShowLifeLabInProfileMenu(access);
+    case "learning-dictionary":
       return canShowLifeLabInProfileMenu(access);
     case "body-journey":
       return canShowBodyJourneyInProfileMenu(access);
@@ -274,6 +283,13 @@ export function isAppNavItemActive(
 
   if (key === "life-lab") {
     return pathname === "/life-lab" || pathname.startsWith("/life-lab/");
+  }
+
+  if (key === "learning-dictionary") {
+    return (
+      pathname === "/learning-dictionary" ||
+      pathname.startsWith("/learning-dictionary/")
+    );
   }
 
   if (key === "body-journey") {

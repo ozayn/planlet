@@ -760,8 +760,8 @@ export function LifeLabPlaylistDebug({
               Batch notes
             </p>
             <ul className="space-y-1.5 text-sm text-muted">
-              {batchNotes.map((item) => (
-                <li key={item}>{item}</li>
+              {batchNotes.map((item, index) => (
+                <li key={`batch-note-${index}`}>{item}</li>
               ))}
             </ul>
           </div>
