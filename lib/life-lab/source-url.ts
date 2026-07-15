@@ -27,7 +27,12 @@ export const SOURCE_URL_FRONTMATTER_KEYS = [
 const SOURCE_LINE_PATTERNS = [
   /^Source:\s*(https?:\/\/\S+)/im,
   /^\*\*Source\*\*:\s*(https?:\/\/\S+)/im,
+  /^Source:\s*\[[^\]]*\]\((https?:\/\/[^)\s]+)\)/im,
+  /^\*\*Source\*\*:\s*\[[^\]]*\]\((https?:\/\/[^)\s]+)\)/im,
 ];
+
+const FIRST_YOUTUBE_URL_PATTERN =
+  /https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?[^\s)\]]*v=|shorts\/|embed\/|live\/)|youtu\.be\/)[^\s)\]]+/i;
 
 export function isSafeHttpUrl(value: string): boolean {
   const trimmed = value.trim();
@@ -70,13 +75,25 @@ export function pickSourceUrlFromFrontmatterRaw(
 }
 
 export function extractSourceUrlFromMetadata(
-  metadata: { source_url?: string; video_url?: string } | null | undefined,
+  metadata: {
+    source_url?: string;
+    video_url?: string;
+    sourceUrl?: string;
+    youtubeUrl?: string;
+    youtube_url?: string;
+  } | null | undefined,
 ): string | null {
   if (!metadata) {
     return null;
   }
 
-  for (const value of [metadata.source_url, metadata.video_url]) {
+  for (const value of [
+    metadata.source_url,
+    metadata.video_url,
+    metadata.sourceUrl,
+    metadata.youtubeUrl,
+    metadata.youtube_url,
+  ]) {
     if (typeof value === "string") {
       const normalized = normalizeSourceUrl(value);
 
@@ -102,11 +119,23 @@ export function extractSourceUrlFromBody(body: string): string | null {
     }
   }
 
+  const youtubeMatch = body.match(FIRST_YOUTUBE_URL_PATTERN);
+
+  if (youtubeMatch?.[0]) {
+    return normalizeSourceUrl(youtubeMatch[0]);
+  }
+
   return null;
 }
 
 export function resolveLifeLabSourceUrl(input: {
-  metadata?: { source_url?: string; video_url?: string } | null;
+  metadata?: {
+    source_url?: string;
+    video_url?: string;
+    sourceUrl?: string;
+    youtubeUrl?: string;
+    youtube_url?: string;
+  } | null;
   body?: string;
 }): string | null {
   const fromMetadata = extractSourceUrlFromMetadata(input.metadata);

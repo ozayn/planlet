@@ -40,6 +40,30 @@ video_url: https://youtu.be/abc123
     assert.equal(parsed.metadata.source_url, "https://youtu.be/abc123");
   });
 
+  it("accepts markdown-link Source lines and first youtube URL fallback", () => {
+    assert.equal(
+      extractSourceUrlFromBody(
+        "Source: [Open](https://www.youtube.com/watch?v=abc123XYZ01)",
+      ),
+      "https://www.youtube.com/watch?v=abc123XYZ01",
+    );
+    assert.equal(
+      extractSourceUrlFromBody(
+        "Intro text\n\nhttps://youtu.be/def456UVW02\n\nMore notes",
+      ),
+      "https://youtu.be/def456UVW02",
+    );
+  });
+
+  it("reads camelCase sourceUrl from metadata", () => {
+    assert.equal(
+      resolveLifeLabSourceUrl({
+        metadata: { sourceUrl: "https://www.youtube.com/watch?v=metaCamel" },
+      }),
+      "https://www.youtube.com/watch?v=metaCamel",
+    );
+  });
+
   it("extracts Source lines from the markdown body as fallback", () => {
     const body = `# Video note
 

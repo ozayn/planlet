@@ -3,6 +3,7 @@ import { parseLifeLabFrontmatter } from "@/lib/life-lab/frontmatter";
 import {
   extractSourceUrlFromBody,
   extractSourceUrlFromMetadata,
+  normalizeSourceUrl,
 } from "@/lib/life-lab/source-url";
 import { resolveYouTubeThumbnail } from "@/lib/life-lab/youtube-thumbnail";
 import { extractYouTubeVideoId } from "@/lib/life-lab/youtube-video-id";
@@ -185,6 +186,37 @@ export function extractLifeLabListingMetadata(
   }
 
   return listing;
+}
+
+export function listingFieldsFromVideoUrl(
+  videoUrl: string,
+): LifeLabListingMetadata {
+  const normalized = normalizeSourceUrl(videoUrl);
+
+  if (!normalized) {
+    return {};
+  }
+
+  const videoId = extractYouTubeVideoId(normalized) ?? undefined;
+  const thumbnailUrl =
+    resolveYouTubeThumbnail({
+      sourceUrl: normalized,
+      youtubeVideoId: videoId ?? null,
+      videoId: videoId ?? null,
+    }) ?? undefined;
+
+  return {
+    source_url: normalized,
+    video_url: normalized,
+    sourceUrl: normalized,
+    ...(videoId
+      ? {
+          youtubeVideoId: videoId,
+          videoId,
+        }
+      : {}),
+    ...(thumbnailUrl ? { thumbnailUrl } : {}),
+  };
 }
 
 export function mergeListingMetadata(

@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 
 import { LifeLabFilterPanel } from "@/components/life-lab/life-lab-filter-panel";
+import { LearningDictionaryPageContent } from "@/components/life-lab/learning-dictionary-page-content";
 import { LifeLabSectionNotes } from "@/components/life-lab/life-lab-section-notes";
 import type {
   LifeLabListingDiagnostic,
@@ -303,9 +304,17 @@ export function LifeLabSectionBrowser({
             type="search"
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
-            placeholder="Search notes"
+            placeholder={
+              sectionId === "learning-dictionary"
+                ? "Search terms, meanings, tags…"
+                : "Search notes"
+            }
             className="ui-input min-w-0 flex-1"
-            aria-label="Search Life Lab notes"
+            aria-label={
+              sectionId === "learning-dictionary"
+                ? "Search Learning Dictionary"
+                : "Search Life Lab notes"
+            }
           />
           <div className="flex shrink-0 items-center gap-2">
             <label className="inline-flex items-center gap-1.5 text-xs text-muted">
@@ -397,6 +406,13 @@ export function LifeLabSectionBrowser({
 
       {filteredNotes.length === 0 ? (
         <p className="text-sm text-muted">No notes match your search or filters.</p>
+      ) : sectionId === "learning-dictionary" ? (
+        <LearningDictionaryPageContent
+          sectionId={sectionId}
+          groups={groups}
+          listingDiagnostic={listingDiagnostic}
+          showDiagnostics={showDiagnostics}
+        />
       ) : (
         <LifeLabSectionNotes
           sectionId={sectionId}

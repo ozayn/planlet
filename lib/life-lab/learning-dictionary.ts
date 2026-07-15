@@ -500,19 +500,12 @@ export function compareDictionaryGroupIds(left: string, right: string): number {
     return leftPrimary ? -1 : 1;
   }
 
-  if (left === "reference") {
-    return -1;
-  }
-
-  if (right === "reference") {
+  // About / reference always follow content categories.
+  if (left === "about" || left === "reference") {
     return 1;
   }
 
-  if (left === "about") {
-    return 1;
-  }
-
-  if (right === "about") {
+  if (right === "about" || right === "reference") {
     return -1;
   }
 

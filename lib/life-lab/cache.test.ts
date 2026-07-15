@@ -166,7 +166,7 @@ describe("life lab listing cache keys", () => {
 
     assert.equal(
       lifeLabSectionFileIndexCacheKey(sectionId),
-      "life-lab-section-file-index:v6-listing-thumbs:youtube-learning",
+      "life-lab-section-file-index:v7-index-thumbs:youtube-learning",
     );
     assert.equal(
       lifeLabNotePayloadCacheKey(fileId),
@@ -174,7 +174,7 @@ describe("life lab listing cache keys", () => {
     );
     assert.equal(
       lifeLabListingMetadataCacheKey(fileId),
-      "life-lab-listing-metadata:v1-listing-thumbs:drive-file-1",
+      "life-lab-listing-metadata:v2-index-thumbs:drive-file-1",
     );
     assert.equal(
       lifeLabPlaylistAssetsBundleCacheKey({

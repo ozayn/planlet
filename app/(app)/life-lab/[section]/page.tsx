@@ -45,12 +45,17 @@ export default async function LifeLabSectionPage({
   }
 
   const noteCount = notes.length;
+  const isLearningDictionary = sectionId === "learning-dictionary";
 
   return (
     <section className="ui-life-lab-surface ui-page-stack space-y-6">
       <PageHeader
         title={sectionLabel}
-        subtitle="Notes from this Life Lab folder."
+        subtitle={
+          isLearningDictionary
+            ? "Reusable phrases, concepts, and names."
+            : "Notes from this Life Lab folder."
+        }
         action={
           <div className="flex items-center gap-3">
             <Link
@@ -74,7 +79,11 @@ export default async function LifeLabSectionPage({
         <LifeLabStatusPanel
           availability={availability}
           isAdmin={isAdmin}
-          emptyMessage="No notes in this section yet."
+          emptyMessage={
+            isLearningDictionary
+              ? "No Learning Dictionary entries yet."
+              : "No notes in this section yet."
+          }
         />
       ) : (
         <LifeLabSectionBrowser

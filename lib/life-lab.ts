@@ -70,6 +70,7 @@ import { extractFlashcardsFromMarkdown } from "@/lib/life-lab/flashcards";
 import {
   extractLifeLabListingMetadata,
   hasListingThumbnailInputs,
+  listingFieldsFromVideoUrl,
   mergeListingMetadata,
   type LifeLabListingMetadata,
 } from "@/lib/life-lab/listing-metadata";
@@ -690,14 +691,52 @@ async function loadSectionFileIndex(
     sectionId,
   );
   const visibleEntries = filterSectionMarkdownEntries(entries, sectionId);
-  const records = dedupeSectionNoteRecords(
+  let records = dedupeSectionNoteRecords(
     visibleEntries.map((entry) => summarizeMarkdownEntry(entry)),
   );
+
+  // YouTube browse cards need source/thumbnail fields on the lightweight index
+  // itself so a warm section-index hit can render thumbs with ~0 Drive calls.
+  if (sectionId === "youtube-learning") {
+    records = await attachListingMetadataInline(credentials, records);
+  }
 
   return {
     records,
     listingDiagnostic: toListingDiagnostic(stats),
   };
+}
+
+async function attachListingMetadataInline(
+  credentials: DriveCredentials,
+  baseRecords: LifeLabSectionNoteRecord[],
+): Promise<LifeLabSectionNoteRecord[]> {
+  return Promise.all(
+    baseRecords.map(async (baseRecord) => {
+      if (isPlaylistAssetRelativePath(baseRecord.relativePath)) {
+        return baseRecord;
+      }
+
+      if (hasListingThumbnailInputs(baseRecord.metadata)) {
+        return baseRecord;
+      }
+
+      try {
+        const rawContent = await downloadDriveFile(
+          credentials,
+          baseRecord.fileId,
+        );
+        const listing = extractLifeLabListingMetadata(rawContent);
+
+        return {
+          ...baseRecord,
+          metadata: mergeListingMetadata(baseRecord.metadata, listing),
+        };
+      } catch {
+        return baseRecord;
+      }
+    }),
+  );
 }
 
 async function getSectionFileIndexCached(
@@ -920,6 +959,7 @@ async function getListingMetadataCached(
 /**
  * Attaches slim thumbnail/source metadata for browse cards without full
  * note enrichment. Listing fields are extracted once and cached per file.
+ * Prefer metadata already stored on the lightweight section index.
  */
 async function attachListingMetadataToBrowseRecords(
   sectionId: LifeLabSectionId,
@@ -949,6 +989,61 @@ async function attachListingMetadataToBrowseRecords(
   );
 }
 
+/**
+ * Fill missing video note thumbnail inputs from playlist index tables so
+ * playlist cards can use first-child thumbs without fetching child bodies.
+ */
+function hydrateListingMetadataFromPlaylistIndexes(
+  sectionId: LifeLabSectionId,
+  records: LifeLabSectionNoteRecord[],
+  indexBodies: Map<string, string>,
+): LifeLabSectionNoteRecord[] {
+  const bySlug = new Map(records.map((record) => [record.slug, record]));
+  const updates = new Map<string, LifeLabSectionNoteRecord>();
+
+  for (const [fileId, body] of indexBodies) {
+    const indexRecord = records.find((record) => record.fileId === fileId);
+
+    if (!indexRecord) {
+      continue;
+    }
+
+    const display = parsePlaylistIndexNote({
+      ...indexRecord,
+      sectionId,
+      sectionLabel: getLifeLabSectionLabel(sectionId),
+      content: body,
+      metadata: indexRecord.metadata,
+    });
+
+    for (const video of display.videos) {
+      if (!video.videoUrl || !video.noteSlug) {
+        continue;
+      }
+
+      const note = updates.get(video.noteSlug) ?? bySlug.get(video.noteSlug);
+
+      if (!note || hasListingThumbnailInputs(note.metadata)) {
+        continue;
+      }
+
+      updates.set(video.noteSlug, {
+        ...note,
+        metadata: mergeListingMetadata(
+          note.metadata,
+          listingFieldsFromVideoUrl(video.videoUrl),
+        ),
+      });
+    }
+  }
+
+  if (updates.size === 0) {
+    return records;
+  }
+
+  return records.map((record) => updates.get(record.slug) ?? record);
+}
+
 async function prepareYoutubeBrowseRecords(
   sectionId: LifeLabSectionId,
   baseRecords: LifeLabSectionNoteRecord[],
@@ -958,9 +1053,14 @@ async function prepareYoutubeBrowseRecords(
 }> {
   const { records: withIndexes, indexBodies } =
     await enrichPlaylistIndexRecordsForBrowse(sectionId, baseRecords);
-  const withListingMetadata = await attachListingMetadataToBrowseRecords(
+  const withPlaylistHydration = hydrateListingMetadataFromPlaylistIndexes(
     sectionId,
     withIndexes,
+    indexBodies,
+  );
+  const withListingMetadata = await attachListingMetadataToBrowseRecords(
+    sectionId,
+    withPlaylistHydration,
   );
 
   return {

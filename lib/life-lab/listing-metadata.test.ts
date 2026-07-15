@@ -5,6 +5,7 @@ import type { LifeLabNoteSummary } from "@/lib/life-lab/constants";
 import {
   extractLifeLabListingMetadata,
   hasListingThumbnailInputs,
+  listingFieldsFromVideoUrl,
   mergeListingMetadata,
 } from "@/lib/life-lab/listing-metadata";
 import { resolvePlaylistThumbnail, resolveLifeLabThumbnail } from "@/lib/life-lab/thumbnail";
@@ -85,6 +86,40 @@ Body text.
     assert.equal(
       listing.thumbnailUrl,
       "https://i.ytimg.com/vi/def456UVW02/hqdefault.jpg",
+    );
+  });
+
+  it("extracts source from markdown-link Source lines and embeds", () => {
+    const fromLink = extractLifeLabListingMetadata(`---
+type: youtube-learning
+---
+
+Source: [Watch](https://www.youtube.com/watch?v=abc123XYZ01)
+
+Notes.
+`);
+    assert.equal(
+      fromLink.thumbnailUrl,
+      "https://i.ytimg.com/vi/abc123XYZ01/hqdefault.jpg",
+    );
+
+    const fromEmbed = extractLifeLabListingMetadata(`# Clip
+
+See https://www.youtube.com/shorts/def456UVW02 for context.
+`);
+    assert.equal(fromEmbed.youtubeVideoId, "def456UVW02");
+  });
+
+  it("derives listing fields from playlist table video URLs", () => {
+    const listing = listingFieldsFromVideoUrl(
+      "https://www.youtube.com/watch?v=abc123XYZ01",
+    );
+
+    assert.equal(listing.source_url, "https://www.youtube.com/watch?v=abc123XYZ01");
+    assert.equal(listing.youtubeVideoId, "abc123XYZ01");
+    assert.equal(
+      listing.thumbnailUrl,
+      "https://i.ytimg.com/vi/abc123XYZ01/hqdefault.jpg",
     );
   });
 
