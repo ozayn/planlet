@@ -35,7 +35,7 @@ export function LifeLabCollectionRow({
       <Link
         href={href}
         role={LIFE_LAB_COLLECTION_ROW_LINK_ROLE}
-        className="group flex items-start gap-3 rounded-lg px-1 py-2 transition-colors hover:bg-accent-cream/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border"
+        className="group flex min-h-11 items-start gap-3 rounded-lg px-1 py-2 transition-colors hover:bg-accent-cream/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border"
       >
         <LifeLabMediaThumbnail
           image={image}

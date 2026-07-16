@@ -15,6 +15,7 @@ export const LIFE_LAB_SORT_KEYS = [
   "title",
   "status",
   "recent",
+  "source",
 ] as const;
 
 export type LifeLabSortKey = (typeof LIFE_LAB_SORT_KEYS)[number];
@@ -27,6 +28,7 @@ export const LIFE_LAB_SORT_LABELS: Record<LifeLabSortKey, string> = {
   title: "Title",
   status: "Study status",
   recent: "Recently added",
+  source: "Source",
 };
 
 export const LIFE_LAB_SORT_SHORT_LABELS: Record<LifeLabSortKey, string> = {
@@ -35,6 +37,7 @@ export const LIFE_LAB_SORT_SHORT_LABELS: Record<LifeLabSortKey, string> = {
   title: "Title",
   status: "Status",
   recent: "Recent",
+  source: "Source",
 };
 
 export function isLifeLabSortKey(value: string): value is LifeLabSortKey {
@@ -107,6 +110,23 @@ export function compareLifeLabNotes(
     case "recent": {
       const delta = noteAddedDateValue(right) - noteAddedDateValue(left);
       return delta !== 0 ? delta : left.title.localeCompare(right.title);
+    }
+    case "source": {
+      const leftSource =
+        left.metadata?.source?.trim() ||
+        left.metadata?.channel?.trim() ||
+        left.title;
+      const rightSource =
+        right.metadata?.source?.trim() ||
+        right.metadata?.channel?.trim() ||
+        right.title;
+      const sourceDelta = leftSource.localeCompare(rightSource);
+
+      if (sourceDelta !== 0) {
+        return sourceDelta;
+      }
+
+      return noteContentDateValue(right) - noteContentDateValue(left);
     }
     case "newest":
     default: {

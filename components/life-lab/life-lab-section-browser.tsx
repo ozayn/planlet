@@ -6,6 +6,7 @@ import { useMemo, useRef, useState } from "react";
 
 import { LifeLabFilterPanel } from "@/components/life-lab/life-lab-filter-panel";
 import { LearningDictionaryPageContent } from "@/components/life-lab/learning-dictionary-page-content";
+import { ReadingBriefsPageContent } from "@/components/life-lab/reading-briefs-page-content";
 import { LifeLabSectionNotes } from "@/components/life-lab/life-lab-section-notes";
 import type {
   LifeLabListingDiagnostic,
@@ -185,14 +186,25 @@ export function LifeLabSectionBrowser({
   );
 
   const filteredNotes = useMemo(() => {
-    const metadataFiltered = filterLifeLabNotes(notes, filters);
+    // Reading Briefs uses `?source=` for daily-brief collections (title/source
+    // grouping), not Life Lab metadata-source equality. Strip it here so the
+    // archive still receives the full note set.
+    const effectiveFilters =
+      sectionId === "reading-briefs"
+        ? (() => {
+            const next = { ...filters };
+            delete next.source;
+            return next;
+          })()
+        : filters;
+    const metadataFiltered = filterLifeLabNotes(notes, effectiveFilters);
 
     if (!searchQuery) {
       return metadataFiltered;
     }
 
     return metadataFiltered.filter((note) => noteMatchesSearch(note, searchQuery));
-  }, [filters, notes, searchQuery]);
+  }, [filters, notes, searchQuery, sectionId]);
 
   const groups = useMemo(
     () => groupLifeLabNotes(filteredNotes, { sectionId, sort }),
@@ -290,6 +302,11 @@ export function LifeLabSectionBrowser({
     });
   }
 
+  const sortOptions =
+    sectionId === "reading-briefs"
+      ? (["newest", "oldest", "source", "title"] as const satisfies readonly LifeLabSortKey[])
+      : LIFE_LAB_SORT_KEYS;
+
   return (
     <div className="space-y-6">
       <div className="space-y-2">
@@ -307,13 +324,17 @@ export function LifeLabSectionBrowser({
             placeholder={
               sectionId === "learning-dictionary"
                 ? "Search terms, meanings, tags…"
-                : "Search notes"
+                : sectionId === "reading-briefs"
+                  ? "Search briefs and articles…"
+                  : "Search notes"
             }
             className="ui-input min-w-0 flex-1"
             aria-label={
               sectionId === "learning-dictionary"
                 ? "Search Learning Dictionary"
-                : "Search Life Lab notes"
+                : sectionId === "reading-briefs"
+                  ? "Search Reading Briefs"
+                  : "Search Life Lab notes"
             }
           />
           <div className="flex shrink-0 items-center gap-2">
@@ -325,7 +346,7 @@ export function LifeLabSectionBrowser({
                 className="rounded-full border border-border/70 bg-transparent px-3 py-2 text-xs text-foreground"
                 aria-label="Sort notes"
               >
-                {LIFE_LAB_SORT_KEYS.map((key) => (
+                {sortOptions.map((key) => (
                   <option key={key} value={key}>
                     {LIFE_LAB_SORT_SHORT_LABELS[key]}
                   </option>
@@ -412,6 +433,23 @@ export function LifeLabSectionBrowser({
           groups={groups}
           listingDiagnostic={listingDiagnostic}
           showDiagnostics={showDiagnostics}
+        />
+      ) : sectionId === "reading-briefs" ? (
+        <ReadingBriefsPageContent
+          sectionId={sectionId}
+          notes={filteredNotes}
+          listingDiagnostic={listingDiagnostic}
+          showDiagnostics={showDiagnostics}
+          searchQuery={searchQuery}
+          sourceQuery={filters.source ?? null}
+          sort={
+            sort === "oldest" ||
+            sort === "source" ||
+            sort === "title" ||
+            sort === "newest"
+              ? sort
+              : "newest"
+          }
         />
       ) : (
         <LifeLabSectionNotes

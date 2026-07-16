@@ -134,8 +134,15 @@ function normalizeMetadata(raw: Record<string, unknown>): LifeLabNoteMetadata {
 
   const stringFields = [
     "type",
+    "contentKind",
+    "content_kind",
     "section",
     "source",
+    "sourceName",
+    "source_name",
+    "publication",
+    "feedName",
+    "feed_name",
     "input_source",
     "language",
     "channel",

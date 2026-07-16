@@ -78,8 +78,15 @@ export type LifeLabNoteImage = {
 
 export type LifeLabNoteMetadata = {
   type?: string;
+  contentKind?: string;
+  content_kind?: string;
   section?: string;
   source?: string;
+  sourceName?: string;
+  source_name?: string;
+  publication?: string;
+  feedName?: string;
+  feed_name?: string;
   input_source?: string;
   language?: string;
   transcript_available?: boolean;

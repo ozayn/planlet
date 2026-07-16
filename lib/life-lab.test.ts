@@ -491,7 +491,7 @@ describe("life lab note organization", () => {
       readingBriefGroups.map((group) => group.id),
       ["daily", "saved-articles", "section-files"],
     );
-    assert.equal(readingBriefGroups[2]?.label, "About & reference");
+    assert.equal(readingBriefGroups[2]?.label, "Reference & setup");
     assert.equal(readingBriefGroups[2]?.collapsedByDefault, true);
     assert.deepEqual(
       readingBriefGroups[2]?.notes.map((note) => note.title),
@@ -834,7 +834,7 @@ describe("life lab browsing", () => {
 
     assert.deepEqual(
       groups.map((group) => group.label),
-      ["Daily · July 2026", "Daily · June 2026"],
+      ["Daily briefs · July 2026", "Daily briefs · June 2026"],
     );
     assert.equal(groups[0]?.variant, "primary");
     assert.equal(groups[1]?.variant, "disclosure");

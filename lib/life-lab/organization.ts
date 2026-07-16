@@ -116,6 +116,32 @@ export function noteGroupLabel(
   groupId: string,
   sectionId?: LifeLabSectionId,
 ): string {
+  if (sectionId === "reading-briefs") {
+    if (groupId === "daily" || groupId.startsWith("daily:")) {
+      const monthSuffix = groupId.includes(":")
+        ? groupId.slice(groupId.indexOf(":") + 1)
+        : null;
+
+      if (monthSuffix && monthSuffix !== "undated") {
+        return `Daily briefs · ${monthKeyLabel(monthSuffix)}`;
+      }
+
+      if (monthSuffix === "undated") {
+        return "Daily briefs · Undated";
+      }
+
+      return "Daily briefs";
+    }
+
+    if (groupId === "saved-articles") {
+      return "Saved articles & essays";
+    }
+
+    if (groupId === "section-files") {
+      return "Reference & setup";
+    }
+  }
+
   if (groupId === ABOUT_GROUP_ID) {
     return sectionId === "youtube-learning"
       ? "About YouTube Learning"
@@ -351,7 +377,7 @@ function mergeSecondaryGroups(
 function mergeReadingBriefSecondaryGroups(
   groups: LifeLabNoteGroup[],
 ): LifeLabNoteGroup[] {
-  return mergeSecondaryGroups(groups, "About & reference");
+  return mergeSecondaryGroups(groups, "Reference & setup");
 }
 
 function mergeDictionarySecondaryGroups(

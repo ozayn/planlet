@@ -46,6 +46,7 @@ export default async function LifeLabSectionPage({
 
   const noteCount = notes.length;
   const isLearningDictionary = sectionId === "learning-dictionary";
+  const isReadingBriefs = sectionId === "reading-briefs";
 
   return (
     <section className="ui-life-lab-surface ui-page-stack space-y-6">
@@ -54,7 +55,9 @@ export default async function LifeLabSectionPage({
         subtitle={
           isLearningDictionary
             ? "Reusable phrases, concepts, and names."
-            : "Notes from this Life Lab folder."
+            : isReadingBriefs
+              ? "A personal reading and news archive."
+              : "Notes from this Life Lab folder."
         }
         action={
           <div className="flex items-center gap-3">
@@ -82,7 +85,9 @@ export default async function LifeLabSectionPage({
           emptyMessage={
             isLearningDictionary
               ? "No Learning Dictionary entries yet."
-              : "No notes in this section yet."
+              : isReadingBriefs
+                ? "No Reading Briefs yet."
+                : "No notes in this section yet."
           }
         />
       ) : (
