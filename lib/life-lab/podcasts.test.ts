@@ -80,6 +80,38 @@ describe("podcast discovery safety", () => {
     );
   });
 
+  it("recognizes Ava's current podcast index and episode frontmatter types", () => {
+    assert.equal(
+      isPodcastShowIndex(
+        note({
+          slug: "the-daily__index",
+          title: "The Daily",
+          relativePath: "the-daily/index.md",
+          metadata: {
+            type: "podcast-show-index",
+            section: "podcasts",
+            show: "The Daily",
+          },
+        }),
+      ),
+      true,
+    );
+    assert.equal(
+      isPodcastEpisodeNote(
+        note({
+          slug: "the-daily__episodes__example",
+          title: "Example",
+          relativePath: "the-daily/episodes/example.md",
+          metadata: {
+            type: "podcast-episode-note",
+            section: "podcasts",
+          },
+        }),
+      ),
+      true,
+    );
+  });
+
   it("excludes private, working, transcript, chunk, draft, and log content", () => {
     assert.equal(isPodcastBlockedFolder("private"), true);
     assert.equal(isPodcastBlockedFolder("episodes", "show/private"), true);

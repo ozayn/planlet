@@ -33,7 +33,8 @@ describe("podcasts Life Lab wiring", () => {
 
     assert.match(home, /data-podcasts-layout="series-v1"/);
     assert.match(home, /role="progressbar"/);
-    assert.match(home, /No podcast episodes have been processed yet/);
+    assert.match(home, /No podcast show indexes were found/);
+    assert.match(home, /No podcast series match these filters/);
     assert.match(show, /hidden md:block/);
     assert.match(show, /md:hidden/);
     assert.match(show, /episode\.noteHref \? \(/);

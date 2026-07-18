@@ -140,7 +140,8 @@ export function isPodcastShowIndex(
     (type === undefined ||
       type === "podcast" ||
       type === "podcast-series" ||
-      type === "podcast-show")
+      type === "podcast-show" ||
+      type === "podcast-show-index")
   );
 }
 
@@ -155,7 +156,8 @@ export function isPodcastEpisodeNote(
   return (
     segments.includes("episodes") ||
     type === "podcast-note" ||
-    type === "podcast-episode"
+    type === "podcast-episode" ||
+    type === "podcast-episode-note"
   );
 }
 

@@ -290,9 +290,13 @@ export function PodcastsPageContent({
             <PodcastShowCard key={show.indexSlug} show={show} />
           ))}
         </ul>
+      ) : allShows.length === 0 ? (
+        <p className="text-sm text-muted">
+          No podcast show indexes were found.
+        </p>
       ) : (
         <p className="text-sm text-muted">
-          No podcast episodes have been processed yet.
+          No podcast series match these filters.
         </p>
       )}
     </div>
