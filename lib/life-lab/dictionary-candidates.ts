@@ -141,6 +141,10 @@ export function summarizeDictionaryCandidates(
   content: string,
   maxItems = 4,
 ): string[] {
+  return listDictionaryCandidateTerms(content).slice(0, maxItems);
+}
+
+export function listDictionaryCandidateTerms(content: string): string[] {
   const items: string[] = [];
 
   for (const line of content.split("\n")) {
@@ -153,7 +157,25 @@ export function summarizeDictionaryCandidates(
     const bulletMatch = trimmed.match(/^[-*•]\s+(.+)$/);
 
     if (bulletMatch?.[1]) {
-      items.push(markdownExcerpt(bulletMatch[1], 72));
+      const raw = bulletMatch[1].trim();
+
+      if (
+        /^(?:\*\*)?(?:Meaning|Context|Why it is useful|My example sentence|Possible English equivalent|Why it matters|Where I found it):/i.test(
+          raw,
+        )
+      ) {
+        continue;
+      }
+
+      const boldTerm = raw.match(/^\*\*([^*]+)\*\*/)?.[1];
+      const linkedTerm = raw.match(/^\[([^\]]+)]\([^)]*\)/)?.[1];
+      const term =
+        boldTerm ??
+        linkedTerm ??
+        raw.split(/\s+(?:—|–|-)\s+|\s*:\s+/, 1)[0] ??
+        raw;
+
+      items.push(markdownExcerpt(term, 72));
       continue;
     }
 
@@ -165,12 +187,12 @@ export function summarizeDictionaryCandidates(
       }
     }
 
-    if (items.length >= maxItems) {
-      break;
-    }
   }
 
-  return items.slice(0, maxItems);
+  return items.filter(
+    (item, index, all) =>
+      item.trim() && all.findIndex((candidate) => candidate === item) === index,
+  );
 }
 
 export function buildDictionaryCandidatesCopyPrompt(input: {

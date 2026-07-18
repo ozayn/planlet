@@ -21,7 +21,7 @@ describe("content security policy", () => {
 
     assert.equal(
       imgSrc,
-      "'self' blob: data: https://*.googleusercontent.com https://i.ytimg.com https://img.youtube.com",
+      "'self' blob: data: https://*.googleusercontent.com https://i.ytimg.com https://img.youtube.com https://is1-ssl.mzstatic.com",
     );
     const tokens = imgSrc.split(/\s+/);
 

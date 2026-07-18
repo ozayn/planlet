@@ -6,11 +6,19 @@ import {
   type LifeLabNoteContentBlock,
 } from "@/lib/life-lab/note-content-blocks";
 import { isLectureNotesSectionId } from "@/lib/life-lab/lecture-notes";
-import type { LifeLabSectionId } from "@/lib/life-lab/constants";
+import type {
+  LifeLabNoteMetadata,
+  LifeLabSectionId,
+} from "@/lib/life-lab/constants";
+import {
+  suppressExactHeaderMetadataLines,
+  suppressExactLifeLabMarkdownDuplicates,
+} from "@/lib/life-lab/note-quality";
 
 type LifeLabNoteContentProps = {
   content: string;
   sectionId?: LifeLabSectionId;
+  metadata?: LifeLabNoteMetadata;
 };
 
 function LifeLabNoteContentBlock({
@@ -41,10 +49,14 @@ function LifeLabNoteContentBlock({
 export function LifeLabNoteContent({
   content,
   sectionId,
+  metadata,
 }: LifeLabNoteContentProps) {
+  const deduplicatedContent = suppressExactLifeLabMarkdownDuplicates(
+    suppressExactHeaderMetadataLines(content, metadata),
+  );
   const isLectureNotes = isLectureNotesSectionId(sectionId);
   const isPodcastEpisode = sectionId === "podcasts";
-  const blocks = buildLifeLabNoteContentBlocks(content, {
+  const blocks = buildLifeLabNoteContentBlocks(deduplicatedContent, {
     prioritizeShortVersion: isLectureNotes || isPodcastEpisode,
     collapseTranscriptNotes: isLectureNotes || isPodcastEpisode,
   });

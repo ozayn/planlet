@@ -1,12 +1,18 @@
 "use client";
 
-import { isValidElement, type ReactNode } from "react";
+import { Children, isValidElement, type ReactNode } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 
 import { MermaidBlock } from "@/components/life-lab/mermaid-block";
-import { prepareLifeLabMarkdownForReading } from "@/lib/life-lab/markdown-display";
+import {
+  normalizeStructuredVocabularyFields,
+  prepareLifeLabMarkdownForReading,
+  segmentStructuredVocabularyMarkdown,
+  STRUCTURED_VOCABULARY_FIELD_LABELS,
+} from "@/lib/life-lab/markdown-display";
+import { suppressExactLifeLabMarkdownDuplicates } from "@/lib/life-lab/note-quality";
 import { readingBriefHeadingAnchor } from "@/lib/life-lab/reading-briefs";
 import {
   resolveTextDirection,
@@ -73,8 +79,58 @@ function withTextDirection(
   };
 }
 
+function structuredVocabularyField(
+  children: ReactNode,
+): { label: string; value: ReactNode } | null {
+  const nodes = Children.toArray(children);
+  const first = nodes[0];
+
+  if (!isValidElement(first) || first.type !== "strong") {
+    return null;
+  }
+
+  const props = first.props as { children?: ReactNode };
+  const label = getPlainText(props.children).trim().replace(/:$/, "");
+
+  if (
+    !STRUCTURED_VOCABULARY_FIELD_LABELS.some(
+      (candidate) => candidate.toLowerCase() === label.toLowerCase(),
+    )
+  ) {
+    return null;
+  }
+
+  const valueNodes = nodes.slice(1);
+
+  while (
+    valueNodes.length > 0 &&
+    ((typeof valueNodes[0] === "string" && !valueNodes[0].trim()) ||
+      (isValidElement(valueNodes[0]) && valueNodes[0].type === "br"))
+  ) {
+    valueNodes.shift();
+  }
+
+  return { label, value: valueNodes };
+}
+
+function VocabularyField({ children }: { children: ReactNode }) {
+  const field = structuredVocabularyField(children);
+
+  if (!field) {
+    return null;
+  }
+
+  return (
+    <dl className="ui-vocabulary-field">
+      <dt>{field.label}</dt>
+      <dd {...withTextDirection(field.value)}>{field.value}</dd>
+    </dl>
+  );
+}
+
 function createMarkdownComponents(
   readingBriefAnchors: boolean,
+  structuredVocabulary: boolean,
 ): Components {
   return {
     pre({ children }) {
@@ -94,6 +150,10 @@ function createMarkdownComponents(
       );
     },
     p({ children }) {
+      if (structuredVocabulary && structuredVocabularyField(children)) {
+        return <VocabularyField>{children}</VocabularyField>;
+      }
+
       const direction = withTextDirection(children);
 
       return <p {...direction}>{children}</p>;
@@ -114,6 +174,16 @@ function createMarkdownComponents(
       return <ol {...direction}>{children}</ol>;
     },
     li({ children }) {
+      if (structuredVocabulary && structuredVocabularyField(children)) {
+        const direction = withTextDirection(children);
+
+        return (
+          <li {...direction}>
+            <VocabularyField>{children}</VocabularyField>
+          </li>
+        );
+      }
+
       const direction = withTextDirection(children);
 
       return <li {...direction}>{children}</li>;
@@ -154,7 +224,10 @@ export function MarkdownContent({
   readingBriefAnchors = false,
   readingBriefMode = false,
 }: MarkdownContentProps) {
-  const preparedContent = prepareLifeLabMarkdownForReading(content);
+  const preparedContent = suppressExactLifeLabMarkdownDuplicates(
+    prepareLifeLabMarkdownForReading(content),
+  );
+  const segments = segmentStructuredVocabularyMarkdown(preparedContent);
 
   return (
     <div
@@ -162,13 +235,21 @@ export function MarkdownContent({
         readingBriefMode ? "ui-markdown-reading-brief" : ""
       }`}
     >
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeSanitize]}
-        components={createMarkdownComponents(readingBriefAnchors)}
-      >
-        {preparedContent}
-      </ReactMarkdown>
+      {segments.map((segment, index) => (
+        <ReactMarkdown
+          key={`${segment.structuredVocabulary ? "vocabulary" : "markdown"}-${index}`}
+          remarkPlugins={[remarkGfm]}
+          rehypePlugins={[rehypeSanitize]}
+          components={createMarkdownComponents(
+            readingBriefAnchors,
+            segment.structuredVocabulary,
+          )}
+        >
+          {segment.structuredVocabulary
+            ? normalizeStructuredVocabularyFields(segment.content)
+            : segment.content}
+        </ReactMarkdown>
+      ))}
     </div>
   );
 }

@@ -2501,6 +2501,36 @@ body {
   margin-top: 0.25rem;
 }
 
+.ui-vocabulary-field {
+  min-width: 0;
+  margin-block: 0.625rem;
+}
+
+.ui-vocabulary-field dt {
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--foreground);
+}
+
+.ui-vocabulary-field dt::after {
+  content: ":";
+}
+
+.ui-vocabulary-field dd {
+  min-width: 0;
+  margin: 0.125rem 0 0;
+  color: var(--foreground);
+  overflow-wrap: anywhere;
+}
+
+.ui-markdown li > .ui-vocabulary-field {
+  margin-block: 0.25rem;
+}
+
+.ui-markdown-compact .ui-vocabulary-field {
+  margin-block: 0.5rem;
+}
+
 .ui-markdown a {
   color: inherit;
   text-decoration: underline;
@@ -2578,17 +2608,18 @@ body {
 .ui-markdown .ui-mermaid-svg,
 .ui-mermaid-svg {
   display: block;
-  width: auto;
-  max-width: none;
+  width: 100%;
+  max-width: 100%;
 }
 
 .ui-markdown .ui-mermaid svg,
 .ui-mermaid-scroll svg,
 .ui-mermaid-svg svg {
   display: block;
-  width: auto;
-  max-width: none;
+  width: 100%;
+  max-width: 100%;
   height: auto;
+  overflow: visible;
 }
 
 .ui-mermaid svg foreignObject {
@@ -2631,7 +2662,7 @@ body {
   top: auto;
   right: auto;
   z-index: 1;
-  display: none;
+  display: inline-flex;
   min-height: 2.5rem;
   min-width: 2.5rem;
   align-items: center;
@@ -2658,12 +2689,19 @@ body {
 }
 
 @media (min-width: 768px) {
-  .ui-mermaid-expand-btn {
-    display: inline-flex;
-  }
-
   .ui-mermaid-affordance-tap {
     display: none;
+  }
+}
+
+@media print {
+  .ui-mermaid-toolbar {
+    display: none;
+  }
+
+  .ui-mermaid-scroll {
+    overflow: visible;
+    border: 0;
   }
 }
 

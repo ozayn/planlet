@@ -11,6 +11,161 @@ import {
   isTranscriptMetadataOnly,
 } from "@/lib/life-lab/transcript-sections";
 
+const STRUCTURED_VOCABULARY_HEADINGS = new Set([
+  "interesting english words and phrases",
+  "interesting words and phrases",
+  "persian vocabulary and phrasing",
+  "vocabulary and phrasing",
+  "english vocabulary and phrasing",
+  "dictionary entries",
+]);
+
+export const STRUCTURED_VOCABULARY_FIELD_LABELS = [
+  "Meaning",
+  "Context",
+  "Why it is useful",
+  "My example sentence",
+  "Possible English equivalent",
+  "Why it matters",
+  "Where I found it",
+] as const;
+
+export type LifeLabMarkdownSegment = {
+  content: string;
+  structuredVocabulary: boolean;
+};
+
+function normalizeHeadingLabel(value: string): string {
+  return value
+    .replace(/[*_`~]/g, "")
+    .replace(/&/g, "and")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function isStructuredVocabularyHeading(value: string): boolean {
+  return STRUCTURED_VOCABULARY_HEADINGS.has(normalizeHeadingLabel(value));
+}
+
+export function segmentStructuredVocabularyMarkdown(
+  content: string,
+): LifeLabMarkdownSegment[] {
+  const lines = content.split("\n");
+  const segments: LifeLabMarkdownSegment[] = [];
+  let current: string[] = [];
+  let structuredVocabulary = false;
+  let structuredHeadingLevel = 0;
+
+  function flush(): void {
+    const segmentContent = current.join("\n");
+
+    if (segmentContent) {
+      segments.push({ content: segmentContent, structuredVocabulary });
+    }
+
+    current = [];
+  }
+
+  for (const line of lines) {
+    const heading = line.match(/^(#{2,6})\s+(.+?)\s*$/);
+
+    if (
+      structuredVocabulary &&
+      heading &&
+      heading[1]!.length <= structuredHeadingLevel
+    ) {
+      flush();
+      structuredVocabulary = false;
+      structuredHeadingLevel = 0;
+    }
+
+    if (heading && isStructuredVocabularyHeading(heading[2]!)) {
+      if (current.length > 0) {
+        flush();
+      }
+
+      structuredVocabulary = true;
+      structuredHeadingLevel = heading[1]!.length;
+    }
+
+    current.push(line);
+  }
+
+  flush();
+  return segments;
+}
+
+export function normalizeStructuredVocabularyFields(content: string): string {
+  const labels = STRUCTURED_VOCABULARY_FIELD_LABELS.map((label) =>
+    label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+  ).join("|");
+  const fieldLine = new RegExp(
+    `^(\\s*(?:(?:[-*+]|\\d+[.)])\\s+)?)\\*?\\*?(${labels}):\\*?\\*?\\s*(.*)$`,
+    "i",
+  );
+  const labelToken = new RegExp(`\\*\\*(?:${labels}):\\*\\*`, "gi");
+  const lines = content.split("\n").flatMap((line) => {
+    const matches = [...line.matchAll(labelToken)];
+    const splitIndexes = matches.flatMap((match, index) => {
+      const matchIndex = match.index ?? 0;
+      const prefix = line.slice(0, matchIndex);
+      const isOnlyListPrefix =
+        index === 0 && /^\s*(?:[-*+]|\d+[.)])\s+$/.test(prefix);
+
+      return isOnlyListPrefix ? [] : [matchIndex];
+    });
+
+    if (splitIndexes.length === 0) {
+      return [line];
+    }
+
+    const parts: string[] = [];
+    let start = 0;
+
+    for (const splitIndex of splitIndexes) {
+      const before = line.slice(start, splitIndex).trimEnd();
+
+      if (before) {
+        parts.push(before, "");
+      }
+
+      start = splitIndex;
+    }
+
+    parts.push(line.slice(start).trimStart());
+    return parts;
+  });
+  const result: string[] = [];
+
+  for (const line of lines) {
+    const match = line.match(fieldLine);
+
+    if (!match) {
+      result.push(line);
+      continue;
+    }
+
+    const prefix = match[1] ?? "";
+    const label = match[2]!;
+    const value = match[3]?.trim() ?? "";
+    const isListField = /(?:[-*+]|\d+[.)])\s+$/.test(prefix);
+
+    if (!isListField && result.at(-1)?.trim()) {
+      result.push("");
+    }
+
+    result.push(`${prefix}**${label}:**${value ? "  " : ""}`);
+
+    if (value) {
+      const leadingWhitespace = prefix.match(/^\s*/)?.[0] ?? "";
+      result.push(`${isListField ? `${leadingWhitespace}  ` : ""}${value}`);
+    }
+  }
+
+  return result.join("\n");
+}
+
 /** Ensure list blocks start after a blank line so GFM recognizes them. */
 export function normalizeMarkdownListSpacing(body: string): string {
   const lines = body.split("\n");

@@ -16,7 +16,7 @@ export function buildContentSecurityPolicyHeader(
     "default-src 'self'",
     `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' blob: data: https://*.googleusercontent.com https://i.ytimg.com https://img.youtube.com",
+    "img-src 'self' blob: data: https://*.googleusercontent.com https://i.ytimg.com https://img.youtube.com https://is1-ssl.mzstatic.com",
     "media-src 'self' blob:",
     "font-src 'self'",
     "connect-src 'self'",

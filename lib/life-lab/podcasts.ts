@@ -199,12 +199,33 @@ function extractEpisodesSection(content: string): string {
   return (next === -1 ? rest : rest.slice(0, next)).trim();
 }
 
+function extractMarkdownSection(content: string, heading: string): string | null {
+  const escapedHeading = heading.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = content.match(
+    new RegExp(`^##\\s+${escapedHeading}\\s*$`, "im"),
+  );
+
+  if (!match || match.index === undefined) {
+    return null;
+  }
+
+  const rest = content.slice(match.index + match[0].length);
+  const next = rest.search(/^##\s+/m);
+  return (next === -1 ? rest : rest.slice(0, next)).trim() || null;
+}
+
 function extractDescription(
   content: string,
   metadata: LifeLabNoteMetadata,
 ): string | null {
   if (metadata.summary?.trim()) {
     return metadata.summary.trim();
+  }
+
+  const showSummary = extractMarkdownSection(content, "Show summary");
+
+  if (showSummary) {
+    return markdownExcerpt(showSummary, 180);
   }
 
   const episodes = content.search(/^##\s+Episodes\s*$/im);
@@ -309,6 +330,37 @@ export function resolvePodcastNoteRelativePath(
   return normalized;
 }
 
+export function buildPodcastTimelinePreview(content: string): {
+  preview: string;
+  itemCount: number;
+} {
+  const lines = content.split("\n");
+  const tableLines = lines.filter((line) => line.trim().startsWith("|"));
+
+  if (
+    tableLines.length >= 2 &&
+    /^\|?\s*:?-{3,}/.test(tableLines[1]?.trim() ?? "")
+  ) {
+    return {
+      preview: tableLines.slice(0, 5).join("\n"),
+      itemCount: Math.max(0, tableLines.length - 2),
+    };
+  }
+
+  const itemIndexes = lines
+    .map((line, index) => (/^\s*(?:[-*+]\s+|\d+[.)]\s+)/.test(line) ? index : -1))
+    .filter((index) => index >= 0);
+  const fourthItem = itemIndexes[3];
+
+  return {
+    preview:
+      itemIndexes.length > 0
+        ? lines.slice(0, fourthItem ?? lines.length).join("\n").trim()
+        : content,
+    itemCount: itemIndexes.length,
+  };
+}
+
 function parseEpisodeTable(
   content: string,
   indexRelativePath: string,
@@ -353,7 +405,7 @@ function parseEpisodeTable(
       return [];
     }
 
-    const status = normalizeEpisodeStatus(cells[statusIndex] ?? "");
+    const indexedStatus = normalizeEpisodeStatus(cells[statusIndex] ?? "");
     const target = markdownLinkTarget(cells[noteIndex] ?? "");
     const noteRelativePath = target
       ? resolvePodcastNoteRelativePath(indexRelativePath, target)
@@ -361,6 +413,8 @@ function parseEpisodeTable(
     const noteExists = noteRelativePath
       ? notePaths.has(noteRelativePath.toLowerCase())
       : false;
+    const status =
+      indexedStatus === "processed" && !noteExists ? "error" : indexedStatus;
     const noteSlug =
       status === "processed" && noteExists && noteRelativePath
         ? driveRelativePathToSlug(noteRelativePath)
@@ -439,6 +493,18 @@ export function parsePodcastShowIndex(input: {
   const errorCount = episodes.filter(
     (episode) => episode.status === "error",
   ).length;
+  const newestEpisodeArtwork = episodes
+    .map((episode) =>
+      episode.noteRelativePath
+        ? relatedNotes.find(
+            (item) =>
+              item.relativePath.toLowerCase() ===
+              episode.noteRelativePath?.toLowerCase(),
+          )
+        : null,
+    )
+    .map((episodeNote) => resolveLifeLabNoteImage(episodeNote?.metadata))
+    .find((image) => image !== null);
 
   return {
     slug: showSlugFromIndexPath(note.relativePath),
@@ -446,7 +512,7 @@ export function parsePodcastShowIndex(input: {
     relativePath: note.relativePath,
     title,
     description: extractDescription(content, note.metadata ?? {}),
-    artwork: resolveLifeLabNoteImage(note.metadata),
+    artwork: resolveLifeLabNoteImage(note.metadata) ?? newestEpisodeArtwork ?? null,
     episodes,
     totalCount: episodes.length,
     processedCount,

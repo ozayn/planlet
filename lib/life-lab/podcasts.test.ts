@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import type { LifeLabNoteSummary } from "@/lib/life-lab/constants";
 import {
+  buildPodcastTimelinePreview,
   findPodcastShowIndex,
   isPodcastBlockedFolder,
   isPodcastEpisodeNote,
@@ -161,6 +162,34 @@ describe("podcast show index parsing", () => {
       show.episodes.find((item) => item.title === "Ready episode")?.noteHref,
       null,
     );
+    assert.equal(
+      show.episodes.find((item) => item.title === "Ready episode")?.status,
+      "error",
+    );
+    assert.equal(show.processedCount, 0);
+    assert.equal(show.errorCount, 2);
+  });
+
+  it("removes the Show summary heading from the series description", () => {
+    const show = parsePodcastShowIndex({
+      note: {
+        ...showIndex,
+        metadata: { ...showIndex.metadata, summary: undefined },
+        podcastIndexContent: `# The Daily
+
+## Show summary
+
+A clear daily news briefing.
+
+## Episodes
+
+| Date | Status | Episode | Duration | Note |
+|---|---|---|---|---|`,
+      },
+      relatedNotes: [],
+    });
+
+    assert.equal(show.description, "A clear daily news briefing.");
   });
 
   it("resolves links relative to the index and rejects traversal or URLs", () => {
@@ -200,5 +229,21 @@ describe("podcast show index parsing", () => {
       findPodcastShowIndex(nestedEpisode, [showIndex, nestedShow])?.slug,
       nestedShow.slug,
     );
+  });
+});
+
+describe("podcast timeline disclosure", () => {
+  it("keeps table headers and the first three timeline rows in the preview", () => {
+    const timeline = `| Time | Event |
+|---|---|
+| 00:00 | One |
+| 01:00 | Two |
+| 02:00 | Three |
+| 03:00 | Four |`;
+    const result = buildPodcastTimelinePreview(timeline);
+
+    assert.equal(result.itemCount, 4);
+    assert.match(result.preview, /Three/);
+    assert.doesNotMatch(result.preview, /Four/);
   });
 });

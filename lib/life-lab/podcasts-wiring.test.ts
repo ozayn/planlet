@@ -35,10 +35,11 @@ describe("podcasts Life Lab wiring", () => {
     assert.match(home, /role="progressbar"/);
     assert.match(home, /No podcast show indexes were found/);
     assert.match(home, /No podcast series match these filters/);
-    assert.match(show, /hidden md:block/);
+    assert.match(show, /hidden overflow-x-auto md:block/);
     assert.match(show, /md:hidden/);
     assert.match(show, /episode\.noteHref \? \(/);
     assert.match(show, /StatusBadge/);
+    assert.match(show, /Open note/);
   });
 
   it("uses podcast-specific show and episode detail renderers", () => {
@@ -53,8 +54,27 @@ describe("podcasts Life Lab wiring", () => {
 
     assert.match(detailPage, /<LifeLabPodcastShow/);
     assert.match(detailPage, /<LifeLabPodcastEpisode/);
-    assert.match(episode, /Open original episode/);
+    assert.match(episode, /LIFE_LAB_UI_LABELS\.openOriginalEpisode/);
+    assert.match(episode, /<LifeLabNoteListen/);
+    assert.match(episode, /LIFE_LAB_UI_LABELS\.showFullTimeline/);
+    assert.match(episode, /aria-expanded=\{expanded\}/);
     assert.match(episode, /Source notes/);
     assert.doesNotMatch(episode, />\{sourceUrl\}</);
+    assert.match(detailPage, /showDevTools &&/);
+  });
+
+  it("uses an image failure fallback and responsive Mermaid wrapper", () => {
+    const artwork = readFileSync(
+      join(root, "components/life-lab/life-lab-podcast-artwork.tsx"),
+      "utf8",
+    );
+    const styles = readFileSync(join(root, "app/globals.css"), "utf8");
+
+    assert.match(artwork, /onError=\{\(\) => setFailedUrl\(image\.url\)\}/);
+    assert.match(artwork, /Podcast artwork placeholder/);
+    assert.match(artwork, /object-cover/);
+    assert.match(styles, /\.ui-mermaid-svg[\s\S]*?max-width: 100%/);
+    assert.match(styles, /\.ui-mermaid-scroll[\s\S]*?overflow-x: auto/);
+    assert.match(styles, /\.ui-mermaid-expand-btn[\s\S]*?display: inline-flex/);
   });
 });

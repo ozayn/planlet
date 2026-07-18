@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 
-import { MarkdownContent } from "@/components/life-lab/markdown-content";
 import {
   buildDictionaryCandidatesCopyPrompt,
+  listDictionaryCandidateTerms,
   summarizeDictionaryCandidates,
   type DictionaryStudySection,
 } from "@/lib/life-lab/dictionary-candidates";
@@ -22,6 +22,7 @@ export function LifeLabDictionaryCandidatesCard({
 }: LifeLabDictionaryCandidatesCardProps) {
   const [copied, setCopied] = useState(false);
   const previewItems = summarizeDictionaryCandidates(section.content);
+  const candidateTerms = listDictionaryCandidateTerms(section.content);
   const copyPrompt = buildDictionaryCandidatesCopyPrompt({
     noteTitle,
     content: section.content,
@@ -73,19 +74,21 @@ export function LifeLabDictionaryCandidatesCard({
         </div>
 
         {!compactPreview ? (
-          <MarkdownContent content={section.content} compact readingBriefMode />
+          <ul className="list-disc space-y-1 ps-5 text-sm text-muted">
+            {candidateTerms.map((term) => (
+              <li key={term}>{term}</li>
+            ))}
+          </ul>
         ) : (
           <details className="ui-settings-details group">
             <summary className="ui-settings-details-summary !py-1.5 !text-xs !normal-case !tracking-normal">
               Show candidates
             </summary>
-            <div className="ui-settings-details-body">
-              <MarkdownContent
-                content={section.content}
-                compact
-                readingBriefMode
-              />
-            </div>
+            <ul className="ui-settings-details-body list-disc space-y-1 ps-5 text-sm text-muted">
+              {candidateTerms.map((term) => (
+                <li key={term}>{term}</li>
+              ))}
+            </ul>
           </details>
         )}
 

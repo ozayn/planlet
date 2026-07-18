@@ -7,10 +7,16 @@ import {
   type DictionaryNoteContentBlock,
   type DictionaryStudySection,
 } from "@/lib/life-lab/dictionary-candidates";
+import type { LifeLabNoteMetadata } from "@/lib/life-lab/constants";
+import {
+  suppressExactHeaderMetadataLines,
+  suppressExactLifeLabMarkdownDuplicates,
+} from "@/lib/life-lab/note-quality";
 
 type LifeLabNoteDictionarySectionsProps = {
   content: string;
   noteTitle: string;
+  metadata?: LifeLabNoteMetadata;
 };
 
 function CollapsibleDictionaryStudySection({
@@ -75,8 +81,14 @@ function DictionaryContentBlock({
 export function LifeLabNoteDictionarySections({
   content,
   noteTitle,
+  metadata,
 }: LifeLabNoteDictionarySectionsProps) {
-  const blocks = buildDictionaryNoteContentBlocks(content);
+  const blocks = buildDictionaryNoteContentBlocks(
+    suppressExactLifeLabMarkdownDuplicates(
+      suppressExactHeaderMetadataLines(content, metadata),
+      noteTitle,
+    ),
+  );
 
   return (
     <div className="space-y-3 md:space-y-4">

@@ -1,10 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Mic2 } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { LifeLabNoteImageFigure } from "@/components/life-lab/life-lab-note-image";
+import { LifeLabPodcastArtwork } from "@/components/life-lab/life-lab-podcast-artwork";
 import type { LifeLabNoteSummary } from "@/lib/life-lab/constants";
 import {
   isPodcastEpisodeNote,
@@ -71,24 +70,12 @@ function PodcastArtwork({
 }: {
   show: ReturnType<typeof parsePodcastShowIndex>;
 }) {
-  if (show.artwork) {
-    return (
-      <LifeLabNoteImageFigure
-        image={show.artwork}
-        variant="thumbnail"
-        fallbackTitle={show.title}
-        className="size-16 sm:size-[4.5rem]"
-      />
-    );
-  }
-
   return (
-    <div
-      aria-hidden="true"
-      className="flex size-16 shrink-0 items-center justify-center rounded-md border border-border/50 bg-accent-cream/20 text-muted/55 sm:size-[4.5rem]"
-    >
-      <Mic2 className="size-5" />
-    </div>
+    <LifeLabPodcastArtwork
+      image={show.artwork}
+      title={show.title}
+      className="size-20 sm:size-32"
+    />
   );
 }
 
@@ -114,15 +101,15 @@ function PodcastShowCard({
     <li>
       <Link
         href={`/life-lab/podcasts/${show.indexSlug}`}
-        className="group flex min-h-11 items-start gap-3 rounded-xl border border-border/55 bg-surface px-3 py-3 transition-colors hover:bg-accent-cream/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border"
+        className="group flex min-h-11 items-start gap-3 rounded-xl border border-border/55 bg-surface px-3 py-3 transition-colors hover:bg-accent-cream/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border sm:gap-4 sm:p-4"
       >
         <PodcastArtwork show={show} />
         <div className="min-w-0 flex-1">
-          <h2 className="line-clamp-1 text-sm font-semibold text-foreground">
+          <h2 className="line-clamp-2 text-base font-semibold text-foreground">
             {show.title}
           </h2>
           {show.description ? (
-            <p className="mt-0.5 line-clamp-2 text-sm leading-snug text-muted">
+            <p className="mt-1 line-clamp-2 text-sm leading-snug text-muted sm:line-clamp-3">
               {show.description}
             </p>
           ) : null}
@@ -285,7 +272,7 @@ export function PodcastsPageContent({
       </div>
 
       {shows.length > 0 ? (
-        <ul className="grid gap-3 sm:grid-cols-2">
+        <ul className="grid gap-3 lg:grid-cols-2">
           {shows.map((show) => (
             <PodcastShowCard key={show.indexSlug} show={show} />
           ))}

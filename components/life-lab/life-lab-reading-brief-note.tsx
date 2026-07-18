@@ -4,7 +4,11 @@ import { LifeLabReadingBriefFlashcards } from "@/components/life-lab/life-lab-re
 import { LifeLabReadingBriefGlance } from "@/components/life-lab/life-lab-reading-brief-glance";
 import { LifeLabReadingBriefSaveWorthy } from "@/components/life-lab/life-lab-reading-brief-save-worthy";
 import { MarkdownContent } from "@/components/life-lab/markdown-content";
-import type { LifeLabFlashcard, LifeLabSectionId } from "@/lib/life-lab/constants";
+import type {
+  LifeLabFlashcard,
+  LifeLabNoteMetadata,
+  LifeLabSectionId,
+} from "@/lib/life-lab/constants";
 import { extractDictionaryCandidatesSection } from "@/lib/life-lab/dictionary-candidates";
 import {
   prepareReadingBriefSegments,
@@ -12,12 +16,17 @@ import {
   shouldShowReadingBriefNav,
   type ReadingBriefSegment,
 } from "@/lib/life-lab/reading-briefs";
+import {
+  suppressExactHeaderMetadataLines,
+  suppressExactLifeLabMarkdownDuplicates,
+} from "@/lib/life-lab/note-quality";
 
 type LifeLabReadingBriefNoteProps = {
   content: string;
   sectionId: LifeLabSectionId;
   slug: string;
   title: string;
+  metadata?: LifeLabNoteMetadata;
   flashcards?: LifeLabFlashcard[];
 };
 
@@ -142,15 +151,26 @@ export function LifeLabReadingBriefNote({
   sectionId,
   slug,
   title,
+  metadata,
   flashcards = [],
 }: LifeLabReadingBriefNoteProps) {
+  const deduplicatedContent = suppressExactLifeLabMarkdownDuplicates(
+    suppressExactHeaderMetadataLines(content, metadata),
+    title,
+  );
   const usedNavAnchors = new Set<string>();
-  const dictionaryCandidates = extractDictionaryCandidatesSection(content);
-  let dictionaryCandidatesInserted = false;
+  const dictionaryCandidates = extractDictionaryCandidatesSection(
+    deduplicatedContent,
+  );
 
   const { glanceSegments, contentSegments, navSections } =
-    prepareReadingBriefSegments(content, flashcards);
-  const showNav = shouldShowReadingBriefNav(content);
+    prepareReadingBriefSegments(deduplicatedContent, flashcards);
+  const showNav = shouldShowReadingBriefNav(deduplicatedContent);
+  const dictionaryCandidatesInsertIndex = dictionaryCandidates
+    ? contentSegments.findIndex((segment) =>
+        shouldInsertDictionaryCandidatesCard(segment, false, true),
+      )
+    : -1;
 
   return (
     <div className="space-y-3 md:space-y-4">
@@ -182,15 +202,8 @@ export function LifeLabReadingBriefNote({
       )}
 
       {contentSegments.map((segment, index) => {
-        const insertDictionaryCandidates = shouldInsertDictionaryCandidatesCard(
-          segment,
-          dictionaryCandidatesInserted,
-          Boolean(dictionaryCandidates),
-        );
-
-        if (insertDictionaryCandidates) {
-          dictionaryCandidatesInserted = true;
-        }
+        const insertDictionaryCandidates =
+          index === dictionaryCandidatesInsertIndex;
 
         return (
           <div key={`${segment.kind}-${index}`} className="space-y-3 md:space-y-4">

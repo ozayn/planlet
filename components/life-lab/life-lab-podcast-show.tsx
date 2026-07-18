@@ -4,12 +4,10 @@ import Link from "next/link";
 import {
   AlertCircle,
   CheckCircle2,
-  ChevronRight,
   Clock3,
-  Mic2,
 } from "lucide-react";
 
-import { LifeLabNoteImageFigure } from "@/components/life-lab/life-lab-note-image";
+import { LifeLabPodcastArtwork } from "@/components/life-lab/life-lab-podcast-artwork";
 import type { LifeLabNote, LifeLabNoteSummary } from "@/lib/life-lab/constants";
 import { resolveLifeLabNoteImage } from "@/lib/life-lab/note-image";
 import {
@@ -17,6 +15,7 @@ import {
   type PodcastEpisodeStatus,
   type PodcastIndexEpisode,
 } from "@/lib/life-lab/podcasts";
+import { LIFE_LAB_UI_LABELS } from "@/lib/life-lab/ui-labels";
 
 type LifeLabPodcastShowProps = {
   note: LifeLabNote;
@@ -32,14 +31,14 @@ function StatusBadge({ status }: { status: PodcastEpisodeStatus }) {
         : Clock3;
   const className =
     status === "error"
-      ? "text-danger"
+      ? "border-danger/30 bg-danger/10 text-danger"
       : status === "processed"
-        ? "text-foreground/75"
-        : "text-muted";
+        ? "border-border/60 bg-accent-cream/45 text-foreground/75"
+        : "border-border/60 bg-surface text-muted";
 
   return (
     <span
-      className={`inline-flex items-center gap-1 text-xs font-medium capitalize ${className}`}
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-1 text-xs font-medium capitalize ${className}`}
     >
       <Icon className="size-3.5" aria-hidden="true" />
       {status}
@@ -85,64 +84,39 @@ function EpisodeArtwork({
     : null;
   const artwork = resolveLifeLabNoteImage(episodeNote?.metadata) ?? showArtwork;
 
-  if (artwork) {
-    return (
-      <LifeLabNoteImageFigure
-        image={artwork}
-        variant="thumbnail"
-        fallbackTitle={episode.title}
-        className="size-10"
-      />
-    );
-  }
-
   return (
-    <div
-      aria-hidden="true"
-      className="flex size-10 shrink-0 items-center justify-center rounded-md border border-border/50 bg-accent-cream/20 text-muted/50"
-    >
-      <Mic2 className="size-4" />
-    </div>
+    <LifeLabPodcastArtwork
+      image={artwork}
+      title={episode.title}
+      className="size-12"
+    />
   );
 }
 
 function EpisodeRow({
   episode,
-  relatedNotes,
-  showArtwork,
 }: {
   episode: PodcastIndexEpisode;
-  relatedNotes: LifeLabNoteSummary[];
-  showArtwork: ReturnType<typeof resolveLifeLabNoteImage>;
 }) {
   const content = (
     <>
-      <EpisodeArtwork
-        episode={episode}
-        relatedNotes={relatedNotes}
-        showArtwork={showArtwork}
-      />
       <span className="text-xs tabular-nums text-muted">
         {formatDate(episode.date)}
       </span>
-      <span className="min-w-0">
-        <span className="line-clamp-2 block text-sm font-medium text-foreground">
+      <span className="min-w-[20rem]">
+        <span className="line-clamp-3 block text-sm font-medium leading-snug text-foreground">
           {episode.title}
         </span>
       </span>
       <span className="text-xs text-muted">{episode.duration ?? "—"}</span>
       <StatusBadge status={episode.status} />
-      <span className="flex justify-end text-muted-light">
-        {episode.noteHref ? (
-          <ChevronRight className="size-4" aria-hidden="true" />
-        ) : (
-          "—"
-        )}
+      <span className="text-xs font-medium text-muted">
+        {episode.noteHref ? "Open note" : "—"}
       </span>
     </>
   );
   const className =
-    "grid grid-cols-[2.5rem_6.5rem_minmax(0,1fr)_4.5rem_5.5rem_2rem] items-center gap-3 border-b border-border/35 px-2 py-2.5 transition-colors";
+    "grid min-w-[44rem] grid-cols-[6.5rem_minmax(20rem,1fr)_5rem_6.5rem_5rem] items-center gap-3 border-b border-border/35 px-2 py-2.5 transition-colors";
 
   return episode.noteHref ? (
     <Link
@@ -213,19 +187,13 @@ export function LifeLabPodcastShow({
 
   return (
     <div className="space-y-6">
-      <header className="flex items-start gap-4">
-        {show.artwork ? (
-          <LifeLabNoteImageFigure
-            image={show.artwork}
-            variant="thumbnail"
-            fallbackTitle={show.title}
-            className="size-20 sm:size-24"
-          />
-        ) : (
-          <div className="flex size-20 shrink-0 items-center justify-center rounded-lg border border-border/50 bg-accent-cream/20 text-muted/50 sm:size-24">
-            <Mic2 className="size-7" aria-hidden="true" />
-          </div>
-        )}
+      <header className="flex items-start gap-3 sm:gap-5">
+        <LifeLabPodcastArtwork
+          image={show.artwork}
+          title={show.title}
+          className="size-24 sm:size-32"
+          eager
+        />
         <div className="min-w-0 flex-1">
           <p className="text-xs font-medium uppercase tracking-wide text-muted-light">
             Podcast series
@@ -263,7 +231,7 @@ export function LifeLabPodcastShow({
             href="/life-lab/podcasts"
             className="mt-2 inline-flex min-h-10 items-center text-xs font-medium text-muted transition-colors hover:text-foreground"
           >
-            Back to Podcasts
+            {LIFE_LAB_UI_LABELS.backToPodcasts}
           </Link>
         </div>
       </header>
@@ -272,12 +240,11 @@ export function LifeLabPodcastShow({
         <h2 className="text-sm font-medium text-muted">Episodes</h2>
         {show.episodes.length > 0 ? (
           <>
-            <div className="hidden md:block">
+            <div className="hidden overflow-x-auto md:block">
               <div
                 aria-hidden="true"
-                className="grid grid-cols-[2.5rem_6.5rem_minmax(0,1fr)_4.5rem_5.5rem_2rem] gap-3 border-b border-border/60 px-2 pb-2 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-light"
+                className="grid min-w-[44rem] grid-cols-[6.5rem_minmax(20rem,1fr)_5rem_6.5rem_5rem] gap-3 border-b border-border/60 px-2 pb-2 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-light"
               >
-                <span />
                 <span>Date</span>
                 <span>Episode</span>
                 <span>Duration</span>
@@ -288,8 +255,6 @@ export function LifeLabPodcastShow({
                 <EpisodeRow
                   key={`${episode.date ?? index}-${episode.title}`}
                   episode={episode}
-                  relatedNotes={relatedNotes}
-                  showArtwork={show.artwork}
                 />
               ))}
             </div>
