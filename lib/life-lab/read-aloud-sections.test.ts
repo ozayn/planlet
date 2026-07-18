@@ -4,8 +4,13 @@ import { describe, it } from "node:test";
 import {
   buildReadAloudSections,
   findReadAloudSectionIndex,
+  readAloudSectionsToPlainText,
 } from "@/lib/life-lab/read-aloud-sections";
 import { buildReadAloudPlaybackPlan } from "@/lib/life-lab/narration-chunks";
+import {
+  applyLifeLabSpeechDisclosureVisibility,
+  prepareLifeLabSpeechMarkdown,
+} from "@/lib/life-lab/speech-renderer";
 
 const SAMPLE_NOTE = {
   title: "Great Art Explained",
@@ -251,5 +256,212 @@ describe("read aloud sections", () => {
 
     assert.deepEqual(documentOrders, documentOrders.toSorted((left, right) => left - right));
     assert.equal(new Set(documentOrders).size, documentOrders.length);
+  });
+
+  it("reads structured values without presentation labels across note types", () => {
+    const cases = [
+      {
+        title: "Podcast note",
+        content:
+          "## Participants\n\n**Role in the episode:** Interviewer\n\n**Context:** Challenges the guest.",
+      },
+      {
+        title: "YouTube note",
+        content:
+          "## Vocabulary and phrasing\n\n**Meaning:** Political influence.\n\n**Why it is useful:** Useful for leadership.",
+      },
+      {
+        title: "Reference note",
+        content:
+          "## Details\n\n**Publication date:** July 18, 2026\n\n**Study status:** Reviewed",
+      },
+    ];
+
+    for (const fixture of cases) {
+      const spoken = readAloudSectionsToPlainText(
+        buildReadAloudSections(fixture),
+      );
+
+      assert.doesNotMatch(
+        spoken,
+        /Role in the episode|Meaning|Context|Why it is useful|Publication date|Study status/,
+      );
+    }
+
+    const combined = cases
+      .map((fixture) =>
+        readAloudSectionsToPlainText(buildReadAloudSections(fixture)),
+      )
+      .join(" ");
+    assert.match(combined, /Interviewer/);
+    assert.match(combined, /Political influence/);
+    assert.match(combined, /July 18, 2026/);
+  });
+
+  it("reads table values while omitting technical provenance", () => {
+    const speechMarkdown = prepareLifeLabSpeechMarkdown({
+      content: `## At a glance
+
+| Item | Note |
+|---|---|
+| Role in the episode | Interviewer |
+| Duration | 65 minutes |
+| Transcript source | Local Whisper transcription |`,
+    });
+    const spoken = readAloudSectionsToPlainText(
+      buildReadAloudSections({
+        title: "Podcast",
+        content: speechMarkdown,
+      }),
+    );
+
+    assert.match(spoken, /Interviewer/);
+    assert.match(spoken, /65 minutes/);
+    assert.doesNotMatch(spoken, /Local Whisper transcription/);
+    assert.doesNotMatch(
+      spoken,
+      /Role in the episode|Duration|Transcript source|Item|Note:/,
+    );
+  });
+
+  it("reads timeline timestamps naturally without table headers", () => {
+    const speechMarkdown = prepareLifeLabSpeechMarkdown({
+      content: `## Timeline
+
+| Time | Moment |
+|---|---|
+| 00:00 | Introduction |
+| 03:15 | Main argument |`,
+    });
+    const spoken = readAloudSectionsToPlainText(
+      buildReadAloudSections({
+        title: "Episode",
+        content: speechMarkdown,
+        inclusion: { timeline: true },
+      }),
+    );
+
+    assert.match(spoken, /Zero minutes\. Introduction/);
+    assert.match(spoken, /Three minutes, fifteen seconds\. Main argument/);
+    assert.doesNotMatch(spoken, /\bTime\b|\bMoment\b/);
+  });
+
+  it("reads important header values without their metadata labels", () => {
+    const sections = buildReadAloudSections({
+      title: "Episode title",
+      content: "## Summary\nReadable summary.",
+      headerValues: ["The Daily", "July 18, 2026", "65 minutes"],
+    });
+    const spoken = readAloudSectionsToPlainText(sections);
+
+    assert.match(
+      spoken,
+      /^Episode title\. The Daily\. July 18, 2026\. 65 minutes/,
+    );
+    assert.doesNotMatch(spoken, /Show|Publication date|Duration/);
+  });
+
+  it("announces a Mermaid learning map without reading its source", () => {
+    const sections = buildReadAloudSections({
+      title: "Learning note",
+      content: `## Learning Map
+
+\`\`\`mermaid
+graph TD
+A[Political capital] --> B[Policy]
+\`\`\``,
+    });
+    const spoken = readAloudSectionsToPlainText(sections);
+
+    assert.match(spoken, /Learning Map/i);
+    assert.doesNotMatch(spoken, /graph TD|Political capital.*Policy/);
+  });
+
+  it("skips collapsed sections and includes them after expansion", () => {
+    const content = `## Summary
+
+Visible summary.
+
+## Timeline
+
+- 00:00 Opening
+- 05:00 Main argument`;
+    const markdown = "## Timeline\n\n- 00:00 Opening\n- 05:00 Main argument";
+    const collapsed = applyLifeLabSpeechDisclosureVisibility(content, [
+      { id: "timeline", markdown, expanded: false },
+    ]);
+    const expanded = applyLifeLabSpeechDisclosureVisibility(content, [
+      { id: "timeline", markdown, expanded: true },
+    ]);
+
+    assert.doesNotMatch(
+      readAloudSectionsToPlainText(
+        buildReadAloudSections({
+          title: "Episode",
+          content: collapsed,
+          inclusion: { timeline: true },
+        }),
+      ),
+      /Opening|Main argument/,
+    );
+    assert.match(
+      readAloudSectionsToPlainText(
+        buildReadAloudSections({
+          title: "Episode",
+          content: expanded,
+          expandedSectionTitles: ["Timeline"],
+        }),
+      ),
+      /Opening.*Main argument/,
+    );
+  });
+
+  it("skips source notes by default and developer sections permanently", () => {
+    const sections = buildReadAloudSections({
+      title: "Note",
+      content: `## Summary
+Readable.
+
+## Source notes
+Source caveat.
+
+## Developer information
+Internal implementation detail.`,
+      expandedSectionTitles: ["Developer information"],
+    });
+    const spoken = readAloudSectionsToPlainText(sections);
+
+    assert.match(spoken, /Readable/);
+    assert.doesNotMatch(spoken, /Source caveat|Developer|Internal implementation/);
+  });
+
+  it("includes source notes only after their disclosure is expanded", () => {
+    const sections = buildReadAloudSections({
+      title: "Note",
+      content: `## Summary
+Readable.
+
+## Source notes
+Detailed provenance caveat.`,
+      expandedSectionTitles: ["Source notes"],
+    });
+
+    assert.match(
+      readAloudSectionsToPlainText(sections),
+      /Detailed provenance caveat/,
+    );
+  });
+
+  it("removes decorative section numbering from speech headings", () => {
+    const sections = buildReadAloudSections({
+      title: "Lecture",
+      content: "## Section 2: Main lessons\nA useful conclusion.",
+    });
+
+    assert.equal(sections[1]?.title, "Main lessons");
+    assert.doesNotMatch(
+      readAloudSectionsToPlainText(sections),
+      /Section 2/,
+    );
   });
 });

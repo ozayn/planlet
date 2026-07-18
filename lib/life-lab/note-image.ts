@@ -166,34 +166,39 @@ export function collectLifeLabImageDetailRows(input: {
     return [];
   }
 
-  const primary =
-    resolved.kind === "image"
-      ? input.metadata?.image
-      : input.metadata?.youtube_thumbnail;
-  const rows: LifeLabImageDetailRow[] = [];
-
-  if (primary?.title?.trim()) {
-    rows.push({ label: "Image title", value: primary.title.trim() });
-  }
-
-  if (primary?.source?.trim()) {
-    rows.push({ label: "Image source", value: primary.source.trim() });
-  }
-
-  if (primary?.credit?.trim()) {
-    rows.push({ label: "Credit", value: primary.credit.trim() });
-  }
-
-  if (primary?.license?.trim()) {
-    rows.push({ label: "License", value: primary.license.trim() });
-  }
-
-  rows.push({ label: "Image URL", value: resolved.url });
-
+  const rows = collectResolvedLifeLabImageDetailRows(resolved);
   const visualAnchorContent = input.visualAnchorContent?.trim();
 
   if (visualAnchorContent) {
     rows.push({ label: "Why this image", value: visualAnchorContent });
+  }
+
+  return rows;
+}
+
+export function collectResolvedLifeLabImageDetailRows(
+  image: ResolvedLifeLabNoteImage | null | undefined,
+): LifeLabImageDetailRow[] {
+  if (!image) {
+    return [];
+  }
+
+  const rows: LifeLabImageDetailRow[] = [];
+
+  if (image.title?.trim()) {
+    rows.push({ label: "Image title", value: image.title.trim() });
+  }
+
+  if (image.source?.trim() && !isSafeHttpUrl(image.source.trim())) {
+    rows.push({ label: "Image source", value: image.source.trim() });
+  }
+
+  if (image.credit?.trim()) {
+    rows.push({ label: "Credit", value: image.credit.trim() });
+  }
+
+  if (image.license?.trim()) {
+    rows.push({ label: "License", value: image.license.trim() });
   }
 
   return rows;

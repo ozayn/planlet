@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 
+import { useLifeLabSpeechDisclosureRegistration } from "@/components/life-lab/life-lab-speech-visibility";
 import {
   buildDictionaryCandidatesCopyPrompt,
   listDictionaryCandidateTerms,
@@ -21,6 +22,11 @@ export function LifeLabDictionaryCandidatesCard({
   compactPreview = true,
 }: LifeLabDictionaryCandidatesCardProps) {
   const [copied, setCopied] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  useLifeLabSpeechDisclosureRegistration({
+    markdown: `## ${section.title}\n\n${section.content}`,
+    expanded: !compactPreview || expanded,
+  });
   const previewItems = summarizeDictionaryCandidates(section.content);
   const candidateTerms = listDictionaryCandidateTerms(section.content);
   const copyPrompt = buildDictionaryCandidatesCopyPrompt({
@@ -80,7 +86,11 @@ export function LifeLabDictionaryCandidatesCard({
             ))}
           </ul>
         ) : (
-          <details className="ui-settings-details group">
+          <details
+            className="ui-settings-details group"
+            open={expanded}
+            onToggle={(event) => setExpanded(event.currentTarget.open)}
+          >
             <summary className="ui-settings-details-summary !py-1.5 !text-xs !normal-case !tracking-normal">
               Show candidates
             </summary>

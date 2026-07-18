@@ -17,6 +17,17 @@ import {
   suppressExactHeaderMetadataLines,
   suppressExactLifeLabMarkdownDuplicates,
 } from "@/lib/life-lab/note-quality";
+import {
+  clearLifeLabReadingPreferences,
+  DEFAULT_LIFE_LAB_READING_PREFERENCES,
+  readLifeLabReadingPreferences,
+  writeLifeLabReadingPreferences,
+} from "@/lib/life-lab/reading-preferences";
+import {
+  buildStudyTargets,
+  segmentBionicText,
+  segmentStudyText,
+} from "@/lib/life-lab/reading-text";
 
 describe("life lab markdown display", () => {
   it("recognizes hidden section titles case-insensitively", () => {
@@ -308,5 +319,111 @@ Additional caveats about proper-name accuracy remain visible.`;
     assert.match(labels, /showFullTimeline: "Show full timeline"/);
     assert.match(episode, /LIFE_LAB_UI_LABELS\.openOriginalEpisode/);
     assert.match(episode, /LIFE_LAB_UI_LABELS\.showFullTimeline/);
+  });
+
+  it("segments conservative Bionic prose without changing readable text", () => {
+    const source =
+      "A readable paragraph, Planlet links https://example.com, and tiny words.";
+    const segments = segmentBionicText(source);
+
+    assert.equal(segments.map((segment) => segment.text).join(""), source);
+    assert.ok(
+      segments.some(
+        (segment) => segment.emphasized && segment.text === "rea",
+      ),
+    );
+    assert.equal(
+      segments.some(
+        (segment) =>
+          segment.emphasized &&
+          /Planlet|https|tiny\b/.test(segment.text),
+      ),
+      false,
+    );
+  });
+
+  it("leaves Persian and mixed RTL text untouched in Bionic mode", () => {
+    const source = "این متن فارسی includes English words safely.";
+    const segments = segmentBionicText(source);
+
+    assert.deepEqual(segments, [{ text: source, emphasized: false }]);
+  });
+
+  it("uses semantic metadata only for Study emphasis", () => {
+    const source =
+      "Zohran Mamdani discussed democratic socialism with the City Council and آزادی.";
+    const targets = buildStudyTargets({
+      term: "آزادی",
+      concepts: ["democratic socialism"],
+      people: ["Zohran Mamdani"],
+      organizations: ["City Council"],
+    });
+    const segments = segmentStudyText(source, targets);
+
+    assert.equal(segments.map((segment) => segment.text).join(""), source);
+    assert.deepEqual(
+      segments
+        .filter((segment) => segment.target)
+        .map((segment) => segment.target?.kind),
+      ["person", "concept", "organization", "term"],
+    );
+  });
+
+  it("persists and resets shared Life Lab reading preferences", () => {
+    const values = new Map<string, string>();
+    const storage = {
+      getItem(key: string) {
+        return values.get(key) ?? null;
+      },
+      setItem(key: string, value: string) {
+        values.set(key, value);
+      },
+      removeItem(key: string) {
+        values.delete(key);
+      },
+    };
+    const preferences = {
+      ...DEFAULT_LIFE_LAB_READING_PREFERENCES,
+      readingMode: "focus" as const,
+      readingFontSize: "large" as const,
+      readingHighContrast: true,
+    };
+
+    writeLifeLabReadingPreferences(storage, preferences);
+    assert.deepEqual(readLifeLabReadingPreferences(storage), preferences);
+    clearLifeLabReadingPreferences(storage);
+    assert.deepEqual(
+      readLifeLabReadingPreferences(storage),
+      DEFAULT_LIFE_LAB_READING_PREFERENCES,
+    );
+  });
+
+  it("wires shared controls, clean speech, responsive modes, and normal print", () => {
+    const root = join(import.meta.dirname, "../..");
+    const page = readFileSync(
+      join(root, "app/(app)/life-lab/[section]/[slug]/page.tsx"),
+      "utf8",
+    );
+    const markdown = readFileSync(
+      join(root, "components/life-lab/markdown-content.tsx"),
+      "utf8",
+    );
+    const speech = readFileSync(
+      join(root, "lib/life-lab/speech-renderer.ts"),
+      "utf8",
+    );
+    const styles = readFileSync(join(root, "app/globals.css"), "utf8");
+
+    assert.match(page, /<LifeLabReadingModeProvider metadata=\{note\.metadata\}>/);
+    assert.match(page, /<LifeLabReadingControls \/>/);
+    assert.match(markdown, /mode=\{readingMode\}/);
+    assert.doesNotMatch(speech, /ReadableText|ui-bionic-prefix/);
+    assert.match(styles, /\.ui-reading-controls-panel[\s\S]*?width: min/);
+    assert.match(styles, /data-reading-mode="comfortable"/);
+    assert.match(styles, /data-reading-mode="dense"/);
+    assert.match(
+      styles,
+      /@media print[\s\S]*?\.ui-bionic-prefix[\s\S]*?font-weight: inherit/,
+    );
   });
 });

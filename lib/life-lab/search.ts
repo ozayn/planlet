@@ -1,5 +1,4 @@
 import type { LifeLabNoteMetadata, LifeLabNoteSummary } from "@/lib/life-lab/constants";
-import { relativePathFilename } from "@/lib/life-lab/slug";
 import { normalizeSearchText } from "@/lib/text-direction";
 
 function metadataSearchValues(metadata: LifeLabNoteMetadata): string[] {
@@ -14,9 +13,6 @@ function metadataSearchValues(metadata: LifeLabNoteMetadata): string[] {
     metadata.episode_title,
     metadata.publication_date,
     metadata.duration,
-    metadata.transcription_method,
-    metadata.note_profile,
-    metadata.input_source,
     metadata.language,
     metadata.channel,
     metadata.channelName,
@@ -46,7 +42,6 @@ function metadataSearchValues(metadata: LifeLabNoteMetadata): string[] {
     metadata.tags,
     metadata.related,
     metadata.aliases,
-    metadata.source_notes,
   ]) {
     if (list) {
       values.push(...list);
@@ -62,12 +57,8 @@ export function buildNoteSearchText(
     "title" | "slug" | "relativePath" | "subfolderLabel" | "metadata" | "searchText"
   >,
 ): string {
-  const filename = relativePathFilename(note.relativePath || `${note.slug}.md`);
   const parts = [
     note.title,
-    filename,
-    note.slug,
-    note.relativePath,
     note.subfolderLabel,
     note.searchText,
     ...metadataSearchValues(note.metadata ?? {}),

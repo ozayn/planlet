@@ -41,7 +41,10 @@ export type LegacyNarrationPlaybackChunk = NarrationPlaybackChunk & {
  * NOTE_TITLE (and any section whose body repeats the title) speaks once.
  */
 export function buildSectionNarrationSpeechText(
-  section: Pick<ReadAloudSection, "title" | "text" | "category">,
+  section: Pick<
+    ReadAloudSection,
+    "title" | "text" | "category" | "speakTitle"
+  >,
 ): string {
   const title = section.title.trim();
   const body = section.text.trim();
@@ -56,6 +59,10 @@ export function buildSectionNarrationSpeechText(
     }
 
     return `${title}. ${body}`;
+  }
+
+  if (section.speakTitle === false) {
+    return body;
   }
 
   if (!title) {

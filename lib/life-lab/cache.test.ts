@@ -174,7 +174,7 @@ describe("life lab listing cache keys", () => {
     );
     assert.equal(
       lifeLabListingMetadataCacheKey(fileId),
-      "life-lab-listing-metadata:v3-rb-collections:drive-file-1",
+      "life-lab-listing-metadata:v4-technical-filter:drive-file-1",
     );
     assert.equal(
       lifeLabPlaylistAssetsBundleCacheKey({

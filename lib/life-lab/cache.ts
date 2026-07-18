@@ -11,7 +11,7 @@ export const LIFE_LAB_SECTION_FILE_INDEX_CACHE_VERSION = "v8-podcasts";
 export const LIFE_LAB_NOTE_PAYLOAD_CACHE_VERSION = "v6-podcasts";
 
 /** Bump when browse listing metadata (thumbnail/source fields) shape changes. */
-export const LIFE_LAB_LISTING_METADATA_CACHE_VERSION = "v3-rb-collections";
+export const LIFE_LAB_LISTING_METADATA_CACHE_VERSION = "v4-technical-filter";
 
 export function lifeLabSectionPlaylistsCacheTag(sectionId: string): string {
   return `life-lab:playlists:${sectionId}`;

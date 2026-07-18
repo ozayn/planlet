@@ -7,6 +7,7 @@ import {
   type ReadAloudSessionStorage,
 } from "@/components/read-aloud/read-aloud-listen-player";
 import type { LifeLabReadAloudPreferences } from "@/lib/life-lab/read-aloud-preferences";
+import type { LifeLabNoteMetadata } from "@/lib/life-lab/constants";
 import { buildReadAloudPlaybackPlan } from "@/lib/life-lab/narration-chunks";
 import { buildReadAloudSectionsFromNote } from "@/lib/life-lab/narration-text";
 import {
@@ -15,6 +16,7 @@ import {
   writeStoredResumeSectionId,
   writeStoredStartSectionId,
 } from "@/lib/life-lab/read-aloud-session";
+import { buildLifeLabSpeechHeaderValues } from "@/lib/life-lab/speech-renderer";
 import {
   formatSpeechRate,
   SPEECH_RATE_OPTIONS,
@@ -24,6 +26,8 @@ import {
 type LifeLabListenPlayerProps = {
   title: string;
   content: string;
+  metadata?: LifeLabNoteMetadata;
+  expandedSectionTitles?: string[];
   sectionId: string;
   slug: string;
   fileId: string;
@@ -44,6 +48,8 @@ const lifeLabSessionStorage: ReadAloudSessionStorage = {
 export function LifeLabListenPlayer({
   title,
   content,
+  metadata,
+  expandedSectionTitles = [],
   sectionId,
   slug,
   fileId,
@@ -57,12 +63,22 @@ export function LifeLabListenPlayer({
     const sections = buildReadAloudSectionsFromNote({
       title,
       content,
+      headerValues: buildLifeLabSpeechHeaderValues(metadata),
+      expandedSectionTitles,
+      metadata,
       includeFlashcards,
       inclusion: preferences.readAloudSectionInclusion,
     });
 
     return buildReadAloudPlaybackPlan(sections);
-  }, [title, content, includeFlashcards, preferences.readAloudSectionInclusion]);
+  }, [
+    title,
+    content,
+    includeFlashcards,
+    metadata,
+    expandedSectionTitles,
+    preferences.readAloudSectionInclusion,
+  ]);
 
   return (
     <ReadAloudListenPlayer

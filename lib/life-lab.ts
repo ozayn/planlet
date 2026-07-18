@@ -83,6 +83,8 @@ import {
 import { isLifeLabDevToolsEnabled } from "@/lib/life-lab/dev";
 import {
   downloadDriveFile,
+  downloadDriveFileBytes,
+  findDriveFileByRelativePath,
   getLifeLabDriveCredentials,
   LifeLabDriveError,
   listDriveChildren,
@@ -2119,6 +2121,85 @@ export async function getLifeLabRawMarkdown(
     content,
     filename: relativePathFilename(record.relativePath),
   };
+}
+
+export type LifeLabDiagramAsset = {
+  bytes: Uint8Array;
+  contentType: string;
+  filename: string;
+};
+
+export async function getLifeLabDiagramAsset(
+  sectionId: string,
+  slug: string,
+  assetName: string,
+  format: "png" | "svg" | "mmd",
+): Promise<LifeLabDiagramAsset | null> {
+  if (
+    !isLifeLabSectionId(sectionId) ||
+    isLifeLabSectionBlocked(sectionId) ||
+    !/^[a-z0-9][a-z0-9_-]{0,80}$/i.test(assetName)
+  ) {
+    return null;
+  }
+
+  const record = await resolveLifeLabNoteRecord(sectionId, slug);
+  const credentials = getLifeLabDriveCredentials();
+  const mapResult = await getSectionFolderMap();
+
+  if (!record || !credentials || !mapResult.ok) {
+    return null;
+  }
+
+  const sectionFolderId = resolveLifeLabFolderMap(mapResult)?.get(sectionId);
+
+  if (!sectionFolderId) {
+    return null;
+  }
+
+  const relativePath = record.relativePath.replace(/\\/g, "/");
+  const parts = relativePath.split("/");
+  const filename = parts.pop() ?? "";
+  const directory = parts.join("/");
+  const noteStem = filename.replace(/\.[^.]+$/, "");
+  const directories = new Set<string>([
+    [directory, noteStem, "assets"].filter(Boolean).join("/"),
+    [directory, "assets"].filter(Boolean).join("/"),
+  ]);
+
+  if (parts.at(-1)?.toLowerCase() === "episodes") {
+    directories.add([...parts.slice(0, -1), "assets"].join("/"));
+  }
+
+  for (const assetDirectory of directories) {
+    const assetPath = [assetDirectory, `${assetName}.${format}`]
+      .filter(Boolean)
+      .join("/");
+    const file = await findDriveFileByRelativePath(
+      credentials,
+      sectionFolderId,
+      assetPath,
+    );
+
+    if (!file) {
+      continue;
+    }
+
+    const contentType =
+      format === "png"
+        ? "image/png"
+        : format === "svg"
+          ? "image/svg+xml"
+          : "text/plain;charset=utf-8";
+
+    return {
+      bytes: await downloadDriveFileBytes(credentials, file.id),
+      contentType,
+      filename: `${assetName}.${format}`,
+    };
+  }
+
+  return null;
 }
 
 function recordsToStudyCards(

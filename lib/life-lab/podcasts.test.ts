@@ -12,6 +12,10 @@ import {
   parsePodcastShowIndex,
   resolvePodcastNoteRelativePath,
 } from "@/lib/life-lab/podcasts";
+import {
+  parseLifeLabTimeline,
+  timelineTimestampToSpeech,
+} from "@/lib/life-lab/timeline";
 
 function note(
   partial: Partial<LifeLabNoteSummary> &
@@ -245,5 +249,33 @@ describe("podcast timeline disclosure", () => {
     assert.equal(result.itemCount, 4);
     assert.match(result.preview, /Three/);
     assert.doesNotMatch(result.preview, /Four/);
+  });
+
+  it("parses short timestamps and preserves long descriptions", () => {
+    const description =
+      "Introduction: Mamdani's early mayoral wins and the political context around them.";
+    const items = parseLifeLabTimeline(`| Time | Moment |
+|---|---|
+| 00:00 | ${description} |
+| 03:00 | Trump-amplified deportation rhetoric |
+| 07:00 | Democratic socialism defended |`);
+
+    assert.deepEqual(items[0], { timestamp: "00:00", description });
+    assert.equal(items.length, 3);
+  });
+
+  it("parses list timelines and speaks timestamps naturally", () => {
+    assert.deepEqual(
+      parseLifeLabTimeline("- **00:00** — Introduction\n- 03:15 Main argument"),
+      [
+        { timestamp: "00:00", description: "Introduction" },
+        { timestamp: "03:15", description: "Main argument" },
+      ],
+    );
+    assert.equal(timelineTimestampToSpeech("00:00"), "Zero minutes.");
+    assert.equal(
+      timelineTimestampToSpeech("03:15"),
+      "Three minutes, fifteen seconds.",
+    );
   });
 });

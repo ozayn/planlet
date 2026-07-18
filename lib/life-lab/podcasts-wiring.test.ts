@@ -57,10 +57,17 @@ describe("podcasts Life Lab wiring", () => {
     assert.match(episode, /LIFE_LAB_UI_LABELS\.openOriginalEpisode/);
     assert.match(episode, /<LifeLabNoteListen/);
     assert.match(episode, /LIFE_LAB_UI_LABELS\.showFullTimeline/);
+    assert.match(episode, /<LifeLabTimeline content=\{content\}/);
     assert.match(episode, /aria-expanded=\{expanded\}/);
-    assert.match(episode, /Source notes/);
+    assert.doesNotMatch(episode, /LIFE_LAB_UI_LABELS\.sourceNotes/);
     assert.doesNotMatch(episode, />\{sourceUrl\}</);
     assert.match(detailPage, /showDevTools &&/);
+    assert.match(detailPage, /developerMode=\{showDevTools\}/);
+    assert.match(detailPage, /resolveLifeLabImagePlacement/);
+    assert.match(detailPage, /image=\{imagePlacement\.leadImage!\}/);
+    assert.match(detailPage, /artwork=\{imagePlacement\.headerImage\}/);
+    assert.match(episode, /flex-col[\s\S]*?sm:flex-row/);
+    assert.match(episode, /size-24 sm:size-40 lg:size-44/);
   });
 
   it("uses an image failure fallback and responsive Mermaid wrapper", () => {
@@ -69,12 +76,33 @@ describe("podcasts Life Lab wiring", () => {
       "utf8",
     );
     const styles = readFileSync(join(root, "app/globals.css"), "utf8");
+    const noteImage = readFileSync(
+      join(root, "components/life-lab/life-lab-note-image.tsx"),
+      "utf8",
+    );
 
     assert.match(artwork, /onError=\{\(\) => setFailedUrl\(image\.url\)\}/);
     assert.match(artwork, /Podcast artwork placeholder/);
     assert.match(artwork, /object-cover/);
     assert.match(styles, /\.ui-mermaid-svg[\s\S]*?max-width: 100%/);
     assert.match(styles, /\.ui-mermaid-scroll[\s\S]*?overflow-x: auto/);
-    assert.match(styles, /\.ui-mermaid-expand-btn[\s\S]*?display: inline-flex/);
+    assert.match(styles, /\.ui-diagram-toolbar[\s\S]*?display: flex/);
+    assert.doesNotMatch(noteImage, /<figcaption/);
+    assert.match(
+      styles,
+      /\.ui-timeline-time-column[\s\S]*?width: 5\.5rem/,
+    );
+    assert.match(
+      styles,
+      /\.ui-timeline-time[\s\S]*?font-variant-numeric: tabular-nums[\s\S]*?white-space: nowrap/,
+    );
+    assert.match(
+      styles,
+      /@media \(max-width: 520px\)[\s\S]*?\.ui-timeline-table tr[\s\S]*?display: grid/,
+    );
+    assert.match(
+      styles,
+      /@media print[\s\S]*?\.ui-timeline-table[\s\S]*?display: table/,
+    );
   });
 });

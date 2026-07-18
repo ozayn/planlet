@@ -99,6 +99,7 @@ export function LifeLabReadingBriefHeader({
         <LifeLabNoteListen
           title={note.title}
           content={note.content}
+          metadata={note.metadata}
           sectionId={sectionId}
           slug={note.slug}
           fileId={note.fileId}

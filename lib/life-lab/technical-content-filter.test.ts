@@ -13,7 +13,9 @@ import {
   extractTechnicalProvenanceForDebug,
   prepareLifeLabMarkdownForReading,
 } from "@/lib/life-lab/markdown-display";
+import { parseLifeLabFrontmatter } from "@/lib/life-lab/frontmatter";
 import { buildNarrationDocument } from "@/lib/life-lab/narration-text";
+import { buildNoteSearchText } from "@/lib/life-lab/search";
 import { prepareNoteSpeechText } from "@/lib/life-lab/speech";
 import { markdownExcerpt } from "@/lib/life-lab/slug";
 
@@ -165,5 +167,118 @@ describe("life lab technical content filtering", () => {
     assert.match(split.visible, /Visible/);
     assert.equal(split.hidden.length, 1);
     assert.equal(stripTechnicalMetadataFromMarkdown(SOURCE_LIMITATION), "");
+  });
+
+  it("removes implementation rows without hiding reader-facing metadata", () => {
+    const body = [
+      "## At a glance",
+      "",
+      "| Field | Value |",
+      "| --- | --- |",
+      "| Show | The Daily |",
+      "| Transcript source | Local Whisper transcription |",
+      "| Whisper model | large-v3 |",
+      "| Chunk count | 14 |",
+      "| Publication date | 2026-07-18 |",
+      "",
+      "## Summary",
+      "",
+      "A reader-facing explanation.",
+      "",
+      "Note: Local Whisper transcription was generated from an optimized 16 kHz mono file.",
+      "",
+      "Working folder: /tmp/life-lab/video-intake/_working/episode-42",
+    ].join("\n");
+
+    const prepared = prepareLifeLabMarkdownForReading(body);
+    const hidden = extractTechnicalProvenanceForDebug(body);
+
+    assert.match(prepared, /The Daily/);
+    assert.match(prepared, /Publication date/);
+    assert.match(prepared, /reader-facing explanation/);
+    assert.doesNotMatch(prepared, /Transcript source|Whisper model|Chunk count/i);
+    assert.doesNotMatch(prepared, /Local Whisper|Working folder|16 kHz/i);
+    assert.ok(hidden.some((entry) => /Transcript source/i.test(entry)));
+    assert.ok(hidden.some((entry) => /Working folder/i.test(entry)));
+  });
+
+  it("keeps technical details out of search indexes", () => {
+    const searchText = buildNoteSearchText({
+      title: "A visible title",
+      slug: "internal-episode-id-991",
+      relativePath: "_working/internal-episode-id-991.md",
+      subfolderLabel: "Podcasts",
+      searchText: "Reader-facing summary",
+      metadata: {
+        transcription_method: "Local Whisper transcription",
+        note_profile: "internal-pipeline-v4",
+        input_source: "rss-retrieval-job",
+        source_notes: ["audio optimized to 16 kHz mono"],
+      },
+    });
+
+    assert.match(searchText, /visible title/);
+    assert.match(searchText, /reader-facing summary/);
+    assert.doesNotMatch(searchText, /whisper|pipeline|rss-retrieval|16 khz/i);
+    assert.doesNotMatch(searchText, /internal-episode-id|_working/i);
+  });
+
+  it("never includes Technical details in narration", () => {
+    const content = [
+      "## Summary",
+      "",
+      "Visible summary.",
+      "",
+      "## Technical details",
+      "",
+      "Whisper model: large-v3",
+    ].join("\n");
+
+    const speech = prepareNoteSpeechText("Sample", content);
+
+    assert.match(speech, /Visible summary/);
+    assert.doesNotMatch(speech, /Technical details|Whisper model|large-v3/i);
+  });
+
+  it("collects frontmatter provenance once and hides expanded variants", () => {
+    const parsed = parseLifeLabFrontmatter(`---
+transcription_method: Local Whisper transcription
+chunk_count: 14
+working_folder: /tmp/big-audio/episode-42
+---
+## At a glance
+
+| Field | Value |
+| --- | --- |
+| Topic | Monetary policy |
+| Transcription method | Local Whisper transcription |
+| Big Audio | enabled |
+| Chunk processing | 14 chunks |
+
+## Processing metadata
+
+Internal ID: episode-42`);
+    const prepared = prepareLifeLabMarkdownForReading(parsed.body);
+    const hidden = extractTechnicalProvenanceForDebug(
+      parsed.body,
+      parsed.technicalProvenance,
+    );
+
+    assert.match(prepared, /Monetary policy/);
+    assert.doesNotMatch(
+      prepared,
+      /Local Whisper|Big Audio|Chunk processing|Internal ID/i,
+    );
+    assert.equal(
+      hidden.filter((entry) => /Local Whisper transcription/i.test(entry))
+        .length,
+      1,
+    );
+    assert.ok(
+      hidden.some(
+        (entry) => /Chunk processing/i.test(entry) && /\b14\b/.test(entry),
+      ),
+    );
+    assert.ok(hidden.some((entry) => /Working folder:/i.test(entry)));
   });
 });

@@ -4,7 +4,6 @@ import { useState } from "react";
 
 import type { LifeLabNoteImage } from "@/lib/life-lab/constants";
 import {
-  buildLifeLabImageCaption,
   lifeLabNoteImageAlt,
   type ResolvedLifeLabNoteImage,
 } from "@/lib/life-lab/note-image";
@@ -32,8 +31,6 @@ export function LifeLabNoteImageFigure({
     fallbackTitle,
     isYoutubeThumbnail: image.kind === "youtube_thumbnail",
   });
-  const caption = variant === "detail" ? buildLifeLabImageCaption(image) : null;
-
   if (variant === "thumbnail") {
     return (
       <div
@@ -55,7 +52,7 @@ export function LifeLabNoteImageFigure({
   }
 
   return (
-    <figure className={className ?? "space-y-1"}>
+    <figure className={className}>
       <div className="overflow-hidden rounded-xl border border-border/60 bg-accent-cream/10">
         {/* eslint-disable-next-line @next/next/no-img-element -- external representative URLs vary by note */}
         <img
@@ -66,11 +63,6 @@ export function LifeLabNoteImageFigure({
           className="mx-auto max-h-[min(38dvh,260px)] w-full object-contain"
         />
       </div>
-      {caption ? (
-        <figcaption className="line-clamp-1 text-[0.6875rem] leading-snug text-muted-light">
-          {caption}
-        </figcaption>
-      ) : null}
     </figure>
   );
 }

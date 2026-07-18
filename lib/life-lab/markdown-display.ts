@@ -273,12 +273,39 @@ export function extractTechnicalProvenanceForDebug(
     .map((section) => `## ${section.title}\n\n${section.content}`.trim());
   const hiddenParagraphs = collectHiddenTechnicalContent(body);
 
-  return [
+  const entries = [
     ...frontmatterNotes,
     ...hiddenBlocks,
     ...hiddenSections,
     ...hiddenParagraphs,
   ].filter((entry, index, all) => all.indexOf(entry) === index);
+  const normalized = entries.map((entry) =>
+    entry
+      .toLowerCase()
+      .replace(/<!--[\s\S]*?-->/g, " ")
+      .replace(/[#*_|`~:\[\]()-]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim(),
+  );
+
+  return entries.filter((_, index) => {
+    const value = normalized[index];
+
+    if (!value) {
+      return false;
+    }
+
+    if (normalized.indexOf(value) !== index) {
+      return false;
+    }
+
+    return !normalized.some(
+      (candidate, candidateIndex) =>
+        candidateIndex !== index &&
+        candidate.length > value.length &&
+        candidate.includes(value),
+    );
+  });
 }
 
 export function prepareLifeLabMarkdownForReading(body: string): string {

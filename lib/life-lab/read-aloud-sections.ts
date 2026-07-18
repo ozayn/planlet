@@ -1,4 +1,5 @@
 import { isHiddenTechnicalHeading } from "@/lib/life-lab/hidden-markdown-sections";
+import type { LifeLabNoteMetadata } from "@/lib/life-lab/constants";
 import { prepareLifeLabMarkdownForReading } from "@/lib/life-lab/markdown-display";
 import { isSameNarrationTitle } from "@/lib/life-lab/narration-title";
 import {
@@ -6,6 +7,10 @@ import {
   plainTextToSpeechText,
   sanitizeSpeechText,
 } from "@/lib/life-lab/speech";
+import {
+  isLifeLabSpeechPresentationLabel,
+  prepareLifeLabSpeechMarkdown,
+} from "@/lib/life-lab/speech-renderer";
 
 const MERMAID_BLOCK_PATTERN = /```mermaid[\s\S]*?```/gi;
 const CODE_BLOCK_PATTERN = /```[\s\S]*?```/g;
@@ -38,6 +43,8 @@ export type ReadAloudSection = {
   order: number;
   /** Encounter order in the source document before inclusion filtering. */
   documentOrder: number;
+  /** Whether the visual section title should be spoken before its value. */
+  speakTitle?: boolean;
   category: ReadAloudSectionCategory;
 };
 
@@ -75,10 +82,18 @@ export type BuildReadAloudSectionsInput = {
   content: string;
   flashcards?: Array<{ question: string; answer: string }>;
   inclusion?: Partial<ReadAloudSectionInclusionPrefs>;
+  headerValues?: string[];
+  expandedSectionTitles?: string[];
+  metadata?: LifeLabNoteMetadata;
 };
 
-const SKIPPED_SECTION_PATTERNS = [
+const EXPANDABLE_SKIPPED_SECTION_PATTERNS = [
   /^source\s*notes?$/i,
+  /^sources?$/i,
+  /^transcript\s*notes?$/i,
+] as const;
+
+const SKIPPED_SECTION_PATTERNS = [
   /^developer information$/i,
   /^processing notes$/i,
   /^internal metadata$/i,
@@ -121,6 +136,12 @@ function normalizeHeadingTitle(value: string): string {
     .replace(/[:#]+$/, "")
     .replace(/\s+/g, " ")
     .toLowerCase();
+}
+
+function stripSectionNumbering(value: string): string {
+  return value
+    .replace(/^(?:section\s+)?\d+(?:[.)]|\s*[-:])\s*/i, "")
+    .trim();
 }
 
 /**
@@ -192,11 +213,22 @@ export function categorizeReadAloudSectionTitle(
   return "OTHER";
 }
 
-function shouldSkipSectionTitle(title: string): boolean {
+function shouldSkipSectionTitle(
+  title: string,
+  explicitlyExpanded = false,
+): boolean {
   const normalized = title.trim();
 
   if (!normalized) {
     return true;
+  }
+
+  if (
+    EXPANDABLE_SKIPPED_SECTION_PATTERNS.some((pattern) =>
+      pattern.test(normalized),
+    )
+  ) {
+    return !explicitlyExpanded;
   }
 
   if (isHiddenTechnicalHeading(normalized)) {
@@ -244,9 +276,33 @@ function isCategoryIncluded(
 function cleanSectionBody(body: string): string {
   return markdownToSpeechText(
     body
-      .replace(MERMAID_BLOCK_PATTERN, " ")
+      .replace(MERMAID_BLOCK_PATTERN, "Learning map.")
       .replace(CODE_BLOCK_PATTERN, " ")
       .replace(FLASHCARD_SECTION_PATTERN, " "),
+  );
+}
+
+function extractExpandedSourceSections(
+  content: string,
+  expandedSectionTitles: Set<string>,
+): string[] {
+  return [...content.matchAll(/^##\s+(.+?)\s*$/gm)].flatMap(
+    (match, index, all) => {
+      const title = match[1]?.trim() ?? "";
+
+      if (
+        !expandedSectionTitles.has(normalizeHeadingTitle(title)) ||
+        !EXPANDABLE_SKIPPED_SECTION_PATTERNS.some((pattern) =>
+          pattern.test(title),
+        )
+      ) {
+        return [];
+      }
+
+      const start = match.index ?? 0;
+      const end = all[index + 1]?.index ?? content.length;
+      return [content.slice(start, end).trim()];
+    },
   );
 }
 
@@ -277,11 +333,15 @@ function createStableSectionIds(
   });
 }
 
-function splitMarkdownSections(content: string): Array<{
+function splitMarkdownSections(
+  content: string,
+  expandedSectionTitles: Set<string> = new Set(),
+): Array<{
   title: string;
   text: string;
   category: ReadAloudSectionCategory;
   documentOrder: number;
+  speakTitle: boolean;
 }> {
   const normalized = content.replace(/\r\n/g, "\n").trim();
 
@@ -295,6 +355,7 @@ function splitMarkdownSections(content: string): Array<{
     text: string;
     category: ReadAloudSectionCategory;
     documentOrder: number;
+    speakTitle: boolean;
   }> = [];
   let currentTitle = "";
   let currentLines: string[] = [];
@@ -314,6 +375,7 @@ function splitMarkdownSections(content: string): Array<{
         text,
         category: categorizeReadAloudSectionTitle(currentTitle),
         documentOrder: nextDocumentOrder,
+        speakTitle: !isLifeLabSpeechPresentationLabel(currentTitle),
       });
       nextDocumentOrder += 1;
     }
@@ -326,9 +388,16 @@ function splitMarkdownSections(content: string): Array<{
 
     if (headingMatch) {
       pushCurrentSection();
-      currentTitle = headingMatch[2]?.trim() || "Untitled section";
+      currentTitle =
+        stripSectionNumbering(headingMatch[2]?.trim() ?? "") ||
+        "Untitled section";
 
-      if (shouldSkipSectionTitle(currentTitle)) {
+      if (
+        shouldSkipSectionTitle(
+          currentTitle,
+          expandedSectionTitles.has(normalizeHeadingTitle(currentTitle)),
+        )
+      ) {
         currentTitle = "";
         currentLines = [];
         continue;
@@ -398,15 +467,48 @@ export function buildReadAloudSections(
 ): ReadAloudSection[] {
   const inclusion = resolveInclusion(input.inclusion);
   const documentTitle = sanitizeSpeechText(input.title.trim());
-  const prepared = prepareLifeLabMarkdownForReading(input.content);
+  const expandedSectionTitles = new Set(
+    (input.expandedSectionTitles ?? []).map(normalizeHeadingTitle),
+  );
+  const speechMarkdown = prepareLifeLabSpeechMarkdown({
+    content: input.content,
+    metadata: input.metadata,
+  });
+  let prepared = prepareLifeLabMarkdownForReading(speechMarkdown);
+  const expandedSourceSections = extractExpandedSourceSections(
+    speechMarkdown,
+    expandedSectionTitles,
+  );
+
+  for (const section of expandedSourceSections) {
+    const title = section.match(/^##\s+(.+?)\s*$/m)?.[1]?.trim();
+
+    if (
+      title &&
+      !new RegExp(
+        `^##\\s+${title.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*$`,
+        "im",
+      ).test(prepared)
+    ) {
+      prepared = `${prepared.trim()}\n\n${section}`.trim();
+    }
+  }
   const { content: contentWithoutMatchingH1, matchingH1Body } =
     stripMatchingDocumentTitleHeading(prepared, documentTitle);
-  const markdownSections = splitMarkdownSections(contentWithoutMatchingH1);
+  const markdownSections = splitMarkdownSections(
+    contentWithoutMatchingH1,
+    expandedSectionTitles,
+  );
 
   // If stripping failed to apply but the first parsed section title matches,
   // drop that section's heading echo (keep body as title preamble when needed).
   let bodySections = markdownSections;
-  let titlePreamble = matchingH1Body;
+  const headerValues = (input.headerValues ?? [])
+    .map((value) => sanitizeSpeechText(value))
+    .filter(Boolean);
+  let titlePreamble = [matchingH1Body, ...headerValues]
+    .filter(Boolean)
+    .join(". ");
 
   if (
     bodySections[0] &&
@@ -436,6 +538,7 @@ export function buildReadAloudSections(
       text: titlePreamble,
       category: "NOTE_TITLE",
       documentOrder: 0,
+      speakTitle: true,
     });
   }
 
@@ -445,6 +548,7 @@ export function buildReadAloudSections(
       text: section.text,
       category: section.category,
       documentOrder: section.documentOrder + titleOffset,
+      speakTitle: section.speakTitle,
     });
   }
 
@@ -458,11 +562,14 @@ export function buildReadAloudSections(
       text: flashcardSection.text,
       category: flashcardSection.category,
       documentOrder: titleOffset + bodySections.length,
+      speakTitle: true,
     });
   }
 
-  const filtered = draft.filter((section) =>
-    isCategoryIncluded(section.category, inclusion),
+  const filtered = draft.filter(
+    (section) =>
+      expandedSectionTitles.has(normalizeHeadingTitle(section.title)) ||
+      isCategoryIncluded(section.category, inclusion),
   );
 
   const ids = createStableSectionIds(filtered);
@@ -527,6 +634,10 @@ export function readAloudSectionsToPlainText(sections: ReadAloudSection[]): stri
         }
 
         return `${section.title}. ${section.text}`;
+      }
+
+      if (section.speakTitle === false) {
+        return section.text;
       }
 
       if (!section.text.trim()) {

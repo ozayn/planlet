@@ -1,9 +1,14 @@
+"use client";
+
+import { useState } from "react";
+
 import { LifeLabCollapsibleTranscript } from "@/components/life-lab/life-lab-collapsible-transcript";
 import { LifeLabDictionaryCandidatesCard } from "@/components/life-lab/life-lab-dictionary-candidates-card";
 import { LifeLabReadingBriefFlashcards } from "@/components/life-lab/life-lab-reading-brief-flashcards";
 import { LifeLabReadingBriefGlance } from "@/components/life-lab/life-lab-reading-brief-glance";
 import { LifeLabReadingBriefSaveWorthy } from "@/components/life-lab/life-lab-reading-brief-save-worthy";
 import { MarkdownContent } from "@/components/life-lab/markdown-content";
+import { useLifeLabSpeechDisclosureRegistration } from "@/components/life-lab/life-lab-speech-visibility";
 import type {
   LifeLabFlashcard,
   LifeLabNoteMetadata,
@@ -64,13 +69,22 @@ function CollapsibleReadingBriefSection({
     anchor && !usedAnchors.has(anchor)
       ? (usedAnchors.add(anchor), anchor)
       : undefined;
+  const [expanded, setExpanded] = useState(false);
+  useLifeLabSpeechDisclosureRegistration({
+    markdown: `## ${heading}\n\n${segment.content}`,
+    expanded,
+  });
 
   return (
     <section
       id={anchorId}
       className={anchorId ? "scroll-mt-[calc(3.25rem+env(safe-area-inset-top)+2.5rem)] md:scroll-mt-20" : undefined}
     >
-      <details className="ui-settings-details group">
+      <details
+        className="ui-settings-details group"
+        open={expanded}
+        onToggle={(event) => setExpanded(event.currentTarget.open)}
+      >
         <summary className="ui-settings-details-summary !text-sm !normal-case !tracking-normal">
           <span className="font-semibold text-foreground">{heading}</span>
           {segment.preview ? (

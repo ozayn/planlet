@@ -10,6 +10,12 @@ import {
   normalizeLifeLabNoteImage,
   resolveLifeLabNoteImage,
 } from "@/lib/life-lab/note-image";
+import {
+  areLifeLabImagesDuplicate,
+  lifeLabImagePlacementKind,
+  normalizeLifeLabImageIdentity,
+  resolveLifeLabImagePlacement,
+} from "@/lib/life-lab/image-placement";
 
 describe("life lab note image metadata", () => {
   it("parses nested image frontmatter fields", () => {
@@ -188,11 +194,115 @@ youtube_thumbnail:
         "Image source",
         "Credit",
         "License",
-        "Image URL",
         "Why this image",
       ],
     );
     assert.equal(rows.at(-1)?.value, "- Why this image: shows duality");
+  });
+
+  it("places one podcast artwork URL in the episode header only", () => {
+    const artwork = {
+      url: "https://example.com/artwork.jpg",
+      kind: "image" as const,
+    };
+    const placement = resolveLifeLabImagePlacement({
+      sectionId: "podcasts",
+      note: {
+        relativePath: "the-daily/episodes/example.md",
+        metadata: { type: "podcast-episode-note" },
+      },
+      leadImage: artwork,
+      headerImage: artwork,
+    });
+
+    assert.equal(placement.kind, "podcast-note");
+    assert.equal(placement.headerImage, artwork);
+    assert.equal(placement.leadImage, null);
+  });
+
+  it("uses show artwork fallback once when episode artwork is absent", () => {
+    const showArtwork = {
+      url: "https://example.com/show.jpg",
+      kind: "image" as const,
+    };
+    const placement = resolveLifeLabImagePlacement({
+      sectionId: "podcasts",
+      note: {
+        relativePath: "the-daily/episodes/example.md",
+        metadata: { type: "podcast-note" },
+      },
+      leadImage: showArtwork,
+      headerImage: showArtwork,
+    });
+
+    assert.equal(placement.headerImage, showArtwork);
+    assert.equal(placement.leadImage, null);
+  });
+
+  it("preserves genuinely different lead and header images", () => {
+    const leadImage = {
+      url: "https://example.com/episode-scene.jpg",
+      kind: "image" as const,
+    };
+    const headerImage = {
+      url: "https://example.com/show-artwork.jpg",
+      kind: "image" as const,
+    };
+    const placement = resolveLifeLabImagePlacement({
+      sectionId: "podcasts",
+      note: {
+        relativePath: "show/episodes/example.md",
+        metadata: { type: "podcast-note" },
+      },
+      leadImage,
+      headerImage,
+    });
+
+    assert.equal(placement.leadImage, leadImage);
+    assert.equal(placement.headerImage, headerImage);
+  });
+
+  it("deduplicates equivalent URLs and normalized local asset paths", () => {
+    assert.equal(
+      areLifeLabImagesDuplicate(
+        {
+          url: "HTTPS://EXAMPLE.COM/assets/art.jpg#credit",
+          kind: "image",
+        },
+        {
+          url: "https://example.com/assets/art.jpg",
+          kind: "image",
+        },
+      ),
+      true,
+    );
+    assert.equal(
+      normalizeLifeLabImageIdentity("./Assets/show//artwork.png"),
+      normalizeLifeLabImageIdentity("assets/show/artwork.png"),
+    );
+  });
+
+  it("keeps deterministic placement kinds for other note types", () => {
+    assert.equal(
+      lifeLabImagePlacementKind({
+        sectionId: "youtube-learning",
+        note: {
+          relativePath: "videos/example.md",
+          metadata: { type: "youtube-video-note" },
+        },
+      }),
+      "video-note",
+    );
+    assert.equal(
+      lifeLabImagePlacementKind({
+        sectionId: "art-history",
+        note: {
+          relativePath: "references/example.md",
+          metadata: { type: "reference-note" },
+        },
+      }),
+      "reference-note",
+    );
   });
 
   it("prefers explicit alt text for accessibility", () => {

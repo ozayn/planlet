@@ -186,7 +186,7 @@ describe("markdown to speech pipeline", () => {
 
     const keyIdeas = sections.find((section) => section.title === "Key ideas");
     assert.ok(keyIdeas);
-    assert.equal(keyIdeas?.text, expectedBody);
+    assert.equal(keyIdeas?.text, `${expectedBody} Learning map.`);
     assert.doesNotMatch(keyIdeas?.text ?? "", /graph TD|```|-\s/);
 
     const chunks = buildNarrationPlaybackChunks(sections);

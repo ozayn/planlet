@@ -35,6 +35,20 @@ export function fixMermaidHtmlLabelStyles(svgString: string): string {
   });
 }
 
+export function sanitizeGeneratedMermaidSvg(svgString: string): string | null {
+  if (!/<svg\b/i.test(svgString) || /<script\b/i.test(svgString)) {
+    return null;
+  }
+
+  return svgString
+    .replace(/<(?:iframe|object|embed)\b[\s\S]*?<\/(?:iframe|object|embed)>/gi, "")
+    .replace(/\s+on[a-z]+\s*=\s*(["'])[\s\S]*?\1/gi, "")
+    .replace(
+      /\s+(?:href|xlink:href)\s*=\s*(["'])(?!#)[^"']*\1/gi,
+      "",
+    );
+}
+
 export function prepareMermaidSvg(svgString: string): PreparedMermaidSvg {
   const viewBoxMatch = svgString.match(/viewBox=(["'])([^"']+)\1/i);
   const viewBoxParts = viewBoxMatch?.[2]?.split(/\s+/).map(Number) ?? [];

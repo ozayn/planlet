@@ -1,11 +1,13 @@
 "use client";
 
-import { Children, isValidElement, type ReactNode } from "react";
+import { Children, isValidElement, useMemo, type ReactNode } from "react";
 import ReactMarkdown, { type Components } from "react-markdown";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 
 import { MermaidBlock } from "@/components/life-lab/mermaid-block";
+import { useLifeLabReadingMode } from "@/components/life-lab/life-lab-reading-mode";
+import { ReadableText } from "@/components/life-lab/readable-text";
 import {
   normalizeStructuredVocabularyFields,
   prepareLifeLabMarkdownForReading,
@@ -13,6 +15,10 @@ import {
   STRUCTURED_VOCABULARY_FIELD_LABELS,
 } from "@/lib/life-lab/markdown-display";
 import { suppressExactLifeLabMarkdownDuplicates } from "@/lib/life-lab/note-quality";
+import type {
+  LifeLabReadingMode,
+} from "@/lib/life-lab/reading-preferences";
+import type { StudyTarget } from "@/lib/life-lab/reading-text";
 import { readingBriefHeadingAnchor } from "@/lib/life-lab/reading-briefs";
 import {
   resolveTextDirection,
@@ -131,6 +137,8 @@ function VocabularyField({ children }: { children: ReactNode }) {
 function createMarkdownComponents(
   readingBriefAnchors: boolean,
   structuredVocabulary: boolean,
+  readingMode: LifeLabReadingMode,
+  studyTargets: StudyTarget[],
 ): Components {
   return {
     pre({ children }) {
@@ -156,12 +164,24 @@ function createMarkdownComponents(
 
       const direction = withTextDirection(children);
 
-      return <p {...direction}>{children}</p>;
+      return (
+        <p {...direction}>
+          <ReadableText mode={readingMode} studyTargets={studyTargets}>
+            {children}
+          </ReadableText>
+        </p>
+      );
     },
     blockquote({ children }) {
       const direction = withTextDirection(children);
 
-      return <blockquote {...direction}>{children}</blockquote>;
+      return (
+        <blockquote {...direction}>
+          <ReadableText mode={readingMode} studyTargets={studyTargets}>
+            {children}
+          </ReadableText>
+        </blockquote>
+      );
     },
     ul({ children }) {
       const direction = withTextDirection(children);
@@ -186,7 +206,13 @@ function createMarkdownComponents(
 
       const direction = withTextDirection(children);
 
-      return <li {...direction}>{children}</li>;
+      return (
+        <li {...direction}>
+          <ReadableText mode={readingMode} studyTargets={studyTargets}>
+            {children}
+          </ReadableText>
+        </li>
+      );
     },
     h1({ children }) {
       const direction = withTextDirection(children);
@@ -224,10 +250,38 @@ export function MarkdownContent({
   readingBriefAnchors = false,
   readingBriefMode = false,
 }: MarkdownContentProps) {
-  const preparedContent = suppressExactLifeLabMarkdownDuplicates(
-    prepareLifeLabMarkdownForReading(content),
+  const preparedContent = useMemo(
+    () =>
+      suppressExactLifeLabMarkdownDuplicates(
+        prepareLifeLabMarkdownForReading(content),
+      ),
+    [content],
   );
-  const segments = segmentStructuredVocabularyMarkdown(preparedContent);
+  const segments = useMemo(
+    () => segmentStructuredVocabularyMarkdown(preparedContent),
+    [preparedContent],
+  );
+  const { preferences, studyTargets } = useLifeLabReadingMode();
+  const components = useMemo(
+    () =>
+      createMarkdownComponents(
+        readingBriefAnchors,
+        false,
+        preferences.readingMode,
+        studyTargets,
+      ),
+    [preferences.readingMode, readingBriefAnchors, studyTargets],
+  );
+  const vocabularyComponents = useMemo(
+    () =>
+      createMarkdownComponents(
+        readingBriefAnchors,
+        true,
+        preferences.readingMode,
+        studyTargets,
+      ),
+    [preferences.readingMode, readingBriefAnchors, studyTargets],
+  );
 
   return (
     <div
@@ -240,10 +294,9 @@ export function MarkdownContent({
           key={`${segment.structuredVocabulary ? "vocabulary" : "markdown"}-${index}`}
           remarkPlugins={[remarkGfm]}
           rehypePlugins={[rehypeSanitize]}
-          components={createMarkdownComponents(
-            readingBriefAnchors,
-            segment.structuredVocabulary,
-          )}
+          components={
+            segment.structuredVocabulary ? vocabularyComponents : components
+          }
         >
           {segment.structuredVocabulary
             ? normalizeStructuredVocabularyFields(segment.content)

@@ -1,11 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Maximize2 } from "lucide-react";
 
-import { MermaidExpandDialog } from "@/components/life-lab/mermaid-expand-dialog";
+import { DiagramAssetToolbar } from "@/components/life-lab/diagram-asset-toolbar";
+import { useLifeLabDiagramAssetUrls } from "@/components/life-lab/life-lab-diagram-assets";
+import { MermaidDiagramDialog } from "@/components/life-lab/mermaid-diagram-dialog";
 import { useMermaidRender } from "@/components/life-lab/use-mermaid-render";
 import { useMermaidViewport } from "@/components/life-lab/use-mermaid-viewport";
+import { usePreferredDiagramSvg } from "@/components/life-lab/use-preferred-diagram-svg";
+import {
+  copyDiagramSource,
+  downloadDiagramExport,
+  type DiagramExportFormat,
+} from "@/lib/life-lab/diagram-export";
 
 type MermaidBlockProps = {
   code: string;
@@ -16,6 +23,12 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
   const expandButtonRef = useRef<HTMLButtonElement>(null);
   const [expanded, setExpanded] = useState(false);
   const [svgReady, setSvgReady] = useState(false);
+  const [busyFormat, setBusyFormat] = useState<DiagramExportFormat | null>(null);
+  const [copied, setCopied] = useState(false);
+  const preferredAssetUrls = useLifeLabDiagramAssetUrls(code);
+  const { preferredSvg, preferredSvgChecked } = usePreferredDiagramSvg(
+    preferredAssetUrls.svg,
+  );
   const { sizeProfile, scrollable, isMobile } = useMermaidViewport(containerRef, {
     variant: "inline",
     contentReady: svgReady,
@@ -24,12 +37,13 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
     sizeProfile,
     renderKey: sizeProfile,
   });
+  const displaySvg = preferredSvg ?? preparedSvg;
 
   useEffect(() => {
-    setSvgReady(Boolean(preparedSvg));
-  }, [preparedSvg]);
+    setSvgReady(Boolean(displaySvg));
+  }, [displaySvg]);
 
-  if (failed) {
+  if (failed && preferredSvgChecked && !preferredSvg) {
     return (
       <pre className="ui-mermaid-fallback">
         <code>{code}</code>
@@ -41,32 +55,52 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
     setExpanded(true);
   }
 
+  async function download(format: DiagramExportFormat): Promise<void> {
+    if (!displaySvg || busyFormat) {
+      return;
+    }
+
+    setBusyFormat(format);
+
+    try {
+      await downloadDiagramExport(
+        {
+          provider: "mermaid",
+          title: "life-lab-diagram",
+          source: code,
+          sourceExtension: "mmd",
+          svg: displaySvg.html,
+          preferredAssetUrls,
+        },
+        format,
+      );
+    } finally {
+      setBusyFormat(null);
+    }
+  }
+
+  async function copySource(): Promise<void> {
+    await copyDiagramSource(code);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1600);
+  }
+
   return (
     <>
       <div
         ref={containerRef}
         className="ui-mermaid ui-mermaid-responsive ui-mermaid-with-expand"
         data-profile={sizeProfile}
-        aria-busy={!preparedSvg}
+        aria-busy={!displaySvg}
       >
-        {preparedSvg ? (
+        {displaySvg ? (
           <>
-            <div className="ui-mermaid-toolbar">
+            <div className="ui-mermaid-affordances">
               {scrollable ? (
                 <p className="ui-mermaid-affordance ui-mermaid-affordance-scroll">
                   Scroll sideways
                 </p>
               ) : null}
-              <button
-                ref={expandButtonRef}
-                type="button"
-                className="ui-mermaid-expand-btn"
-                aria-label="Expand diagram"
-                title="Expand diagram"
-                onClick={openViewer}
-              >
-                <Maximize2 className="size-4" aria-hidden="true" />
-              </button>
             </div>
             <div
               className={`ui-mermaid-scroll${isMobile ? " ui-mermaid-scroll-tappable" : ""}`}
@@ -87,19 +121,28 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
             >
               <div
                 className="ui-mermaid-svg"
-                dangerouslySetInnerHTML={{ __html: preparedSvg.html }}
+                dangerouslySetInnerHTML={{ __html: displaySvg.html }}
               />
             </div>
+            <DiagramAssetToolbar
+              onFullscreen={openViewer}
+              onDownload={(format) => void download(format)}
+              onCopySource={() => void copySource()}
+              copied={copied}
+              busyFormat={busyFormat}
+              fullscreenButtonRef={expandButtonRef}
+            />
           </>
         ) : (
           <p className="ui-mermaid-loading">Rendering diagram…</p>
         )}
       </div>
-      <MermaidExpandDialog
+      <MermaidDiagramDialog
         open={expanded}
         onClose={() => setExpanded(false)}
         code={code}
         returnFocusRef={expandButtonRef}
+        title="Learning map"
       />
     </>
   );

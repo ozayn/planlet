@@ -176,6 +176,29 @@ async function driveDownload(
   return response.text();
 }
 
+async function driveDownloadBytes(
+  credentials: DriveCredentials,
+  fileId: string,
+): Promise<Uint8Array> {
+  recordLifeLabDriveCall("download", fileId);
+  const accessToken = await getAccessToken(credentials);
+  const response = await fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+    {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) {
+    throw new LifeLabDriveError("Failed to download asset from Google Drive.");
+  }
+
+  return new Uint8Array(await response.arrayBuffer());
+}
+
 export function isMarkdownDriveFile(file: DriveFile): boolean {
   const name = file.name.toLowerCase();
 
@@ -232,6 +255,46 @@ export async function listDriveChildren(
   } while (pageToken);
 
   return { files, paginationOccurred };
+}
+
+export async function findDriveFileByRelativePath(
+  credentials: DriveCredentials,
+  rootFolderId: string,
+  relativePath: string,
+): Promise<DriveFile | null> {
+  const parts = relativePath
+    .replace(/\\/g, "/")
+    .split("/")
+    .filter((part) => part && part !== "." && part !== "..");
+
+  if (parts.length === 0) {
+    return null;
+  }
+
+  let folderId = rootFolderId;
+
+  for (const [index, part] of parts.entries()) {
+    const { files } = await listDriveChildren(credentials, folderId);
+    const match = files.find(
+      (file) => file.name.toLowerCase() === part.toLowerCase(),
+    );
+
+    if (!match) {
+      return null;
+    }
+
+    if (index === parts.length - 1) {
+      return isDriveFolder(match) ? null : match;
+    }
+
+    if (!isDriveFolder(match)) {
+      return null;
+    }
+
+    folderId = match.id;
+  }
+
+  return null;
 }
 
 export type DriveMarkdownEntry = {
@@ -320,6 +383,13 @@ export async function downloadDriveFile(
   fileId: string,
 ): Promise<string> {
   return driveDownload(credentials, fileId);
+}
+
+export async function downloadDriveFileBytes(
+  credentials: DriveCredentials,
+  fileId: string,
+): Promise<Uint8Array> {
+  return driveDownloadBytes(credentials, fileId);
 }
 
 export type { DriveCredentials, DriveFile };

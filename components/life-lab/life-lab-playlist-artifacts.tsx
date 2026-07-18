@@ -7,7 +7,8 @@ import { ChevronRight } from "lucide-react";
 
 import { LifeLabFrequencyCloud } from "@/components/life-lab/life-lab-frequency-cloud";
 import { MarkdownContent } from "@/components/life-lab/markdown-content";
-import { MermaidExpandDialog } from "@/components/life-lab/mermaid-expand-dialog";
+import { LifeLabTimeline } from "@/components/life-lab/life-lab-timeline";
+import { MermaidDiagramDialog } from "@/components/life-lab/mermaid-diagram-dialog";
 import { parseFrequencyMarkdownList } from "@/lib/life-lab/frequency-cloud";
 import {
   filterPlaylistCloudItems,
@@ -270,7 +271,7 @@ function ConceptClustersSection({
         ))}
       </ul>
       {activeRow ? (
-        <MermaidExpandDialog
+        <MermaidDiagramDialog
           open={Boolean(openSlug)}
           onClose={() => setOpenSlug(null)}
           code={activeFile?.mermaidCode ?? ""}
@@ -339,6 +340,8 @@ function CollapsedArtifactSection({
       <div className="ui-settings-details-body">
         {asset.unavailable ? (
           <QuietUnavailable title={asset.title} />
+        ) : asset.id === "timeline" ? (
+          <LifeLabTimeline content={prepareArtifactBodyForDisplay(asset)} />
         ) : (
           <MarkdownContent content={prepareArtifactBodyForDisplay(asset)} />
         )}

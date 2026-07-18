@@ -8,8 +8,13 @@ import { LifeLabNoteContent } from "@/components/life-lab/life-lab-note-content"
 import { LifeLabNoteListen } from "@/components/life-lab/life-lab-note-listen";
 import { LifeLabMetadataChips } from "@/components/life-lab/life-lab-metadata-chips";
 import { LifeLabPodcastArtwork } from "@/components/life-lab/life-lab-podcast-artwork";
+import { LifeLabTimeline } from "@/components/life-lab/life-lab-timeline";
+import { useLifeLabSpeechDisclosureRegistration } from "@/components/life-lab/life-lab-speech-visibility";
 import type { LifeLabNote } from "@/lib/life-lab/constants";
-import type { ResolvedLifeLabNoteImage } from "@/lib/life-lab/note-image";
+import {
+  collectResolvedLifeLabImageDetailRows,
+  type ResolvedLifeLabNoteImage,
+} from "@/lib/life-lab/note-image";
 import { stripLeadingMarkdownH1 } from "@/lib/life-lab/note-content";
 import type { LifeLabReadAloudPreferences } from "@/lib/life-lab/read-aloud-preferences";
 import { suppressExactHeaderMetadataLines } from "@/lib/life-lab/note-quality";
@@ -74,7 +79,11 @@ function splitTimeline(content: string): {
 
 function PodcastTimeline({ content }: { content: string }) {
   const [expanded, setExpanded] = useState(false);
-  const { preview, itemCount } = buildPodcastTimelinePreview(content);
+  useLifeLabSpeechDisclosureRegistration({
+    markdown: `## Timeline\n\n${content}`,
+    expanded,
+  });
+  const { itemCount } = buildPodcastTimelinePreview(content);
   const hasDisclosure = itemCount > 3;
 
   return (
@@ -88,7 +97,7 @@ function PodcastTimeline({ content }: { content: string }) {
       {hasDisclosure ? (
         <>
           <div className={expanded ? "hidden" : "print:hidden"}>
-            <LifeLabNoteContent content={preview} sectionId="podcasts" />
+            <LifeLabTimeline content={content} maxItems={3} />
           </div>
           <div
             id="podcast-timeline-content"
@@ -98,7 +107,7 @@ function PodcastTimeline({ content }: { content: string }) {
                 : "hidden print:block"
             }
           >
-            <LifeLabNoteContent content={content} sectionId="podcasts" />
+            <LifeLabTimeline content={content} />
           </div>
           <button
             type="button"
@@ -113,7 +122,7 @@ function PodcastTimeline({ content }: { content: string }) {
           </button>
         </>
       ) : (
-        <LifeLabNoteContent content={content} sectionId="podcasts" />
+        <LifeLabTimeline content={content} />
       )}
     </section>
   );
@@ -136,12 +145,12 @@ export function LifeLabPodcastEpisode({
     noteMetadata.duration,
     noteMetadata.platform,
   ].filter(Boolean);
-  const { main, sourceNotes } = splitSourceNotes(
+  const { main } = splitSourceNotes(
     stripLeadingMarkdownH1(note.content),
   );
   const visibleMain = suppressExactHeaderMetadataLines(main, noteMetadata);
   const { before, timeline, after } = splitTimeline(visibleMain);
-  const technicalDetails = [
+  const episodeDetails = [
     noteMetadata.language
       ? { label: "Language", value: noteMetadata.language }
       : null,
@@ -151,27 +160,19 @@ export function LifeLabPodcastEpisode({
           value: noteMetadata.transcript_available ? "Available" : "Unavailable",
         }
       : null,
-    noteMetadata.transcription_method
-      ? {
-          label: "Transcription",
-          value: noteMetadata.transcription_method,
-        }
-      : null,
-    noteMetadata.note_profile
-      ? { label: "Note profile", value: noteMetadata.note_profile }
-      : null,
     noteMetadata.study_status
       ? { label: "Study status", value: noteMetadata.study_status }
       : null,
+    ...collectResolvedLifeLabImageDetailRows(artwork),
   ].filter((item): item is { label: string; value: string } => Boolean(item));
 
   return (
     <div className="space-y-5">
-      <header className="flex items-start gap-3 border-b border-border/50 pb-4 sm:gap-5">
+      <header className="flex flex-col items-start gap-3 border-b border-border/50 pb-4 sm:flex-row sm:gap-5">
         <LifeLabPodcastArtwork
           image={artwork}
           title={title}
-          className="size-20 sm:size-28"
+          className="size-24 sm:size-40 lg:size-44"
           eager
         />
         <div className="min-w-0 flex-1 space-y-2">
@@ -221,6 +222,7 @@ export function LifeLabPodcastEpisode({
           <LifeLabNoteListen
             title={title}
             content={visibleMain}
+            metadata={noteMetadata}
             sectionId={note.sectionId}
             slug={note.slug}
             fileId={note.fileId}
@@ -239,7 +241,7 @@ export function LifeLabPodcastEpisode({
         <LifeLabNoteContent content={after} sectionId="podcasts" />
       ) : null}
 
-      {technicalDetails.length > 0 ? (
+      {episodeDetails.length > 0 ? (
         <details className="ui-settings-details group">
           <summary className="ui-settings-details-summary !text-sm !normal-case !tracking-normal">
             <span className="font-medium text-muted">
@@ -247,26 +249,13 @@ export function LifeLabPodcastEpisode({
             </span>
           </summary>
           <dl className="ui-settings-details-body space-y-1.5 text-sm">
-            {technicalDetails.map((item) => (
+            {episodeDetails.map((item) => (
               <div key={item.label} className="flex justify-between gap-4">
                 <dt className="text-muted">{item.label}</dt>
                 <dd className="text-right text-foreground">{item.value}</dd>
               </div>
             ))}
           </dl>
-        </details>
-      ) : null}
-
-      {sourceNotes ? (
-        <details className="ui-settings-details group">
-          <summary className="ui-settings-details-summary !text-sm !normal-case !tracking-normal">
-            <span className="font-medium text-muted">
-              {LIFE_LAB_UI_LABELS.sourceNotes}
-            </span>
-          </summary>
-          <div className="ui-settings-details-body">
-            <LifeLabNoteContent content={sourceNotes} sectionId="podcasts" />
-          </div>
         </details>
       ) : null}
     </div>
