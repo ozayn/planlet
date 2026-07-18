@@ -60,6 +60,7 @@ export type LifeLabSectionNoteRecord = {
   sectionId?: string;
   metadata?: LifeLabNoteMetadata;
   searchText?: string;
+  podcastIndexContent?: string;
   hasFlashcards?: boolean;
   flashcardCount?: number;
   flashcards?: LifeLabFlashcard[];
@@ -118,6 +119,9 @@ export function processLifeLabNoteContent(
     subfolderLabel: record.subfolderLabel,
     metadata: mergedMetadata,
   });
+  const isPodcastIndex =
+    record.sectionId === "podcasts" &&
+    relativePathFilename(record.relativePath).toLowerCase() === "index.md";
   const isLecture = isLectureNote({
     sectionId: record.sectionId,
     relativePath: record.relativePath,
@@ -200,6 +204,7 @@ export function processLifeLabNoteContent(
         : null) ?? record.dateLabel ?? formatDateLabelFromFilename(filename),
     metadata: hasLifeLabMetadata(mergedMetadata ?? {}) ? mergedMetadata : undefined,
     searchText: buildBodySearchText(body),
+    podcastIndexContent: isPodcastIndex ? body : undefined,
     hasFlashcards: noteHasFlashcards(metadata, body),
     flashcardCount: flashcards.length,
     flashcards,

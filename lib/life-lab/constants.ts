@@ -48,6 +48,10 @@ export const LIFE_LAB_ALLOWED_SECTIONS = {
     label: "Lecture Notes",
     folderName: "lecture-notes",
   },
+  podcasts: {
+    label: "Podcasts",
+    folderName: "podcasts",
+  },
 } as const;
 
 export type LifeLabSectionId = keyof typeof LIFE_LAB_ALLOWED_SECTIONS;
@@ -82,6 +86,14 @@ export type LifeLabNoteMetadata = {
   content_kind?: string;
   section?: string;
   source?: string;
+  platform?: string;
+  show?: string;
+  episode_title?: string;
+  episode_url?: string;
+  publication_date?: string;
+  duration?: string;
+  transcription_method?: string;
+  note_profile?: string;
   sourceName?: string;
   source_name?: string;
   publication?: string;
@@ -129,6 +141,8 @@ export type LifeLabNoteMetadata = {
   date?: string;
   topics?: string[];
   people?: string[];
+  organizations?: string[];
+  concepts?: string[];
   places?: string[];
   tags?: string[];
   term?: string;
@@ -183,6 +197,7 @@ export type LifeLabNoteSummary = {
   relativePath: string;
   metadata?: LifeLabNoteMetadata;
   searchText?: string;
+  podcastIndexContent?: string;
   hasFlashcards?: boolean;
   flashcardCount?: number;
   dev?: LifeLabNoteDevMeta;

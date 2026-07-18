@@ -2,12 +2,13 @@ import type { LifeLabSectionId } from "@/lib/life-lab/constants";
 
 export const LIFE_LAB_CACHE_TAG = "life-lab";
 export const LIFE_LAB_SECTIONS_CACHE_TAG = "life-lab:sections";
+export const LIFE_LAB_FOLDER_MAP_CACHE_VERSION = "v2-podcasts";
 
 /** Bump when section listing or playlist browse logic changes materially. */
-export const LIFE_LAB_SECTION_FILE_INDEX_CACHE_VERSION = "v7-index-thumbs";
+export const LIFE_LAB_SECTION_FILE_INDEX_CACHE_VERSION = "v8-podcasts";
 
 /** Bump when note payload enrichment or serialized metadata shape changes. */
-export const LIFE_LAB_NOTE_PAYLOAD_CACHE_VERSION = "v5-listing-thumbs";
+export const LIFE_LAB_NOTE_PAYLOAD_CACHE_VERSION = "v6-podcasts";
 
 /** Bump when browse listing metadata (thumbnail/source fields) shape changes. */
 export const LIFE_LAB_LISTING_METADATA_CACHE_VERSION = "v3-rb-collections";
@@ -70,7 +71,10 @@ export function lifeLabPlaylistAssetCacheTag(
 }
 
 export function lifeLabFolderMapCacheKey(): string {
-  return "life-lab-section-folder-map";
+  return [
+    "life-lab-section-folder-map",
+    LIFE_LAB_FOLDER_MAP_CACHE_VERSION,
+  ].join(":");
 }
 
 export function lifeLabSectionFileIndexCacheKey(sectionId: string): string {

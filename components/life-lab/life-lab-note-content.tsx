@@ -43,9 +43,10 @@ export function LifeLabNoteContent({
   sectionId,
 }: LifeLabNoteContentProps) {
   const isLectureNotes = isLectureNotesSectionId(sectionId);
+  const isPodcastEpisode = sectionId === "podcasts";
   const blocks = buildLifeLabNoteContentBlocks(content, {
-    prioritizeShortVersion: isLectureNotes,
-    collapseTranscriptNotes: isLectureNotes,
+    prioritizeShortVersion: isLectureNotes || isPodcastEpisode,
+    collapseTranscriptNotes: isLectureNotes || isPodcastEpisode,
   });
 
   return (

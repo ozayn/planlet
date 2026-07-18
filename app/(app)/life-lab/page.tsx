@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Mic2 } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { auth } from "@/auth";
@@ -52,6 +53,12 @@ export default async function LifeLabPage() {
                 className="ui-card-padded block transition-colors hover:bg-accent-cream/25"
               >
                 <h2 className="text-base font-semibold text-foreground">
+                  {section.id === "podcasts" ? (
+                    <Mic2
+                      className="mr-1.5 inline size-4 align-[-0.125em] text-muted"
+                      aria-hidden="true"
+                    />
+                  ) : null}
                   {section.label}
                 </h2>
                 <p className="mt-1 text-sm text-muted">

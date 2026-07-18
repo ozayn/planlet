@@ -19,6 +19,7 @@ import {
   lifeLabSectionCacheTag,
   lifeLabSectionFileIndexCacheKey,
   LIFE_LAB_CACHE_TAG,
+  LIFE_LAB_FOLDER_MAP_CACHE_VERSION,
   LIFE_LAB_SECTIONS_CACHE_TAG,
   LIFE_LAB_SECTION_FILE_INDEX_CACHE_VERSION,
   LIFE_LAB_NOTE_PAYLOAD_CACHE_VERSION,
@@ -98,6 +99,10 @@ import {
   isLectureNotesBlockedRelativePath,
   shouldIncludeLectureNoteInPlanlet,
 } from "@/lib/life-lab/lecture-notes";
+import {
+  isPodcastBlockedFolder,
+  isPodcastVisibleMarkdown,
+} from "@/lib/life-lab/podcasts";
 import {
   classifyNoteGroup,
   groupLifeLabNotes,
@@ -498,6 +503,7 @@ function toNoteSummary(record: LifeLabSectionNoteRecord): LifeLabNoteSummary {
     relativePath: record.relativePath,
     metadata: record.metadata,
     searchText: record.searchText,
+    podcastIndexContent: record.podcastIndexContent,
     hasFlashcards: record.hasFlashcards,
     flashcardCount: record.flashcardCount,
   };
@@ -549,6 +555,7 @@ async function listSectionMarkdownFiles(
   sectionId?: LifeLabSectionId,
 ) {
   return listMarkdownFilesRecursive(credentials, folderId, {
+    maxDepth: sectionId === "podcasts" ? 10 : undefined,
     shouldSkipFolder:
       sectionId === "film-lab"
         ? (folderName, prefix) => isFilmLabExcludedFolder(folderName, prefix)
@@ -557,6 +564,9 @@ async function listSectionMarkdownFiles(
               const nextPrefix = prefix ? `${prefix}/${folderName}` : folderName;
               return isLectureNotesBlockedRelativePath(nextPrefix);
             }
+          : sectionId === "podcasts"
+            ? (folderName, prefix) =>
+                isPodcastBlockedFolder(folderName, prefix)
           : undefined,
   });
 }
@@ -574,6 +584,12 @@ function filterSectionMarkdownEntries(
   if (sectionId === "lecture-notes") {
     return entries.filter(
       (entry) => !isLectureNotesBlockedRelativePath(entry.relativePath),
+    );
+  }
+
+  if (sectionId === "podcasts") {
+    return entries.filter((entry) =>
+      isPodcastVisibleMarkdown(entry.relativePath),
     );
   }
 
@@ -610,7 +626,7 @@ async function getSectionFolderMapCached(): Promise<LifeLabFolderMapResult> {
       });
       return loadSectionFolderMap();
     },
-    ["life-lab-section-folder-map"],
+    ["life-lab-section-folder-map", LIFE_LAB_FOLDER_MAP_CACHE_VERSION],
     {
       revalidate: getLifeLabListCacheSeconds(),
       tags: [LIFE_LAB_SECTIONS_CACHE_TAG, LIFE_LAB_CACHE_TAG],
@@ -1779,7 +1795,10 @@ export async function getLifeLabSectionData(
         }
 
         // Learning Dictionary needs note bodies for definitions/tags on cards.
-        if (sectionId === "learning-dictionary") {
+        if (
+          sectionId === "learning-dictionary" ||
+          sectionId === "podcasts"
+        ) {
           if (options.refresh) {
             await loadSectionNotes(sectionId, { useCachedFolderMap: false });
           }
@@ -2207,7 +2226,9 @@ export async function getLifeLabBrowseData(): Promise<{
               ? (
                   await prepareYoutubeBrowseRecords(sectionId, records)
                 ).records
-              : records;
+              : sectionId === "podcasts"
+                ? await enrichSectionRecordsFromCache(sectionId, records)
+                : records;
           const filtered = filterEnrichedSectionRecords(
             sectionId,
             browseRecords,

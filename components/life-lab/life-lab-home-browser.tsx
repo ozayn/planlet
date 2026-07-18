@@ -12,6 +12,10 @@ import { filterLifeLabNotes } from "@/lib/life-lab/filters";
 import { noteMatchesSearch } from "@/lib/life-lab/search";
 import { LifeLabMetadataChips } from "@/components/life-lab/life-lab-metadata-chips";
 import { LifeLabNoteCardMeta } from "@/components/life-lab/life-lab-note-card-meta";
+import {
+  isPodcastEpisodeNote,
+  isPodcastShowIndex,
+} from "@/lib/life-lab/podcasts";
 
 const FILTER_PARAM_KEYS: LifeLabFilterKey[] = [
   "subfolder",
@@ -136,14 +140,22 @@ export function LifeLabHomeBrowser({
               <li key={`${note.sectionId}-${note.slug}`}>
                 <div className="ui-card-padded transition-colors hover:bg-accent-cream/25">
                   <p className="text-xs font-medium uppercase tracking-wide text-muted-light">
-                    {note.sectionLabel}
+                    {note.sectionId === "podcasts"
+                      ? isPodcastShowIndex(note)
+                        ? "Podcast series"
+                        : isPodcastEpisodeNote(note)
+                          ? "Podcast episode"
+                          : note.sectionLabel
+                      : note.sectionLabel}
                     {note.subfolderLabel ? ` · ${note.subfolderLabel}` : ""}
                   </p>
                   <Link
                     href={`/life-lab/${note.sectionId}/${note.slug}`}
                     className="block text-base font-semibold text-foreground transition-colors hover:text-foreground/80"
                   >
-                    {note.title}
+                    {note.sectionId === "podcasts"
+                      ? note.metadata?.episode_title ?? note.title
+                      : note.title}
                   </Link>
                   <LifeLabMetadataChips
                     metadata={note.metadata}

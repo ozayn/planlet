@@ -47,6 +47,7 @@ export default async function LifeLabSectionPage({
   const noteCount = notes.length;
   const isLearningDictionary = sectionId === "learning-dictionary";
   const isReadingBriefs = sectionId === "reading-briefs";
+  const isPodcasts = sectionId === "podcasts";
 
   return (
     <section className="ui-life-lab-surface ui-page-stack space-y-6">
@@ -57,6 +58,8 @@ export default async function LifeLabSectionPage({
             ? "Reusable phrases, concepts, and names."
             : isReadingBriefs
               ? "A personal reading and news archive."
+              : isPodcasts
+                ? "Podcast series and processed episode notes."
               : "Notes from this Life Lab folder."
         }
         action={
@@ -87,6 +90,8 @@ export default async function LifeLabSectionPage({
               ? "No Learning Dictionary entries yet."
               : isReadingBriefs
                 ? "No Reading Briefs yet."
+                : isPodcasts
+                  ? "No podcast episodes have been processed yet."
                 : "No notes in this section yet."
           }
         />

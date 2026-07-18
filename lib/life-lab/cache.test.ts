@@ -166,11 +166,11 @@ describe("life lab listing cache keys", () => {
 
     assert.equal(
       lifeLabSectionFileIndexCacheKey(sectionId),
-      "life-lab-section-file-index:v7-index-thumbs:youtube-learning",
+      "life-lab-section-file-index:v8-podcasts:youtube-learning",
     );
     assert.equal(
       lifeLabNotePayloadCacheKey(fileId),
-      "life-lab-note-payload:v5-listing-thumbs:drive-file-1",
+      "life-lab-note-payload:v6-podcasts:drive-file-1",
     );
     assert.equal(
       lifeLabListingMetadataCacheKey(fileId),
@@ -184,6 +184,9 @@ describe("life lab listing cache keys", () => {
       }),
       "life-lab-playlist-assets:v2-layered-clusters:youtube-learning:plwxnmb28xmpeypjmhfnbj4rafkrtman3p:playlists__western-philosophy-index",
     );
-    assert.equal(lifeLabFolderMapCacheKey(), "life-lab-section-folder-map");
+    assert.equal(
+      lifeLabFolderMapCacheKey(),
+      "life-lab-section-folder-map:v2-podcasts",
+    );
   });
 });

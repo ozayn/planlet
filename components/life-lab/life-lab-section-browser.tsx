@@ -7,6 +7,7 @@ import { useMemo, useRef, useState } from "react";
 import { LifeLabFilterPanel } from "@/components/life-lab/life-lab-filter-panel";
 import { LearningDictionaryPageContent } from "@/components/life-lab/learning-dictionary-page-content";
 import { ReadingBriefsPageContent } from "@/components/life-lab/reading-briefs-page-content";
+import { PodcastsPageContent } from "@/components/life-lab/podcasts-page-content";
 import { LifeLabSectionNotes } from "@/components/life-lab/life-lab-section-notes";
 import type {
   LifeLabListingDiagnostic,
@@ -450,6 +451,11 @@ export function LifeLabSectionBrowser({
               ? sort
               : "newest"
           }
+        />
+      ) : sectionId === "podcasts" ? (
+        <PodcastsPageContent
+          notes={filteredNotes}
+          searchQuery={searchQuery}
         />
       ) : (
         <LifeLabSectionNotes

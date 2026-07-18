@@ -8,6 +8,8 @@ import { LifeLabReadingBriefHeader } from "@/components/life-lab/life-lab-readin
 import { LifeLabReadingBriefNote } from "@/components/life-lab/life-lab-reading-brief-note";
 import { LifeLabPlaylistIndexNote } from "@/components/life-lab/life-lab-playlist-index-note";
 import { LifeLabPlaylistVideoNav } from "@/components/life-lab/life-lab-playlist-video-nav";
+import { LifeLabPodcastShow } from "@/components/life-lab/life-lab-podcast-show";
+import { LifeLabPodcastEpisode } from "@/components/life-lab/life-lab-podcast-episode";
 import { LifeLabNoteDetailHeader } from "@/components/life-lab/life-lab-note-detail-header";
 import { LifeLabNoteImageFigure } from "@/components/life-lab/life-lab-note-image";
 import { LifeLabNoteDevInfoPanel } from "@/components/life-lab/life-lab-note-dev-info-panel";
@@ -24,6 +26,11 @@ import { stripLeadingMarkdownH1 } from "@/lib/life-lab/note-content";
 import { isReadingBriefNote } from "@/lib/life-lab/reading-briefs";
 import { shouldRenderPlaylistIndexUi } from "@/lib/life-lab/playlist-index";
 import { resolveLifeLabNoteImage } from "@/lib/life-lab/note-image";
+import {
+  findPodcastShowIndex,
+  isPodcastEpisodeNote,
+  isPodcastShowIndex,
+} from "@/lib/life-lab/podcasts";
 import { isAdminRole } from "@/lib/auth-roles";
 import { canAccessLifeLabPage } from "@/lib/roles";
 
@@ -61,15 +68,28 @@ export default async function LifeLabNotePage({
     metadata: note.metadata,
   });
   const isPlaylistIndex = shouldRenderPlaylistIndexUi(note);
+  const isPodcastIndex =
+    note.sectionId === "podcasts" && isPodcastShowIndex(note);
+  const isPodcastEpisode =
+    note.sectionId === "podcasts" && isPodcastEpisodeNote(note);
   const hasDictionarySections = hasDictionaryStudySections(note.content);
   const playlistNav =
     note.sectionId === "youtube-learning" && !isPlaylistIndex
       ? await getYoutubeVideoPlaylistNavigation(note.sectionId, note.slug)
       : null;
   const noteBodyContent = stripLeadingMarkdownH1(note.content);
-  const noteImage = resolveLifeLabNoteImage(note.metadata);
+  const podcastNotes =
+    note.sectionId === "podcasts"
+      ? (await getLifeLabSectionData(note.sectionId)).notes
+      : [];
+  const podcastShowIndex = isPodcastEpisode
+    ? findPodcastShowIndex(note, podcastNotes)
+    : null;
+  const noteImage =
+    resolveLifeLabNoteImage(note.metadata) ??
+    resolveLifeLabNoteImage(podcastShowIndex?.metadata);
   const showNoteImage =
-    !isReadingBrief && !isPlaylistIndex && noteImage !== null;
+    !isReadingBrief && !isPlaylistIndex && !isPodcastIndex && noteImage !== null;
   const relatedNotes =
     isPlaylistIndex && note.sectionId === "youtube-learning"
       ? (await getLifeLabSectionData(note.sectionId)).notes
@@ -88,7 +108,7 @@ export default async function LifeLabNotePage({
   return (
     <section
       className={`ui-life-lab-surface ui-page-stack ${
-        isReadingBrief || isPlaylistIndex
+        isReadingBrief || isPlaylistIndex || isPodcastIndex || isPodcastEpisode
           ? "space-y-3 md:space-y-4"
           : "space-y-4 md:space-y-6"
       }`}
@@ -113,7 +133,7 @@ export default async function LifeLabNotePage({
           readAloudPreferences={readAloudPreferences}
           openAiNarrationAvailable={openAiNarrationAvailable}
         />
-      ) : isPlaylistIndex ? null : (
+      ) : isPlaylistIndex || isPodcastIndex || isPodcastEpisode ? null : (
         <LifeLabNoteDetailHeader
           note={note}
           sectionId={note.sectionId}
@@ -138,7 +158,7 @@ export default async function LifeLabNotePage({
         <>
           <article
             className={
-              isReadingBrief || isPlaylistIndex
+              isReadingBrief || isPlaylistIndex || isPodcastIndex || isPodcastEpisode
                 ? "md:ui-card-padded rounded-xl border-0 bg-transparent p-0 md:border md:border-border/60 md:bg-surface md:p-5"
                 : "ui-card-padded"
             }
@@ -165,6 +185,13 @@ export default async function LifeLabNotePage({
                 }}
                 technicalProvenance={note.technicalProvenance}
               />
+            ) : isPodcastIndex ? (
+              <LifeLabPodcastShow
+                note={note}
+                relatedNotes={podcastNotes}
+              />
+            ) : isPodcastEpisode ? (
+              <LifeLabPodcastEpisode note={note} />
             ) : (
               <>
                 {hasDictionarySections ? (
@@ -189,13 +216,13 @@ export default async function LifeLabNotePage({
               </>
             )}
           </article>
-          {note.technicalProvenance && !isPlaylistIndex ? (
+          {note.technicalProvenance && !isPlaylistIndex && !isPodcastIndex ? (
             <LifeLabNoteTechnicalDebugPanel
               technicalProvenance={note.technicalProvenance}
               isAdmin={isAdmin}
             />
           ) : null}
-          {note.dev && !isPlaylistIndex ? (
+          {note.dev && !isPlaylistIndex && !isPodcastIndex ? (
             <LifeLabNoteDevInfoPanel
               dev={note.dev}
               loadMeta={{
