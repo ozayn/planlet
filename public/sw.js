@@ -23,27 +23,91 @@ self.addEventListener("push", (event) => {
   );
 });
 
+async function focusOrOpenTimer(targetUrl) {
+  const windowClients = await clients.matchAll({
+    type: "window",
+    includeUncontrolled: true,
+  });
+
+  for (const client of windowClients) {
+    if ("focus" in client) {
+      await client.focus();
+      if ("navigate" in client) {
+        try {
+          await client.navigate(targetUrl);
+          return;
+        } catch {
+          // Fall through to postMessage / openWindow.
+        }
+      }
+
+      client.postMessage({
+        type: "planlet-open-timer",
+        url: targetUrl,
+      });
+      return;
+    }
+  }
+
+  if (clients.openWindow) {
+    await clients.openWindow(targetUrl);
+  }
+}
+
+async function stopActiveTimerFromNotification() {
+  const response = await fetch("/api/activity-timer/active/stop", {
+    method: "POST",
+    credentials: "same-origin",
+    headers: {
+      Accept: "application/json",
+    },
+  });
+
+  let payload = null;
+
+  try {
+    payload = await response.json();
+  } catch {
+    payload = null;
+  }
+
+  const windowClients = await clients.matchAll({
+    type: "window",
+    includeUncontrolled: true,
+  });
+
+  for (const client of windowClients) {
+    client.postMessage({
+      type: "planlet-timer-stopped",
+      ok: response.ok,
+      result: payload,
+    });
+  }
+
+  return { ok: response.ok, result: payload };
+}
+
 self.addEventListener("notificationclick", (event) => {
+  const action = event.action || "default";
+  const targetPath =
+    event.notification.data?.url || "/timer?active=1";
+  const targetUrl = new URL(targetPath, self.location.origin).href;
+  const kind = event.notification.data?.kind || "generic";
+
   event.notification.close();
 
-  const targetPath = event.notification.data?.url || "/today";
-  const targetUrl = new URL(targetPath, self.location.origin).href;
+  if (action === "stop-timer") {
+    event.waitUntil(stopActiveTimerFromNotification());
+    return;
+  }
 
-  event.waitUntil(
-    clients
-      .matchAll({ type: "window", includeUncontrolled: true })
-      .then((windowClients) => {
-        for (const client of windowClients) {
-          if ("focus" in client) {
-            return client.focus();
-          }
-        }
+  if (kind === "complete" || action === "open-timer" || action === "default") {
+    event.waitUntil(focusOrOpenTimer(targetUrl));
+  }
+});
 
-        if (clients.openWindow) {
-          return clients.openWindow(targetUrl);
-        }
-
-        return undefined;
-      }),
-  );
+self.addEventListener("notificationclose", (event) => {
+  if (event.notification.data?.kind === "complete") {
+    return;
+  }
 });

@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import { DiagramAssetToolbar } from "@/components/life-lab/diagram-asset-toolbar";
-import { useLifeLabDiagramAssetUrls } from "@/components/life-lab/life-lab-diagram-assets";
+import { useLifeLabDiagramAsset } from "@/components/life-lab/life-lab-diagram-assets";
 import { MermaidDiagramDialog } from "@/components/life-lab/mermaid-diagram-dialog";
 import { useMermaidRender } from "@/components/life-lab/use-mermaid-render";
 import { useMermaidViewport } from "@/components/life-lab/use-mermaid-viewport";
@@ -22,26 +22,21 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const expandButtonRef = useRef<HTMLButtonElement>(null);
   const [expanded, setExpanded] = useState(false);
-  const [svgReady, setSvgReady] = useState(false);
   const [busyFormat, setBusyFormat] = useState<DiagramExportFormat | null>(null);
   const [copied, setCopied] = useState(false);
-  const preferredAssetUrls = useLifeLabDiagramAssetUrls(code);
+  const diagramAsset = useLifeLabDiagramAsset(code);
   const { preferredSvg, preferredSvgChecked } = usePreferredDiagramSvg(
-    preferredAssetUrls.svg,
+    diagramAsset.savedAssetUrls.svg,
   );
   const { sizeProfile, scrollable, isMobile } = useMermaidViewport(containerRef, {
     variant: "inline",
-    contentReady: svgReady,
+    contentReady: Boolean(code.trim()),
   });
   const { preparedSvg, failed } = useMermaidRender(code, {
     sizeProfile,
     renderKey: sizeProfile,
   });
   const displaySvg = preferredSvg ?? preparedSvg;
-
-  useEffect(() => {
-    setSvgReady(Boolean(displaySvg));
-  }, [displaySvg]);
 
   if (failed && preferredSvgChecked && !preferredSvg) {
     return (
@@ -66,11 +61,11 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
       await downloadDiagramExport(
         {
           provider: "mermaid",
-          title: "life-lab-diagram",
+          title: diagramAsset.diagramId ?? "life-lab-diagram",
           source: code,
           sourceExtension: "mmd",
           svg: displaySvg.html,
-          preferredAssetUrls,
+          preferredAssetUrls: diagramAsset.savedAssetUrls,
         },
         format,
       );
@@ -131,6 +126,13 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
               copied={copied}
               busyFormat={busyFormat}
               fullscreenButtonRef={expandButtonRef}
+              exportSource={
+                preferredSvg
+                  ? "saved"
+                  : diagramAsset.exportSource === "none"
+                    ? "none"
+                    : "browser"
+              }
             />
           </>
         ) : (

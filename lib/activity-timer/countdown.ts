@@ -1,4 +1,7 @@
-import type { ActivityTimerMode } from "@/lib/activity-timer/constants";
+import {
+  MIN_TIMER_SESSION_SECONDS,
+  type ActivityTimerMode,
+} from "@/lib/activity-timer/constants";
 
 export type ActivityTimerClockInput = {
   startedAt: string | Date;
@@ -87,4 +90,8 @@ export function countdownProgressRatio(
   }
 
   return Math.min(1, activeElapsedSeconds / targetDurationSeconds);
+}
+
+export function shouldSaveTimerSession(durationSeconds: number): boolean {
+  return Math.floor(durationSeconds) >= MIN_TIMER_SESSION_SECONDS;
 }

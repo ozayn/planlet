@@ -4,9 +4,11 @@ import { join } from "node:path";
 import { describe, it } from "node:test";
 
 import {
+  clearPreferredDiagramAssetCache,
   diagramExportFilename,
   diagramSourceBlob,
   diagramSvgBlob,
+  fetchPreferredDiagramAsset,
   resolvePngExportDimensions,
 } from "@/lib/life-lab/diagram-export";
 import {
@@ -81,23 +83,67 @@ describe("life lab mermaid svg", () => {
     assert.ok(capped.width * capped.height <= 48_000_000);
   });
 
-  it("maps one or many diagrams to Ava-generated asset names", () => {
+  it("assigns canonical IDs without inventing saved assets", () => {
     assert.deepEqual(
       buildMermaidDiagramAssetBindings(
-        "```mermaid\nflowchart LR\nA --> B\n```",
+        "## Learning map\n\n```mermaid\nflowchart LR\nA --> B\n```",
       ),
-      [{ source: "flowchart LR\nA --> B", assetName: "diagram" }],
+      [
+        {
+          source: "flowchart LR\nA --> B",
+          diagramId: "learning-map",
+          assetName: "learning-map",
+          savedAssetName: null,
+        },
+      ],
     );
     assert.deepEqual(
       buildMermaidDiagramAssetBindings(
         "```mermaid\nA --> B\n```\n\n```mermaid\nB --> C\n```",
-      ).map((binding) => binding.assetName),
+      ).map((binding) => binding.diagramId),
       ["diagram-1", "diagram-2"],
+    );
+    assert.deepEqual(
+      buildMermaidDiagramAssetBindings(
+        "## Process map\n\n```mermaid\n%% asset: saved-process\nA --> B\n```",
+      )[0],
+      {
+        source: "%% asset: saved-process\nA --> B",
+        diagramId: "process-map",
+        assetName: "saved-process",
+        savedAssetName: "saved-process",
+      },
     );
     assert.equal(
       diagramAssetNameFromSource("%% asset: attention-map\nflowchart LR"),
       "attention-map",
     );
+  });
+
+  it("caches missing saved assets for the browser session", async () => {
+    clearPreferredDiagramAssetCache();
+    const originalFetch = globalThis.fetch;
+    let requests = 0;
+    globalThis.fetch = async () => {
+      requests += 1;
+      return new Response(
+        JSON.stringify({
+          error: "diagram_asset_not_found",
+          fallback: "client_export",
+        }),
+        { status: 404 },
+      );
+    };
+
+    try {
+      const url = "/api/life-lab/diagram-asset?name=missing&format=svg";
+      assert.equal(await fetchPreferredDiagramAsset(url), null);
+      assert.equal(await fetchPreferredDiagramAsset(url), null);
+      assert.equal(requests, 1);
+    } finally {
+      globalThis.fetch = originalFetch;
+      clearPreferredDiagramAssetCache();
+    }
   });
 
   it("wires fullscreen, downloads, source copy, assets, and responsive actions", () => {
@@ -117,6 +163,14 @@ describe("life lab mermaid svg", () => {
       join(root, "app/api/life-lab/diagram-asset/route.ts"),
       "utf8",
     );
+    const assets = readFileSync(
+      join(root, "components/life-lab/life-lab-diagram-assets.tsx"),
+      "utf8",
+    );
+    const exporter = readFileSync(
+      join(root, "lib/life-lab/diagram-export.ts"),
+      "utf8",
+    );
     const styles = readFileSync(join(root, "app/globals.css"), "utf8");
 
     assert.match(block, /<DiagramAssetToolbar/);
@@ -130,6 +184,15 @@ describe("life lab mermaid svg", () => {
     assert.match(dialog, /Zoom out/);
     assert.match(assetRoute, /getLifeLabDiagramAsset/);
     assert.match(assetRoute, /new Set\(\["png", "svg", "mmd"\]\)/);
+    assert.match(assetRoute, /diagram_asset_not_found/);
+    assert.match(assetRoute, /fallback: "client_export"/);
+    assert.doesNotMatch(assetRoute, /get\("name"\) \?\? "diagram"/);
+    assert.match(assets, /savedAssetName/);
+    assert.match(assets, /exportSource: "browser"/);
+    assert.doesNotMatch(assets, /fallbackAssetName = "diagram"/);
+    assert.match(exporter, /diagramSvgBlob\(input\.svg\)/);
+    assert.match(exporter, /pngBlobFromSvg\(input\.svg\)/);
+    assert.match(exporter, /diagramSourceBlob\(input\.source\)/);
     assert.match(
       styles,
       /@media \(max-width: 767px\)[\s\S]*?\.ui-diagram-toolbar[\s\S]*?position: static/,

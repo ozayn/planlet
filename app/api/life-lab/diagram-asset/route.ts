@@ -16,11 +16,14 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const section = url.searchParams.get("section") ?? "";
   const slug = url.searchParams.get("slug") ?? "";
-  const name = url.searchParams.get("name") ?? "diagram";
+  const name = url.searchParams.get("name") ?? "";
   const format = url.searchParams.get("format") ?? "";
 
-  if (!DIAGRAM_FORMATS.has(format)) {
-    return NextResponse.json({ error: "Invalid format" }, { status: 400 });
+  if (!name || !DIAGRAM_FORMATS.has(format)) {
+    return NextResponse.json(
+      { error: "invalid_diagram_asset_request" },
+      { status: 400 },
+    );
   }
 
   const asset = await getLifeLabDiagramAsset(
@@ -31,7 +34,18 @@ export async function GET(request: Request) {
   );
 
   if (!asset) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json(
+      {
+        error: "diagram_asset_not_found",
+        fallback: "client_export",
+      },
+      {
+        status: 404,
+        headers: {
+          "Cache-Control": "private, max-age=60",
+        },
+      },
+    );
   }
 
   const body = new ArrayBuffer(asset.bytes.byteLength);

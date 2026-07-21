@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { fetchPreferredDiagramAsset } from "@/lib/life-lab/diagram-export";
 import {
   prepareMermaidSvg,
   sanitizeGeneratedMermaidSvg,
@@ -21,13 +22,13 @@ export function usePreferredDiagramSvg(url: string | undefined) {
 
     async function load() {
       try {
-        const response = await fetch(url!);
+        const blob = await fetchPreferredDiagramAsset(url);
 
-        if (!response.ok) {
+        if (!blob) {
           return;
         }
 
-        const sanitized = sanitizeGeneratedMermaidSvg(await response.text());
+        const sanitized = sanitizeGeneratedMermaidSvg(await blob.text());
 
         if (!cancelled && sanitized) {
           setPreparedSvg(prepareMermaidSvg(sanitized));

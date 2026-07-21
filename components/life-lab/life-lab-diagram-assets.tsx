@@ -3,10 +3,7 @@
 import { createContext, useContext, type ReactNode } from "react";
 
 import type { DiagramAssetUrls } from "@/lib/life-lab/diagram-export";
-import {
-  diagramAssetNameFromSource,
-  type DiagramAssetBinding,
-} from "@/lib/life-lab/diagram-assets";
+import type { DiagramAssetBinding } from "@/lib/life-lab/diagram-assets";
 
 type LifeLabDiagramAssetContextValue = {
   sectionId: string;
@@ -30,22 +27,42 @@ export function LifeLabDiagramAssetProvider({
   );
 }
 
-export function useLifeLabDiagramAssetUrls(
-  source: string,
-  fallbackAssetName = "diagram",
-): DiagramAssetUrls {
-  const context = useContext(LifeLabDiagramAssetContext);
+export type LifeLabDiagramAssetResolution = {
+  diagramId: string | null;
+  savedAssetName: string | null;
+  savedAssetUrls: DiagramAssetUrls;
+  exportSource: "saved" | "browser" | "none";
+};
 
-  if (!context) {
-    return {};
+export function useLifeLabDiagramAsset(
+  source: string,
+): LifeLabDiagramAssetResolution {
+  const context = useContext(LifeLabDiagramAssetContext);
+  const normalizedSource = source.trim();
+
+  if (!context || !normalizedSource) {
+    return {
+      diagramId: null,
+      savedAssetName: null,
+      savedAssetUrls: {},
+      exportSource: normalizedSource ? "browser" : "none",
+    };
   }
 
-  const normalizedSource = source.trim();
-  const assetName =
-    diagramAssetNameFromSource(normalizedSource) ??
-    context.bindings.find((binding) => binding.source === normalizedSource)
-      ?.assetName ??
-    fallbackAssetName;
+  const binding = context.bindings.find(
+    (candidate) => candidate.source === normalizedSource,
+  );
+  const assetName = binding?.savedAssetName ?? null;
+
+  if (!assetName) {
+    return {
+      diagramId: binding?.diagramId ?? null,
+      savedAssetName: null,
+      savedAssetUrls: {},
+      exportSource: "browser",
+    };
+  }
+
   const base = new URLSearchParams({
     section: context.sectionId,
     slug: context.slug,
@@ -58,8 +75,13 @@ export function useLifeLabDiagramAssetUrls(
   };
 
   return {
-    png: url("png"),
-    svg: url("svg"),
-    source: url("mmd"),
+    diagramId: binding?.diagramId ?? assetName,
+    savedAssetName: assetName,
+    savedAssetUrls: {
+      png: url("png"),
+      svg: url("svg"),
+      source: url("mmd"),
+    },
+    exportSource: "saved",
   };
 }

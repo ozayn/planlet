@@ -23,6 +23,10 @@ import { ActivityTimerTimeline } from "@/components/activity-timer/activity-time
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useActivityTimerClock } from "@/components/activity-timer/use-activity-timer-clock";
 import { playActivityTimerCompletionFeedback } from "@/lib/activity-timer/completion-feedback";
+import {
+  clearActiveTimerNotification,
+  showCompletedTimerNotification,
+} from "@/lib/activity-timer/active-notification";
 import { ACTION_LABELS } from "@/lib/action-labels";
 import type {
   ActivityTimerPageData,
@@ -33,19 +37,25 @@ import type {
 
 type ActivityTimerPageProps = {
   data: ActivityTimerPageData;
+  focusActive?: boolean;
 };
 
-export function ActivityTimerPage({ data }: ActivityTimerPageProps) {
+export function ActivityTimerPage({
+  data,
+  focusActive = false,
+}: ActivityTimerPageProps) {
   const router = useRouter();
   const { activeSession: contextSession, setActiveSession } = useActivityTimer();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [customSheetOpen, setCustomSheetOpen] = useState(false);
   const [armedCountdownPreset, setArmedCountdownPreset] =
     useState<SerializedActivityTimerPreset | null>(null);
   const [showComplete, setShowComplete] = useState(false);
   const [confirmPartialStop, setConfirmPartialStop] = useState(false);
   const completingRef = useRef(false);
+  const activePanelRef = useRef<HTMLDivElement>(null);
   const [editingSession, setEditingSession] =
     useState<SerializedActivityTimerSession | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
@@ -56,6 +66,17 @@ export function ActivityTimerPage({ data }: ActivityTimerPageProps) {
   useEffect(() => {
     setActiveSession(data.activeSession);
   }, [data.activeSession, setActiveSession]);
+
+  useEffect(() => {
+    if (!focusActive || !data.activeSession) {
+      return;
+    }
+
+    activePanelRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, [data.activeSession, focusActive]);
 
   useEffect(() => {
     setSessionNotes(
@@ -105,6 +126,7 @@ export function ActivityTimerPage({ data }: ActivityTimerPageProps) {
     }
 
     setError(null);
+    setStatusMessage(null);
 
     if (preset.timerMode === "countDown") {
       setArmedCountdownPreset(preset);
@@ -162,7 +184,9 @@ export function ActivityTimerPage({ data }: ActivityTimerPageProps) {
       return;
     }
 
+    const sessionTitle = activeSession.title;
     setError(null);
+    setStatusMessage(null);
 
     startTransition(async () => {
       const result = await stopActivityTimerAction({
@@ -181,6 +205,16 @@ export function ActivityTimerPage({ data }: ActivityTimerPageProps) {
       setConfirmPartialStop(false);
       setActiveSession(null);
       setSessionNotes([]);
+
+      if (result.outcome === "discarded" && result.reason === "under_minimum") {
+        setStatusMessage("Session under 30 seconds wasn’t saved.");
+        void clearActiveTimerNotification();
+      } else if (options.completed && result.outcome === "saved") {
+        void showCompletedTimerNotification(sessionTitle);
+      } else {
+        void clearActiveTimerNotification();
+      }
+
       refresh();
     });
   }
@@ -193,7 +227,8 @@ export function ActivityTimerPage({ data }: ActivityTimerPageProps) {
     if (
       activeSession.timerMode === "countDown" &&
       !clock.isComplete &&
-      clock.activeElapsedSeconds > 0
+      clock.activeElapsedSeconds > 0 &&
+      clock.activeElapsedSeconds >= 30
     ) {
       setConfirmPartialStop(true);
       return;
@@ -283,7 +318,18 @@ export function ActivityTimerPage({ data }: ActivityTimerPageProps) {
 
   return (
     <div className="ui-activity-timer-page space-y-5 sm:space-y-8">
-      <section className="flex flex-col items-center space-y-3 py-0 text-center sm:space-y-4">
+      {statusMessage ? (
+        <p
+          className="rounded-xl border border-border-soft bg-accent-cream/20 px-3 py-2 text-center text-sm text-muted"
+          role="status"
+        >
+          {statusMessage}
+        </p>
+      ) : null}
+      <section
+        ref={activePanelRef}
+        className="flex flex-col items-center space-y-3 py-0 text-center sm:space-y-4"
+      >
         {showTimerSection ? (
           <h2 className="max-w-md px-2 text-base font-medium text-foreground sm:text-lg">
             {displayTitle}

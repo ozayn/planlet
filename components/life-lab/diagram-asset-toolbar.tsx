@@ -14,6 +14,7 @@ type DiagramAssetToolbarProps = {
   sourceLabel?: string;
   fullscreenButtonRef?: RefObject<HTMLButtonElement | null>;
   variant?: "overlay" | "dialog";
+  exportSource?: "saved" | "browser" | "none";
 };
 
 export function DiagramAssetToolbar({
@@ -25,13 +26,24 @@ export function DiagramAssetToolbar({
   sourceLabel = "Mermaid",
   fullscreenButtonRef,
   variant = "overlay",
+  exportSource = "browser",
 }: DiagramAssetToolbarProps) {
+  const exportAvailable = exportSource !== "none";
+  const exportStatus =
+    exportSource === "saved"
+      ? "Saved asset"
+      : exportSource === "browser"
+        ? "Browser export"
+        : "Export unavailable";
+
   return (
     <div
       className={`ui-diagram-toolbar${variant === "dialog" ? " ui-diagram-toolbar-dialog" : ""}`}
       role="toolbar"
-      aria-label="Diagram actions"
+      aria-label={`Diagram actions · ${exportStatus}`}
+      data-export-source={exportSource}
     >
+      <span className="ui-diagram-export-status">{exportStatus}</span>
       {variant === "overlay" ? (
         <button
           ref={fullscreenButtonRef}
@@ -51,7 +63,7 @@ export function DiagramAssetToolbar({
           type="button"
           className="ui-diagram-action"
           onClick={() => onDownload(format)}
-          disabled={busyFormat !== null}
+          disabled={!exportAvailable || busyFormat !== null}
           aria-label={`Download ${format.toUpperCase()}`}
           title={`Download ${format.toUpperCase()}`}
         >
@@ -63,7 +75,7 @@ export function DiagramAssetToolbar({
         type="button"
         className="ui-diagram-action"
         onClick={() => onDownload("source")}
-        disabled={busyFormat !== null}
+        disabled={!exportAvailable || busyFormat !== null}
         aria-label={`Download ${sourceLabel} source`}
         title={`Download ${sourceLabel} source`}
       >
@@ -74,6 +86,7 @@ export function DiagramAssetToolbar({
         type="button"
         className="ui-diagram-action"
         onClick={onCopySource}
+        disabled={!exportAvailable}
         aria-label={`Copy ${sourceLabel} source`}
         title={`Copy ${sourceLabel} source`}
       >

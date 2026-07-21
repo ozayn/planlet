@@ -7,8 +7,12 @@ import {
   displaySecondsForTimerMode,
   isCountdownComplete,
   remainingSecondsFromCountdown,
+  shouldSaveTimerSession,
 } from "@/lib/activity-timer/countdown";
-import { DEFAULT_ACTIVITY_TIMER_PRESETS } from "@/lib/activity-timer/constants";
+import {
+  DEFAULT_ACTIVITY_TIMER_PRESETS,
+  MIN_TIMER_SESSION_SECONDS,
+} from "@/lib/activity-timer/constants";
 import { formatCountdownPresetDurationLabel } from "@/lib/activity-timer/format";
 
 describe("activity timer countdown timestamps", () => {
@@ -89,6 +93,12 @@ describe("activity timer countdown timestamps", () => {
       ),
       5,
     );
+  });
+
+  it("applies the shared 30-second minimum save rule", () => {
+    assert.equal(MIN_TIMER_SESSION_SECONDS, 30);
+    assert.equal(shouldSaveTimerSession(29), false);
+    assert.equal(shouldSaveTimerSession(30), true);
   });
 });
 

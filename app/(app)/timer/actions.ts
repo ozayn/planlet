@@ -40,6 +40,14 @@ export type ActivityTimerActionResult =
   | { success: true }
   | { success: false; error: string };
 
+export type ActivityTimerStopResult =
+  | {
+      success: true;
+      outcome: "saved" | "discarded" | "idle";
+      reason?: "under_minimum" | "explicit";
+    }
+  | { success: false; error: string };
+
 export type ActivityTimerStartResult =
   | { success: true; activeSession: SerializedActiveActivityTimerSession }
   | { success: false; error: string };
@@ -91,12 +99,25 @@ export async function startActivityTimerAction(
 
 export async function stopActivityTimerAction(
   input: StopActivityTimerInput,
-): Promise<ActivityTimerActionResult> {
+): Promise<ActivityTimerStopResult> {
   try {
     const session = await requireActivityTimerSession();
-    await stopActivityTimerSession(session.user.id, input);
+    const result = await stopActivityTimerSession(session.user.id, input);
     revalidateTimer();
-    return { success: true };
+
+    if (result.outcome === "saved") {
+      return { success: true, outcome: "saved" };
+    }
+
+    if (result.outcome === "idle") {
+      return { success: true, outcome: "idle" };
+    }
+
+    return {
+      success: true,
+      outcome: "discarded",
+      reason: result.reason,
+    };
   } catch (error) {
     return {
       success: false,

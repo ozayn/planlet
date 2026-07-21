@@ -18,6 +18,7 @@ export type DiagramExportInput = {
 const MAX_PNG_DIMENSION = 8192;
 const MAX_PNG_PIXELS = 48_000_000;
 const PNG_SCALE = 3;
+const PREFERRED_ASSET_CACHE = new Map<string, Promise<Blob | null>>();
 
 export function diagramExportFilename(
   title: string,
@@ -105,13 +106,28 @@ function triggerBlobDownload(blob: Blob, filename: string): void {
   window.setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
-async function preferredAssetBlob(url: string | undefined): Promise<Blob | null> {
+export async function fetchPreferredDiagramAsset(
+  url: string | undefined,
+): Promise<Blob | null> {
   if (!url) {
     return null;
   }
 
-  const response = await fetch(url);
-  return response.ok ? response.blob() : null;
+  const cached = PREFERRED_ASSET_CACHE.get(url);
+
+  if (cached) {
+    return cached;
+  }
+
+  const request = fetch(url)
+    .then((response) => (response.ok ? response.blob() : null))
+    .catch(() => null);
+  PREFERRED_ASSET_CACHE.set(url, request);
+  return request;
+}
+
+export function clearPreferredDiagramAssetCache(): void {
+  PREFERRED_ASSET_CACHE.clear();
 }
 
 async function pngBlobFromSvg(svg: string): Promise<Blob> {
@@ -165,7 +181,7 @@ export async function downloadDiagramExport(
 ): Promise<void> {
   const extension =
     format === "source" ? input.sourceExtension : format;
-  const preferred = await preferredAssetBlob(
+  const preferred = await fetchPreferredDiagramAsset(
     input.preferredAssetUrls?.[format],
   );
   const blob =

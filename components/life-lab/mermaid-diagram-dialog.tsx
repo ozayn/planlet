@@ -4,7 +4,7 @@ import { useState, type RefObject } from "react";
 
 import { DiagramAssetToolbar } from "@/components/life-lab/diagram-asset-toolbar";
 import { DiagramExpandDialog } from "@/components/life-lab/diagram-expand-dialog";
-import { useLifeLabDiagramAssetUrls } from "@/components/life-lab/life-lab-diagram-assets";
+import { useLifeLabDiagramAsset } from "@/components/life-lab/life-lab-diagram-assets";
 import { useMermaidRender } from "@/components/life-lab/use-mermaid-render";
 import { usePreferredDiagramSvg } from "@/components/life-lab/use-preferred-diagram-svg";
 import {
@@ -35,9 +35,9 @@ export function MermaidDiagramDialog({
     enabled: open && Boolean(code.trim()),
     renderKey: "diagram-dialog",
   });
-  const preferredAssetUrls = useLifeLabDiagramAssetUrls(code);
+  const diagramAsset = useLifeLabDiagramAsset(code);
   const { preferredSvg, preferredSvgChecked } = usePreferredDiagramSvg(
-    preferredAssetUrls.svg,
+    diagramAsset.savedAssetUrls.svg,
   );
   const displaySvg = preferredSvg ?? preparedSvg;
   const [busyFormat, setBusyFormat] = useState<DiagramExportFormat | null>(null);
@@ -58,7 +58,7 @@ export function MermaidDiagramDialog({
           source: code,
           sourceExtension: "mmd",
           svg: displaySvg.html,
-          preferredAssetUrls,
+          preferredAssetUrls: diagramAsset.savedAssetUrls,
         },
         format,
       );
@@ -81,6 +81,7 @@ export function MermaidDiagramDialog({
       onCopySource={() => void copySource()}
       copied={copied}
       busyFormat={busyFormat}
+      exportSource={preferredSvg ? "saved" : diagramAsset.exportSource}
     />
   ) : null;
 

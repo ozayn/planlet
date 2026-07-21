@@ -254,6 +254,21 @@ export const SETTINGS_ITEMS: SettingsItemDefinition[] = [
     isAvailable: (access) => access.hasReadAloudSettings,
   },
   {
+    id: "active-timer-notification",
+    categorySlug: "timer",
+    title: "Active timer notification",
+    subtitle: "Show the running timer in notifications when supported",
+    keywords: [
+      "active timer",
+      "notification",
+      "lock screen",
+      "stop timer",
+      "timer alert",
+    ],
+    anchor: "active-timer-notification",
+    isAvailable: (access) => access.hasTimerPresets,
+  },
+  {
     id: "timer-presets",
     categorySlug: "timer",
     title: "Timer presets",

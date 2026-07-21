@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import { ReadingDensityApplier } from "@/components/reading-density-applier";
 import { ActivityTimerFloatingPill } from "@/components/activity-timer/activity-timer-floating-pill";
+import { ActivityTimerNotificationSync } from "@/components/activity-timer/activity-timer-notification-sync";
 import { ActivityTimerProvider } from "@/components/activity-timer/activity-timer-context";
 import { AppLayoutShell } from "@/components/app-layout-shell";
 import { SignOutButton } from "@/components/sign-out-button";
@@ -99,6 +100,7 @@ export default async function AppLayout({
           {children}
         </AppLayoutShell>
         {timerAccess ? <ActivityTimerFloatingPill /> : null}
+        {timerAccess ? <ActivityTimerNotificationSync /> : null}
       </ActivityTimerProvider>
     </>
   );

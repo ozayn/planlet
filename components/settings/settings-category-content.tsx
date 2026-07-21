@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { SignOutButton } from "@/components/sign-out-button";
+import { ActiveTimerNotificationSettings } from "@/components/settings/active-timer-notification-settings";
 import { ActivityTimerPresetSettings } from "@/components/settings/activity-timer-preset-settings";
 import { MobileNavSettings } from "@/components/settings/mobile-nav-settings";
 import { PlanItemViewSettings } from "@/components/settings/plan-item-view-settings";
@@ -81,6 +82,12 @@ export function SettingsCategoryContent({
     case "timer":
       return data.activityTimerPresetSettings ? (
         <div className="ui-settings-category-stack">
+          <SettingsBlock
+            id="active-timer-notification"
+            title="Active timer notification"
+          >
+            <ActiveTimerNotificationSettings embedded />
+          </SettingsBlock>
           <SettingsBlock id="timer-presets" title="Activity presets">
             <ActivityTimerPresetSettings
               data={data.activityTimerPresetSettings}

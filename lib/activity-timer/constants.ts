@@ -94,6 +94,14 @@ export const MAX_ACTIVITY_CATEGORY_LENGTH = 60;
 export const MAX_TARGET_DURATION_SECONDS = 24 * 60 * 60;
 export const RECENT_ACTIVITY_SESSION_LIMIT = 20;
 
+/** Sessions shorter than this are discarded without creating a saved row. */
+export const MIN_TIMER_SESSION_SECONDS = 30;
+
+export const ACTIVITY_TIMER_ACTIVE_NOTIFICATION_TAG = "planlet-active-timer";
+export const ACTIVITY_TIMER_ACTIVE_NOTIFICATION_STORAGE_KEY =
+  "activity-timer-active-notification";
+export const ACTIVITY_TIMER_OPEN_PATH = "/timer?active=1";
+
 /** Optional targets for count-up presets (progress ring). */
 export const QUICK_TARGET_DURATION_OPTIONS = [
   { label: "No target", seconds: null },

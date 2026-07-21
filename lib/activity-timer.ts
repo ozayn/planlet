@@ -11,6 +11,7 @@ import {
   MAX_ACTIVITY_NOTES_LENGTH,
   MAX_ACTIVITY_TITLE_LENGTH,
   MAX_TARGET_DURATION_SECONDS,
+  MIN_TIMER_SESSION_SECONDS,
   RECENT_ACTIVITY_SESSION_LIMIT,
   type ActivityTimerMode,
   type ActivityTimerInsights,
@@ -38,7 +39,10 @@ import {
   serializeActivityTimerSessionNote,
 } from "@/lib/activity-timer/session-notes";
 import { normalizePresetIconName } from "@/lib/activity-timer/preset-icons";
-import { activeElapsedSecondsFromSession } from "@/lib/activity-timer/countdown";
+import {
+  activeElapsedSecondsFromSession,
+  shouldSaveTimerSession,
+} from "@/lib/activity-timer/countdown";
 import {
   formatActivityDuration,
   formatActivityDurationShort,
@@ -70,6 +74,9 @@ export type {
   UpdateActivityTimerSessionInput,
   UpdateActivityTimerSessionNoteInput,
 } from "@/lib/activity-timer/constants";
+
+export { shouldSaveTimerSession } from "@/lib/activity-timer/countdown";
+export { MIN_TIMER_SESSION_SECONDS } from "@/lib/activity-timer/constants";
 
 export {
   durationSecondsBetween,
@@ -837,10 +844,33 @@ export async function resumeActivityTimerSession(
   });
 }
 
+export type StopActivityTimerResult =
+  | {
+      outcome: "saved";
+      session: ActivityTimerSession;
+      durationSeconds: number;
+    }
+  | {
+      outcome: "discarded";
+      reason: "under_minimum" | "explicit";
+      durationSeconds: number;
+    }
+  | {
+      outcome: "idle";
+    };
+
+async function discardActiveTimerSession(
+  sessionId: string,
+): Promise<void> {
+  await prisma.activityTimerSession.delete({
+    where: { id: sessionId },
+  });
+}
+
 export async function stopActivityTimerSession(
   userId: string,
   input: StopActivityTimerInput,
-) {
+): Promise<StopActivityTimerResult> {
   const session = await prisma.activityTimerSession.findFirst({
     where: {
       id: input.sessionId,
@@ -850,14 +880,7 @@ export async function stopActivityTimerSession(
   });
 
   if (!session) {
-    throw new ActivityTimerError("Active timer not found.");
-  }
-
-  if (input.discard) {
-    await prisma.activityTimerSession.delete({
-      where: { id: session.id },
-    });
-    return null;
+    return { outcome: "idle" };
   }
 
   const stoppedAt = new Date();
@@ -868,7 +891,25 @@ export async function stopActivityTimerSession(
     completed,
   );
 
-  return prisma.activityTimerSession.update({
+  if (input.discard) {
+    await discardActiveTimerSession(session.id);
+    return {
+      outcome: "discarded",
+      reason: "explicit",
+      durationSeconds,
+    };
+  }
+
+  if (!shouldSaveTimerSession(durationSeconds)) {
+    await discardActiveTimerSession(session.id);
+    return {
+      outcome: "discarded",
+      reason: "under_minimum",
+      durationSeconds,
+    };
+  }
+
+  const saved = await prisma.activityTimerSession.update({
     where: { id: session.id },
     data: {
       stoppedAt,
@@ -880,6 +921,28 @@ export async function stopActivityTimerSession(
           ? normalizeOptionalNotes(input.notes)
           : undefined,
     },
+  });
+
+  return {
+    outcome: "saved",
+    session: saved,
+    durationSeconds,
+  };
+}
+
+export async function stopActiveActivityTimerSession(
+  userId: string,
+  options: { completed?: boolean } = {},
+): Promise<StopActivityTimerResult> {
+  const active = await getActiveSession(userId);
+
+  if (!active) {
+    return { outcome: "idle" };
+  }
+
+  return stopActivityTimerSession(userId, {
+    sessionId: active.id,
+    completed: options.completed,
   });
 }
 
@@ -979,7 +1042,15 @@ export async function updateActivityTimerSession(
         input.durationSeconds !== undefined
           ? input.durationSeconds == null
             ? null
-            : Math.max(0, Math.floor(input.durationSeconds))
+            : (() => {
+                const next = Math.max(0, Math.floor(input.durationSeconds));
+                if (!shouldSaveTimerSession(next)) {
+                  throw new ActivityTimerError(
+                    `Sessions must be at least ${MIN_TIMER_SESSION_SECONDS} seconds.`,
+                  );
+                }
+                return next;
+              })()
           : undefined,
     },
   });
