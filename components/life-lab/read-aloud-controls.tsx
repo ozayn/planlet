@@ -348,6 +348,10 @@ type FlashcardReadAloudControlsProps = {
   revealed: boolean;
   cardKey: string;
   className?: string;
+  /** Compact Listen button with popover panel (default Explore layout). */
+  compact?: boolean;
+  /** Show speech diagnostics (Chrome · voices=…) only in developer mode. */
+  developerMode?: boolean;
 };
 
 export function FlashcardReadAloudControls({
@@ -356,6 +360,8 @@ export function FlashcardReadAloudControls({
   revealed,
   cardKey,
   className = "",
+  compact = false,
+  developerMode = false,
 }: FlashcardReadAloudControlsProps) {
   const {
     isSupported,
@@ -393,55 +399,90 @@ export function FlashcardReadAloudControls({
     return null;
   }
 
-  return (
-    <ReadAloudPanel
-      className={className}
-      playbackFailed={playbackFailed}
-      voiceFallbackNotice={voiceFallbackNotice}
-      voiceUnavailableNotice={voiceUnavailableNotice}
-      diagnostics={diagnostics}
-    >
-      {!isSpeaking ? (
+  const actionButtons = !isSpeaking ? (
+    <>
+      <ControlButton onClick={() => speak(question)}>
+        Read question
+      </ControlButton>
+      {revealed ? (
         <>
-          <ControlButton onClick={() => speak(question)}>
-            Read question
+          <ControlButton onClick={() => speak(answer)}>
+            Read answer
           </ControlButton>
-          {revealed ? (
-            <>
-              <ControlButton onClick={() => speak(answer)}>
-                Read answer
-              </ControlButton>
-              <ControlButton onClick={() => speak([question, answer])}>
-                Read both
-              </ControlButton>
-            </>
-          ) : null}
+          <ControlButton onClick={() => speak([question, answer])}>
+            Read both
+          </ControlButton>
         </>
+      ) : null}
+    </>
+  ) : (
+    <>
+      <ControlButton onClick={stop} active>
+        Stop
+      </ControlButton>
+      {isPaused ? (
+        <ControlButton onClick={resume}>Resume</ControlButton>
       ) : (
-        <>
-          <ControlButton onClick={stop} active>
-            Stop
-          </ControlButton>
-          {isPaused ? (
-            <ControlButton onClick={resume}>Resume</ControlButton>
-          ) : (
-            <ControlButton onClick={pause}>Pause</ControlButton>
-          )}
-        </>
+        <ControlButton onClick={pause}>Pause</ControlButton>
       )}
+    </>
+  );
 
+  const voiceAndRate = (
+    <>
       <SpeechVoiceSelector
         voices={selectableVoices}
         selectedVoiceId={selectedVoiceId}
         setSelectedVoiceId={setSelectedVoiceId}
         disabled={isSpeaking}
       />
-
       <SpeechRateControls
         rate={rate}
         setRate={setRate}
         disabled={isSpeaking}
       />
-    </ReadAloudPanel>
+    </>
+  );
+
+  if (compact) {
+    return (
+      <details
+        className={`flashcard-listen group relative print:hidden ${className}`.trim()}
+      >
+        <summary
+          className="inline-flex min-h-10 cursor-pointer list-none items-center rounded-full border border-border/70 px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:bg-accent-cream/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border [&::-webkit-details-marker]:hidden"
+          aria-label="Listen"
+        >
+          Listen
+        </summary>
+        <div className="flashcard-listen-panel absolute right-0 z-20 mt-2 w-[min(100vw-2rem,18rem)] space-y-3 rounded-xl border border-border/70 bg-background p-3 shadow-lg">
+          <div className="flex flex-wrap gap-2">{actionButtons}</div>
+          <div className="space-y-2 border-t border-border/50 pt-2">
+            {voiceAndRate}
+          </div>
+          <SpeechVoiceFallbackNotice message={voiceUnavailableNotice} />
+          <SpeechVoiceFallbackNotice message={voiceFallbackNotice} />
+          <SpeechPlaybackNotice show={playbackFailed} />
+          {developerMode ? (
+            <SpeechDevDiagnostic diagnostics={diagnostics} />
+          ) : null}
+        </div>
+      </details>
+    );
+  }
+
+  return (
+    <div className={`flex flex-col gap-1.5 ${className}`}>
+      <div className="flex flex-wrap items-center gap-2">
+        {actionButtons}
+        {voiceAndRate}
+      </div>
+      <SpeechVoiceFallbackNotice message={voiceUnavailableNotice} />
+      <SpeechVoiceFallbackNotice message={voiceFallbackNotice} />
+      <SpeechPlaybackNotice show={playbackFailed} />
+      {developerMode ? (
+        <SpeechDevDiagnostic diagnostics={diagnostics} />
+      ) : null}
+    </div>
   );
 }

@@ -156,18 +156,20 @@ export default async function LifeLabNotePage({
             : "space-y-4 md:space-y-6"
         }`}
       >
-      <div className="flex justify-end gap-2">
-        <LifeLabReadingControls />
-        <LifeLabRefreshButton
-          scope="note"
-          sectionId={note.sectionId}
-          slug={note.slug}
-          fileId={note.fileId}
-          metadata={note.metadata}
-          relativePath={note.relativePath}
-          subfolderLabel={note.subfolderLabel}
-        />
-      </div>
+      {!showFlashcardsView ? (
+        <div className="flex justify-end gap-2">
+          <LifeLabReadingControls />
+          <LifeLabRefreshButton
+            scope="note"
+            sectionId={note.sectionId}
+            slug={note.slug}
+            fileId={note.fileId}
+            metadata={note.metadata}
+            relativePath={note.relativePath}
+            subfolderLabel={note.subfolderLabel}
+          />
+        </div>
+      ) : null}
 
       {showFlashcardsView ? (
         <>

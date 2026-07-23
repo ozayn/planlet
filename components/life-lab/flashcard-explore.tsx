@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import { MoreHorizontal } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { FlashcardReadAloudControls } from "@/components/life-lab/read-aloud-controls";
-import { FlashcardSourceLink } from "@/components/life-lab/flashcard-source-link";
 import { MermaidBlock } from "@/components/life-lab/mermaid-block";
 import { ReadableText } from "@/components/life-lab/readable-text";
 import { useLifeLabReadingMode } from "@/components/life-lab/life-lab-reading-mode";
@@ -12,6 +12,7 @@ import { LifeLabReadingControls } from "@/components/life-lab/life-lab-reading-c
 import { useFlashcardSession } from "@/components/life-lab/use-flashcard-session";
 import type { LifeLabSectionId } from "@/lib/life-lab/constants";
 import type { FlashcardWithDictionaryLink } from "@/lib/life-lab/flashcard-dictionary-link";
+import { resolveFlashcardDeckHeader } from "@/lib/life-lab/flashcard-explore-ui";
 import {
   serializeMemoNextDeck,
   type MemoNextParseIssue,
@@ -98,6 +99,24 @@ async function copyText(value: string): Promise<void> {
   }
 }
 
+function MoreMenuButton({
+  children,
+  onClick,
+}: {
+  children: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className="block w-full rounded-lg px-3 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-accent-cream/40"
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
+
 export function FlashcardExplore({
   deck,
   backHref,
@@ -109,8 +128,26 @@ export function FlashcardExplore({
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
+  const [moreOpen, setMoreOpen] = useState(false);
   const session = useFlashcardSession(deck.id, total);
   const { viewIndex, goTo, setRevealed } = session;
+  const header = useMemo(
+    () =>
+      resolveFlashcardDeckHeader({
+        title: deck.title,
+        sourceNoteTitle: deck.sourceNoteTitle,
+        sourceNoteHref: deck.sourceNoteHref,
+        sourceSectionId: deck.sourceSectionId,
+        category: deck.category,
+      }),
+    [
+      deck.title,
+      deck.sourceNoteTitle,
+      deck.sourceNoteHref,
+      deck.sourceSectionId,
+      deck.category,
+    ],
+  );
 
   const currentCard = cards[session.cardIndex];
   const dictionaryHref = currentCard?.dictionaryHref ?? null;
@@ -164,9 +201,28 @@ export function FlashcardExplore({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [mode, viewIndex, goTo, setRevealed]);
 
+  function closeMore(): void {
+    setMoreOpen(false);
+  }
+
   if (total === 0) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-4" data-flashcard-explore="empty">
+        <div className="flex items-center gap-3">
+          <Link
+            href={backHref}
+            className="text-sm font-medium text-muted transition-colors hover:text-foreground"
+          >
+            Back
+          </Link>
+          <h1
+            className="min-w-0 truncate text-base font-semibold text-foreground"
+            title={header.fullTitle}
+            dir="auto"
+          >
+            {header.shortTitle}
+          </h1>
+        </div>
         <p className="text-sm text-muted">
           {deck.parseIssues?.length
             ? "This deck could not be parsed."
@@ -181,325 +237,395 @@ export function FlashcardExplore({
             ))}
           </ul>
         ) : null}
-        <Link
-          href={backHref}
-          className="text-sm font-medium text-muted transition-colors hover:text-foreground"
-        >
-          Back
-        </Link>
+      </div>
+    );
+  }
+
+  if (mode === "all") {
+    return (
+      <div
+        className="flashcard-explore flashcard-show-all space-y-4"
+        data-flashcard-mode="all"
+      >
+        <div className="flex items-center justify-between gap-3 print:hidden">
+          <button
+            type="button"
+            className="text-sm font-medium text-muted transition-colors hover:text-foreground"
+            onClick={() => setMode("explore")}
+          >
+            Back to Explore
+          </button>
+          <h1
+            className="min-w-0 truncate text-base font-semibold text-foreground"
+            title={header.fullTitle}
+            dir="auto"
+          >
+            <span className="md:hidden">{header.shortTitle}</span>
+            <span className="hidden md:inline">{header.displayTitle}</span>
+          </h1>
+        </div>
+
+        <label className="block print:hidden">
+          <span className="sr-only">Search cards</span>
+          <input
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search this deck"
+            className="w-full rounded-xl border border-border/70 bg-background px-3 py-2 text-sm"
+          />
+        </label>
+
+        <ul className="space-y-3">
+          {filteredAll.map(({ card, index }) => {
+            const open = Boolean(expanded[index]);
+            return (
+              <li
+                key={`${index}-${card.question.slice(0, 24)}`}
+                className="ui-card-padded flashcard-all-item space-y-2 break-inside-avoid"
+              >
+                <button
+                  type="button"
+                  className="w-full text-left print:hidden"
+                  onClick={() =>
+                    setExpanded((prev) => ({
+                      ...prev,
+                      [index]: !prev[index],
+                    }))
+                  }
+                  aria-expanded={open}
+                >
+                  <p className="font-medium text-foreground" dir="auto">
+                    {card.question}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-light">
+                    {open ? "Hide answer" : "Show answer"}
+                  </p>
+                </button>
+                <p
+                  className="hidden font-medium text-foreground print:block"
+                  dir="auto"
+                >
+                  {card.question}
+                </p>
+                <div
+                  className={`space-y-2 border-t border-border/50 pt-2 ${
+                    open ? "block" : "hidden print:block"
+                  }`}
+                >
+                  <p
+                    className="text-sm leading-relaxed text-foreground"
+                    dir="auto"
+                  >
+                    {card.answer}
+                  </p>
+                  {card.example ? (
+                    <p className="text-sm text-muted" dir="auto">
+                      {card.example}
+                    </p>
+                  ) : null}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       </div>
     );
   }
 
   return (
-    <div className="flashcard-explore space-y-4" data-flashcard-mode={mode}>
-      <div className="flex flex-wrap items-start justify-between gap-3 print:hidden">
-        <div className="min-w-0 space-y-1">
-          <h2 className="text-lg font-semibold text-foreground" dir="auto">
-            {deck.title}
-          </h2>
-          <FlashcardSourceLink
-            href={deck.sourceNoteHref ?? null}
-            title={deck.sourceNoteTitle ?? null}
-            sectionId={deck.sourceSectionId}
-          />
-          {dictionaryHref ? (
-            <Link
-              href={dictionaryHref}
-              className="text-sm font-medium text-muted underline-offset-2 hover:underline"
-            >
-              Open dictionary entry
-            </Link>
-          ) : null}
-          {developerMode && dictionaryAmbiguity.length > 1 ? (
-            <p className="text-xs text-muted-light">
-              Dictionary match ambiguous (
-              {dictionaryAmbiguity.map((entry) => entry.title).join(", ")})
-            </p>
-          ) : null}
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <LifeLabReadingControls />
-          <span className="text-xs text-muted-light" aria-live="polite">
-            {session.viewIndex + 1} / {total}
-          </span>
-        </div>
-      </div>
+    <div
+      className="flashcard-explore space-y-3 pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:space-y-4 sm:pb-4"
+      data-flashcard-mode="explore"
+      data-flashcard-layout="card-first"
+    >
+      <header
+        className="flashcard-explore-topbar flex items-center gap-2 print:hidden"
+        data-flashcard-header="compact"
+      >
+        <Link
+          href={backHref}
+          className="shrink-0 rounded-full px-2 py-2 text-sm font-medium text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border"
+          aria-label="Back"
+          data-flashcard-back="true"
+        >
+          Back
+        </Link>
 
-      <div className="flex flex-wrap gap-2 print:hidden">
-        <button
-          type="button"
-          className={`rounded-full px-3 py-1.5 text-xs font-medium ${
-            mode === "explore"
-              ? "bg-accent-cream text-foreground"
-              : "border border-border/70 text-muted"
-          }`}
-          onClick={() => setMode("explore")}
+        <h1
+          className="min-w-0 flex-1 truncate text-sm font-semibold text-foreground sm:text-base"
+          title={header.fullTitle}
+          dir="auto"
+          data-flashcard-title="once"
         >
-          Explore
-        </button>
-        <button
-          type="button"
-          className={`rounded-full px-3 py-1.5 text-xs font-medium ${
-            mode === "all"
-              ? "bg-accent-cream text-foreground"
-              : "border border-border/70 text-muted"
-          }`}
-          onClick={() => setMode("all")}
-        >
-          Show all cards
-        </button>
-        <button
-          type="button"
-          className="rounded-full border border-border/70 px-3 py-1.5 text-xs font-medium text-muted"
-          onClick={() => downloadDeckTxt(deck)}
-          aria-label="Download deck as text"
-        >
-          Export
-        </button>
-        <button
-          type="button"
-          className="rounded-full border border-border/70 px-3 py-1.5 text-xs font-medium text-muted"
-          onClick={() =>
-            void copyText(
-              serializeMemoNextDeck({
-                headers: { title: deck.title },
-                cards: deck.cards,
-              }),
-            )
-          }
-          aria-label="Copy all cards"
-        >
-          Copy all
-        </button>
-        {deck.sourceNoteHref ? (
-          <Link
-            href={deck.sourceNoteHref}
-            className="rounded-full border border-border/70 px-3 py-1.5 text-xs font-medium text-muted"
-          >
-            Open source note
-          </Link>
-        ) : null}
-      </div>
+          <span className="md:hidden">{header.shortTitle}</span>
+          <span className="hidden md:inline">{header.displayTitle}</span>
+        </h1>
 
-      {mode === "all" ? (
-        <div className="flashcard-show-all space-y-3">
-          <label className="block print:hidden">
-            <span className="sr-only">Search cards</span>
-            <input
-              type="search"
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search this deck"
-              className="w-full rounded-xl border border-border/70 bg-background px-3 py-2 text-sm"
-            />
-          </label>
-          <ul className="space-y-3">
-            {filteredAll.map(({ card, index }) => {
-              const open = Boolean(expanded[index]);
-              return (
-                <li
-                  key={`${index}-${card.question.slice(0, 24)}`}
-                  className="ui-card-padded flashcard-all-item space-y-2 break-inside-avoid"
-                >
-                  <button
-                    type="button"
-                    className="w-full text-left print:hidden"
-                    onClick={() =>
-                      setExpanded((prev) => ({
-                        ...prev,
-                        [index]: !prev[index],
-                      }))
-                    }
-                    aria-expanded={open}
-                  >
-                    <p className="font-medium text-foreground" dir="auto">
-                      {card.question}
-                    </p>
-                    <p className="mt-1 text-xs text-muted-light">
-                      {open ? "Hide answer" : "Show answer"}
-                    </p>
-                  </button>
-                  <p
-                    className="hidden font-medium text-foreground print:block"
-                    dir="auto"
-                  >
-                    {card.question}
-                  </p>
-                  <div
-                    className={`space-y-2 border-t border-border/50 pt-2 ${
-                      open ? "block" : "hidden print:block"
-                    }`}
-                  >
-                    <p
-                      className="text-sm leading-relaxed text-foreground"
-                      dir="auto"
-                    >
-                      {card.answer}
-                    </p>
-                    {card.example ? (
-                      <p className="text-sm text-muted" dir="auto">
-                        {card.example}
-                      </p>
-                    ) : null}
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      ) : (
-        <>
+        <span
+          className="shrink-0 text-xs tabular-nums text-muted-light"
+          aria-live="polite"
+        >
+          {session.viewIndex + 1} / {total}
+        </span>
+
+        <div className="hidden shrink-0 sm:block">
           <FlashcardReadAloudControls
             question={currentCard!.question}
             answer={currentCard!.answer}
             revealed={session.revealed}
             cardKey={`${deck.id}-${session.cardIndex}`}
-            className="print:hidden"
+            compact
+            developerMode={developerMode}
           />
+        </div>
 
-          <div
-            className="ui-card-padded min-h-[14rem] space-y-4 sm:min-h-[18rem]"
-            onTouchStart={(event) =>
-              setTouchStartX(event.changedTouches[0]?.clientX ?? null)
-            }
-            onTouchEnd={(event) => {
-              if (touchStartX == null) {
-                return;
-              }
-              const endX = event.changedTouches[0]?.clientX ?? touchStartX;
-              const delta = endX - touchStartX;
-              setTouchStartX(null);
-              if (Math.abs(delta) < 56) {
-                return;
-              }
-              if (delta < 0) {
-                session.goTo(session.viewIndex + 1);
-              } else {
-                session.goTo(session.viewIndex - 1);
-              }
-            }}
-          >
-            {currentCard?.diagramSource ? (
-              <div className="overflow-x-auto">
-                <MermaidBlock code={currentCard.diagramSource} />
-              </div>
-            ) : null}
-
-            <button
-              type="button"
-              className="block w-full text-left"
-              onClick={() => session.setRevealed((value) => !value)}
-              aria-expanded={session.revealed}
-              aria-label={
-                session.revealed ? "Hide answer" : "Reveal answer"
-              }
-            >
-              <span className="sr-only" aria-live="polite">
-                {session.revealed ? "Answer revealed" : "Answer hidden"}
-              </span>
-              <CardFaceText
-                text={currentCard!.question}
-                className="text-lg sm:text-xl"
-              />
-              {session.revealed ? (
-                <div className="mt-5 space-y-3 border-t border-border/60 pt-5">
-                  <CardFaceText
-                    text={currentCard!.answer}
-                    className="text-base sm:text-lg"
-                  />
-                  {currentCard?.example ? (
-                    <CardFaceText
-                      text={currentCard.example}
-                      className="text-sm text-muted"
-                    />
-                  ) : null}
-                  {currentCard?.context ? (
-                    <p
-                      className="text-sm leading-relaxed text-muted"
-                      dir="auto"
-                    >
-                      {currentCard.context}
-                    </p>
-                  ) : null}
-                </div>
-              ) : (
-                <p className="mt-5 text-sm text-muted-light print:hidden">
-                  Tap to reveal answer
-                </p>
-              )}
-            </button>
-          </div>
-
-          <div className="flashcard-explore-controls sticky bottom-3 z-10 flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-border/70 bg-background/95 px-3 py-2 shadow-sm backdrop-blur print:hidden">
-            <button
-              type="button"
-              className="rounded-full px-3 py-2 text-sm font-medium text-muted disabled:opacity-40"
-              onClick={() => session.goTo(session.viewIndex - 1)}
-              disabled={session.viewIndex <= 0}
-              aria-label="Previous card"
-            >
-              Previous
-            </button>
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                className="rounded-full border border-border/70 px-3 py-1.5 text-xs font-medium text-muted"
-                onClick={() => session.setRevealed((value) => !value)}
-              >
-                {session.revealed ? "Hide answer" : "Reveal"}
-              </button>
-              <button
-                type="button"
-                className="rounded-full border border-border/70 px-3 py-1.5 text-xs font-medium text-muted"
-                onClick={() => session.shuffle()}
-              >
-                Shuffle
-              </button>
-              <button
-                type="button"
-                className="rounded-full border border-border/70 px-3 py-1.5 text-xs font-medium text-muted"
-                onClick={() => session.restart()}
-              >
-                Restart
-              </button>
-              <button
-                type="button"
-                className="rounded-full border border-border/70 px-3 py-1.5 text-xs font-medium text-muted"
-                onClick={() =>
-                  void copyText(
-                    `Q: ${currentCard!.question}\nA: ${currentCard!.answer}${
-                      currentCard?.example
-                        ? `\nExample: ${currentCard.example}`
-                        : ""
-                    }`,
-                  )
-                }
-                aria-label="Copy current card"
-              >
-                Copy
-              </button>
-            </div>
-            <button
-              type="button"
-              className="rounded-full px-3 py-2 text-sm font-medium text-muted disabled:opacity-40"
-              onClick={() => session.goTo(session.viewIndex + 1)}
-              disabled={session.viewIndex >= total - 1}
-              aria-label="Next card"
-            >
-              Next
-            </button>
-          </div>
-        </>
-      )}
-
-      <div className="print:hidden">
-        <Link
-          href={backHref}
-          className="text-sm font-medium text-muted transition-colors hover:text-foreground"
+        <details
+          className="flashcard-more relative shrink-0"
+          open={moreOpen}
+          onToggle={(event) =>
+            setMoreOpen((event.target as HTMLDetailsElement).open)
+          }
         >
-          Back
-        </Link>
+          <summary
+            className="inline-flex min-h-10 min-w-10 cursor-pointer list-none items-center justify-center rounded-full border border-border/70 text-muted transition-colors hover:bg-accent-cream/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border [&::-webkit-details-marker]:hidden"
+            aria-label="More actions"
+          >
+            <MoreHorizontal className="size-4" aria-hidden="true" />
+          </summary>
+          <div className="flashcard-more-panel absolute right-0 z-30 mt-2 w-[min(100vw-1.5rem,17rem)] rounded-xl border border-border/70 bg-background py-1 shadow-lg">
+            <MoreMenuButton
+              onClick={() => {
+                setMode("all");
+                closeMore();
+              }}
+            >
+              Show all cards
+            </MoreMenuButton>
+            <MoreMenuButton
+              onClick={() => {
+                session.shuffle();
+                closeMore();
+              }}
+            >
+              Shuffle
+            </MoreMenuButton>
+            <MoreMenuButton
+              onClick={() => {
+                session.restart();
+                closeMore();
+              }}
+            >
+              Restart
+            </MoreMenuButton>
+            <MoreMenuButton
+              onClick={() => {
+                void copyText(
+                  `Q: ${currentCard!.question}\nA: ${currentCard!.answer}${
+                    currentCard?.example
+                      ? `\nExample: ${currentCard.example}`
+                      : ""
+                  }`,
+                );
+                closeMore();
+              }}
+            >
+              Copy card
+            </MoreMenuButton>
+            <MoreMenuButton
+              onClick={() => {
+                void copyText(
+                  serializeMemoNextDeck({
+                    headers: { title: deck.title },
+                    cards: deck.cards,
+                  }),
+                );
+                closeMore();
+              }}
+            >
+              Copy all
+            </MoreMenuButton>
+            <MoreMenuButton
+              onClick={() => {
+                downloadDeckTxt(deck);
+                closeMore();
+              }}
+            >
+              Export
+            </MoreMenuButton>
+            {header.showOpenSourceNote && deck.sourceNoteHref ? (
+              <Link
+                href={deck.sourceNoteHref}
+                className="block w-full rounded-lg px-3 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-accent-cream/40"
+                onClick={closeMore}
+              >
+                Open source note
+              </Link>
+            ) : null}
+            {dictionaryHref ? (
+              <Link
+                href={dictionaryHref}
+                className="block w-full rounded-lg px-3 py-2.5 text-left text-sm text-foreground transition-colors hover:bg-accent-cream/40"
+                onClick={closeMore}
+              >
+                Open dictionary entry
+              </Link>
+            ) : null}
+            <div className="border-t border-border/50 px-3 py-2 sm:hidden">
+              <p className="mb-2 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-light">
+                Listen
+              </p>
+              <FlashcardReadAloudControls
+                question={currentCard!.question}
+                answer={currentCard!.answer}
+                revealed={session.revealed}
+                cardKey={`${deck.id}-${session.cardIndex}-more`}
+                developerMode={developerMode}
+              />
+            </div>
+            <div className="border-t border-border/50 px-3 py-2">
+              <p className="mb-2 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-light">
+                Reading
+              </p>
+              <LifeLabReadingControls variant="panel" />
+            </div>
+            {developerMode && dictionaryAmbiguity.length > 1 ? (
+              <p className="border-t border-border/50 px-3 py-2 text-xs text-muted-light">
+                Dictionary match ambiguous (
+                {dictionaryAmbiguity.map((entry) => entry.title).join(", ")})
+              </p>
+            ) : null}
+          </div>
+        </details>
+      </header>
+
+      {header.sourceLine ? (
+        <p
+          className="text-xs text-muted-light print:hidden"
+          data-flashcard-source-line="true"
+        >
+          {header.sourceLine}
+        </p>
+      ) : null}
+
+      <div
+        className="flashcard-face rounded-2xl border border-border/60 bg-surface px-4 py-5 sm:px-5 sm:py-6"
+        data-flashcard-card="true"
+        onTouchStart={(event) =>
+          setTouchStartX(event.changedTouches[0]?.clientX ?? null)
+        }
+        onTouchEnd={(event) => {
+          if (touchStartX == null) {
+            return;
+          }
+          const endX = event.changedTouches[0]?.clientX ?? touchStartX;
+          const delta = endX - touchStartX;
+          setTouchStartX(null);
+          if (Math.abs(delta) < 56) {
+            return;
+          }
+          if (delta < 0) {
+            session.goTo(session.viewIndex + 1);
+          } else {
+            session.goTo(session.viewIndex - 1);
+          }
+        }}
+      >
+        {currentCard?.diagramSource ? (
+          <div className="mb-4 overflow-x-auto">
+            <MermaidBlock code={currentCard.diagramSource} />
+          </div>
+        ) : null}
+
+        <button
+          type="button"
+          className="block w-full min-h-[7rem] text-left sm:min-h-[8.5rem]"
+          onClick={() => session.setRevealed((value) => !value)}
+          aria-expanded={session.revealed}
+          aria-label={session.revealed ? "Hide answer" : "Reveal answer"}
+        >
+          <span className="sr-only" aria-live="polite">
+            {session.revealed ? "Answer revealed" : "Answer hidden"}
+          </span>
+          <CardFaceText
+            text={currentCard!.question}
+            className="text-lg sm:text-xl"
+          />
+          {session.revealed ? (
+            <div className="mt-5 space-y-3 border-t border-border/60 pt-5">
+              <CardFaceText
+                text={currentCard!.answer}
+                className="text-base sm:text-lg"
+              />
+              {currentCard?.example ? (
+                <CardFaceText
+                  text={currentCard.example}
+                  className="text-sm text-muted"
+                />
+              ) : null}
+              {currentCard?.context ? (
+                <p className="text-sm leading-relaxed text-muted" dir="auto">
+                  {currentCard.context}
+                </p>
+              ) : null}
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-muted-light print:hidden">
+              Tap to reveal answer
+            </p>
+          )}
+        </button>
+      </div>
+
+      <div className="hidden justify-center gap-2 print:hidden sm:flex">
+        <button
+          type="button"
+          className="rounded-full border border-border/70 px-3 py-1.5 text-xs font-medium text-muted"
+          onClick={() => session.shuffle()}
+        >
+          Shuffle
+        </button>
+        <button
+          type="button"
+          className="rounded-full border border-border/70 px-3 py-1.5 text-xs font-medium text-muted"
+          onClick={() => session.restart()}
+        >
+          Restart
+        </button>
+      </div>
+
+      <div
+        className="flashcard-explore-controls fixed inset-x-0 bottom-0 z-20 border-t border-border/70 bg-background/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-4px_16px_rgba(0,0,0,0.04)] backdrop-blur print:hidden sm:sticky sm:bottom-3 sm:inset-x-auto sm:rounded-2xl sm:border sm:px-3 sm:py-2 sm:shadow-sm"
+        data-flashcard-nav="sticky"
+      >
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-2">
+          <button
+            type="button"
+            className="min-h-11 min-w-[4.5rem] rounded-full px-3 py-2 text-sm font-medium text-muted disabled:opacity-40"
+            onClick={() => session.goTo(session.viewIndex - 1)}
+            disabled={session.viewIndex <= 0}
+            aria-label="Previous card"
+          >
+            Previous
+          </button>
+          <button
+            type="button"
+            className="min-h-11 rounded-full bg-accent-cream px-4 py-2 text-sm font-medium text-foreground"
+            onClick={() => session.setRevealed((value) => !value)}
+            aria-label={session.revealed ? "Hide answer" : "Reveal answer"}
+          >
+            {session.revealed ? "Hide" : "Reveal"}
+          </button>
+          <button
+            type="button"
+            className="min-h-11 min-w-[4.5rem] rounded-full px-3 py-2 text-sm font-medium text-muted disabled:opacity-40"
+            onClick={() => session.goTo(session.viewIndex + 1)}
+            disabled={session.viewIndex >= total - 1}
+            aria-label="Next card"
+          >
+            Next
+          </button>
+        </div>
       </div>
     </div>
   );

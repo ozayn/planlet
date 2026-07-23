@@ -73,9 +73,84 @@ function ReadingSelect<Value extends string>({
   );
 }
 
-export function LifeLabReadingControls() {
+export function LifeLabReadingControls({
+  variant = "button",
+}: {
+  variant?: "button" | "panel";
+} = {}) {
   const { preferences, setPreference, resetPreferences } =
     useLifeLabReadingMode();
+
+  const panel = (
+    <div className={variant === "panel" ? "space-y-3" : "ui-reading-controls-panel"}>
+      {variant === "button" ? (
+        <div>
+          <h2 className="text-sm font-semibold text-foreground">
+            Reading settings
+          </h2>
+          <p className="mt-0.5 text-xs leading-relaxed text-muted">
+            Adjust this view without changing the note.
+          </p>
+        </div>
+      ) : null}
+
+      <div className="grid gap-3">
+        <ReadingSelect
+          label="Reading mode"
+          value={preferences.readingMode}
+          values={LIFE_LAB_READING_MODES}
+          labels={MODE_LABELS}
+          onChange={(value) => setPreference("readingMode", value)}
+        />
+        <div className="grid grid-cols-2 gap-2">
+          <ReadingSelect
+            label="Font size"
+            value={preferences.readingFontSize}
+            values={LIFE_LAB_READING_FONT_SIZES}
+            labels={FONT_LABELS}
+            onChange={(value) => setPreference("readingFontSize", value)}
+          />
+          <ReadingSelect
+            label="Line height"
+            value={preferences.readingLineHeight}
+            values={LIFE_LAB_READING_LINE_HEIGHTS}
+            labels={LINE_HEIGHT_LABELS}
+            onChange={(value) => setPreference("readingLineHeight", value)}
+          />
+        </div>
+        <ReadingSelect
+          label="Measure"
+          value={preferences.readingWidth}
+          values={LIFE_LAB_READING_WIDTHS}
+          labels={WIDTH_LABELS}
+          onChange={(value) => setPreference("readingWidth", value)}
+        />
+        <label className="flex min-h-10 items-center gap-2 text-sm text-foreground">
+          <input
+            type="checkbox"
+            checked={preferences.readingHighContrast}
+            onChange={(event) =>
+              setPreference("readingHighContrast", event.target.checked)
+            }
+            className="size-4 rounded border-border"
+          />
+          High contrast
+        </label>
+        <button
+          type="button"
+          onClick={resetPreferences}
+          className="inline-flex min-h-10 items-center justify-center gap-1.5 rounded-lg border border-border/70 px-3 text-xs font-medium text-muted transition-colors hover:bg-accent-cream/40 hover:text-foreground"
+        >
+          <RotateCcw className="size-3.5" aria-hidden="true" />
+          Reset reading settings
+        </button>
+      </div>
+    </div>
+  );
+
+  if (variant === "panel") {
+    return <div className="print:hidden">{panel}</div>;
+  }
 
   return (
     <details className="ui-reading-controls group print:hidden">
@@ -89,69 +164,7 @@ export function LifeLabReadingControls() {
           · {MODE_LABELS[preferences.readingMode]}
         </span>
       </summary>
-      <div className="ui-reading-controls-panel">
-        <div>
-          <h2 className="text-sm font-semibold text-foreground">
-            Reading settings
-          </h2>
-          <p className="mt-0.5 text-xs leading-relaxed text-muted">
-            Adjust this view without changing the note.
-          </p>
-        </div>
-
-        <div className="grid gap-3">
-          <ReadingSelect
-            label="Reading mode"
-            value={preferences.readingMode}
-            values={LIFE_LAB_READING_MODES}
-            labels={MODE_LABELS}
-            onChange={(value) => setPreference("readingMode", value)}
-          />
-          <div className="grid grid-cols-2 gap-2">
-            <ReadingSelect
-              label="Font size"
-              value={preferences.readingFontSize}
-              values={LIFE_LAB_READING_FONT_SIZES}
-              labels={FONT_LABELS}
-              onChange={(value) => setPreference("readingFontSize", value)}
-            />
-            <ReadingSelect
-              label="Line height"
-              value={preferences.readingLineHeight}
-              values={LIFE_LAB_READING_LINE_HEIGHTS}
-              labels={LINE_HEIGHT_LABELS}
-              onChange={(value) => setPreference("readingLineHeight", value)}
-            />
-          </div>
-          <ReadingSelect
-            label="Reading width"
-            value={preferences.readingWidth}
-            values={LIFE_LAB_READING_WIDTHS}
-            labels={WIDTH_LABELS}
-            onChange={(value) => setPreference("readingWidth", value)}
-          />
-          <label className="flex min-h-10 items-center justify-between gap-3 rounded-lg border border-border/70 px-3 text-sm text-foreground">
-            <span>High contrast</span>
-            <input
-              type="checkbox"
-              checked={preferences.readingHighContrast}
-              onChange={(event) =>
-                setPreference("readingHighContrast", event.target.checked)
-              }
-              className="size-4 accent-[var(--foreground)]"
-            />
-          </label>
-        </div>
-
-        <button
-          type="button"
-          onClick={resetPreferences}
-          className="inline-flex min-h-10 items-center gap-1.5 self-start rounded-lg px-2 text-xs font-medium text-muted hover:bg-accent-cream/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border"
-        >
-          <RotateCcw className="size-3.5" aria-hidden="true" />
-          Reset to defaults
-        </button>
-      </div>
+      {panel}
     </details>
   );
 }

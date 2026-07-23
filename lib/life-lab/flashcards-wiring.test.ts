@@ -39,6 +39,7 @@ describe("flashcards Life Lab wiring", () => {
     assert.match(explore, /serializeMemoNextDeck/);
     assert.match(explore, /FlashcardReadAloudControls/);
     assert.match(explore, /aria-expanded=\{session\.revealed\}/);
+    assert.match(explore, /data-flashcard-layout="card-first"/);
     assert.doesNotMatch(explore, /correct|incorrect|score/i);
     assert.match(decksPage, /No Life Lab flashcard decks have been created yet/);
     assert.match(decksPage, /data-flashcards-layout="decks-v1"/);

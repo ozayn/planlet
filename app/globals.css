@@ -3391,6 +3391,9 @@ body {
   }
 
   .flashcard-explore-controls,
+  .flashcard-explore-topbar,
+  .flashcard-more,
+  .flashcard-listen,
   .flashcard-explore .print\:hidden {
     display: none !important;
   }

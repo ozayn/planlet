@@ -1,11 +1,9 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { auth } from "@/auth";
 import { LifeLabFlashcardStudy } from "@/components/life-lab/life-lab-flashcard-study";
 import { LifeLabReadingModeProvider } from "@/components/life-lab/life-lab-reading-mode";
 import { LifeLabStatusPanel } from "@/components/life-lab/life-lab-status-panel";
-import { PageHeader } from "@/components/page-header";
 import { getLifeLabNoteData } from "@/lib/life-lab";
 import { enrichFlashcardsWithLearningDictionary } from "@/lib/learning-dictionary/data";
 import type { LifeLabStudyCard } from "@/lib/life-lab/constants";
@@ -49,20 +47,10 @@ export default async function LifeLabNoteStudyPage({
   );
 
   return (
-    <section className="ui-life-lab-surface ui-page-stack space-y-6">
-      <PageHeader
-        title="Flashcards"
-        subtitle={note.title}
-        action={
-          <Link
-            href={`/life-lab/${note.sectionId}/${note.slug}`}
-            className="text-sm font-medium text-muted transition-colors hover:text-foreground"
-          >
-            Back to note
-          </Link>
-        }
-      />
-
+    <section
+      className="ui-life-lab-surface ui-page-stack space-y-4"
+      data-flashcard-route="deck-detail"
+    >
       {availability.status !== "ready" ? (
         <LifeLabStatusPanel availability={availability} isAdmin={isAdmin} />
       ) : (
@@ -72,7 +60,6 @@ export default async function LifeLabNoteStudyPage({
             enrichedCards={enrichedCards}
             backHref={`/life-lab/${note.sectionId}/${note.slug}`}
             title={note.title}
-            subtitle={`${cards.length} card${cards.length === 1 ? "" : "s"}`}
           />
         </LifeLabReadingModeProvider>
       )}

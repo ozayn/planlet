@@ -1,11 +1,9 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { auth } from "@/auth";
 import { FlashcardExplore } from "@/components/life-lab/flashcard-explore";
 import { LifeLabReadingModeProvider } from "@/components/life-lab/life-lab-reading-mode";
 import { LifeLabStatusPanel } from "@/components/life-lab/life-lab-status-panel";
-import { PageHeader } from "@/components/page-header";
 import { getLifeLabFlashcardDeckBySlug } from "@/lib/life-lab";
 import { enrichFlashcardsWithLearningDictionary } from "@/lib/learning-dictionary/data";
 import { isLifeLabDevToolsEnabled } from "@/lib/life-lab/dev";
@@ -19,6 +17,7 @@ type LifeLabFlashcardDeckPageProps = {
 /**
  * Dedicated deck explore for `/life-lab/flashcards/[deckSlug]`.
  * Mounted from the shared [section]/[slug] page when section is flashcards.
+ * No generic PageHeader — FlashcardExplore owns the compact top bar.
  */
 export async function LifeLabFlashcardDeckExplorePage({
   params,
@@ -45,20 +44,10 @@ export async function LifeLabFlashcardDeckExplorePage({
       : [];
 
   return (
-    <section className="ui-life-lab-surface ui-page-stack space-y-6">
-      <PageHeader
-        title="Flashcards"
-        subtitle={deck?.title ?? "Deck"}
-        action={
-          <Link
-            href="/life-lab/flashcards"
-            className="text-sm font-medium text-muted transition-colors hover:text-foreground"
-          >
-            All decks
-          </Link>
-        }
-      />
-
+    <section
+      className="ui-life-lab-surface ui-page-stack space-y-4"
+      data-flashcard-route="deck-detail"
+    >
       {availability.status !== "ready" ? (
         <LifeLabStatusPanel availability={availability} isAdmin={isAdmin} />
       ) : !deck ? (
