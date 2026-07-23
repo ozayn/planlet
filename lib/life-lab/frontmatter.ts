@@ -200,6 +200,12 @@ function normalizeMetadata(raw: Record<string, unknown>): LifeLabNoteMetadata {
     "instructor",
     "host",
     "lecturer",
+    "flashcard_deck",
+    "flashcardDeck",
+    "flashcards_path",
+    "flashcardsPath",
+    "deck_path",
+    "deckPath",
   ] as const;
 
   for (const field of stringFields) {

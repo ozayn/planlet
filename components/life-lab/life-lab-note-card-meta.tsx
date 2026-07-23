@@ -40,11 +40,11 @@ export function LifeLabNoteCardMeta({
       {statusLabel ? <StudyStatusBadge label={statusLabel} /> : null}
       {showStudy ? (
         <Link
-          href={`/life-lab/${sectionId}/${note.slug}/study`}
+          href={`/life-lab/${sectionId}/${note.slug}?view=flashcards`}
           className="rounded-full bg-accent-cream px-2.5 py-0.5 text-[0.6875rem] font-medium text-foreground transition-colors hover:bg-accent-cream/80"
         >
-          Study
-          {note.flashcardCount ? ` · ${note.flashcardCount} cards` : ""}
+          Flashcards
+          {note.flashcardCount ? ` · ${note.flashcardCount}` : ""}
         </Link>
       ) : null}
     </div>

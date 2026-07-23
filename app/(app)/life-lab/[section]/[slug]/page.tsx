@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { auth } from "@/auth";
+import { FlashcardExplore } from "@/components/life-lab/flashcard-explore";
 import { LifeLabNoteDictionarySections } from "@/components/life-lab/life-lab-note-dictionary-sections";
 import { LifeLabNoteContent } from "@/components/life-lab/life-lab-note-content";
 import { LifeLabReadingBriefHeader } from "@/components/life-lab/life-lab-reading-brief-header";
@@ -21,6 +22,7 @@ import { LifeLabDiagramAssetProvider } from "@/components/life-lab/life-lab-diag
 import { LifeLabReadingModeProvider } from "@/components/life-lab/life-lab-reading-mode";
 import { LifeLabReadingControls } from "@/components/life-lab/life-lab-reading-controls";
 import { getLifeLabNoteData, getLifeLabSectionData, getPlaylistAssetsForIndexNote, getYoutubeVideoPlaylistNavigation } from "@/lib/life-lab";
+import { enrichFlashcardsWithLearningDictionary } from "@/lib/learning-dictionary/data";
 import { isLifeLabOpenAiTtsEnabled } from "@/lib/env";
 import { getLifeLabReadAloudPreferencesForUser } from "@/lib/life-lab/read-aloud-preferences";
 import { canUseLifeLabRefreshBypass } from "@/lib/life-lab/cache";
@@ -42,7 +44,7 @@ import { canAccessLifeLabPage } from "@/lib/roles";
 
 type LifeLabNotePageProps = {
   params: Promise<{ section: string; slug: string }>;
-  searchParams: Promise<{ refresh?: string }>;
+  searchParams: Promise<{ refresh?: string; view?: string }>;
 };
 
 export default async function LifeLabNotePage({
@@ -56,7 +58,16 @@ export default async function LifeLabNotePage({
   }
 
   const { section, slug } = await params;
-  const { refresh } = await searchParams;
+  const { refresh, view } = await searchParams;
+
+  if (section === "flashcards") {
+    const { LifeLabFlashcardDeckExplorePage } = await import(
+      "@/components/life-lab/life-lab-flashcard-deck-page"
+    );
+    return LifeLabFlashcardDeckExplorePage({
+      params: Promise.resolve({ section, slug }),
+    });
+  }
   const isAuthorized = canAccessLifeLabPage(session.user);
   const shouldRefresh = canUseLifeLabRefreshBypass(refresh, isAuthorized);
   const { availability, note } = await getLifeLabNoteData(section, slug, {
@@ -124,6 +135,11 @@ export default async function LifeLabNotePage({
     session.user.id,
   );
   const openAiNarrationAvailable = isLifeLabOpenAiTtsEnabled();
+  const showFlashcardsView =
+    view === "flashcards" && (note.flashcards?.length ?? 0) > 0;
+  const flashcardsWithDictionary = showFlashcardsView
+    ? await enrichFlashcardsWithLearningDictionary(note.flashcards ?? [])
+    : [];
 
   return (
     <LifeLabReadingModeProvider metadata={note.metadata}>
@@ -153,6 +169,28 @@ export default async function LifeLabNotePage({
         />
       </div>
 
+      {showFlashcardsView ? (
+        <>
+          {availability.status !== "ready" ? (
+            <LifeLabStatusPanel availability={availability} isAdmin={isAdmin} />
+          ) : (
+            <FlashcardExplore
+              deck={{
+                id: `${note.sectionId}__${note.slug}`,
+                title: note.title,
+                cards: flashcardsWithDictionary,
+                sourceNoteHref: `/life-lab/${note.sectionId}/${note.slug}`,
+                sourceNoteTitle: note.title,
+                sourceSectionId: note.sectionId,
+                category: note.metadata?.category ?? null,
+              }}
+              backHref={`/life-lab/${note.sectionId}/${note.slug}`}
+              developerMode={showDevTools}
+            />
+          )}
+        </>
+      ) : (
+        <>
       {isReadingBrief ? (
         <LifeLabReadingBriefHeader
           sectionId={note.sectionId}
@@ -275,6 +313,8 @@ export default async function LifeLabNotePage({
               }}
             />
           ) : null}
+        </>
+      )}
         </>
       )}
       </section>

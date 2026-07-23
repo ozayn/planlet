@@ -4,10 +4,12 @@ import type { ReactNode } from "react";
 
 import { LifeLabFlashcardList } from "@/components/life-lab/life-lab-flashcard-list";
 import type { DictionaryEntryModel } from "@/lib/learning-dictionary/model";
+import type { DictionaryFlashcardDeckLink } from "@/lib/life-lab/flashcard-dictionary-link";
 import { resolveTextDirection } from "@/lib/text-direction";
 
 type LearningDictionaryEntryProps = {
   entry: DictionaryEntryModel;
+  relatedFlashcardDecks?: DictionaryFlashcardDeckLink[];
 };
 
 function Section({
@@ -27,6 +29,7 @@ function Section({
 
 export function LearningDictionaryEntryView({
   entry,
+  relatedFlashcardDecks = [],
 }: LearningDictionaryEntryProps) {
   return (
     <article className="space-y-6">
@@ -201,6 +204,38 @@ export function LearningDictionaryEntryView({
             cards={entry.flashcards.slice(0, 4)}
             title="Study cards"
           />
+        </Section>
+      ) : null}
+
+      {relatedFlashcardDecks.length > 0 ? (
+        <Section title="Flashcard decks">
+          <ul className="space-y-2">
+            {relatedFlashcardDecks.map((deck) => (
+              <li key={deck.id}>
+                <Link
+                  href={deck.href}
+                  className="flex items-center justify-between gap-3 rounded-lg border border-border/50 px-3 py-2.5 transition-colors hover:bg-accent-cream/20"
+                >
+                  <span className="min-w-0">
+                    <span
+                      className="block truncate text-sm font-medium text-foreground"
+                      dir="auto"
+                    >
+                      {deck.title}
+                    </span>
+                    <span className="text-[0.6875rem] text-muted-light">
+                      {[
+                        `${deck.cardCount} card${deck.cardCount === 1 ? "" : "s"}`,
+                        deck.matchedTerm ? `Matches “${deck.matchedTerm}”` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
         </Section>
       ) : null}
 

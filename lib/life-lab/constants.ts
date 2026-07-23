@@ -52,6 +52,10 @@ export const LIFE_LAB_ALLOWED_SECTIONS = {
     label: "Podcasts",
     folderName: "podcasts",
   },
+  flashcards: {
+    label: "Flashcards",
+    folderName: "flashcards",
+  },
 } as const;
 
 export type LifeLabSectionId = keyof typeof LIFE_LAB_ALLOWED_SECTIONS;
@@ -153,6 +157,12 @@ export type LifeLabNoteMetadata = {
   source_notes?: string[];
   category?: string;
   related?: string[];
+  flashcard_deck?: string;
+  flashcardDeck?: string;
+  flashcards_path?: string;
+  flashcardsPath?: string;
+  deck_path?: string;
+  deckPath?: string;
   presenters?: string[];
   presenter?: string | string[];
   instructor?: string | string[];
@@ -252,7 +262,24 @@ export type LifeLabNoteLoadMeta = {
 export type LifeLabFlashcard = {
   question: string;
   answer: string;
+  example?: string;
+  cardType?: LifeLabFlashcardType;
+  context?: string;
+  diagramSource?: string;
+  /** Explicit vocabulary term when provided by Ava / MemoNext TERM: */
+  term?: string;
 };
+
+export type LifeLabFlashcardType =
+  | "concept"
+  | "vocabulary"
+  | "process"
+  | "timeline"
+  | "person"
+  | "comparison"
+  | "diagram"
+  | "fill-in-the-blank"
+  | "qa";
 
 export type LifeLabStudyCard = LifeLabFlashcard & {
   noteSlug: string;

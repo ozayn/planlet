@@ -4,6 +4,10 @@ import {
   noteHasFlashcards,
 } from "@/lib/life-lab/flashcards";
 import {
+  isMemoNextDeckText,
+  parseMemoNextDeck,
+} from "@/lib/life-lab/memonext-deck";
+import {
   hasLifeLabMetadata,
   parseLifeLabFrontmatter,
 } from "@/lib/life-lab/frontmatter";
@@ -192,12 +196,36 @@ export function processLifeLabNoteContent(
           metadata: mergedMetadata,
           body,
         })
-      : (headingTitle ?? record.title);
+      : (() => {
+          if (headingTitle) {
+            return headingTitle;
+          }
+
+          if (isMemoNextDeckText(body)) {
+            const deckTitle = parseMemoNextDeck(body).headers.title?.trim();
+            if (deckTitle) {
+              return deckTitle;
+            }
+          }
+
+          return record.title;
+        })();
+
+  let deckExcerpt = excerpt;
+  if (
+    (!deckExcerpt || deckExcerpt.startsWith("TITLE:")) &&
+    isMemoNextDeckText(body)
+  ) {
+    const parsed = parseMemoNextDeck(body);
+    if (parsed.cards.length > 0) {
+      deckExcerpt = `${parsed.cards.length} card${parsed.cards.length === 1 ? "" : "s"}`;
+    }
+  }
 
   return {
     ...record,
     title,
-    excerpt,
+    excerpt: deckExcerpt,
     dateLabel:
       (mergedMetadata?.date
         ? formatDateLabelFromIso(mergedMetadata.date)

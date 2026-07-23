@@ -3,9 +3,11 @@ import { notFound } from "next/navigation";
 
 import { auth } from "@/auth";
 import { LifeLabFlashcardStudy } from "@/components/life-lab/life-lab-flashcard-study";
+import { LifeLabReadingModeProvider } from "@/components/life-lab/life-lab-reading-mode";
 import { LifeLabStatusPanel } from "@/components/life-lab/life-lab-status-panel";
 import { PageHeader } from "@/components/page-header";
 import { getLifeLabAllStudyData } from "@/lib/life-lab";
+import { enrichFlashcardsWithLearningDictionary } from "@/lib/learning-dictionary/data";
 import type { LifeLabFilterKey, LifeLabNoteFilters } from "@/lib/life-lab/filters";
 import { isAdminRole } from "@/lib/auth-roles";
 import { canAccessLifeLabPage } from "@/lib/roles";
@@ -55,6 +57,7 @@ export default async function LifeLabStudyPage({
   const filters = readStudyFilters(resolvedSearchParams);
   const { availability, cards } = await getLifeLabAllStudyData(filters);
   const isAdmin = isAdminRole(session.user.role);
+  const enrichedCards = await enrichFlashcardsWithLearningDictionary(cards);
 
   const backQuery = new URLSearchParams();
 
@@ -71,7 +74,7 @@ export default async function LifeLabStudyPage({
   return (
     <section className="ui-life-lab-surface ui-page-stack space-y-6">
       <PageHeader
-        title="Study flashcards"
+        title="Flashcards"
         subtitle="Across all Life Lab sections"
         action={
           <Link
@@ -86,12 +89,15 @@ export default async function LifeLabStudyPage({
       {availability.status !== "ready" ? (
         <LifeLabStatusPanel availability={availability} isAdmin={isAdmin} />
       ) : (
-        <LifeLabFlashcardStudy
-          cards={cards}
-          backHref={backHref}
-          title="All sections"
-          subtitle={`${cards.length} card${cards.length === 1 ? "" : "s"}`}
-        />
+        <LifeLabReadingModeProvider>
+          <LifeLabFlashcardStudy
+            cards={cards}
+            enrichedCards={enrichedCards}
+            backHref={backHref}
+            title="All sections"
+            subtitle={`${cards.length} card${cards.length === 1 ? "" : "s"}`}
+          />
+        </LifeLabReadingModeProvider>
       )}
     </section>
   );

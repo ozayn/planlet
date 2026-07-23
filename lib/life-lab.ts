@@ -86,6 +86,7 @@ import {
   downloadDriveFileBytes,
   findDriveFileByRelativePath,
   getLifeLabDriveCredentials,
+  isFlashcardDeckDriveFile,
   LifeLabDriveError,
   listDriveChildren,
   listMarkdownFilesRecursive,
@@ -105,6 +106,14 @@ import {
   isPodcastBlockedFolder,
   isPodcastVisibleMarkdown,
 } from "@/lib/life-lab/podcasts";
+import {
+  isFlashcardBlockedFolder,
+  isFlashcardVisibleRelativePath,
+  buildFlashcardDeckFromContent,
+  buildEmbeddedFlashcardDeck,
+  type FlashcardDeckSummary,
+} from "@/lib/life-lab/flashcard-decks";
+import { resolveFlashcardDeckPathFromMetadata } from "@/lib/life-lab/flashcards";
 import {
   classifyNoteGroup,
   groupLifeLabNotes,
@@ -557,7 +566,10 @@ async function listSectionMarkdownFiles(
   sectionId?: LifeLabSectionId,
 ) {
   return listMarkdownFilesRecursive(credentials, folderId, {
-    maxDepth: sectionId === "podcasts" ? 10 : undefined,
+    maxDepth:
+      sectionId === "podcasts" || sectionId === "flashcards" ? 10 : undefined,
+    isFileIncluded:
+      sectionId === "flashcards" ? isFlashcardDeckDriveFile : undefined,
     shouldSkipFolder:
       sectionId === "film-lab"
         ? (folderName, prefix) => isFilmLabExcludedFolder(folderName, prefix)
@@ -569,6 +581,8 @@ async function listSectionMarkdownFiles(
           : sectionId === "podcasts"
             ? (folderName, prefix) =>
                 isPodcastBlockedFolder(folderName, prefix)
+            : sectionId === "flashcards"
+              ? (folderName) => isFlashcardBlockedFolder(folderName)
           : undefined,
   });
 }
@@ -592,6 +606,12 @@ function filterSectionMarkdownEntries(
   if (sectionId === "podcasts") {
     return entries.filter((entry) =>
       isPodcastVisibleMarkdown(entry.relativePath),
+    );
+  }
+
+  if (sectionId === "flashcards") {
+    return entries.filter((entry) =>
+      isFlashcardVisibleRelativePath(entry.relativePath),
     );
   }
 
@@ -1796,10 +1816,11 @@ export async function getLifeLabSectionData(
           };
         }
 
-        // Learning Dictionary needs note bodies for definitions/tags on cards.
+        // Learning Dictionary / Podcasts / Flashcards need note bodies on list cards.
         if (
           sectionId === "learning-dictionary" ||
-          sectionId === "podcasts"
+          sectionId === "podcasts" ||
+          sectionId === "flashcards"
         ) {
           if (options.refresh) {
             await loadSectionNotes(sectionId, { useCachedFolderMap: false });
@@ -2391,6 +2412,164 @@ export async function getLifeLabAllStudyData(
     },
     { meta: { route: "/life-lab/study" } },
   );
+}
+
+function deckFromDedicatedRecord(
+  record: LifeLabSectionNoteRecord,
+  rawContent: string,
+): FlashcardDeckSummary {
+  return buildFlashcardDeckFromContent({
+    slug: record.slug,
+    relativePath: record.relativePath,
+    titleFallback: record.title,
+    content: rawContent,
+    modifiedAt: record.modifiedAt,
+    modifiedAtLabel: record.modifiedAtLabel,
+    origin: "dedicated",
+    sourceSectionId: "flashcards",
+  });
+}
+
+export async function getLifeLabFlashcardDecksData(): Promise<{
+  availability: LifeLabAvailability;
+  decks: FlashcardDeckSummary[];
+}> {
+  return runLifeLabRequestTelemetry(
+    async () => {
+      setLifeLabRequestMeta({ route: "/life-lab/flashcards" });
+
+      const availability = getLifeLabAvailability();
+
+      if (availability.status !== "ready") {
+        return { availability, decks: [] };
+      }
+
+      const decks: FlashcardDeckSummary[] = [];
+      const seen = new Set<string>();
+
+      const dedicated = await getEnrichedSectionRecordsCached("flashcards");
+      const credentials = getLifeLabDriveCredentials();
+
+      for (const record of dedicated.records) {
+        const payload = await getNotePayloadCached("flashcards", record);
+        const content = payload?.rawContent ?? "";
+        const deck = deckFromDedicatedRecord(
+          payload?.record ?? record,
+          content,
+        );
+
+        if (!seen.has(deck.id)) {
+          seen.add(deck.id);
+          decks.push(deck);
+        }
+      }
+
+      await Promise.all(
+        getAllowedLifeLabSectionIds()
+          .filter((sectionId) => sectionId !== "flashcards")
+          .map(async (sectionId) => {
+            const { records } = await getEnrichedSectionRecordsCached(sectionId);
+
+            for (const record of records) {
+              if (!record.flashcards?.length) {
+                continue;
+              }
+
+              const embedded = buildEmbeddedFlashcardDeck({
+                note: {
+                  ...record,
+                  sectionId,
+                  sectionLabel: getLifeLabSectionLabel(sectionId),
+                },
+                cards: record.flashcards,
+              });
+
+              if (embedded && !seen.has(embedded.id)) {
+                seen.add(embedded.id);
+                decks.push(embedded);
+              }
+
+              const deckPath = resolveFlashcardDeckPathFromMetadata(
+                record.metadata,
+              );
+
+              if (!deckPath || !credentials) {
+                continue;
+              }
+
+              // Frontmatter may point at a dedicated deck; surface a reference
+              // deck when the dedicated section copy was not already listed.
+              const referenced = buildFlashcardDeckFromContent({
+                slug: `${sectionId}__ref__${record.slug}`,
+                relativePath: deckPath,
+                titleFallback: record.title,
+                content: "",
+                modifiedAt: record.modifiedAt,
+                modifiedAtLabel: record.modifiedAtLabel,
+                origin: "reference",
+                sourceSectionId: sectionId,
+                sourceNoteHref: `/life-lab/${sectionId}/${record.slug}`,
+                sourceNoteTitle: record.title,
+              });
+
+              // Prefer embedded cards from the note when the referenced file
+              // is not loaded here; mark unavailable only when note has no cards.
+              if (
+                record.flashcards.length === 0 &&
+                referenced.cardCount === 0 &&
+                !seen.has(referenced.id)
+              ) {
+                seen.add(referenced.id);
+                decks.push({
+                  ...referenced,
+                  parseIssues: [
+                    {
+                      line: 0,
+                      message: "Referenced flashcard deck file is unavailable.",
+                    },
+                  ],
+                });
+              }
+            }
+          }),
+      );
+
+      return { availability, decks };
+    },
+    { meta: { route: "/life-lab/flashcards" } },
+  );
+}
+
+export async function getLifeLabFlashcardDeckBySlug(
+  deckSlug: string,
+): Promise<{
+  availability: LifeLabAvailability;
+  deck: FlashcardDeckSummary | null;
+  unavailableReason: "missing" | "parse" | null;
+}> {
+  const { availability, decks } = await getLifeLabFlashcardDecksData();
+
+  if (availability.status !== "ready") {
+    return { availability, deck: null, unavailableReason: null };
+  }
+
+  const deck =
+    decks.find((item) => item.slug === deckSlug || item.id === deckSlug) ??
+    null;
+
+  if (!deck) {
+    return { availability, deck: null, unavailableReason: "missing" };
+  }
+
+  if (deck.cardCount === 0 && deck.parseIssues.length > 0) {
+    return { availability, deck, unavailableReason: "parse" };
+  }
+
+  if (deck.cardCount === 0) {
+    return { availability, deck, unavailableReason: "missing" };
+  }
+
+  return { availability, deck, unavailableReason: null };
 }
 
 export async function fetchFreshLifeLabHome(): Promise<void> {

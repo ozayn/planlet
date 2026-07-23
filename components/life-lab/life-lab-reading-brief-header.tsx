@@ -84,10 +84,10 @@ export function LifeLabReadingBriefHeader({
       <div className="flex flex-wrap items-center gap-2">
         {showStudy ? (
           <Link
-            href={`/life-lab/${sectionId}/${note.slug}/study`}
+            href={`/life-lab/${sectionId}/${note.slug}?view=flashcards`}
             className="rounded-full bg-accent-cream px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent-cream/80"
           >
-            Study · {flashcardCount} cards
+            Flashcards · {flashcardCount} cards
           </Link>
         ) : null}
         <Link

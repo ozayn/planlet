@@ -3,9 +3,11 @@ import { notFound } from "next/navigation";
 
 import { auth } from "@/auth";
 import { LifeLabFlashcardStudy } from "@/components/life-lab/life-lab-flashcard-study";
+import { LifeLabReadingModeProvider } from "@/components/life-lab/life-lab-reading-mode";
 import { LifeLabStatusPanel } from "@/components/life-lab/life-lab-status-panel";
 import { PageHeader } from "@/components/page-header";
 import { getLifeLabNoteData } from "@/lib/life-lab";
+import { enrichFlashcardsWithLearningDictionary } from "@/lib/learning-dictionary/data";
 import type { LifeLabStudyCard } from "@/lib/life-lab/constants";
 import { isAdminRole } from "@/lib/auth-roles";
 import { canAccessLifeLabPage } from "@/lib/roles";
@@ -42,11 +44,14 @@ export default async function LifeLabNoteStudyPage({
     topics: note.metadata?.topics,
     source: note.metadata?.source,
   }));
+  const enrichedCards = await enrichFlashcardsWithLearningDictionary(
+    note.flashcards,
+  );
 
   return (
     <section className="ui-life-lab-surface ui-page-stack space-y-6">
       <PageHeader
-        title="Study flashcards"
+        title="Flashcards"
         subtitle={note.title}
         action={
           <Link
@@ -61,12 +66,15 @@ export default async function LifeLabNoteStudyPage({
       {availability.status !== "ready" ? (
         <LifeLabStatusPanel availability={availability} isAdmin={isAdmin} />
       ) : (
-        <LifeLabFlashcardStudy
-          cards={cards}
-          backHref={`/life-lab/${note.sectionId}/${note.slug}`}
-          title={note.title}
-          subtitle={`${cards.length} card${cards.length === 1 ? "" : "s"}`}
-        />
+        <LifeLabReadingModeProvider metadata={note.metadata}>
+          <LifeLabFlashcardStudy
+            cards={cards}
+            enrichedCards={enrichedCards}
+            backHref={`/life-lab/${note.sectionId}/${note.slug}`}
+            title={note.title}
+            subtitle={`${cards.length} card${cards.length === 1 ? "" : "s"}`}
+          />
+        </LifeLabReadingModeProvider>
       )}
     </section>
   );

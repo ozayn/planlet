@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Mic2 } from "lucide-react";
+import { Layers2, Mic2 } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { auth } from "@/auth";
@@ -59,12 +59,22 @@ export default async function LifeLabPage() {
                       aria-hidden="true"
                     />
                   ) : null}
+                  {section.id === "flashcards" ? (
+                    <Layers2
+                      className="mr-1.5 inline size-4 align-[-0.125em] text-muted"
+                      aria-hidden="true"
+                    />
+                  ) : null}
                   {section.label}
                 </h2>
                 <p className="mt-1 text-sm text-muted">
-                  {section.noteCount === 1
-                    ? "1 note"
-                    : `${section.noteCount} notes`}
+                  {section.id === "flashcards"
+                    ? section.noteCount === 1
+                      ? "1 deck"
+                      : `${section.noteCount} decks`
+                    : section.noteCount === 1
+                      ? "1 note"
+                      : `${section.noteCount} notes`}
                 </p>
               </Link>
             ))}

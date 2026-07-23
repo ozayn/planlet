@@ -25,10 +25,10 @@ export function LifeLabReadingBriefFlashcards({
           {cards.length} flashcard{cards.length === 1 ? "" : "s"} available
         </p>
         <Link
-          href={`/life-lab/${sectionId}/${slug}/study`}
+          href={`/life-lab/${sectionId}/${slug}?view=flashcards`}
           className="rounded-full bg-accent-cream px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent-cream/80"
         >
-          Study · {cards.length} cards
+          Flashcards · {cards.length} cards
         </Link>
       </div>
 

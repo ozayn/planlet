@@ -3390,6 +3390,21 @@ body {
     max-width: none !important;
   }
 
+  .flashcard-explore-controls,
+  .flashcard-explore .print\:hidden {
+    display: none !important;
+  }
+
+  .flashcard-show-all .flashcard-all-item {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .flashcard-show-all .flashcard-all-item .hidden.print\:block,
+  .flashcard-all-item .print\:block {
+    display: block !important;
+  }
+
   .ui-life-lab-reading-root .ui-markdown {
     font-size: var(--density-markdown-body) !important;
     line-height: var(--density-leading-prose) !important;

@@ -212,10 +212,10 @@ export function LifeLabPodcastEpisode({
             </Link>
             {(note.flashcards?.length ?? note.flashcardCount ?? 0) > 0 ? (
               <Link
-                href={`/life-lab/podcasts/${note.slug}/study`}
+                href={`/life-lab/podcasts/${note.slug}?view=flashcards`}
                 className="rounded-full bg-accent-cream px-3 py-1.5 text-xs font-medium text-foreground"
               >
-                Study · {note.flashcards?.length ?? note.flashcardCount} cards
+                Flashcards · {note.flashcards?.length ?? note.flashcardCount} cards
               </Link>
             ) : null}
           </div>

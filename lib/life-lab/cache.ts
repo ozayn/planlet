@@ -2,13 +2,13 @@ import type { LifeLabSectionId } from "@/lib/life-lab/constants";
 
 export const LIFE_LAB_CACHE_TAG = "life-lab";
 export const LIFE_LAB_SECTIONS_CACHE_TAG = "life-lab:sections";
-export const LIFE_LAB_FOLDER_MAP_CACHE_VERSION = "v2-podcasts";
+export const LIFE_LAB_FOLDER_MAP_CACHE_VERSION = "v3-flashcards";
 
 /** Bump when section listing or playlist browse logic changes materially. */
-export const LIFE_LAB_SECTION_FILE_INDEX_CACHE_VERSION = "v8-podcasts";
+export const LIFE_LAB_SECTION_FILE_INDEX_CACHE_VERSION = "v9-flashcards";
 
 /** Bump when note payload enrichment or serialized metadata shape changes. */
-export const LIFE_LAB_NOTE_PAYLOAD_CACHE_VERSION = "v6-podcasts";
+export const LIFE_LAB_NOTE_PAYLOAD_CACHE_VERSION = "v7-flashcards";
 
 /** Bump when browse listing metadata (thumbnail/source fields) shape changes. */
 export const LIFE_LAB_LISTING_METADATA_CACHE_VERSION = "v4-technical-filter";

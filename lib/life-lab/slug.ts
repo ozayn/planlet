@@ -1,5 +1,7 @@
+const LIFE_LAB_NOTE_EXTENSIONS = /\.(md|txt|deck)$/i;
+
 export function driveFilenameToSlug(filename: string): string {
-  const base = filename.replace(/\.md$/i, "").trim();
+  const base = filename.replace(LIFE_LAB_NOTE_EXTENSIONS, "").trim();
 
   return base
     .toLowerCase()
@@ -8,12 +10,12 @@ export function driveFilenameToSlug(filename: string): string {
 }
 
 export function driveRelativePathToSlug(relativePath: string): string {
-  const withoutExtension = relativePath.replace(/\.md$/i, "").trim();
+  const withoutExtension = relativePath.replace(LIFE_LAB_NOTE_EXTENSIONS, "").trim();
 
   return withoutExtension
     .split("/")
     .filter(Boolean)
-    .map((segment) => driveFilenameToSlug(`${segment}.md`))
+    .map((segment) => driveFilenameToSlug(segment))
     .join("__");
 }
 
@@ -64,7 +66,7 @@ function titleFromStem(stem: string): string {
 }
 
 export function titleFromFilename(filename: string): string {
-  const stem = filename.replace(/\.md$/i, "").trim();
+  const stem = filename.replace(LIFE_LAB_NOTE_EXTENSIONS, "").trim();
   const withoutDate = stem.replace(/^\d{4}-\d{2}-\d{2}-?/, "");
 
   if (withoutDate) {

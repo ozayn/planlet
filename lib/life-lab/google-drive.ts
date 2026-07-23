@@ -217,6 +217,28 @@ export function isMarkdownDriveFile(file: DriveFile): boolean {
   );
 }
 
+export function isFlashcardDeckDriveFile(file: DriveFile): boolean {
+  const name = file.name.toLowerCase();
+
+  if (
+    !name.endsWith(".md") &&
+    !name.endsWith(".txt") &&
+    !name.endsWith(".deck")
+  ) {
+    return false;
+  }
+
+  if (!file.mimeType) {
+    return true;
+  }
+
+  return (
+    file.mimeType === "text/markdown" ||
+    file.mimeType === "text/plain" ||
+    file.mimeType === "application/octet-stream"
+  );
+}
+
 export function isDriveFolder(file: DriveFile): boolean {
   return file.mimeType === "application/vnd.google-apps.folder";
 }
@@ -314,10 +336,12 @@ export async function listMarkdownFilesRecursive(
     maxDepth?: number;
     maxFiles?: number;
     shouldSkipFolder?: (folderName: string, prefix: string) => boolean;
+    isFileIncluded?: (file: DriveFile) => boolean;
   },
 ): Promise<DriveMarkdownListing> {
   const maxDepth = options?.maxDepth ?? LIFE_LAB_MAX_FOLDER_DEPTH;
   const maxFiles = options?.maxFiles ?? LIFE_LAB_MAX_FILES_PER_SECTION;
+  const isFileIncluded = options?.isFileIncluded ?? isMarkdownDriveFile;
   const results: DriveMarkdownEntry[] = [];
   const stats: DriveListingStats = {
     fileCount: 0,
@@ -363,7 +387,7 @@ export async function listMarkdownFilesRecursive(
         continue;
       }
 
-      if (!isMarkdownDriveFile(item)) {
+      if (!isFileIncluded(item)) {
         continue;
       }
 

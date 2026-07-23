@@ -2,11 +2,15 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { auth } from "@/auth";
+import { FlashcardsPageContent } from "@/components/life-lab/flashcards-page-content";
 import { LifeLabRefreshButton } from "@/components/life-lab/life-lab-refresh-button";
 import { LifeLabSectionBrowser } from "@/components/life-lab/life-lab-section-browser";
 import { LifeLabStatusPanel } from "@/components/life-lab/life-lab-status-panel";
 import { PageHeader } from "@/components/page-header";
-import { getLifeLabSectionData } from "@/lib/life-lab";
+import {
+  getLifeLabFlashcardDecksData,
+  getLifeLabSectionData,
+} from "@/lib/life-lab";
 import { canUseLifeLabRefreshBypass } from "@/lib/life-lab/cache";
 import { canViewLifeLabCacheDiagnostics } from "@/lib/life-lab/cache-telemetry";
 import { isAdminRole } from "@/lib/auth-roles";
@@ -33,6 +37,40 @@ export default async function LifeLabSectionPage({
   const isAuthorized = canAccessLifeLabPage(session.user);
   const shouldRefresh = canUseLifeLabRefreshBypass(refresh, isAuthorized);
   const showDiagnostics = canViewLifeLabCacheDiagnostics(isAdmin);
+
+  if (section === "flashcards") {
+    const { availability, decks } = await getLifeLabFlashcardDecksData();
+
+    return (
+      <section className="ui-life-lab-surface ui-page-stack space-y-6">
+        <PageHeader
+          title="Flashcards"
+          subtitle="Browse and explore Life Lab flashcard decks."
+          action={
+            <div className="flex items-center gap-3">
+              <Link
+                href="/life-lab"
+                className="text-sm font-medium text-muted transition-colors hover:text-foreground"
+              >
+                Back to Life Lab
+              </Link>
+              <LifeLabRefreshButton
+                scope="section"
+                sectionId="flashcards"
+                compact
+              />
+            </div>
+          }
+        />
+
+        {availability.status !== "ready" ? (
+          <LifeLabStatusPanel availability={availability} isAdmin={isAdmin} />
+        ) : (
+          <FlashcardsPageContent decks={decks} />
+        )}
+      </section>
+    );
+  }
 
   const { availability, sectionId, sectionLabel, notes, filterOptions, listingDiagnostic } =
     await getLifeLabSectionData(section, {

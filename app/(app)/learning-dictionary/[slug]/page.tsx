@@ -42,7 +42,8 @@ export default async function LearningDictionaryEntryPage({
     });
   }
 
-  const { availability, entry } = await getLearningDictionaryEntryData(slug);
+  const { availability, entry, relatedFlashcardDecks } =
+    await getLearningDictionaryEntryData(slug);
 
   if (!entry) {
     notFound();
@@ -73,7 +74,10 @@ export default async function LearningDictionaryEntryPage({
       {availability.status !== "ready" ? (
         <LifeLabStatusPanel availability={availability} isAdmin={isAdmin} />
       ) : (
-        <LearningDictionaryEntryView entry={entry} />
+        <LearningDictionaryEntryView
+          entry={entry}
+          relatedFlashcardDecks={relatedFlashcardDecks}
+        />
       )}
     </section>
   );
