@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 
 const STORAGE_KEY = "planlet.life-lab.flashcard-session.v1";
 
@@ -18,15 +18,32 @@ type FlashcardSessionStore = {
   decks: Record<string, FlashcardSessionState>;
 };
 
+type DeckSessionSlice = {
+  index: number;
+  revealed: boolean;
+  shuffledOrder: number[] | null;
+};
+
+const listeners = new Set<() => void>();
+const snapshotCache = new Map<string, { raw: string; slice: DeckSessionSlice }>();
+let recentIdsCache: { raw: string | null; ids: string[] } = {
+  raw: null,
+  ids: [],
+};
+
+function emptyStore(): FlashcardSessionStore {
+  return { lastOpenedDeckId: null, recentDeckIds: [], decks: {} };
+}
+
 function readStore(): FlashcardSessionStore {
   if (typeof window === "undefined") {
-    return { lastOpenedDeckId: null, recentDeckIds: [], decks: {} };
+    return emptyStore();
   }
 
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (!raw) {
-      return { lastOpenedDeckId: null, recentDeckIds: [], decks: {} };
+      return emptyStore();
     }
 
     const parsed = JSON.parse(raw) as FlashcardSessionStore;
@@ -38,7 +55,7 @@ function readStore(): FlashcardSessionStore {
       decks: parsed.decks && typeof parsed.decks === "object" ? parsed.decks : {},
     };
   } catch {
-    return { lastOpenedDeckId: null, recentDeckIds: [], decks: {} };
+    return emptyStore();
   }
 }
 
@@ -52,58 +69,138 @@ function writeStore(store: FlashcardSessionStore): void {
   } catch {
     // Ignore quota / private mode failures.
   }
+
+  snapshotCache.clear();
+  recentIdsCache = { raw: null, ids: [] };
+  for (const listener of listeners) {
+    listener();
+  }
 }
 
-export function getRecentFlashcardDeckIds(): string[] {
-  return readStore().recentDeckIds;
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener);
+
+  const onStorage = (event: StorageEvent) => {
+    if (event.key === STORAGE_KEY || event.key === null) {
+      snapshotCache.clear();
+      recentIdsCache = { raw: null, ids: [] };
+      listener();
+    }
+  };
+
+  window.addEventListener("storage", onStorage);
+  return () => {
+    listeners.delete(listener);
+    window.removeEventListener("storage", onStorage);
+  };
 }
 
 function clampIndex(index: number, cardCount: number): number {
   return Math.min(Math.max(0, index), Math.max(0, cardCount - 1));
 }
 
-export function useFlashcardSession(deckId: string, cardCount: number) {
-  const [index, setIndex] = useState(() => {
-    const existing = readStore().decks[deckId];
-    return existing ? clampIndex(existing.index, cardCount) : 0;
-  });
-  const [revealed, setRevealed] = useState(() => {
-    return Boolean(readStore().decks[deckId]?.revealed);
-  });
-  const [shuffledOrder, setShuffledOrder] = useState<number[] | null>(() => {
-    const existing = readStore().decks[deckId]?.shuffledOrder;
-    return Array.isArray(existing) ? existing : null;
-  });
+function getRawStorage(): string | null {
+  if (typeof window === "undefined") {
+    return null;
+  }
 
-  useEffect(() => {
-    const store = readStore();
-    const nextRecent = [
-      deckId,
-      ...store.recentDeckIds.filter((id) => id !== deckId),
-    ].slice(0, 40);
+  try {
+    return window.localStorage.getItem(STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
 
-    writeStore({
-      lastOpenedDeckId: deckId,
-      recentDeckIds: nextRecent,
-      decks: {
-        ...store.decks,
-        [deckId]: {
-          deckId,
-          index,
-          revealed,
-          shuffledOrder,
-          lastOpenedAt: new Date().toISOString(),
-        },
+function getDeckSessionSnapshot(
+  deckId: string,
+  cardCount: number,
+): DeckSessionSlice {
+  const raw = getRawStorage() ?? "";
+  const cacheKey = `${deckId}::${cardCount}`;
+  const cached = snapshotCache.get(cacheKey);
+  if (cached && cached.raw === raw) {
+    return cached.slice;
+  }
+
+  const existing = readStore().decks[deckId];
+  const slice: DeckSessionSlice = {
+    index: existing ? clampIndex(existing.index, cardCount) : 0,
+    revealed: Boolean(existing?.revealed),
+    shuffledOrder: Array.isArray(existing?.shuffledOrder)
+      ? existing.shuffledOrder
+      : null,
+  };
+  snapshotCache.set(cacheKey, { raw, slice });
+  return slice;
+}
+
+const SERVER_SLICE: DeckSessionSlice = {
+  index: 0,
+  revealed: false,
+  shuffledOrder: null,
+};
+
+function touchRecent(deckId: string, store: FlashcardSessionStore): string[] {
+  return [deckId, ...store.recentDeckIds.filter((id) => id !== deckId)].slice(
+    0,
+    40,
+  );
+}
+
+function persistDeckSession(
+  deckId: string,
+  slice: DeckSessionSlice,
+): void {
+  const store = readStore();
+  writeStore({
+    lastOpenedDeckId: deckId,
+    recentDeckIds: touchRecent(deckId, store),
+    decks: {
+      ...store.decks,
+      [deckId]: {
+        deckId,
+        index: slice.index,
+        revealed: slice.revealed,
+        shuffledOrder: slice.shuffledOrder,
+        lastOpenedAt: new Date().toISOString(),
       },
-    });
-  }, [deckId, index, revealed, shuffledOrder]);
+    },
+  });
+}
+
+export function getRecentFlashcardDeckIds(): string[] {
+  const raw = getRawStorage();
+  if (recentIdsCache.raw === raw) {
+    return recentIdsCache.ids;
+  }
+
+  const ids = readStore().recentDeckIds;
+  recentIdsCache = { raw, ids };
+  return ids;
+}
+
+/**
+ * Session state comes from localStorage via useSyncExternalStore so the server
+ * snapshot (card 1) matches the first client render, then storage hydrates.
+ */
+export function useFlashcardSession(deckId: string, cardCount: number) {
+  const getSnapshot = useCallback(
+    () => getDeckSessionSnapshot(deckId, cardCount),
+    [deckId, cardCount],
+  );
+
+  const slice = useSyncExternalStore(
+    subscribe,
+    getSnapshot,
+    () => SERVER_SLICE,
+  );
 
   function resolveOrderIndex(viewIndex: number): number {
-    if (!shuffledOrder || shuffledOrder.length !== cardCount) {
+    if (!slice.shuffledOrder || slice.shuffledOrder.length !== cardCount) {
       return viewIndex;
     }
 
-    return shuffledOrder[viewIndex] ?? viewIndex;
+    return slice.shuffledOrder[viewIndex] ?? viewIndex;
   }
 
   function goTo(nextViewIndex: number): void {
@@ -111,8 +208,21 @@ export function useFlashcardSession(deckId: string, cardCount: number) {
       return;
     }
 
-    setIndex(nextViewIndex);
-    setRevealed(false);
+    persistDeckSession(deckId, {
+      index: nextViewIndex,
+      revealed: false,
+      shuffledOrder: slice.shuffledOrder,
+    });
+  }
+
+  function setRevealed(value: boolean | ((current: boolean) => boolean)): void {
+    const next =
+      typeof value === "function" ? value(slice.revealed) : value;
+    persistDeckSession(deckId, {
+      index: slice.index,
+      revealed: next,
+      shuffledOrder: slice.shuffledOrder,
+    });
   }
 
   function shuffle(): void {
@@ -121,25 +231,37 @@ export function useFlashcardSession(deckId: string, cardCount: number) {
       const j = Math.floor(Math.random() * (i + 1));
       [order[i], order[j]] = [order[j]!, order[i]!];
     }
-    setShuffledOrder(order);
-    setIndex(0);
-    setRevealed(false);
+    persistDeckSession(deckId, {
+      index: 0,
+      revealed: false,
+      shuffledOrder: order,
+    });
   }
 
   function restart(): void {
-    setShuffledOrder(null);
-    setIndex(0);
-    setRevealed(false);
+    persistDeckSession(deckId, {
+      index: 0,
+      revealed: false,
+      shuffledOrder: null,
+    });
   }
 
   return {
-    viewIndex: index,
-    cardIndex: resolveOrderIndex(index),
-    revealed,
+    viewIndex: slice.index,
+    cardIndex: resolveOrderIndex(slice.index),
+    revealed: slice.revealed,
     setRevealed,
-    shuffled: Boolean(shuffledOrder),
+    shuffled: Boolean(slice.shuffledOrder),
     goTo,
     shuffle,
     restart,
   };
+}
+
+export function useRecentFlashcardDeckIds(): string[] {
+  return useSyncExternalStore(
+    subscribe,
+    getRecentFlashcardDeckIds,
+    () => [],
+  );
 }

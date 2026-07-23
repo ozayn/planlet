@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { FlashcardSourceLink } from "@/components/life-lab/flashcard-source-link";
-import { getRecentFlashcardDeckIds } from "@/components/life-lab/use-flashcard-session";
+import { useRecentFlashcardDeckIds } from "@/components/life-lab/use-flashcard-session";
 import {
   filterFlashcardDecks,
   flashcardDeckLanguageLabel,
@@ -111,7 +111,7 @@ export function FlashcardsPageContent({ decks }: FlashcardsPageContentProps) {
   );
   const [sort, setSort] =
     useState<NonNullable<FlashcardDeckFilters["sort"]>>("newest");
-  const [recentIds] = useState(() => getRecentFlashcardDeckIds());
+  const recentIds = useRecentFlashcardDeckIds();
 
   const filtered = useMemo(
     () =>
