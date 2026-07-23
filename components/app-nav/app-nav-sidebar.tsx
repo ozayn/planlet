@@ -1,53 +1,62 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 
 import { AppNavSections } from "@/components/app-nav/app-nav-sections";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 import type { AppNavAccess } from "@/lib/app-nav";
 
 const SIDEBAR_COLLAPSED_KEY = "planlet-sidebar-collapsed";
+const SIDEBAR_COLLAPSED_EVENT = "planlet-sidebar-collapsed-change";
 
 type AppNavSidebarProps = {
   access: AppNavAccess;
 };
 
-export function AppNavSidebar({ access }: AppNavSidebarProps) {
-  const [collapsed, setCollapsed] = useState(false);
-  const [hydrated, setHydrated] = useState(false);
+function subscribeSidebarCollapsed(onStoreChange: () => void) {
+  window.addEventListener("storage", onStoreChange);
+  window.addEventListener(SIDEBAR_COLLAPSED_EVENT, onStoreChange);
+  return () => {
+    window.removeEventListener("storage", onStoreChange);
+    window.removeEventListener(SIDEBAR_COLLAPSED_EVENT, onStoreChange);
+  };
+}
 
-  useEffect(() => {
-    setHydrated(true);
-    try {
-      setCollapsed(localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1");
-    } catch {
-      setCollapsed(false);
-    }
-  }, []);
-
-  function toggleCollapsed() {
-    setCollapsed((current) => {
-      const next = !current;
-      try {
-        localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? "1" : "0");
-      } catch {
-        // Ignore storage failures.
-      }
-      return next;
-    });
+function readSidebarCollapsed() {
+  try {
+    return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1";
+  } catch {
+    return false;
   }
+}
 
-  const isCollapsed = hydrated && collapsed;
+export function AppNavSidebar({ access }: AppNavSidebarProps) {
+  const collapsed = useSyncExternalStore(
+    subscribeSidebarCollapsed,
+    readSidebarCollapsed,
+    () => false,
+  );
+
+  const toggleCollapsed = useCallback(() => {
+    const next = !readSidebarCollapsed();
+    try {
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? "1" : "0");
+    } catch {
+      // Ignore storage failures.
+    }
+    window.dispatchEvent(new Event(SIDEBAR_COLLAPSED_EVENT));
+  }, []);
 
   return (
     <aside
-      className={`ui-app-nav-sidebar sticky top-0 hidden h-dvh shrink-0 border-e border-border-soft bg-surface md:flex md:flex-col ${
-        isCollapsed ? "ui-app-nav-sidebar-collapsed" : ""
+      className={`ui-app-nav-sidebar sticky top-0 hidden h-dvh shrink-0 border-e border-border-soft bg-surface lg:flex lg:flex-col ${
+        collapsed ? "ui-app-nav-sidebar-collapsed" : ""
       }`}
       aria-label="App navigation"
+      data-nav-sidebar="docked"
     >
       <div className="ui-app-nav-sidebar-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain px-2 py-4">
-        <AppNavSections access={access} collapsed={isCollapsed} />
+        <AppNavSections access={access} collapsed={collapsed} />
       </div>
 
       <div className="border-t border-border-soft px-2 py-2">
@@ -56,10 +65,10 @@ export function AppNavSidebar({ access }: AppNavSidebarProps) {
           onClick={toggleCollapsed}
           {...passwordManagerSafeControlProps}
           className="ui-app-nav-collapse-button flex min-h-10 w-full items-center justify-center rounded-xl text-xs font-medium text-muted transition-colors hover:bg-accent-cream hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
-          aria-expanded={!isCollapsed}
-          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
-          {isCollapsed ? "›" : "‹ Collapse"}
+          {collapsed ? "›" : "‹ Collapse"}
         </button>
       </div>
     </aside>

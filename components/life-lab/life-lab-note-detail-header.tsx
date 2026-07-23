@@ -2,12 +2,16 @@
 
 import Link from "next/link";
 
+import { LifeLabArchiveMenuItem } from "@/components/life-lab/life-lab-archive-menu-item";
 import { LifeLabMetadataChips } from "@/components/life-lab/life-lab-metadata-chips";
+import { LifeLabItemMoreMenu } from "@/components/life-lab/life-lab-item-more-menu";
 import { LifeLabNoteDevToolbar } from "@/components/life-lab/life-lab-note-dev-toolbar";
 import { LifeLabNoteListen } from "@/components/life-lab/life-lab-note-listen";
 import type { LifeLabReadAloudPreferences } from "@/lib/life-lab/read-aloud-preferences";
 import { LifeLabSourceLink } from "@/components/life-lab/life-lab-source-link";
+import { ACTION_LABELS } from "@/lib/action-labels";
 import type { LifeLabNote, LifeLabSectionId } from "@/lib/life-lab/constants";
+import { buildNoteItemKey } from "@/lib/life-lab/item-key";
 import type { PlaylistVideoNavigation } from "@/lib/life-lab/playlist-index";
 import { isYoutubeVideoNote } from "@/lib/life-lab/playlist-index";
 import { LifeLabPlaylistVideoNav } from "@/components/life-lab/life-lab-playlist-video-nav";
@@ -39,6 +43,7 @@ type LifeLabNoteDetailHeaderProps = {
   playlistNav?: PlaylistVideoNavigation | null;
   readAloudPreferences: LifeLabReadAloudPreferences;
   openAiNarrationAvailable: boolean;
+  archived?: boolean;
 };
 
 function MetadataChip({ label }: { label: string }) {
@@ -64,6 +69,7 @@ export function LifeLabNoteDetailHeader({
   playlistNav = null,
   readAloudPreferences,
   openAiNarrationAvailable,
+  archived = false,
 }: LifeLabNoteDetailHeaderProps) {
   const displayTitle = lifeLabNoteDisplayTitle(note);
   const showFullTitle = lifeLabNoteDisplayTitleDiffers(note);
@@ -77,6 +83,11 @@ export function LifeLabNoteDetailHeader({
   const flashcardCount =
     note.flashcards?.length ?? note.flashcardCount ?? 0;
   const showStudy = flashcardCount > 0;
+  const itemKey = buildNoteItemKey({
+    sectionId,
+    relativePath: note.relativePath,
+    slug: note.slug,
+  });
 
   const chipContext = {
     sectionId,
@@ -146,6 +157,22 @@ export function LifeLabNoteDetailHeader({
         >
           Back
         </Link>
+        <LifeLabItemMoreMenu>
+          <LifeLabArchiveMenuItem
+            itemKey={itemKey}
+            section={sectionId}
+            itemType={
+              sectionId === "learning-dictionary"
+                ? "dictionary-entry"
+                : "note"
+            }
+            archived={archived}
+            labels={{
+              archive: ACTION_LABELS.archiveLifeLabNote,
+              unarchive: ACTION_LABELS.unarchiveLifeLabNote,
+            }}
+          />
+        </LifeLabItemMoreMenu>
         <LifeLabNoteDevToolbar note={note} />
         <LifeLabNoteListen
           title={note.title}
@@ -159,6 +186,12 @@ export function LifeLabNoteDetailHeader({
           includeFlashcards
         />
       </div>
+
+      {archived ? (
+        <span className="inline-flex rounded-full border border-border/70 px-2 py-0.5 text-[0.6875rem] font-medium text-muted">
+          Archived
+        </span>
+      ) : null}
 
       {statusLabel || mobileVisible.length > 0 ? (
         <div className="flex flex-wrap items-center gap-1.5">

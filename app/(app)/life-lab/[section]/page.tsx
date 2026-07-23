@@ -13,6 +13,7 @@ import {
 } from "@/lib/life-lab";
 import { canUseLifeLabRefreshBypass } from "@/lib/life-lab/cache";
 import { canViewLifeLabCacheDiagnostics } from "@/lib/life-lab/cache-telemetry";
+import { getArchivedLifeLabItemKeySet } from "@/lib/life-lab/item-state";
 import { isAdminRole } from "@/lib/auth-roles";
 import { canAccessLifeLabPage } from "@/lib/roles";
 
@@ -39,7 +40,10 @@ export default async function LifeLabSectionPage({
   const showDiagnostics = canViewLifeLabCacheDiagnostics(isAdmin);
 
   if (section === "flashcards") {
-    const { availability, decks } = await getLifeLabFlashcardDecksData();
+    const [{ availability, decks }, archivedKeys] = await Promise.all([
+      getLifeLabFlashcardDecksData(),
+      getArchivedLifeLabItemKeySet(session.user.id),
+    ]);
 
     return (
       <section className="ui-life-lab-surface ui-page-stack space-y-4">
@@ -47,6 +51,12 @@ export default async function LifeLabSectionPage({
           title="Flashcards"
           action={
             <div className="flex items-center gap-3">
+              <Link
+                href="/life-lab/archived"
+                className="text-sm font-medium text-muted transition-colors hover:text-foreground"
+              >
+                Archived
+              </Link>
               <Link
                 href="/life-lab"
                 className="text-sm font-medium text-muted transition-colors hover:text-foreground"
@@ -65,17 +75,23 @@ export default async function LifeLabSectionPage({
         {availability.status !== "ready" ? (
           <LifeLabStatusPanel availability={availability} isAdmin={isAdmin} />
         ) : (
-          <FlashcardsPageContent decks={decks} />
+          <FlashcardsPageContent
+            decks={decks}
+            archivedItemKeys={[...archivedKeys]}
+          />
         )}
       </section>
     );
   }
 
-  const { availability, sectionId, sectionLabel, notes, filterOptions, listingDiagnostic } =
-    await getLifeLabSectionData(section, {
-      refresh: shouldRefresh,
-      includeListingDiagnostic: showDiagnostics,
-    });
+  const [{ availability, sectionId, sectionLabel, notes, filterOptions, listingDiagnostic }, archivedKeys] =
+    await Promise.all([
+      getLifeLabSectionData(section, {
+        refresh: shouldRefresh,
+        includeListingDiagnostic: showDiagnostics,
+      }),
+      getArchivedLifeLabItemKeySet(session.user.id),
+    ]);
 
   if (!sectionId || !sectionLabel) {
     notFound();
@@ -139,6 +155,7 @@ export default async function LifeLabSectionPage({
           filterOptions={filterOptions}
           listingDiagnostic={listingDiagnostic}
           showDiagnostics={showDiagnostics}
+          archivedItemKeys={[...archivedKeys]}
         />
       )}
     </section>

@@ -378,6 +378,7 @@ model User {
   planItemReflections           PlanItemReflection[]
   aiUsageLogs                   AiUsageLog[]
   coachingNarrationCaches       CoachingNarrationCache[]
+  lifeLabItemStates             LifeLabItemState[]
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 }
@@ -421,6 +422,29 @@ model LifeLabNarrationCache {
   @@index([driveFileId, model, voice, instructionVersion])
   @@index([driveFileId, contentHash])
   @@index([driveFileId, voice, narrationStyle])
+}
+
+/// Per-user Life Lab viewing state (archive, future favorites/progress).
+/// Does not modify Ava/Drive source files.
+model LifeLabItemState {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itemKey     String
+  section     String
+  itemType    String
+  archivedAt  DateTime?
+  viewedAt    DateTime?
+  completedAt DateTime?
+  favorite    Boolean   @default(false)
+  studyStatus String?
+  lastPosition String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([userId, itemKey])
+  @@index([userId, archivedAt])
+  @@index([userId, section])
 }
 
 model CoachingNarrationCache {

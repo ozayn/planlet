@@ -8,6 +8,11 @@ import { LifeLabRefreshButton } from "@/components/life-lab/life-lab-refresh-but
 import { LifeLabStatusPanel } from "@/components/life-lab/life-lab-status-panel";
 import { PageHeader } from "@/components/page-header";
 import { getLifeLabBrowseData, getLifeLabHomeData } from "@/lib/life-lab";
+import { buildNoteItemKey } from "@/lib/life-lab/item-key";
+import {
+  excludeArchivedByKey,
+  getArchivedLifeLabItemKeySet,
+} from "@/lib/life-lab/item-state";
 import { isAdminRole } from "@/lib/auth-roles";
 import { canAccessLifeLabPage } from "@/lib/roles";
 
@@ -18,11 +23,23 @@ export default async function LifeLabPage() {
     notFound();
   }
 
-  const [{ availability, sections }, browseData] = await Promise.all([
-    getLifeLabHomeData(),
-    getLifeLabBrowseData(),
-  ]);
+  const [{ availability, sections }, browseData, archivedKeys] =
+    await Promise.all([
+      getLifeLabHomeData(),
+      getLifeLabBrowseData(),
+      getArchivedLifeLabItemKeySet(session.user.id),
+    ]);
   const isAdmin = isAdminRole(session.user.role);
+  const visibleBrowseNotes = excludeArchivedByKey(
+    browseData.notes,
+    archivedKeys,
+    (note) =>
+      buildNoteItemKey({
+        sectionId: note.sectionId,
+        relativePath: note.relativePath,
+        slug: note.slug,
+      }),
+  );
 
   return (
     <section className="ui-life-lab-surface ui-page-stack space-y-6">
@@ -31,7 +48,15 @@ export default async function LifeLabPage() {
         subtitle="Learning notes from selected Life Lab folders."
         action={
           availability.status === "ready" ? (
-            <LifeLabRefreshButton scope="home" />
+            <div className="flex items-center gap-3">
+              <Link
+                href="/life-lab/archived"
+                className="text-sm font-medium text-muted transition-colors hover:text-foreground"
+              >
+                Archived
+              </Link>
+              <LifeLabRefreshButton scope="home" />
+            </div>
           ) : null
         }
       />
@@ -41,7 +66,7 @@ export default async function LifeLabPage() {
       ) : (
         <>
           <LifeLabHomeBrowser
-            notes={browseData.notes}
+            notes={visibleBrowseNotes}
             flashcardNoteCount={browseData.flashcardNoteCount}
           />
 

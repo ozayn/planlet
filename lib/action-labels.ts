@@ -224,4 +224,48 @@ export const ACTION_LABELS = {
     title: "Importance and urgency",
     ariaLabel: "Importance and urgency",
   },
+  moreLifeLabItem: {
+    title: "More",
+    ariaLabel: "More Life Lab actions",
+  },
+  archiveLifeLabItem: {
+    title: "Archive",
+    ariaLabel: "Archive item",
+  },
+  unarchiveLifeLabItem: {
+    title: "Unarchive",
+    ariaLabel: "Unarchive item",
+  },
+  archiveFlashcardDeck: {
+    title: "Archive",
+    ariaLabel: "Archive deck",
+  },
+  unarchiveFlashcardDeck: {
+    title: "Unarchive",
+    ariaLabel: "Unarchive deck",
+  },
+  archiveLifeLabNote: {
+    title: "Archive",
+    ariaLabel: "Archive note",
+  },
+  unarchiveLifeLabNote: {
+    title: "Unarchive",
+    ariaLabel: "Unarchive note",
+  },
+  archivePodcastEpisode: {
+    title: "Archive",
+    ariaLabel: "Archive episode",
+  },
+  unarchivePodcastEpisode: {
+    title: "Unarchive",
+    ariaLabel: "Unarchive episode",
+  },
+  archivePodcastShow: {
+    title: "Archive",
+    ariaLabel: "Archive show",
+  },
+  unarchivePodcastShow: {
+    title: "Unarchive",
+    ariaLabel: "Unarchive show",
+  },
 } as const satisfies Record<string, ActionLabel>;

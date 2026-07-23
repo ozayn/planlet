@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
+import { LifeLabArchiveMenuItem } from "@/components/life-lab/life-lab-archive-menu-item";
+import { LifeLabItemMoreMenu } from "@/components/life-lab/life-lab-item-more-menu";
 import { LifeLabNoteCardMeta } from "@/components/life-lab/life-lab-note-card-meta";
 import { LifeLabNoteCardDevMenu } from "@/components/life-lab/life-lab-note-card-dev-menu";
 import { LifeLabMetadataChips } from "@/components/life-lab/life-lab-metadata-chips";
@@ -13,12 +15,14 @@ import {
   LifeLabRecentlyAdded,
 } from "@/components/life-lab/life-lab-section-highlights";
 import { LifeLabStandaloneVideos } from "@/components/life-lab/life-lab-standalone-videos";
+import { ACTION_LABELS } from "@/lib/action-labels";
 import type {
   LifeLabListingDiagnostic,
   LifeLabNoteGroup,
   LifeLabNoteSummary,
   LifeLabSectionId,
 } from "@/lib/life-lab/constants";
+import { buildNoteItemKey } from "@/lib/life-lab/item-key";
 import { selectCardPreview } from "@/lib/life-lab/card-preview";
 import { lectureNoteSourceLabel } from "@/lib/life-lab/lecture-notes";
 import {
@@ -55,6 +59,8 @@ type LifeLabSectionNotesProps = {
   showDiagnostics: boolean;
   searchQuery?: string;
   contextNotes?: LifeLabNoteSummary[];
+  archivedItemKeys?: string[];
+  onArchivedChange?: (itemKey: string, archived: boolean) => void;
 };
 
 type LifeLabNoteCardProps = {
@@ -64,6 +70,8 @@ type LifeLabNoteCardProps = {
   searchQuery?: string;
   contextNotes?: LifeLabNoteSummary[];
   compact?: boolean;
+  archived?: boolean;
+  onArchivedChange?: (itemKey: string, archived: boolean) => void;
 };
 
 const GROUP_INITIAL_VISIBLE = 5;
@@ -401,6 +409,8 @@ function LifeLabNoteCard({
   searchQuery,
   contextNotes,
   compact = false,
+  archived = false,
+  onArchivedChange,
 }: LifeLabNoteCardProps) {
   if (
     sectionId === "youtube-learning" &&
@@ -415,6 +425,11 @@ function LifeLabNoteCard({
   }
 
   const noteImage = resolveLifeLabNoteImage(note.metadata);
+  const itemKey = buildNoteItemKey({
+    sectionId,
+    relativePath: note.relativePath,
+    slug: note.slug,
+  });
 
   return (
     <li>
@@ -423,7 +438,7 @@ function LifeLabNoteCard({
           compact ? "px-3 py-2.5" : "px-3 py-3"
         }`}
       >
-        <div className="flex items-start justify-between gap-3 pr-8">
+        <div className="flex items-start justify-between gap-3 pr-10">
           {sectionId === "youtube-learning" && noteImage ? (
             <LifeLabNoteImageFigure
               image={noteImage}
@@ -451,6 +466,11 @@ function LifeLabNoteCard({
               />
               <CompactNoteMeta sectionId={sectionId} note={note} />
               <CardPreview note={note} searchQuery={searchQuery} />
+              {archived ? (
+                <span className="inline-flex rounded-full border border-border/70 px-2 py-0.5 text-[0.6875rem] font-medium text-muted">
+                  Archived
+                </span>
+              ) : null}
           </div>
           {note.dateLabel ?? note.modifiedAtLabel ? (
             <span className="shrink-0 pt-0.5 text-[0.6875rem] text-muted-light">
@@ -458,7 +478,24 @@ function LifeLabNoteCard({
             </span>
           ) : null}
         </div>
-        <div className="absolute right-2.5 top-2.5">
+        <div className="absolute right-2.5 top-2.5 flex items-center gap-1">
+          <LifeLabItemMoreMenu>
+            <LifeLabArchiveMenuItem
+              itemKey={itemKey}
+              section={sectionId}
+              itemType={
+                sectionId === "learning-dictionary"
+                  ? "dictionary-entry"
+                  : "note"
+              }
+              archived={archived}
+              labels={{
+                archive: ACTION_LABELS.archiveLifeLabNote,
+                unarchive: ACTION_LABELS.unarchiveLifeLabNote,
+              }}
+              onArchivedChange={(next) => onArchivedChange?.(itemKey, next)}
+            />
+          </LifeLabItemMoreMenu>
           <LifeLabNoteCardDevMenu sectionId={sectionId} note={note} />
         </div>
       </div>
@@ -471,11 +508,15 @@ function LifeLabNoteList({
   group,
   searchQuery,
   contextNotes,
+  archivedItemKeys,
+  onArchivedChange,
 }: {
   sectionId: LifeLabSectionId;
   group: LifeLabNoteGroup;
   searchQuery?: string;
   contextNotes?: LifeLabNoteSummary[];
+  archivedItemKeys?: string[];
+  onArchivedChange?: (itemKey: string, archived: boolean) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const hasOverflow = group.notes.length > GROUP_INITIAL_VISIBLE;
@@ -483,25 +524,44 @@ function LifeLabNoteList({
     hasOverflow && !expanded
       ? group.notes.slice(0, GROUP_INITIAL_VISIBLE)
       : group.notes;
+  const archivedSet = useMemo(
+    () => new Set(archivedItemKeys ?? []),
+    [archivedItemKeys],
+  );
 
   return (
     <div className="space-y-2">
       <ul className="space-y-2">
-        {visibleNotes.map((note) =>
-          sectionId === "learning-dictionary" ? (
-            <LifeLabDictionaryNoteCard
-              key={note.slug}
-              sectionId={sectionId}
-              note={note}
-              searchQuery={searchQuery}
-            />
-          ) : sectionId === "lecture-notes" ? (
-            <LifeLabLectureNoteCard
-              key={note.slug}
-              sectionId={sectionId}
-              note={note}
-            />
-          ) : (
+        {visibleNotes.map((note) => {
+          const itemKey = buildNoteItemKey({
+            sectionId,
+            relativePath: note.relativePath,
+            slug: note.slug,
+          });
+          const archived = archivedSet.has(itemKey);
+
+          if (sectionId === "learning-dictionary") {
+            return (
+              <LifeLabDictionaryNoteCard
+                key={note.slug}
+                sectionId={sectionId}
+                note={note}
+                searchQuery={searchQuery}
+              />
+            );
+          }
+
+          if (sectionId === "lecture-notes") {
+            return (
+              <LifeLabLectureNoteCard
+                key={note.slug}
+                sectionId={sectionId}
+                note={note}
+              />
+            );
+          }
+
+          return (
             <LifeLabNoteCard
               key={note.slug}
               sectionId={sectionId}
@@ -510,9 +570,11 @@ function LifeLabNoteList({
               searchQuery={searchQuery}
               contextNotes={contextNotes}
               compact
+              archived={archived}
+              onArchivedChange={onArchivedChange}
             />
-          ),
-        )}
+          );
+        })}
       </ul>
       {hasOverflow ? (
         <button
@@ -559,12 +621,16 @@ function LifeLabNoteGroupSection({
   searchQuery,
   contextNotes,
   defaultOpen = false,
+  archivedItemKeys,
+  onArchivedChange,
 }: {
   sectionId: LifeLabSectionId;
   group: LifeLabNoteGroup;
   searchQuery?: string;
   contextNotes?: LifeLabNoteSummary[];
   defaultOpen?: boolean;
+  archivedItemKeys?: string[];
+  onArchivedChange?: (itemKey: string, archived: boolean) => void;
 }) {
   const hidePrimaryHeading =
     sectionId === "reading-briefs" &&
@@ -586,6 +652,8 @@ function LifeLabNoteGroupSection({
           group={group}
           searchQuery={searchQuery}
           contextNotes={contextNotes}
+          archivedItemKeys={archivedItemKeys}
+          onArchivedChange={onArchivedChange}
         />
       </section>
     );
@@ -611,6 +679,8 @@ function LifeLabNoteGroupSection({
             sectionId={sectionId}
             group={group}
             searchQuery={searchQuery}
+            archivedItemKeys={archivedItemKeys}
+            onArchivedChange={onArchivedChange}
           />
         )}
       </div>
@@ -625,6 +695,8 @@ export function LifeLabSectionNotes({
   showDiagnostics,
   searchQuery,
   contextNotes,
+  archivedItemKeys,
+  onArchivedChange,
 }: LifeLabSectionNotesProps) {
   const unresolvedPlaylists = sectionView.blocks.flatMap((block) =>
     block.kind === "unresolved-playlists" ? block.items : [],
@@ -711,6 +783,8 @@ export function LifeLabSectionNotes({
                 group={block.group}
                 searchQuery={searchQuery}
                 contextNotes={contextNotes}
+                archivedItemKeys={archivedItemKeys}
+                onArchivedChange={onArchivedChange}
               />
             );
           default:

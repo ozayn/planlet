@@ -31,6 +31,8 @@ import { buildMermaidDiagramAssetBindings } from "@/lib/life-lab/diagram-assets"
 import { hasDictionaryStudySections } from "@/lib/life-lab/dictionary-candidates";
 import { stripLeadingMarkdownH1 } from "@/lib/life-lab/note-content";
 import { isReadingBriefNote } from "@/lib/life-lab/reading-briefs";
+import { buildNoteItemKey } from "@/lib/life-lab/item-key";
+import { isLifeLabItemArchived } from "@/lib/life-lab/item-state";
 import { shouldRenderPlaylistIndexUi } from "@/lib/life-lab/playlist-index";
 import { resolveLifeLabNoteImage } from "@/lib/life-lab/note-image";
 import { resolveLifeLabImagePlacement } from "@/lib/life-lab/image-placement";
@@ -77,6 +79,15 @@ export default async function LifeLabNotePage({
   if (!note) {
     notFound();
   }
+
+  const noteArchived = await isLifeLabItemArchived(
+    session.user.id,
+    buildNoteItemKey({
+      sectionId: note.sectionId,
+      relativePath: note.relativePath,
+      slug: note.slug,
+    }),
+  );
 
   const isAdmin = isAdminRole(session.user.role);
   const isReadingBrief = isReadingBriefNote({
@@ -209,6 +220,7 @@ export default async function LifeLabNotePage({
           playlistNav={playlistNav}
           readAloudPreferences={readAloudPreferences}
           openAiNarrationAvailable={openAiNarrationAvailable}
+          archived={noteArchived}
         />
       )}
 

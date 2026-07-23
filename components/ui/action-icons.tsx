@@ -477,3 +477,25 @@ export function ExternalLinkIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+/** Lucide-equivalent: Archive */
+export function ArchiveIcon({ className }: IconProps) {
+  return (
+    <svg
+      className={className}
+      fill="none"
+      viewBox="0 0 24 24"
+      strokeWidth={1.75}
+      stroke="currentColor"
+      aria-hidden="true"
+    >
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M3 7.5h18l-1.2 12.2A2 2 0 0 1 17.81 21.5H6.19a2 2 0 0 1-1.99-1.8L3 7.5Z"
+      />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 7.5 4.5 3.5h15L21 7.5" />
+      <path strokeLinecap="round" d="M10 12h4" />
+    </svg>
+  );
+}

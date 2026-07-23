@@ -2,11 +2,13 @@
 
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useId,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
   type RefObject,
 } from "react";
@@ -21,18 +23,23 @@ type AppNavDrawerContextValue = {
   open: boolean;
   openDrawer: () => void;
   closeDrawer: () => void;
+  registerMenuButton: (node: HTMLButtonElement | null) => void;
 };
 
 const AppNavDrawerContext = createContext<AppNavDrawerContextValue | null>(
   null,
 );
 
-function useAppNavDrawer() {
+export function useAppNavDrawer() {
   const context = useContext(AppNavDrawerContext);
   if (!context) {
     throw new Error("useAppNavDrawer must be used within AppNavDrawerProvider");
   }
   return context;
+}
+
+function subscribeToNothing() {
+  return () => {};
 }
 
 function useFocusTrap(
@@ -104,15 +111,35 @@ export function AppNavDrawerProvider({
   children,
 }: AppNavDrawerProviderProps) {
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(
+    subscribeToNothing,
+    () => true,
+    () => false,
+  );
   const panelRef = useRef<HTMLDivElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement | null>(null);
   const drawerId = useId();
 
-  useEffect(() => {
-    setMounted(true);
+  useFocusTrap(panelRef, open);
+
+  const closeDrawer = useCallback(() => {
+    setOpen((wasOpen) => {
+      if (wasOpen) {
+        queueMicrotask(() => {
+          menuButtonRef.current?.focus();
+        });
+      }
+      return false;
+    });
   }, []);
 
-  useFocusTrap(panelRef, open);
+  const openDrawer = useCallback(() => {
+    setOpen(true);
+  }, []);
+
+  const registerMenuButton = useCallback((node: HTMLButtonElement | null) => {
+    menuButtonRef.current = node;
+  }, []);
 
   useEffect(() => {
     if (!open) {
@@ -121,7 +148,7 @@ export function AppNavDrawerProvider({
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        setOpen(false);
+        closeDrawer();
       }
     }
 
@@ -133,18 +160,22 @@ export function AppNavDrawerProvider({
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [open]);
+  }, [open, closeDrawer]);
 
   const drawerSections = getMobileDrawerSections(access, pinnedNavItemKeys);
 
   const drawer =
     open && mounted ? (
-      <div className="ui-app-nav-drawer-overlay md:hidden" role="presentation">
+      <div
+        className="ui-app-nav-drawer-overlay lg:hidden"
+        role="presentation"
+        data-nav-drawer="overlay"
+      >
         <button
           type="button"
           aria-label="Close navigation menu"
           className="ui-app-nav-drawer-backdrop"
-          onClick={() => setOpen(false)}
+          onClick={closeDrawer}
         />
         <div
           ref={panelRef}
@@ -158,7 +189,7 @@ export function AppNavDrawerProvider({
             <p className="text-sm font-semibold text-foreground">Navigate</p>
             <button
               type="button"
-              onClick={() => setOpen(false)}
+              onClick={closeDrawer}
               {...passwordManagerSafeControlProps}
               className="flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-accent-cream hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)]"
               aria-label="Close"
@@ -171,7 +202,7 @@ export function AppNavDrawerProvider({
               <AppNavSections
                 sections={drawerSections}
                 access={access}
-                onNavigate={() => setOpen(false)}
+                onNavigate={closeDrawer}
               />
             ) : (
               <p className="px-3 py-4 text-sm text-muted">
@@ -187,8 +218,9 @@ export function AppNavDrawerProvider({
     <AppNavDrawerContext.Provider
       value={{
         open,
-        openDrawer: () => setOpen(true),
-        closeDrawer: () => setOpen(false),
+        openDrawer,
+        closeDrawer,
+        registerMenuButton,
       }}
     >
       {children}
@@ -197,18 +229,24 @@ export function AppNavDrawerProvider({
   );
 }
 
-export function AppNavMenuButton() {
-  const { open, openDrawer } = useAppNavDrawer();
+type AppNavMenuButtonProps = {
+  className?: string;
+};
+
+export function AppNavMenuButton({ className = "" }: AppNavMenuButtonProps) {
+  const { open, openDrawer, registerMenuButton } = useAppNavDrawer();
 
   return (
     <button
       type="button"
+      ref={registerMenuButton}
       onClick={openDrawer}
       {...passwordManagerSafeControlProps}
-      className="flex min-h-11 min-w-11 items-center justify-center rounded-lg text-muted transition-colors hover:bg-accent-cream hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] md:hidden"
+      className={`flex min-h-11 min-w-11 items-center justify-center rounded-lg text-muted transition-colors hover:bg-accent-cream hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring)] lg:hidden ${className}`.trim()}
       aria-expanded={open}
       aria-haspopup="dialog"
       aria-label="Open navigation menu"
+      data-nav-menu-button=""
     >
       <svg
         className="h-5 w-5 stroke-current"

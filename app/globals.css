@@ -2195,6 +2195,73 @@ body {
     filter: grayscale(1) brightness(1.15);
   }
 
+  /*
+   * Touch landscape / short coarse viewports: never reserve a docked sidebar.
+   * Width-only md breakpoints treat landscape phones as desktop and squeeze content.
+   */
+  @media (max-height: 600px) and (pointer: coarse) {
+    .ui-app-nav-sidebar {
+      display: none !important;
+    }
+
+    .ui-desktop-topnav {
+      display: none !important;
+    }
+
+    .ui-mobile-app-bar {
+      display: block !important;
+    }
+
+    [data-flashcard-shell="focus"] .ui-mobile-app-bar {
+      display: none !important;
+    }
+
+    .ui-app-main-flashcard {
+      max-width: none !important;
+      padding-inline: 0.75rem;
+      padding-top: 0.5rem;
+    }
+
+    .flashcard-explore-topbar {
+      gap: 0.25rem;
+    }
+
+    .flashcard-face {
+      padding-block: 0.875rem;
+    }
+
+    .flashcard-face-toggle {
+      min-height: clamp(11rem, 48dvh, 22rem);
+    }
+
+    .flashcard-explore-controls {
+      padding-top: 0.375rem;
+      padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+    }
+  }
+
+  /* Flashcard Explore: nearly full-width card column below desktop */
+  @media (max-width: 1023px) {
+    [data-flashcard-shell="focus"] .ui-app-nav-sidebar {
+      display: none !important;
+    }
+
+    [data-flashcard-shell="focus"] .ui-desktop-topnav {
+      display: none !important;
+    }
+
+    .ui-app-main-flashcard {
+      max-width: none;
+    }
+  }
+
+  @media (min-width: 768px) and (max-width: 1023px) {
+    .ui-app-main-flashcard {
+      max-width: 42rem;
+      margin-inline: auto;
+    }
+  }
+
   /* Phone landscape: short viewport, wide width — give task titles more room */
   @media (max-height: 520px) and (orientation: landscape) {
     .pb-safe-nav {

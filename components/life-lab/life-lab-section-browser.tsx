@@ -36,6 +36,7 @@ import {
 import { groupLifeLabNotes } from "@/lib/life-lab/organization";
 import { noteMatchesSearch } from "@/lib/life-lab/search";
 import { buildLifeLabSectionView } from "@/lib/life-lab/section-view";
+import { buildNoteItemKey } from "@/lib/life-lab/item-key";
 
 const FILTER_PARAM_KEYS: LifeLabFilterKey[] = [
   "subfolder",
@@ -152,6 +153,7 @@ type LifeLabSectionBrowserProps = {
   filterOptions: LifeLabFilterOptions;
   listingDiagnostic: LifeLabListingDiagnostic | null;
   showDiagnostics: boolean;
+  archivedItemKeys?: string[];
 };
 
 export function LifeLabSectionBrowser({
@@ -160,6 +162,7 @@ export function LifeLabSectionBrowser({
   filterOptions,
   listingDiagnostic,
   showDiagnostics,
+  archivedItemKeys = [],
 }: LifeLabSectionBrowserProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -169,6 +172,10 @@ export function LifeLabSectionBrowser({
     () => searchParams.get("q")?.trim() ?? "",
   );
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [includeArchived, setIncludeArchived] = useState(false);
+  const [localArchived, setLocalArchived] = useState<Set<string>>(
+    () => new Set(archivedItemKeys),
+  );
 
   const searchQuery = searchParams.get("q")?.trim() ?? "";
   const rawSort = searchParams.get("sort")?.trim() ?? "";
@@ -198,14 +205,33 @@ export function LifeLabSectionBrowser({
             return next;
           })()
         : filters;
-    const metadataFiltered = filterLifeLabNotes(notes, effectiveFilters);
+
+    const visibleNotes = includeArchived
+      ? notes
+      : notes.filter((note) => {
+          const key = buildNoteItemKey({
+            sectionId,
+            relativePath: note.relativePath,
+            slug: note.slug,
+          });
+          return !localArchived.has(key);
+        });
+
+    const metadataFiltered = filterLifeLabNotes(visibleNotes, effectiveFilters);
 
     if (!searchQuery) {
       return metadataFiltered;
     }
 
     return metadataFiltered.filter((note) => noteMatchesSearch(note, searchQuery));
-  }, [filters, notes, searchQuery, sectionId]);
+  }, [
+    filters,
+    notes,
+    searchQuery,
+    sectionId,
+    includeArchived,
+    localArchived,
+  ]);
 
   const groups = useMemo(
     () => groupLifeLabNotes(filteredNotes, { sectionId, sort }),
@@ -397,6 +423,16 @@ export function LifeLabSectionBrowser({
           </div>
         ) : null}
 
+        <label className="flex items-center gap-2 text-sm text-muted">
+          <input
+            type="checkbox"
+            checked={includeArchived}
+            onChange={(event) => setIncludeArchived(event.target.checked)}
+            className="rounded border-border"
+          />
+          Include archived
+        </label>
+
         {showSectionStudyLink ? (
           <div>
             <Link
@@ -465,6 +501,18 @@ export function LifeLabSectionBrowser({
           showDiagnostics={showDiagnostics}
           searchQuery={searchQuery}
           contextNotes={filteredNotes}
+          archivedItemKeys={[...localArchived]}
+          onArchivedChange={(itemKey, archived) => {
+            setLocalArchived((current) => {
+              const copy = new Set(current);
+              if (archived) {
+                copy.add(itemKey);
+              } else {
+                copy.delete(itemKey);
+              }
+              return copy;
+            });
+          }}
         />
       )}
     </div>

@@ -2,17 +2,24 @@
 
 import Link from "next/link";
 import { MoreHorizontal } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
+import {
+  AppNavMenuButton,
+  useAppNavDrawer,
+} from "@/components/app-nav/app-nav-drawer";
+import { LifeLabArchiveMenuItem } from "@/components/life-lab/life-lab-archive-menu-item";
 import { FlashcardReadAloudControls } from "@/components/life-lab/read-aloud-controls";
 import { MermaidBlock } from "@/components/life-lab/mermaid-block";
 import { ReadableText } from "@/components/life-lab/readable-text";
 import { useLifeLabReadingMode } from "@/components/life-lab/life-lab-reading-mode";
 import { LifeLabReadingControls } from "@/components/life-lab/life-lab-reading-controls";
 import { useFlashcardSession } from "@/components/life-lab/use-flashcard-session";
+import { ACTION_LABELS } from "@/lib/action-labels";
 import type { LifeLabSectionId } from "@/lib/life-lab/constants";
 import type { FlashcardWithDictionaryLink } from "@/lib/life-lab/flashcard-dictionary-link";
 import { resolveFlashcardDeckHeader } from "@/lib/life-lab/flashcard-explore-ui";
+import { buildFlashcardDeckItemKey } from "@/lib/life-lab/item-key";
 import {
   serializeMemoNextDeck,
   type MemoNextParseIssue,
@@ -45,6 +52,7 @@ type FlashcardExploreProps = {
   deck: FlashcardExploreDeck;
   backHref: string;
   developerMode?: boolean;
+  initiallyArchived?: boolean;
 };
 
 function CardFaceText({
@@ -117,10 +125,32 @@ function MoreMenuButton({
   );
 }
 
+function useCloseNavDrawerOnceOnMount() {
+  const { closeDrawer } = useAppNavDrawer();
+  const closedOnceRef = useRef(false);
+
+  useEffect(() => {
+    if (closedOnceRef.current) {
+      return;
+    }
+    closedOnceRef.current = true;
+
+    const isCompactChrome =
+      typeof window !== "undefined" &&
+      (window.matchMedia("(max-width: 1023px)").matches ||
+        window.matchMedia("(max-height: 600px) and (pointer: coarse)").matches);
+
+    if (isCompactChrome) {
+      closeDrawer();
+    }
+  }, [closeDrawer]);
+}
+
 export function FlashcardExplore({
   deck,
   backHref,
   developerMode = false,
+  initiallyArchived = false,
 }: FlashcardExploreProps) {
   const cards = deck.cards;
   const total = cards.length;
@@ -129,8 +159,11 @@ export function FlashcardExplore({
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
   const [touchStartX, setTouchStartX] = useState<number | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [deckArchived, setDeckArchived] = useState(initiallyArchived);
   const session = useFlashcardSession(deck.id, total);
   const { viewIndex, goTo, setRevealed } = session;
+  useCloseNavDrawerOnceOnMount();
+
   const header = useMemo(
     () =>
       resolveFlashcardDeckHeader({
@@ -208,7 +241,8 @@ export function FlashcardExplore({
   if (total === 0) {
     return (
       <div className="space-y-4" data-flashcard-explore="empty">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          <AppNavMenuButton />
           <Link
             href={backHref}
             className="text-sm font-medium text-muted transition-colors hover:text-foreground"
@@ -260,8 +294,8 @@ export function FlashcardExplore({
             title={header.fullTitle}
             dir="auto"
           >
-            <span className="md:hidden">{header.shortTitle}</span>
-            <span className="hidden md:inline">{header.displayTitle}</span>
+            <span className="lg:hidden">{header.shortTitle}</span>
+            <span className="hidden lg:inline">{header.displayTitle}</span>
           </h1>
         </div>
 
@@ -335,18 +369,19 @@ export function FlashcardExplore({
 
   return (
     <div
-      className="flashcard-explore space-y-3 pb-[calc(4.5rem+env(safe-area-inset-bottom))] sm:space-y-4 sm:pb-4"
+      className="flashcard-explore space-y-2 pb-[calc(4.75rem+env(safe-area-inset-bottom))] sm:space-y-3 sm:pb-4 lg:space-y-4"
       data-flashcard-mode="explore"
       data-flashcard-layout="card-first"
     >
       <header
-        className="flashcard-explore-topbar flex items-center gap-2 print:hidden"
+        className="flashcard-explore-topbar flex items-center gap-1.5 print:hidden sm:gap-2"
         data-flashcard-header="compact"
       >
+        <AppNavMenuButton className="shrink-0" />
         <Link
           href={backHref}
           className="shrink-0 rounded-full px-2 py-2 text-sm font-medium text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border"
-          aria-label="Back"
+          aria-label="Back to flashcard decks"
           data-flashcard-back="true"
         >
           Back
@@ -358,8 +393,8 @@ export function FlashcardExplore({
           dir="auto"
           data-flashcard-title="once"
         >
-          <span className="md:hidden">{header.shortTitle}</span>
-          <span className="hidden md:inline">{header.displayTitle}</span>
+          <span className="lg:hidden">{header.shortTitle}</span>
+          <span className="hidden lg:inline">{header.displayTitle}</span>
         </h1>
 
         <span
@@ -369,7 +404,7 @@ export function FlashcardExplore({
           {session.viewIndex + 1} / {total}
         </span>
 
-        <div className="hidden shrink-0 sm:block">
+        <div className="shrink-0" data-flashcard-listen="topbar">
           <FlashcardReadAloudControls
             question={currentCard!.question}
             answer={currentCard!.answer}
@@ -394,6 +429,14 @@ export function FlashcardExplore({
             <MoreHorizontal className="size-4" aria-hidden="true" />
           </summary>
           <div className="flashcard-more-panel absolute right-0 z-30 mt-2 w-[min(100vw-1.5rem,17rem)] rounded-xl border border-border/70 bg-background py-1 shadow-lg">
+            {header.sourceLine ? (
+              <p
+                className="px-3 py-2 text-xs text-muted-light"
+                data-flashcard-source-line="more"
+              >
+                {header.sourceLine}
+              </p>
+            ) : null}
             <MoreMenuButton
               onClick={() => {
                 setMode("all");
@@ -462,6 +505,19 @@ export function FlashcardExplore({
                 Open source note
               </Link>
             ) : null}
+            <div className="border-t border-border/50 py-1">
+              <LifeLabArchiveMenuItem
+                itemKey={buildFlashcardDeckItemKey(deck.id)}
+                section="flashcards"
+                itemType="flashcard-deck"
+                archived={deckArchived}
+                labels={{
+                  archive: ACTION_LABELS.archiveFlashcardDeck,
+                  unarchive: ACTION_LABELS.unarchiveFlashcardDeck,
+                }}
+                onArchivedChange={setDeckArchived}
+              />
+            </div>
             {dictionaryHref ? (
               <Link
                 href={dictionaryHref}
@@ -471,18 +527,6 @@ export function FlashcardExplore({
                 Open dictionary entry
               </Link>
             ) : null}
-            <div className="border-t border-border/50 px-3 py-2 sm:hidden">
-              <p className="mb-2 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-light">
-                Listen
-              </p>
-              <FlashcardReadAloudControls
-                question={currentCard!.question}
-                answer={currentCard!.answer}
-                revealed={session.revealed}
-                cardKey={`${deck.id}-${session.cardIndex}-more`}
-                developerMode={developerMode}
-              />
-            </div>
             <div className="border-t border-border/50 px-3 py-2">
               <p className="mb-2 text-[0.6875rem] font-medium uppercase tracking-wide text-muted-light">
                 Reading
@@ -499,17 +543,8 @@ export function FlashcardExplore({
         </details>
       </header>
 
-      {header.sourceLine ? (
-        <p
-          className="text-xs text-muted-light print:hidden"
-          data-flashcard-source-line="true"
-        >
-          {header.sourceLine}
-        </p>
-      ) : null}
-
       <div
-        className="flashcard-face rounded-2xl border border-border/60 bg-surface px-4 py-5 sm:px-5 sm:py-6"
+        className="flashcard-face w-full rounded-2xl border border-border/60 bg-surface px-4 py-4 sm:px-5 sm:py-5"
         data-flashcard-card="true"
         onTouchStart={(event) =>
           setTouchStartX(event.changedTouches[0]?.clientX ?? null)
@@ -539,7 +574,7 @@ export function FlashcardExplore({
 
         <button
           type="button"
-          className="block w-full min-h-[7rem] text-left sm:min-h-[8.5rem]"
+          className="flashcard-face-toggle block w-full min-h-[clamp(12.5rem,42dvh,28rem)] text-left sm:min-h-[clamp(14rem,40dvh,30rem)]"
           onClick={() => session.setRevealed((value) => !value)}
           aria-expanded={session.revealed}
           aria-label={session.revealed ? "Hide answer" : "Reveal answer"}
@@ -552,7 +587,7 @@ export function FlashcardExplore({
             className="text-lg sm:text-xl"
           />
           {session.revealed ? (
-            <div className="mt-5 space-y-3 border-t border-border/60 pt-5">
+            <div className="mt-4 space-y-3 border-t border-border/60 pt-4 sm:mt-5 sm:pt-5">
               <CardFaceText
                 text={currentCard!.answer}
                 className="text-base sm:text-lg"
@@ -577,7 +612,7 @@ export function FlashcardExplore({
         </button>
       </div>
 
-      <div className="hidden justify-center gap-2 print:hidden sm:flex">
+      <div className="hidden justify-center gap-2 print:hidden lg:flex">
         <button
           type="button"
           className="rounded-full border border-border/70 px-3 py-1.5 text-xs font-medium text-muted"
@@ -595,10 +630,10 @@ export function FlashcardExplore({
       </div>
 
       <div
-        className="flashcard-explore-controls fixed inset-x-0 bottom-0 z-20 border-t border-border/70 bg-background/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-4px_16px_rgba(0,0,0,0.04)] backdrop-blur print:hidden sm:sticky sm:bottom-3 sm:inset-x-auto sm:rounded-2xl sm:border sm:px-3 sm:py-2 sm:shadow-sm"
+        className="flashcard-explore-controls fixed inset-x-0 bottom-0 z-20 border-t border-border/70 bg-background/95 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 shadow-[0_-4px_16px_rgba(0,0,0,0.04)] backdrop-blur print:hidden lg:sticky lg:bottom-3 lg:inset-x-auto lg:rounded-2xl lg:border lg:px-3 lg:py-2 lg:shadow-sm"
         data-flashcard-nav="sticky"
       >
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-2">
+        <div className="mx-auto flex w-full max-w-none items-center justify-between gap-2 lg:max-w-3xl">
           <button
             type="button"
             className="min-h-11 min-w-[4.5rem] rounded-full px-3 py-2 text-sm font-medium text-muted disabled:opacity-40"

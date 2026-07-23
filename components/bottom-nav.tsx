@@ -19,7 +19,7 @@ export function BottomNav({ items }: BottomNavProps) {
 
   return (
     <nav
-      className="ui-bottom-nav fixed inset-x-0 bottom-0 z-50 border-t border-border-soft bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+      className="ui-bottom-nav fixed inset-x-0 bottom-0 z-50 border-t border-border-soft bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
       aria-label="Quick access navigation"
     >
       <ul className="ui-bottom-nav-list mx-auto flex max-w-lg items-stretch justify-around">

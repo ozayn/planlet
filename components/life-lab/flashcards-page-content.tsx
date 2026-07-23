@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { LifeLabArchiveMenuItem } from "@/components/life-lab/life-lab-archive-menu-item";
+import { LifeLabItemMoreMenu } from "@/components/life-lab/life-lab-item-more-menu";
 import { useRecentFlashcardDeckIds } from "@/components/life-lab/use-flashcard-session";
+import { ACTION_LABELS } from "@/lib/action-labels";
 import {
   filterFlashcardDecks,
   flashcardDeckLanguageLabel,
@@ -14,9 +17,11 @@ import {
   type FlashcardDeckSummary,
 } from "@/lib/life-lab/flashcard-decks";
 import { resolveFlashcardLibraryCardModel } from "@/lib/life-lab/flashcard-explore-ui";
+import { buildFlashcardDeckItemKey } from "@/lib/life-lab/item-key";
 
 type FlashcardsPageContentProps = {
   decks: FlashcardDeckSummary[];
+  archivedItemKeys?: string[];
 };
 
 const SOURCE_FILTERS: Array<FlashcardDeckSourceKind | "all"> = [
@@ -68,54 +73,86 @@ function DeckCard({
   deck,
   sourceKind,
   language,
+  archived,
+  onArchivedChange,
 }: {
   deck: FlashcardDeckSummary;
   sourceKind: FlashcardDeckSourceKind | "all";
   language: FlashcardDeckLanguage | "all";
+  archived: boolean;
+  onArchivedChange: (archived: boolean) => void;
 }) {
   const card = resolveFlashcardLibraryCardModel(deck, { sourceKind, language });
   const mobileDetail = [card.cardCountLabel, ...card.metaSegments]
     .filter(Boolean)
     .join(" · ");
   const desktopDetail = card.metaSegments.join(" · ");
+  const itemKey = buildFlashcardDeckItemKey(deck.slug);
 
   return (
-    <Link
-      href={card.href}
-      aria-label={card.ariaLabel}
-      title={card.canonicalTitle}
+    <div
+      className="ui-card-padded relative rounded-xl transition-colors hover:bg-accent-cream/25"
       data-flashcard-deck-card=""
-      className="ui-card-padded block rounded-xl transition-colors hover:bg-accent-cream/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
-      <div className="flex items-start justify-between gap-3">
-        <h3
-          className="min-w-0 flex-1 text-base font-semibold leading-snug text-foreground line-clamp-2"
-          dir="auto"
-        >
-          {card.displayTitle}
-        </h3>
-        <span className="hidden shrink-0 pt-0.5 text-xs tabular-nums text-muted-light sm:inline">
-          {card.cardCountLabel}
-        </span>
+      <Link
+        href={card.href}
+        aria-label={card.ariaLabel}
+        title={card.canonicalTitle}
+        className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <div className="flex items-start justify-between gap-3 pr-10">
+          <h3
+            className="min-w-0 flex-1 text-base font-semibold leading-snug text-foreground line-clamp-2"
+            dir="auto"
+          >
+            {card.displayTitle}
+          </h3>
+          <span className="hidden shrink-0 pt-0.5 text-xs tabular-nums text-muted-light sm:inline">
+            {card.cardCountLabel}
+          </span>
+        </div>
+        {card.dateLabel ? (
+          <p className="mt-1 text-xs leading-snug text-muted">{card.dateLabel}</p>
+        ) : null}
+        {mobileDetail || desktopDetail ? (
+          <p
+            className={`text-xs leading-snug text-muted ${card.dateLabel ? "mt-0.5" : "mt-1"}`}
+          >
+            <span className="sm:hidden">{mobileDetail}</span>
+            {desktopDetail ? (
+              <span className="hidden sm:inline">{desktopDetail}</span>
+            ) : null}
+          </p>
+        ) : null}
+        {archived ? (
+          <span className="mt-1 inline-flex rounded-full border border-border/70 px-2 py-0.5 text-[0.6875rem] font-medium text-muted">
+            Archived
+          </span>
+        ) : null}
+      </Link>
+      <div className="absolute end-2.5 top-2.5">
+        <LifeLabItemMoreMenu>
+          <LifeLabArchiveMenuItem
+            itemKey={itemKey}
+            section="flashcards"
+            itemType="flashcard-deck"
+            archived={archived}
+            labels={{
+              archive: ACTION_LABELS.archiveFlashcardDeck,
+              unarchive: ACTION_LABELS.unarchiveFlashcardDeck,
+            }}
+            onArchivedChange={onArchivedChange}
+          />
+        </LifeLabItemMoreMenu>
       </div>
-      {card.dateLabel ? (
-        <p className="mt-1 text-xs leading-snug text-muted">{card.dateLabel}</p>
-      ) : null}
-      {mobileDetail || desktopDetail ? (
-        <p
-          className={`text-xs leading-snug text-muted ${card.dateLabel ? "mt-0.5" : "mt-1"}`}
-        >
-          <span className="sm:hidden">{mobileDetail}</span>
-          {desktopDetail ? (
-            <span className="hidden sm:inline">{desktopDetail}</span>
-          ) : null}
-        </p>
-      ) : null}
-    </Link>
+    </div>
   );
 }
 
-export function FlashcardsPageContent({ decks }: FlashcardsPageContentProps) {
+export function FlashcardsPageContent({
+  decks,
+  archivedItemKeys = [],
+}: FlashcardsPageContentProps) {
   const [query, setQuery] = useState("");
   const [sourceKind, setSourceKind] = useState<
     FlashcardDeckSourceKind | "all"
@@ -125,17 +162,34 @@ export function FlashcardsPageContent({ decks }: FlashcardsPageContentProps) {
   );
   const [sort, setSort] =
     useState<NonNullable<FlashcardDeckFilters["sort"]>>("newest");
+  const [includeArchived, setIncludeArchived] = useState(false);
+  const [localArchived, setLocalArchived] = useState<Set<string>>(
+    () => new Set(archivedItemKeys),
+  );
   const recentIds = useRecentFlashcardDeckIds();
 
-  const filtered = useMemo(
-    () =>
-      filterFlashcardDecks(
-        decks,
-        { q: query, sourceKind, language, sort },
-        recentIds,
-      ),
-    [decks, query, sourceKind, language, sort, recentIds],
-  );
+  const filtered = useMemo(() => {
+    const activeDecks = includeArchived
+      ? decks
+      : decks.filter(
+          (deck) => !localArchived.has(buildFlashcardDeckItemKey(deck.slug)),
+        );
+
+    return filterFlashcardDecks(
+      activeDecks,
+      { q: query, sourceKind, language, sort },
+      recentIds,
+    );
+  }, [
+    decks,
+    includeArchived,
+    localArchived,
+    query,
+    sourceKind,
+    language,
+    sort,
+    recentIds,
+  ]);
 
   if (decks.length === 0) {
     return (
@@ -156,6 +210,16 @@ export function FlashcardsPageContent({ decks }: FlashcardsPageContentProps) {
           placeholder="Search decks, questions, answers…"
           className="w-full rounded-xl border border-border/70 bg-background px-3 py-2 text-sm"
         />
+      </label>
+
+      <label className="flex items-center gap-2 text-sm text-muted">
+        <input
+          type="checkbox"
+          checked={includeArchived}
+          onChange={(event) => setIncludeArchived(event.target.checked)}
+          className="rounded border-border"
+        />
+        Include archived
       </label>
 
       <div className="flex flex-wrap gap-2">
@@ -213,14 +277,29 @@ export function FlashcardsPageContent({ decks }: FlashcardsPageContentProps) {
         <p className="text-sm text-muted">No decks match these filters.</p>
       ) : (
         <div className="grid gap-2 sm:gap-3" data-flashcards-deck-list="">
-          {filtered.map((deck) => (
-            <DeckCard
-              key={deck.id}
-              deck={deck}
-              sourceKind={sourceKind}
-              language={language}
-            />
-          ))}
+          {filtered.map((deck) => {
+            const itemKey = buildFlashcardDeckItemKey(deck.slug);
+            return (
+              <DeckCard
+                key={deck.id}
+                deck={deck}
+                sourceKind={sourceKind}
+                language={language}
+                archived={localArchived.has(itemKey)}
+                onArchivedChange={(next) => {
+                  setLocalArchived((current) => {
+                    const copy = new Set(current);
+                    if (next) {
+                      copy.add(itemKey);
+                    } else {
+                      copy.delete(itemKey);
+                    }
+                    return copy;
+                  });
+                }}
+              />
+            );
+          })}
         </div>
       )}
     </div>

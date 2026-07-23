@@ -7,6 +7,8 @@ import { LifeLabStatusPanel } from "@/components/life-lab/life-lab-status-panel"
 import { getLifeLabFlashcardDeckBySlug } from "@/lib/life-lab";
 import { enrichFlashcardsWithLearningDictionary } from "@/lib/learning-dictionary/data";
 import { isLifeLabDevToolsEnabled } from "@/lib/life-lab/dev";
+import { buildFlashcardDeckItemKey } from "@/lib/life-lab/item-key";
+import { isLifeLabItemArchived } from "@/lib/life-lab/item-state";
 import { isAdminRole } from "@/lib/auth-roles";
 import { canAccessLifeLabPage } from "@/lib/roles";
 
@@ -42,10 +44,16 @@ export async function LifeLabFlashcardDeckExplorePage({
     deck && deck.cardCount > 0
       ? await enrichFlashcardsWithLearningDictionary(deck.cards)
       : [];
+  const initiallyArchived = deck
+    ? await isLifeLabItemArchived(
+        session.user.id,
+        buildFlashcardDeckItemKey(deck.slug),
+      )
+    : false;
 
   return (
     <section
-      className="ui-life-lab-surface ui-page-stack space-y-4"
+      className="ui-life-lab-surface space-y-2 sm:space-y-3"
       data-flashcard-route="deck-detail"
     >
       {availability.status !== "ready" ? (
@@ -95,6 +103,7 @@ export async function LifeLabFlashcardDeckExplorePage({
             }}
             backHref="/life-lab/flashcards"
             developerMode={showDevTools}
+            initiallyArchived={initiallyArchived}
           />
         </LifeLabReadingModeProvider>
       )}
