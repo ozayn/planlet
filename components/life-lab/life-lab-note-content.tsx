@@ -1,4 +1,5 @@
 import { LifeLabCollapsibleTranscript } from "@/components/life-lab/life-lab-collapsible-transcript";
+import { LifeLabDictionaryCandidatesCard } from "@/components/life-lab/life-lab-dictionary-candidates-card";
 import { LifeLabFlashcardList } from "@/components/life-lab/life-lab-flashcard-list";
 import { LifeLabLearningMapCompact } from "@/components/life-lab/life-lab-learning-map-compact";
 import { MarkdownContent } from "@/components/life-lab/markdown-content";
@@ -11,6 +12,7 @@ import type {
   LifeLabNoteMetadata,
   LifeLabSectionId,
 } from "@/lib/life-lab/constants";
+import type { DictionaryStudySection } from "@/lib/life-lab/dictionary-candidates";
 import {
   suppressExactHeaderMetadataLines,
   suppressExactLifeLabMarkdownDuplicates,
@@ -20,12 +22,38 @@ type LifeLabNoteContentProps = {
   content: string;
   sectionId?: LifeLabSectionId;
   metadata?: LifeLabNoteMetadata;
+  noteTitle?: string;
 };
+
+function CollapsibleDictionaryStudySection({
+  section,
+}: {
+  section: DictionaryStudySection;
+}) {
+  if (section.kind === "candidates") {
+    return null;
+  }
+
+  return (
+    <section>
+      <details className="ui-settings-details group">
+        <summary className="ui-settings-details-summary !text-sm !normal-case !tracking-normal">
+          <span className="font-semibold text-foreground">{section.title}</span>
+        </summary>
+        <div className="ui-settings-details-body">
+          <MarkdownContent content={section.content} compact readingBriefMode />
+        </div>
+      </details>
+    </section>
+  );
+}
 
 function LifeLabNoteContentBlockView({
   block,
+  noteTitle,
 }: {
   block: LifeLabNoteContentBlock;
+  noteTitle: string;
 }) {
   switch (block.kind) {
     case "markdown":
@@ -50,6 +78,17 @@ function LifeLabNoteContentBlockView({
           summaryHint={block.summaryHint}
         />
       );
+    case "dictionary-section":
+      if (block.section.kind === "candidates") {
+        return (
+          <LifeLabDictionaryCandidatesCard
+            noteTitle={noteTitle}
+            section={block.section}
+          />
+        );
+      }
+
+      return <CollapsibleDictionaryStudySection section={block.section} />;
     default:
       return null;
   }
@@ -63,9 +102,11 @@ export function LifeLabNoteContent({
   content,
   sectionId,
   metadata,
+  noteTitle = "",
 }: LifeLabNoteContentProps) {
   const deduplicatedContent = suppressExactLifeLabMarkdownDuplicates(
     suppressExactHeaderMetadataLines(content, metadata),
+    noteTitle || undefined,
   );
   const blocks = buildLifeLabNoteContentBlocks(
     deduplicatedContent,
@@ -82,6 +123,7 @@ export function LifeLabNoteContent({
         <LifeLabNoteContentBlockView
           key={`${block.kind}-${index}`}
           block={block}
+          noteTitle={noteTitle}
         />
       ))}
     </div>

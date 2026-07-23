@@ -10,6 +10,44 @@ export function formatCount(
   return `${count} ${count === 1 ? singular : plural}`;
 }
 
+export type ContentCountType =
+  | "note"
+  | "deck"
+  | "card"
+  | "podcast"
+  | "item";
+
+const CONTENT_COUNT_NOUNS: Record<
+  ContentCountType,
+  { singular: string; plural: string }
+> = {
+  note: { singular: "note", plural: "notes" },
+  deck: { singular: "deck", plural: "decks" },
+  card: { singular: "card", plural: "cards" },
+  podcast: { singular: "podcast", plural: "podcasts" },
+  item: { singular: "item", plural: "items" },
+};
+
+/** Canonical section/card metadata count line (e.g. "1 note", "2 decks"). */
+export function formatContentCount(
+  count: number,
+  type: ContentCountType,
+): string {
+  const nouns = CONTENT_COUNT_NOUNS[type];
+  return formatCount(count, nouns.singular, nouns.plural);
+}
+
+export function formatSectionContentMeta(
+  count: number,
+  type: ContentCountType,
+): string {
+  if (count <= 0) {
+    return "No items yet";
+  }
+
+  return formatContentCount(count, type);
+}
+
 export function normalizeAccidentalAllCapsTitle(title: string): string {
   const trimmed = title.trim();
 

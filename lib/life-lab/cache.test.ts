@@ -6,6 +6,7 @@ import {
   getLifeLabListCacheSeconds,
   getLifeLabNoteCacheSeconds,
   lifeLabCacheExpiresAt,
+  lifeLabFlashcardSummaryCacheKey,
   lifeLabFolderMapCacheKey,
   lifeLabListingMetadataCacheKey,
   lifeLabNotePayloadCacheKey,
@@ -166,11 +167,11 @@ describe("life lab listing cache keys", () => {
 
     assert.equal(
       lifeLabSectionFileIndexCacheKey(sectionId),
-      "life-lab-section-file-index:v8-podcasts:youtube-learning",
+      "life-lab-section-file-index:v9-flashcards:youtube-learning",
     );
     assert.equal(
       lifeLabNotePayloadCacheKey(fileId),
-      "life-lab-note-payload:v6-podcasts:drive-file-1",
+      "life-lab-note-payload:v7-flashcards:drive-file-1",
     );
     assert.equal(
       lifeLabListingMetadataCacheKey(fileId),
@@ -186,7 +187,11 @@ describe("life lab listing cache keys", () => {
     );
     assert.equal(
       lifeLabFolderMapCacheKey(),
-      "life-lab-section-folder-map:v2-podcasts",
+      "life-lab-section-folder-map:v3-flashcards",
+    );
+    assert.equal(
+      lifeLabFlashcardSummaryCacheKey(),
+      "life-lab-flashcard-summary:v1-canonical-counts",
     );
   });
 });

@@ -20,8 +20,12 @@ describe("flashcards Life Lab wiring", () => {
     assert.match(constants, /flashcards:\s*\{\s*label: "Flashcards"/);
     assert.match(sectionPage, /section === "flashcards"/);
     assert.match(sectionPage, /<FlashcardsPageContent/);
-    assert.match(home, /section\.id === "flashcards"/);
-    assert.match(home, /Layers2/);
+    assert.match(sectionPage, /getLifeLabFlashcardSummary/);
+    assert.match(sectionPage, /Study all ·/);
+    assert.match(home, /getLifeLabFlashcardSummary/);
+    assert.match(home, /lifeLabSectionIconMap/);
+    assert.match(home, /Layers3|lifeLabSectionIconMap/);
+    assert.doesNotMatch(home, /Layers2/);
   });
 
   it("uses Explore-first flashcard UI with reveal and export", () => {

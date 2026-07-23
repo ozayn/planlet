@@ -23,6 +23,7 @@ import {
 
 type LearningDictionaryBrowserProps = {
   notes: LifeLabNoteSummary[];
+  studyStatusByKey?: Record<string, string>;
 };
 
 function ChipRow<T extends string>({
@@ -67,21 +68,29 @@ function ChipRow<T extends string>({
 
 export function LearningDictionaryBrowser({
   notes,
+  studyStatusByKey,
 }: LearningDictionaryBrowserProps) {
   const [filters, setFilters] = useState<DictionaryBrowseFilters>(
     DEFAULT_DICTIONARY_BROWSE_FILTERS,
   );
+  const statusMap = useMemo(
+    () => new Map(Object.entries(studyStatusByKey ?? {})),
+    [studyStatusByKey],
+  );
 
   const cards = useMemo(
-    () => collectDictionaryBrowseCards(notes, filters),
-    [notes, filters],
+    () => collectDictionaryBrowseCards(notes, filters, statusMap),
+    [notes, filters, statusMap],
   );
 
   const hasAnyEntries = useMemo(
     () =>
-      collectDictionaryBrowseCards(notes, DEFAULT_DICTIONARY_BROWSE_FILTERS)
-        .length > 0,
-    [notes],
+      collectDictionaryBrowseCards(
+        notes,
+        DEFAULT_DICTIONARY_BROWSE_FILTERS,
+        statusMap,
+      ).length > 0,
+    [notes, statusMap],
   );
 
   function patchFilters(patch: Partial<DictionaryBrowseFilters>) {

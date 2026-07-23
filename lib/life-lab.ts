@@ -18,6 +18,7 @@ import {
   lifeLabPlaylistCacheTag,
   lifeLabSectionCacheTag,
   lifeLabSectionFileIndexCacheKey,
+  lifeLabFlashcardSummaryCacheKey,
   LIFE_LAB_CACHE_TAG,
   LIFE_LAB_FOLDER_MAP_CACHE_VERSION,
   LIFE_LAB_SECTIONS_CACHE_TAG,
@@ -113,6 +114,11 @@ import {
   buildEmbeddedFlashcardDeck,
   type FlashcardDeckSummary,
 } from "@/lib/life-lab/flashcard-decks";
+import {
+  EMPTY_LIFE_LAB_FLASHCARD_SUMMARY,
+  summarizeFlashcardDecks,
+  type LifeLabFlashcardSummary,
+} from "@/lib/life-lab/flashcard-summary";
 import { resolveFlashcardDeckPathFromMetadata } from "@/lib/life-lab/flashcards";
 import {
   classifyNoteGroup,
@@ -2650,6 +2656,44 @@ export async function getLifeLabFlashcardDecksData(): Promise<{
       );
 
       return { availability, decks };
+    },
+    { meta: { route: "/life-lab/flashcards" } },
+  );
+}
+
+/**
+ * Canonical flashcard library summary for home, Flashcards section, and Study all.
+ * Archive exclusion is applied per-user via archivedKeys (not shared-cacheable).
+ */
+export async function getLifeLabFlashcardSummary(
+  archivedKeys: ReadonlySet<string> = new Set(),
+): Promise<{
+  availability: LifeLabAvailability;
+  decks: FlashcardDeckSummary[];
+  summary: LifeLabFlashcardSummary;
+}> {
+  return runLifeLabRequestTelemetry(
+    async () => {
+      setLifeLabRequestMeta({
+        route: "/life-lab/flashcards",
+        cacheKey: lifeLabFlashcardSummaryCacheKey(),
+      });
+
+      const { availability, decks } = await getLifeLabFlashcardDecksData();
+
+      if (availability.status !== "ready") {
+        return {
+          availability,
+          decks: [],
+          summary: EMPTY_LIFE_LAB_FLASHCARD_SUMMARY,
+        };
+      }
+
+      return {
+        availability,
+        decks,
+        summary: summarizeFlashcardDecks(decks, archivedKeys),
+      };
     },
     { meta: { route: "/life-lab/flashcards" } },
   );

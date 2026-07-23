@@ -59,6 +59,8 @@ function classifyDictionaryStudySection(title: string): DictionaryStudySectionKi
   return "other";
 }
 
+export { classifyDictionaryStudySection };
+
 export function isDictionaryStudySectionTitle(title: string): boolean {
   return DICTIONARY_STUDY_SECTION_TITLES.some(
     (candidate) => normalizeSectionTitle(candidate) === normalizeSectionTitle(title),

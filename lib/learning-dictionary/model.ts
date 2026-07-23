@@ -20,9 +20,16 @@ import { resolveLifeLabNoteImage } from "@/lib/life-lab/note-image";
 import {
   resolveStudyStatusLabel,
   resolveStudyStatusValue,
-  type LifeLabStudyStatus,
 } from "@/lib/life-lab/study-status";
+import {
+  dictionaryStudyStatusLabel,
+  resolveDictionaryStudyStatus,
+  type DictionaryStudyStatus,
+  type DictionaryStudyStatusFilterId,
+  DICTIONARY_STUDY_STATUS_FILTERS,
+} from "@/lib/learning-dictionary/study-state";
 import { normalizeSearchText } from "@/lib/text-direction";
+import { buildNoteItemKey } from "@/lib/life-lab/item-key";
 
 export const LEARNING_DICTIONARY_SECTION_ID = "learning-dictionary" as const;
 
@@ -46,12 +53,7 @@ export const DICTIONARY_LANGUAGE_CHIPS = [
   { id: "persian", label: "Persian" },
 ] as const;
 
-export const DICTIONARY_STATUS_CHIPS = [
-  { id: "new", label: "New" },
-  { id: "studying", label: "Studying" },
-  { id: "learned", label: "Learned" },
-  { id: "all", label: "All" },
-] as const;
+export const DICTIONARY_STATUS_CHIPS = DICTIONARY_STUDY_STATUS_FILTERS;
 
 export const DICTIONARY_SORT_KEYS = [
   "newest",
@@ -75,13 +77,14 @@ export type DictionaryCategoryChipId =
   (typeof DICTIONARY_CATEGORY_CHIPS)[number]["id"];
 export type DictionaryLanguageChipId =
   (typeof DICTIONARY_LANGUAGE_CHIPS)[number]["id"];
-export type DictionaryStatusChipId =
-  (typeof DICTIONARY_STATUS_CHIPS)[number]["id"];
+export type DictionaryStatusChipId = DictionaryStudyStatusFilterId;
 
 export type DictionaryCardModel = {
   slug: string;
   title: string;
   href: string;
+  itemKey: string;
+  relativePath: string;
   typeId: DictionaryEntryTypeId | null;
   typeLabel: string | null;
   languageId: DictionaryLanguageId | null;
@@ -91,8 +94,8 @@ export type DictionaryCardModel = {
   tags: string[];
   definition: string;
   occurrences: number | null;
-  reviewStatus: LifeLabStudyStatus | null;
-  reviewStatusLabel: string | null;
+  reviewStatus: DictionaryStudyStatus;
+  reviewStatusLabel: string;
   sourceCount: number;
   thumbnailUrl: string | null;
   modifiedAt: string | null;
@@ -215,6 +218,7 @@ function languageLabel(
 
 export function toDictionaryCardModel(
   note: LifeLabNoteSummary,
+  userStatusByKey?: ReadonlyMap<string, string> | null,
 ): DictionaryCardModel | null {
   if (isDictionaryReferenceNote(note) || !isDictionaryEntryNote(note)) {
     return null;
@@ -225,7 +229,16 @@ export function toDictionaryCardModel(
   const categoryId = resolveDictionaryCategory(note);
   const sourceNotes = resolveSourceNotes(note.metadata);
   const image = resolveLifeLabNoteImage(note.metadata);
-  const reviewStatus = resolveStudyStatusValue(note.metadata);
+  const itemKey = buildNoteItemKey({
+    sectionId: LEARNING_DICTIONARY_SECTION_ID,
+    relativePath: note.relativePath,
+    slug: note.slug,
+  });
+  const driveStatus = resolveStudyStatusValue(note.metadata);
+  const reviewStatus = resolveDictionaryStudyStatus({
+    userStatus: userStatusByKey?.get(itemKey) ?? null,
+    driveStatus,
+  });
   const occurrences = resolveOccurrences(note.metadata);
   const meaning =
     note.metadata?.meaning?.trim() ||
@@ -236,6 +249,8 @@ export function toDictionaryCardModel(
     slug: note.slug,
     title: note.title,
     href: dictionaryEntryHref(note.slug),
+    itemKey,
+    relativePath: note.relativePath,
     typeId,
     typeLabel: typeLabel(typeId),
     languageId,
@@ -246,7 +261,7 @@ export function toDictionaryCardModel(
     definition: meaning,
     occurrences,
     reviewStatus,
-    reviewStatusLabel: resolveStudyStatusLabel(note.metadata),
+    reviewStatusLabel: dictionaryStudyStatusLabel(reviewStatus),
     sourceCount: sourceNotes.length,
     thumbnailUrl: image?.url ?? note.metadata?.thumbnailUrl ?? null,
     modifiedAt: note.modifiedAt,
@@ -592,6 +607,7 @@ export function dictionaryNoteMatchesQuery(
 export function filterDictionaryNotes(
   notes: LifeLabNoteSummary[],
   filters: DictionaryBrowseFilters,
+  userStatusByKey?: ReadonlyMap<string, string> | null,
 ): LifeLabNoteSummary[] {
   return notes.filter((note) => {
     if (isDictionaryReferenceNote(note) || !isDictionaryEntryNote(note)) {
@@ -636,7 +652,15 @@ export function filterDictionaryNotes(
     }
 
     if (filters.status !== "all") {
-      const status = resolveStudyStatusValue(note.metadata);
+      const itemKey = buildNoteItemKey({
+        sectionId: LEARNING_DICTIONARY_SECTION_ID,
+        relativePath: note.relativePath,
+        slug: note.slug,
+      });
+      const status = resolveDictionaryStudyStatus({
+        userStatus: userStatusByKey?.get(itemKey) ?? null,
+        driveStatus: resolveStudyStatusValue(note.metadata),
+      });
 
       if (status !== filters.status) {
         return false;
@@ -648,16 +672,19 @@ export function filterDictionaryNotes(
 }
 
 const STATUS_SORT_RANK: Record<string, number> = {
-  new: 0,
+  revisit: 0,
+  learning: 1,
+  new: 2,
+  known: 3,
   studying: 1,
-  reviewed: 2,
-  revisit: 3,
-  learned: 4,
+  reviewed: 1,
+  learned: 3,
 };
 
 export function sortDictionaryNotes(
   notes: LifeLabNoteSummary[],
   sort: DictionarySortKey,
+  userStatusByKey?: ReadonlyMap<string, string> | null,
 ): LifeLabNoteSummary[] {
   const sorted = [...notes];
 
@@ -686,10 +713,26 @@ export function sortDictionaryNotes(
         return left.title.localeCompare(right.title);
       }
       case "status": {
-        const leftRank =
-          STATUS_SORT_RANK[resolveStudyStatusValue(left.metadata) ?? ""] ?? 99;
-        const rightRank =
-          STATUS_SORT_RANK[resolveStudyStatusValue(right.metadata) ?? ""] ?? 99;
+        const leftKey = buildNoteItemKey({
+          sectionId: LEARNING_DICTIONARY_SECTION_ID,
+          relativePath: left.relativePath,
+          slug: left.slug,
+        });
+        const rightKey = buildNoteItemKey({
+          sectionId: LEARNING_DICTIONARY_SECTION_ID,
+          relativePath: right.relativePath,
+          slug: right.slug,
+        });
+        const leftStatus = resolveDictionaryStudyStatus({
+          userStatus: userStatusByKey?.get(leftKey) ?? null,
+          driveStatus: resolveStudyStatusValue(left.metadata),
+        });
+        const rightStatus = resolveDictionaryStudyStatus({
+          userStatus: userStatusByKey?.get(rightKey) ?? null,
+          driveStatus: resolveStudyStatusValue(right.metadata),
+        });
+        const leftRank = STATUS_SORT_RANK[leftStatus] ?? 99;
+        const rightRank = STATUS_SORT_RANK[rightStatus] ?? 99;
 
         if (leftRank !== rightRank) {
           return leftRank - rightRank;
@@ -717,11 +760,12 @@ export function sortDictionaryNotes(
 export function collectDictionaryBrowseCards(
   notes: LifeLabNoteSummary[],
   filters: DictionaryBrowseFilters = DEFAULT_DICTIONARY_BROWSE_FILTERS,
+  userStatusByKey?: ReadonlyMap<string, string> | null,
 ): DictionaryCardModel[] {
-  const filtered = filterDictionaryNotes(notes, filters);
-  const sorted = sortDictionaryNotes(filtered, filters.sort);
+  const filtered = filterDictionaryNotes(notes, filters, userStatusByKey);
+  const sorted = sortDictionaryNotes(filtered, filters.sort, userStatusByKey);
 
   return sorted
-    .map(toDictionaryCardModel)
+    .map((note) => toDictionaryCardModel(note, userStatusByKey))
     .filter((card): card is DictionaryCardModel => card != null);
 }

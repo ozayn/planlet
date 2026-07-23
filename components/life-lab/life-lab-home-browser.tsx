@@ -63,13 +63,9 @@ function buildHref(
 
 type LifeLabHomeBrowserProps = {
   notes: LifeLabBrowseNote[];
-  flashcardNoteCount: number;
 };
 
-export function LifeLabHomeBrowser({
-  notes,
-  flashcardNoteCount,
-}: LifeLabHomeBrowserProps) {
+export function LifeLabHomeBrowser({ notes }: LifeLabHomeBrowserProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -112,7 +108,7 @@ export function LifeLabHomeBrowser({
             type="search"
             value={searchInput}
             onChange={(event) => setSearchInput(event.target.value)}
-            placeholder="Search across Life Lab notes"
+            placeholder="Search notes, topics, people, and playlists"
             className="ui-input min-w-0 flex-1"
             aria-label="Search Life Lab notes"
           />
@@ -120,15 +116,6 @@ export function LifeLabHomeBrowser({
             Search
           </button>
         </form>
-
-        {flashcardNoteCount > 0 ? (
-          <Link
-            href={`/life-lab/study${searchParams.toString() ? `?${searchParams.toString()}` : ""}`}
-            className="inline-flex rounded-full bg-accent-cream px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent-cream/80"
-          >
-            Study all flashcards ({flashcardNoteCount})
-          </Link>
-        ) : null}
       </div>
 
       {searchQuery || Object.keys(filters).length > 0 ? (
@@ -183,12 +170,7 @@ export function LifeLabHomeBrowser({
             ))}
           </ul>
         )
-      ) : (
-        <p className="text-sm text-muted">
-          Search by title, tags, topics, people, playlist, or note text across all
-          Life Lab sections.
-        </p>
-      )}
+      ) : null}
     </div>
   );
 }

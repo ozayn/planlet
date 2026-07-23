@@ -27,7 +27,8 @@ describe("flashcards library deck list", () => {
   });
 
   it("keeps the entire deck card clickable with mobile-friendly metadata", () => {
-    assert.match(decksPage, /<Link[\s\S]*?data-flashcard-deck-card=/);
+    assert.match(decksPage, /data-flashcard-deck-card=""/);
+    assert.match(decksPage, /<Link[\s\S]*?aria-label=\{card\.ariaLabel\}/);
     assert.match(decksPage, /sm:hidden/);
     assert.match(decksPage, /hidden shrink-0[\s\S]*?sm:inline/);
     assert.match(decksPage, /mobileDetail/);

@@ -124,6 +124,87 @@ describe("life lab note content blocks", () => {
       ),
       true,
     );
+    assert.equal(
+      blocks.filter((block) => block.kind === "learning-map").length,
+      1,
+    );
+  });
+
+  it("keeps Learning Map first even when dictionary study sections are present", () => {
+    const body = [
+      "## Short version",
+      "",
+      "A calm summary.",
+      "",
+      "## Learning Map",
+      "",
+      "```mermaid",
+      "flowchart TD",
+      '  A["Topic"] --> B["Claim"]',
+      "```",
+      "",
+      "## Key ideas",
+      "",
+      "- Idea one",
+      "",
+      "## Dictionary candidates",
+      "",
+      "- **hegemony** — leadership",
+      "",
+      "## Vocabulary and phrasing",
+      "",
+      "- soft power",
+    ].join("\n");
+
+    const blocks = buildLifeLabNoteContentBlocks(body, {
+      prioritizeLearningMap: true,
+    });
+
+    assert.equal(blocks[0]?.kind, "learning-map");
+    assert.equal(
+      blocks.filter((block) => block.kind === "learning-map").length,
+      1,
+    );
+    assert.equal(
+      blocks.some((block) => block.kind === "dictionary-section"),
+      true,
+    );
+
+    const titles = listRenderedVisibleSectionTitles(body, {
+      prioritizeLearningMap: true,
+    });
+    assert.equal(titles[0], "Learning Map");
+    assert.ok(titles.indexOf("Short version") > 0);
+    assert.ok(
+      titles.indexOf("Dictionary candidates") > titles.indexOf("Key ideas"),
+    );
+  });
+
+  it("places Learning Map before preface text", () => {
+    const body = [
+      "Intro paragraph before any heading.",
+      "",
+      "## Short version",
+      "",
+      "Summary.",
+      "",
+      "## Learning Map",
+      "",
+      "```mermaid",
+      "flowchart TD",
+      '  A["A"] --> B["B"]',
+      "```",
+    ].join("\n");
+
+    const blocks = buildLifeLabNoteContentBlocks(body, {
+      prioritizeLearningMap: true,
+    });
+
+    assert.equal(blocks[0]?.kind, "learning-map");
+    assert.equal(blocks[1]?.kind, "markdown");
+    if (blocks[1]?.kind === "markdown") {
+      assert.match(blocks[1].content, /Intro paragraph/);
+    }
   });
 
   it("renders notes without a Learning Map normally", () => {
@@ -164,8 +245,8 @@ describe("life lab note content blocks", () => {
   });
 });
 
-describe("life lab learning map compact preview", () => {
-  it("extracts outline labels without rendering Mermaid", () => {
+describe("life lab learning map section", () => {
+  it("extracts outline labels for concept chips", () => {
     const labels = extractMermaidOutlineLabels(
       [
         "flowchart TD",
@@ -177,13 +258,13 @@ describe("life lab learning map compact preview", () => {
     assert.deepEqual(labels, ["Great Library", "Scrolls", "Scholarship"]);
   });
 
-  it("wires compact Learning Map expand into the shared note content path", () => {
+  it("wires Learning Map first with the shared MermaidBlock renderer", () => {
     const root = join(import.meta.dirname, "../..");
     const noteContent = readFileSync(
       join(root, "components/life-lab/life-lab-note-content.tsx"),
       "utf8",
     );
-    const compact = readFileSync(
+    const learningMap = readFileSync(
       join(root, "components/life-lab/life-lab-learning-map-compact.tsx"),
       "utf8",
     );
@@ -194,11 +275,17 @@ describe("life lab learning map compact preview", () => {
 
     assert.match(noteContent, /LifeLabLearningMapCompact/);
     assert.match(noteContent, /learning-map-first/);
-    assert.match(compact, /Open full map/);
-    assert.match(compact, /MermaidDiagramDialog/);
-    assert.match(compact, /data-life-lab-learning-map="compact"/);
+    assert.match(noteContent, /dictionary-section/);
+    assert.match(learningMap, /MermaidBlock/);
+    assert.match(learningMap, /Open full map/);
+    assert.match(learningMap, /MermaidDiagramDialog/);
+    assert.match(learningMap, /data-life-lab-learning-map="section"/);
+    assert.match(learningMap, /data-life-lab-learning-map-outline/);
+    assert.doesNotMatch(learningMap, /data-life-lab-learning-map="compact"/);
     assert.match(page, /LifeLabNoteImageFigure/);
     assert.match(page, /LifeLabNoteContent/);
+    assert.doesNotMatch(page, /hasDictionaryStudySections/);
+    assert.doesNotMatch(page, /LifeLabNoteDictionarySections/);
     const imageIndex = page.indexOf("LifeLabNoteImageFigure");
     const contentIndex = page.indexOf("<LifeLabNoteContent");
     assert.ok(imageIndex >= 0 && contentIndex > imageIndex);

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { BookMarked } from "lucide-react";
 
 import type { DictionaryCardModel } from "@/lib/learning-dictionary/model";
+import type { DictionaryStudyStatus } from "@/lib/learning-dictionary/study-state";
 import {
   resolveTextDirection,
   textDirectionLang,
@@ -13,9 +14,17 @@ type LearningDictionaryCardProps = {
   card: DictionaryCardModel;
 };
 
+const STATUS_DOT_CLASS: Record<DictionaryStudyStatus, string> = {
+  new: "bg-muted-light/70",
+  learning: "bg-foreground/45",
+  known: "bg-foreground/80",
+  revisit: "bg-foreground/55",
+};
+
 export function LearningDictionaryCard({ card }: LearningDictionaryCardProps) {
   const direction = resolveTextDirection(card.title);
   const lang = textDirectionLang(direction);
+  const showStatus = card.reviewStatus !== "new";
 
   return (
     <li>
@@ -52,9 +61,16 @@ export function LearningDictionaryCard({ card }: LearningDictionaryCardProps) {
                 {card.languageLabel}
               </span>
             ) : null}
-            {card.reviewStatusLabel ? (
-              <span className="text-[0.6875rem] text-muted-light">
-                {card.reviewStatusLabel}
+            {showStatus ? (
+              <span
+                className="inline-flex items-center gap-1 text-[0.6875rem] text-muted-light"
+                title={card.reviewStatusLabel}
+              >
+                <span
+                  className={`inline-block size-1.5 rounded-full ${STATUS_DOT_CLASS[card.reviewStatus]}`}
+                  aria-hidden="true"
+                />
+                <span className="sr-only">{card.reviewStatusLabel}</span>
               </span>
             ) : null}
           </div>

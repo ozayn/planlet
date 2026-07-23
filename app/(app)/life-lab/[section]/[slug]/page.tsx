@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 
 import { auth } from "@/auth";
 import { FlashcardExplore } from "@/components/life-lab/flashcard-explore";
-import { LifeLabNoteDictionarySections } from "@/components/life-lab/life-lab-note-dictionary-sections";
 import { LifeLabNoteContent } from "@/components/life-lab/life-lab-note-content";
 import { LifeLabReadingBriefHeader } from "@/components/life-lab/life-lab-reading-brief-header";
 import { LifeLabReadingBriefNote } from "@/components/life-lab/life-lab-reading-brief-note";
@@ -38,7 +37,6 @@ import { getLifeLabReadAloudPreferencesForUser } from "@/lib/life-lab/read-aloud
 import { canUseLifeLabRefreshBypass } from "@/lib/life-lab/cache";
 import { isLifeLabDevToolsEnabled } from "@/lib/life-lab/dev";
 import { buildMermaidDiagramAssetBindings } from "@/lib/life-lab/diagram-assets";
-import { hasDictionaryStudySections } from "@/lib/life-lab/dictionary-candidates";
 import { stripLeadingMarkdownH1 } from "@/lib/life-lab/note-content";
 import { isReadingBriefNote } from "@/lib/life-lab/reading-briefs";
 import { buildNoteItemKey } from "@/lib/life-lab/item-key";
@@ -116,7 +114,6 @@ export default async function LifeLabNotePage({
   const isPodcastEpisode =
     note.sectionId === "podcasts" && isPodcastEpisodeNote(note);
   const showDevTools = isAdminRole(session.user.role) && isLifeLabDevToolsEnabled();
-  const hasDictionarySections = hasDictionaryStudySections(note.content);
   const streamPlaylistNav =
     note.sectionId === "youtube-learning" && !isPlaylistIndex;
   const playlistNav = streamPlaylistNav
@@ -320,19 +317,12 @@ export default async function LifeLabNotePage({
               />
             ) : (
               <>
-                {hasDictionarySections ? (
-                  <LifeLabNoteDictionarySections
-                    content={noteBodyContent}
-                    noteTitle={note.title}
-                    metadata={note.metadata}
-                  />
-                ) : (
-                  <LifeLabNoteContent
-                    content={noteBodyContent}
-                    sectionId={note.sectionId}
-                    metadata={note.metadata}
-                  />
-                )}
+                <LifeLabNoteContent
+                  content={noteBodyContent}
+                  sectionId={note.sectionId}
+                  metadata={note.metadata}
+                  noteTitle={note.title}
+                />
                 <LifeLabNoteDetailsSection
                   note={note}
                   sectionId={note.sectionId}

@@ -13,6 +13,12 @@ export const LIFE_LAB_NOTE_PAYLOAD_CACHE_VERSION = "v7-flashcards";
 /** Bump when browse listing metadata (thumbnail/source fields) shape changes. */
 export const LIFE_LAB_LISTING_METADATA_CACHE_VERSION = "v4-technical-filter";
 
+/**
+ * Bump when Life Lab home / flashcard library summary shape or counting rules change.
+ * Does not affect note payload caches.
+ */
+export const LIFE_LAB_FLASHCARD_SUMMARY_CACHE_VERSION = "v1-canonical-counts";
+
 export function lifeLabSectionPlaylistsCacheTag(sectionId: string): string {
   return `life-lab:playlists:${sectionId}`;
 }
@@ -98,6 +104,13 @@ export function lifeLabListingMetadataCacheKey(fileId: string): string {
     "life-lab-listing-metadata",
     LIFE_LAB_LISTING_METADATA_CACHE_VERSION,
     fileId,
+  ].join(":");
+}
+
+export function lifeLabFlashcardSummaryCacheKey(): string {
+  return [
+    "life-lab-flashcard-summary",
+    LIFE_LAB_FLASHCARD_SUMMARY_CACHE_VERSION,
   ].join(":");
 }
 

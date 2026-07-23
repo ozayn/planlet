@@ -168,6 +168,73 @@ export async function unarchiveLifeLabItem(input: {
   };
 }
 
+export async function getLifeLabStudyStatusMap(
+  userId: string,
+  options: { section?: string } = {},
+): Promise<Map<string, string>> {
+  try {
+    const rows = await lifeLabItemStateDelegate().findMany({
+      where: {
+        userId,
+        studyStatus: { not: null },
+        ...(options.section ? { section: options.section } : {}),
+      },
+      select: { itemKey: true, studyStatus: true },
+    });
+
+    const map = new Map<string, string>();
+
+    for (const row of rows) {
+      if (row.studyStatus) {
+        map.set(row.itemKey, row.studyStatus);
+      }
+    }
+
+    return map;
+  } catch {
+    return new Map();
+  }
+}
+
+export async function setLifeLabItemStudyStatus(input: {
+  userId: string;
+  itemKey: string;
+  section: string;
+  itemType: LifeLabItemType;
+  studyStatus: string;
+}): Promise<LifeLabItemStateRecord> {
+  const row = await lifeLabItemStateDelegate().upsert({
+    where: {
+      userId_itemKey: {
+        userId: input.userId,
+        itemKey: input.itemKey,
+      },
+    },
+    create: {
+      userId: input.userId,
+      itemKey: input.itemKey,
+      section: input.section,
+      itemType: input.itemType,
+      studyStatus: input.studyStatus,
+    },
+    update: {
+      section: input.section,
+      itemType: input.itemType,
+      studyStatus: input.studyStatus,
+    },
+  });
+
+  return {
+    id: row.id,
+    userId: row.userId,
+    itemKey: row.itemKey,
+    section: row.section,
+    itemType: row.itemType,
+    archivedAt: row.archivedAt,
+    updatedAt: row.updatedAt,
+  };
+}
+
 export function excludeArchivedByKey<T>(
   items: T[],
   archivedKeys: Set<string>,

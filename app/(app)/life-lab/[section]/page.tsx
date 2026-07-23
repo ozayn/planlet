@@ -8,11 +8,13 @@ import { LifeLabSectionBrowser } from "@/components/life-lab/life-lab-section-br
 import { LifeLabStatusPanel } from "@/components/life-lab/life-lab-status-panel";
 import { PageHeader } from "@/components/page-header";
 import {
-  getLifeLabFlashcardDecksData,
+  getLifeLabFlashcardSummary,
   getLifeLabSectionData,
 } from "@/lib/life-lab";
 import { canUseLifeLabRefreshBypass } from "@/lib/life-lab/cache";
 import { canViewLifeLabCacheDiagnostics } from "@/lib/life-lab/cache-telemetry";
+import { formatContentCount } from "@/lib/life-lab/collection-metadata";
+import { formatFlashcardSectionMeta } from "@/lib/life-lab/flashcard-summary";
 import { getArchivedLifeLabItemKeySet } from "@/lib/life-lab/item-state";
 import { isAdminRole } from "@/lib/auth-roles";
 import { canAccessLifeLabPage } from "@/lib/roles";
@@ -40,15 +42,15 @@ export default async function LifeLabSectionPage({
   const showDiagnostics = canViewLifeLabCacheDiagnostics(isAdmin);
 
   if (section === "flashcards") {
-    const [{ availability, decks }, archivedKeys] = await Promise.all([
-      getLifeLabFlashcardDecksData(),
-      getArchivedLifeLabItemKeySet(session.user.id),
-    ]);
+    const archivedKeys = await getArchivedLifeLabItemKeySet(session.user.id);
+    const { availability, decks, summary } =
+      await getLifeLabFlashcardSummary(archivedKeys);
 
     return (
       <section className="ui-life-lab-surface ui-page-stack space-y-4">
         <PageHeader
           title="Flashcards"
+          subtitle={formatFlashcardSectionMeta(summary)}
           action={
             <div className="flex items-center gap-3">
               <Link
@@ -75,10 +77,22 @@ export default async function LifeLabSectionPage({
         {availability.status !== "ready" ? (
           <LifeLabStatusPanel availability={availability} isAdmin={isAdmin} />
         ) : (
-          <FlashcardsPageContent
-            decks={decks}
-            archivedItemKeys={[...archivedKeys]}
-          />
+          <>
+            {summary.cardCount > 0 ? (
+              <div className="flex flex-wrap items-center gap-3">
+                <Link
+                  href="/life-lab/study"
+                  className="inline-flex min-h-9 items-center rounded-lg border border-border/70 px-3 text-sm font-medium text-muted transition-colors hover:bg-accent-cream/40 hover:text-foreground"
+                >
+                  Study all · {formatContentCount(summary.cardCount, "card")}
+                </Link>
+              </div>
+            ) : null}
+            <FlashcardsPageContent
+              decks={decks}
+              archivedItemKeys={[...archivedKeys]}
+            />
+          </>
         )}
       </section>
     );

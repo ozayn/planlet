@@ -1,4 +1,9 @@
 import {
+  classifyDictionaryStudySection,
+  isDictionaryStudySectionTitle,
+  type DictionaryStudySection,
+} from "@/lib/life-lab/dictionary-candidates";
+import {
   extractFlashcardsFromSectionText,
   isFlashcardSectionTitle,
 } from "@/lib/life-lab/flashcards";
@@ -34,7 +39,8 @@ export type LifeLabNoteContentBlock =
       content: string;
       title: string;
       summaryHint?: string;
-    };
+    }
+  | { kind: "dictionary-section"; section: DictionaryStudySection };
 
 export type BuildLifeLabNoteContentBlocksOptions = {
   prioritizeShortVersion?: boolean;
@@ -77,6 +83,7 @@ function noteHasSpecialSections(
       isFlashcardSectionTitle(section.title) ||
       isFullTranscriptSectionTitle(section.title) ||
       isLearningMapSection(section.title) ||
+      isDictionaryStudySectionTitle(section.title) ||
       (collapseTranscriptNotes &&
         isLectureNotesCollapsibleSectionTitle(section.title)),
   );
@@ -157,6 +164,17 @@ function sectionToBlock(
     };
   }
 
+  if (isDictionaryStudySectionTitle(section.title)) {
+    return {
+      kind: "dictionary-section",
+      section: {
+        title: section.title,
+        content: transformMarkdownTables(section.content),
+        kind: classifyDictionaryStudySection(section.title),
+      },
+    };
+  }
+
   if (options.compactLearningMap && isLearningMapSection(section.title)) {
     const mermaidCode = extractMermaidCode(section.content);
 
@@ -216,7 +234,8 @@ function buildBlocksInDocumentOrder(
 
 /**
  * Shared learning content order:
- * preface → Learning Map → Short version → remaining H2s in document order.
+ * Learning Map → Short version (when prioritized) → preface → remaining H2s
+ * in document order. Learning Map is always the first content section when present.
  */
 function prioritizeLearningContentBlocks(
   body: string,
@@ -235,18 +254,11 @@ function prioritizeLearningContentBlocks(
     ? sections.find((section) => isShortVersionSectionTitle(section.title))
     : undefined;
   const blocks: LifeLabNoteContentBlock[] = [];
-  const firstH2Start = sections[0]?.start ?? body.length;
-  const preface = body.slice(0, firstH2Start).trim();
-
-  if (preface) {
-    blocks.push({ kind: "markdown", content: preface });
-  }
+  const emittedStarts = new Set<number>();
 
   const prioritySections = [learningMap, shortVersion].filter(
     (section): section is MarkdownH2Section => Boolean(section),
   );
-
-  const emittedStarts = new Set<number>();
 
   for (const section of prioritySections) {
     if (emittedStarts.has(section.start)) {
@@ -259,6 +271,13 @@ function prioritizeLearningContentBlocks(
       blocks.push(block);
       emittedStarts.add(section.start);
     }
+  }
+
+  const firstH2Start = sections[0]?.start ?? body.length;
+  const preface = body.slice(0, firstH2Start).trim();
+
+  if (preface) {
+    blocks.push({ kind: "markdown", content: preface });
   }
 
   for (const section of sections) {
@@ -350,6 +369,9 @@ export function listRenderedVisibleSectionTitles(
         break;
       case "transcript":
         titles.push(block.title);
+        break;
+      case "dictionary-section":
+        titles.push(block.section.title);
         break;
       default:
         break;

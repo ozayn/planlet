@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 
+import { MermaidBlock } from "@/components/life-lab/mermaid-block";
 import { MermaidDiagramDialog } from "@/components/life-lab/mermaid-diagram-dialog";
 import { extractMermaidOutlineLabels } from "@/lib/life-lab/mermaid-outline";
 
@@ -11,6 +12,10 @@ type LifeLabLearningMapCompactProps = {
   introMarkdown?: string | null;
 };
 
+/**
+ * Learning Map section moved to the top of the note.
+ * Uses the same MermaidBlock pipeline as MarkdownContent — not a second renderer.
+ */
 export function LifeLabLearningMapCompact({
   title,
   mermaidCode,
@@ -22,30 +27,21 @@ export function LifeLabLearningMapCompact({
 
   return (
     <section
-      className="space-y-2.5"
-      data-life-lab-learning-map="compact"
+      className="space-y-3"
+      data-life-lab-learning-map="section"
       aria-label={title}
     >
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="text-base font-semibold tracking-tight text-foreground md:text-lg">
-          {title}
-        </h2>
-        <button
-          ref={openButtonRef}
-          type="button"
-          onClick={() => setOpen(true)}
-          className="inline-flex min-h-11 items-center text-sm font-medium text-muted transition-colors hover:text-foreground"
-          data-life-lab-learning-map-expand=""
-        >
-          Open full map
-        </button>
-      </div>
+      <h2 className="text-base font-semibold tracking-tight text-foreground md:text-lg">
+        {title}
+      </h2>
 
       {introMarkdown ? (
         <p className="text-sm leading-relaxed text-muted" dir="auto">
           {introMarkdown}
         </p>
       ) : null}
+
+      <MermaidBlock code={mermaidCode} />
 
       {labels.length > 0 ? (
         <ul className="flex flex-wrap gap-1.5" data-life-lab-learning-map-outline="">
@@ -58,11 +54,17 @@ export function LifeLabLearningMapCompact({
             </li>
           ))}
         </ul>
-      ) : (
-        <p className="text-sm text-muted">
-          Overview map available — open the full map to explore connections.
-        </p>
-      )}
+      ) : null}
+
+      <button
+        ref={openButtonRef}
+        type="button"
+        onClick={() => setOpen(true)}
+        className="inline-flex min-h-11 items-center text-sm font-medium text-muted transition-colors hover:text-foreground"
+        data-life-lab-learning-map-expand=""
+      >
+        Open full map
+      </button>
 
       <MermaidDiagramDialog
         open={open}
