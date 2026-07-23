@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
-import { FlashcardSourceLink } from "@/components/life-lab/flashcard-source-link";
 import { useRecentFlashcardDeckIds } from "@/components/life-lab/use-flashcard-session";
 import {
   filterFlashcardDecks,
@@ -14,6 +13,7 @@ import {
   type FlashcardDeckSourceKind,
   type FlashcardDeckSummary,
 } from "@/lib/life-lab/flashcard-decks";
+import { resolveFlashcardLibraryCardModel } from "@/lib/life-lab/flashcard-explore-ui";
 
 type FlashcardsPageContentProps = {
   decks: FlashcardDeckSummary[];
@@ -64,39 +64,53 @@ function sortLabel(value: NonNullable<FlashcardDeckFilters["sort"]>): string {
   }
 }
 
-function DeckCard({ deck }: { deck: FlashcardDeckSummary }) {
-  const parseFailed = deck.cardCount === 0 && deck.parseIssues.length > 0;
+function DeckCard({
+  deck,
+  sourceKind,
+  language,
+}: {
+  deck: FlashcardDeckSummary;
+  sourceKind: FlashcardDeckSourceKind | "all";
+  language: FlashcardDeckLanguage | "all";
+}) {
+  const card = resolveFlashcardLibraryCardModel(deck, { sourceKind, language });
+  const mobileDetail = [card.cardCountLabel, ...card.metaSegments]
+    .filter(Boolean)
+    .join(" · ");
+  const desktopDetail = card.metaSegments.join(" · ");
 
   return (
     <Link
-      href={`/life-lab/flashcards/${deck.slug}`}
-      className="ui-card-padded block space-y-2 transition-colors hover:bg-accent-cream/25"
+      href={card.href}
+      aria-label={card.ariaLabel}
+      title={card.canonicalTitle}
+      data-flashcard-deck-card=""
+      className="ui-card-padded block rounded-xl transition-colors hover:bg-accent-cream/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     >
       <div className="flex items-start justify-between gap-3">
-        <h3 className="text-base font-semibold text-foreground" dir="auto">
-          {deck.title}
+        <h3
+          className="min-w-0 flex-1 text-base font-semibold leading-snug text-foreground line-clamp-2"
+          dir="auto"
+        >
+          {card.displayTitle}
         </h3>
-        <span className="shrink-0 text-xs text-muted-light">
-          {parseFailed
-            ? "Unavailable"
-            : `${deck.cardCount} card${deck.cardCount === 1 ? "" : "s"}`}
+        <span className="hidden shrink-0 pt-0.5 text-xs tabular-nums text-muted-light sm:inline">
+          {card.cardCountLabel}
         </span>
       </div>
-      <FlashcardSourceLink
-        href={deck.sourceNoteHref}
-        title={deck.sourceNoteTitle}
-        sectionId={deck.sourceSectionId}
-      />
-      <p className="text-xs text-muted">
-        {[
-          flashcardSourceKindLabel(deck.sourceKind),
-          deck.category,
-          flashcardDeckLanguageLabel(deck.language),
-          deck.modifiedAtLabel,
-        ]
-          .filter(Boolean)
-          .join(" · ")}
-      </p>
+      {card.dateLabel ? (
+        <p className="mt-1 text-xs leading-snug text-muted">{card.dateLabel}</p>
+      ) : null}
+      {mobileDetail || desktopDetail ? (
+        <p
+          className={`text-xs leading-snug text-muted ${card.dateLabel ? "mt-0.5" : "mt-1"}`}
+        >
+          <span className="sm:hidden">{mobileDetail}</span>
+          {desktopDetail ? (
+            <span className="hidden sm:inline">{desktopDetail}</span>
+          ) : null}
+        </p>
+      ) : null}
     </Link>
   );
 }
@@ -132,7 +146,7 @@ export function FlashcardsPageContent({ decks }: FlashcardsPageContentProps) {
   }
 
   return (
-    <div className="space-y-4" data-flashcards-layout="decks-v1">
+    <div className="space-y-3" data-flashcards-layout="decks-v2">
       <label className="block">
         <span className="sr-only">Search decks</span>
         <input
@@ -198,9 +212,14 @@ export function FlashcardsPageContent({ decks }: FlashcardsPageContentProps) {
       {filtered.length === 0 ? (
         <p className="text-sm text-muted">No decks match these filters.</p>
       ) : (
-        <div className="grid gap-3">
+        <div className="grid gap-2 sm:gap-3" data-flashcards-deck-list="">
           {filtered.map((deck) => (
-            <DeckCard key={deck.id} deck={deck} />
+            <DeckCard
+              key={deck.id}
+              deck={deck}
+              sourceKind={sourceKind}
+              language={language}
+            />
           ))}
         </div>
       )}

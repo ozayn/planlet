@@ -42,10 +42,9 @@ export default async function LifeLabSectionPage({
     const { availability, decks } = await getLifeLabFlashcardDecksData();
 
     return (
-      <section className="ui-life-lab-surface ui-page-stack space-y-6">
+      <section className="ui-life-lab-surface ui-page-stack space-y-4">
         <PageHeader
           title="Flashcards"
-          subtitle="Browse and explore Life Lab flashcard decks."
           action={
             <div className="flex items-center gap-3">
               <Link

@@ -182,8 +182,41 @@ export function flashcardSourceKindLabel(
   }
 }
 
+/** Deterministic title cleaning for search indexing (mirrors display-title rules). */
+export function cleanedFlashcardTitleForSearch(title: string): string {
+  return (
+    title
+      .replace(/\s*[–—-]\s*\d{4}-\d{2}-\d{2}\s*$/, "")
+      .replace(/\bBBC World Service\b/gi, "BBC")
+      .trim() || title.trim()
+  );
+}
+
+/** Singular/concise labels for deck cards (filters keep plural forms). */
+export function flashcardSourceKindCardLabel(
+  kind: FlashcardDeckSourceKind,
+): string {
+  switch (kind) {
+    case "youtube":
+      return "YouTube";
+    case "podcasts":
+      return "Podcast";
+    case "references":
+      return "Reference";
+    case "topics":
+      return "Topic";
+    case "lectures":
+      return "Lecture";
+    case "bbc":
+      return "BBC";
+    default:
+      return "Other";
+  }
+}
+
 function buildSearchText(input: {
   title: string;
+  displayTitle?: string | null;
   category?: string | null;
   sourceLabel?: string | null;
   sourceNoteTitle?: string | null;
@@ -192,6 +225,7 @@ function buildSearchText(input: {
 }): string {
   return [
     input.title,
+    input.displayTitle,
     input.category,
     input.sourceLabel,
     input.sourceNoteTitle,
@@ -280,6 +314,7 @@ export function buildFlashcardDeckFromContent(input: {
     tags: parsed.headers.tags ?? [],
     searchText: buildSearchText({
       title,
+      displayTitle: cleanedFlashcardTitleForSearch(title),
       category: parsed.headers.category,
       sourceLabel: parsed.headers.source,
       sourceNoteTitle: input.sourceNoteTitle,
@@ -339,6 +374,7 @@ export function buildEmbeddedFlashcardDeck(input: {
     tags: input.note.metadata?.tags ?? [],
     searchText: buildSearchText({
       title,
+      displayTitle: cleanedFlashcardTitleForSearch(title),
       category: input.note.metadata?.category,
       sourceLabel: input.note.metadata?.source,
       sourceNoteTitle: input.note.title,
