@@ -337,6 +337,8 @@ function LifeLabLectureNoteCard({
             </div>
             <Link
               href={`/life-lab/${sectionId}/${note.slug}`}
+              prefetch
+              data-life-lab-note-link=""
               className="block line-clamp-2 text-sm font-medium leading-snug text-foreground transition-colors hover:text-foreground/80"
               dir={titleDirection}
               lang={textDirectionLang(titleDirection)}
@@ -454,6 +456,8 @@ function LifeLabNoteCard({
               ) : null}
               <Link
                 href={`/life-lab/${sectionId}/${note.slug}`}
+                prefetch
+                data-life-lab-note-link=""
                 className="block line-clamp-2 text-sm font-medium leading-snug text-foreground transition-colors hover:text-foreground/80 md:line-clamp-1"
               >
                 {note.title}
@@ -602,6 +606,8 @@ function LifeLabLibraryDisclosureList({
         <li key={note.slug}>
           <Link
             href={`/life-lab/${sectionId}/${note.slug}`}
+            prefetch
+            data-life-lab-note-link=""
             className="flex items-start gap-2 text-sm text-foreground transition-colors hover:text-foreground/80"
           >
             <span className="text-muted" aria-hidden="true">

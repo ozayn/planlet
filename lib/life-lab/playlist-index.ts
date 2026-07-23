@@ -1018,32 +1018,69 @@ export function buildVideoPlaylistNavigation(
   };
 }
 
+/** Resolve playlist index from lightweight section records only (no payloads). */
+export function findPlaylistIndexSlugByMetadata(
+  records: LifeLabNoteSummary[],
+  videoNote: LifeLabNoteSummary,
+): string | null {
+  const playlistName = videoNote.metadata?.playlist?.trim().toLowerCase();
+
+  if (!playlistName) {
+    return null;
+  }
+
+  for (const record of records) {
+    if (!isPlaylistIndexSummaryRecord(record)) {
+      continue;
+    }
+
+    const recordPlaylist = record.metadata?.playlist?.trim().toLowerCase();
+
+    if (recordPlaylist === playlistName) {
+      return record.slug;
+    }
+
+    const displayTitle = formatCollectionDisplayTitle({
+      title: record.title,
+      metadata: record.metadata,
+    })
+      .trim()
+      .toLowerCase();
+
+    if (displayTitle === playlistName) {
+      return record.slug;
+    }
+  }
+
+  const indexNote = findCollectionIndexForNote(records, videoNote);
+
+  return indexNote && isPlaylistIndexSummaryRecord(indexNote)
+    ? indexNote.slug
+    : null;
+}
+
 export function findPlaylistIndexSlugForVideo(
   records: LifeLabNoteSummary[],
   videoNote: LifeLabNoteSummary,
   playlistContents: Map<string, PlaylistIndexDisplay>,
 ): string | null {
+  const byMetadata = findPlaylistIndexSlugByMetadata(records, videoNote);
+
+  if (byMetadata) {
+    return byMetadata;
+  }
+
   const playlistName = videoNote.metadata?.playlist?.trim().toLowerCase();
 
   if (playlistName) {
     for (const record of records) {
-      if (
-        !isPlaylistIndexSummaryRecord(record)
-      ) {
+      if (!isPlaylistIndexSummaryRecord(record)) {
         continue;
-      }
-
-      const recordPlaylist = record.metadata?.playlist?.trim().toLowerCase();
-
-      if (recordPlaylist === playlistName) {
-        return record.slug;
       }
 
       const display = playlistContents.get(record.slug);
 
-      if (
-        display?.playlistTitle.trim().toLowerCase() === playlistName
-      ) {
+      if (display?.playlistTitle.trim().toLowerCase() === playlistName) {
         return record.slug;
       }
     }

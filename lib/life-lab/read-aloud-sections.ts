@@ -1,5 +1,7 @@
 import { isHiddenTechnicalHeading } from "@/lib/life-lab/hidden-markdown-sections";
 import type { LifeLabNoteMetadata } from "@/lib/life-lab/constants";
+import { isLearningMapSection } from "@/lib/life-lab/learning-map-sections";
+import { isShortVersionSectionTitle } from "@/lib/life-lab/lecture-notes";
 import { prepareLifeLabMarkdownForReading } from "@/lib/life-lab/markdown-display";
 import { isSameNarrationTitle } from "@/lib/life-lab/narration-title";
 import {
@@ -423,6 +425,26 @@ export function listMarkdownReadableSectionTitles(content: string): string[] {
   );
 }
 
+function prioritizeLearningContentReadAloudSections<
+  T extends { title: string },
+>(sections: T[]): T[] {
+  const learningMaps: T[] = [];
+  const shortVersions: T[] = [];
+  const rest: T[] = [];
+
+  for (const section of sections) {
+    if (isLearningMapSection(section.title)) {
+      learningMaps.push(section);
+    } else if (isShortVersionSectionTitle(section.title)) {
+      shortVersions.push(section);
+    } else {
+      rest.push(section);
+    }
+  }
+
+  return [...learningMaps, ...shortVersions, ...rest];
+}
+
 export function getReadAloudSectionIds(
   input: BuildReadAloudSectionsInput,
 ): string[] {
@@ -526,6 +548,8 @@ export function buildReadAloudSections(
       bodySections = rest;
     }
   }
+
+  bodySections = prioritizeLearningContentReadAloudSections(bodySections);
 
   const draft: Array<Omit<ReadAloudSection, "order" | "id">> = [];
   const includeDocumentTitle = documentTitle.length > 0;

@@ -157,7 +157,7 @@ describe("read aloud sections", () => {
     assert.match(plan.chunks[summaryRange.firstChunkIndex]?.text ?? "", /^Summary\./);
   });
 
-  it("preserves Markdown heading order instead of category priority", () => {
+  it("preserves Markdown learning-content order instead of category priority", () => {
     const sections = buildReadAloudSections({
       title: "Study note",
       content: [
@@ -184,10 +184,10 @@ describe("read aloud sections", () => {
         .filter((section) => section.category !== "NOTE_TITLE")
         .map((section) => section.title),
       [
+        "Learning Map",
         "Short version",
         "Summary",
         "Key ideas",
-        "Learning Map",
         "Connections",
         "Questions",
       ],

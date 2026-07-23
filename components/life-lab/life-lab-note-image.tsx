@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 
-import type { LifeLabNoteImage } from "@/lib/life-lab/constants";
 import {
   lifeLabNoteImageAlt,
   type ResolvedLifeLabNoteImage,
@@ -13,6 +12,7 @@ type LifeLabNoteImageProps = {
   variant: "detail" | "thumbnail";
   className?: string;
   fallbackTitle?: string | null;
+  href?: string | null;
 };
 
 export function LifeLabNoteImageFigure({
@@ -20,6 +20,7 @@ export function LifeLabNoteImageFigure({
   variant,
   className,
   fallbackTitle,
+  href,
 }: LifeLabNoteImageProps) {
   const [failed, setFailed] = useState(false);
 
@@ -31,6 +32,7 @@ export function LifeLabNoteImageFigure({
     fallbackTitle,
     isYoutubeThumbnail: image.kind === "youtube_thumbnail",
   });
+
   if (variant === "thumbnail") {
     return (
       <div
@@ -51,18 +53,42 @@ export function LifeLabNoteImageFigure({
     );
   }
 
+  const media = (
+    <div className="aspect-video w-full overflow-hidden rounded-xl bg-accent-cream/10">
+      {/* eslint-disable-next-line @next/next/no-img-element -- external representative URLs vary by note */}
+      <img
+        src={image.url}
+        alt={alt}
+        width={1280}
+        height={720}
+        sizes="(max-width: 768px) 100vw, 768px"
+        loading="lazy"
+        decoding="async"
+        fetchPriority="low"
+        onError={() => setFailed(true)}
+        className="h-full w-full object-cover"
+      />
+    </div>
+  );
+
   return (
-    <figure className={className}>
-      <div className="overflow-hidden rounded-xl border border-border/60 bg-accent-cream/10">
-        {/* eslint-disable-next-line @next/next/no-img-element -- external representative URLs vary by note */}
-        <img
-          src={image.url}
-          alt={alt}
-          decoding="async"
-          onError={() => setFailed(true)}
-          className="mx-auto max-h-[min(38dvh,260px)] w-full object-contain"
-        />
-      </div>
+    <figure
+      data-life-lab-hero-image=""
+      className={`mx-auto w-full max-w-3xl ${className ?? ""}`.trim()}
+    >
+      {href ? (
+        <a
+          href={href}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="Open original video"
+          className="block focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border"
+        >
+          {media}
+        </a>
+      ) : (
+        media
+      )}
     </figure>
   );
 }

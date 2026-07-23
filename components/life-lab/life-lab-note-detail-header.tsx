@@ -1,40 +1,36 @@
 "use client";
 
-import Link from "next/link";
+import type { ReactNode } from "react";
 
-import { LifeLabArchiveMenuItem } from "@/components/life-lab/life-lab-archive-menu-item";
-import { LifeLabMetadataChips } from "@/components/life-lab/life-lab-metadata-chips";
-import { LifeLabItemMoreMenu } from "@/components/life-lab/life-lab-item-more-menu";
-import { LifeLabNoteDevToolbar } from "@/components/life-lab/life-lab-note-dev-toolbar";
+import { LifeLabCompactSourceMeta } from "@/components/life-lab/life-lab-compact-source-meta";
+import { LifeLabContentHeader } from "@/components/life-lab/life-lab-content-header";
+import { LifeLabDetailsDisclosure } from "@/components/life-lab/life-lab-details-disclosure";
+import { LifeLabModeTabs } from "@/components/life-lab/life-lab-mode-tabs";
 import { LifeLabNoteListen } from "@/components/life-lab/life-lab-note-listen";
+import { LifeLabNoteMoreMenu } from "@/components/life-lab/life-lab-note-more-menu";
+import { LifeLabPrimaryActions } from "@/components/life-lab/life-lab-primary-actions";
 import type { LifeLabReadAloudPreferences } from "@/lib/life-lab/read-aloud-preferences";
-import { LifeLabSourceLink } from "@/components/life-lab/life-lab-source-link";
-import { ACTION_LABELS } from "@/lib/action-labels";
 import type { LifeLabNote, LifeLabSectionId } from "@/lib/life-lab/constants";
-import { buildNoteItemKey } from "@/lib/life-lab/item-key";
-import type { PlaylistVideoNavigation } from "@/lib/life-lab/playlist-index";
-import { isYoutubeVideoNote } from "@/lib/life-lab/playlist-index";
-import { LifeLabPlaylistVideoNav } from "@/components/life-lab/life-lab-playlist-video-nav";
-import {
-  collectAllMetadataChips,
-  selectVisibleMetadataChips,
-} from "@/lib/life-lab/metadata-chips";
+import { collectAllMetadataChips } from "@/lib/life-lab/metadata-chips";
 import { resolveStudyStatusLabel } from "@/lib/life-lab/study-status";
-import { resolveLifeLabSourceUrl } from "@/lib/life-lab/source-url";
+import {
+  getSourcePlatformLabel,
+  resolveLifeLabSourceUrl,
+} from "@/lib/life-lab/source-url";
 import {
   collectLifeLabImageDetailRows,
   extractVisualAnchorSection,
-  resolveLifeLabNoteImage,
 } from "@/lib/life-lab/note-image";
 import {
   lifeLabNoteDisplayTitle,
   lifeLabNoteDisplayTitleDiffers,
 } from "@/lib/life-lab/youtube-learning";
 import { lectureNoteSourceLabel } from "@/lib/life-lab/lecture-notes";
-import {
-  resolveTextDirection,
-  textDirectionLang,
-} from "@/lib/text-direction";
+import { resolveRawStandaloneChannelName } from "@/lib/life-lab/standalone-channel";
+import type { PlaylistVideoNavigation } from "@/lib/life-lab/playlist-index";
+import { isYoutubeVideoNote } from "@/lib/life-lab/playlist-index";
+import { resolveLifeLabNoteBackLink } from "@/lib/life-lab/note-back-link";
+import { isLifeLabNoteCoachingTabEnabled } from "@/lib/life-lab/note-mode-tabs";
 
 type LifeLabNoteDetailHeaderProps = {
   note: LifeLabNote;
@@ -44,6 +40,9 @@ type LifeLabNoteDetailHeaderProps = {
   readAloudPreferences: LifeLabReadAloudPreferences;
   openAiNarrationAvailable: boolean;
   archived?: boolean;
+  activeMode?: "overview" | "flashcards" | "coaching";
+  showCoaching?: boolean;
+  hero?: ReactNode;
 };
 
 function MetadataChip({ label }: { label: string }) {
@@ -54,11 +53,165 @@ function MetadataChip({ label }: { label: string }) {
   );
 }
 
-function StudyStatusBadge({ label }: { label: string }) {
+function NoteDetailsBody({
+  note,
+  sectionId,
+  sectionLabel,
+}: {
+  note: LifeLabNote;
+  sectionId: LifeLabSectionId;
+  sectionLabel: string;
+}) {
+  const showFullTitle = lifeLabNoteDisplayTitleDiffers(note);
+  const dateLine = note.dateLabel ?? note.modifiedAtLabel;
+  const lectureSourceLabel = lectureNoteSourceLabel({
+    relativePath: note.relativePath,
+    metadata: note.metadata,
+  });
+  const statusLabel = resolveStudyStatusLabel(note.metadata);
+  const isYoutube = isYoutubeVideoNote(note);
+  const resolvedSourceUrl = isYoutube
+    ? resolveLifeLabSourceUrl({ metadata: note.metadata })
+    : null;
+  const allChips = collectAllMetadataChips(note.metadata, {
+    sectionId,
+    sectionLabel,
+    subfolderLabel: note.subfolderLabel,
+    variant: "detail-mobile",
+  });
+  const imageDetailRows = collectLifeLabImageDetailRows({
+    metadata: note.metadata,
+    visualAnchorContent: extractVisualAnchorSection(note.content),
+  });
+
   return (
-    <span className="rounded-full border border-border/70 px-2 py-0.5 text-[0.6875rem] font-medium text-muted">
-      {label}
-    </span>
+    <>
+      {statusLabel ? (
+        <div className="space-y-1">
+          <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
+            Study status
+          </p>
+          <p className="text-sm text-foreground">{statusLabel}</p>
+        </div>
+      ) : null}
+      {dateLine ? (
+        <div className="space-y-1">
+          <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
+            Date
+          </p>
+          <p className="text-sm text-foreground">{dateLine}</p>
+        </div>
+      ) : null}
+      {lectureSourceLabel ? (
+        <div className="space-y-1">
+          <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
+            Source
+          </p>
+          <p className="text-sm text-foreground">{lectureSourceLabel}</p>
+        </div>
+      ) : null}
+      {showFullTitle ? (
+        <div className="space-y-1">
+          <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
+            Full title
+          </p>
+          <p className="text-sm leading-relaxed text-foreground" dir="auto">
+            {note.title}
+          </p>
+        </div>
+      ) : null}
+      {resolvedSourceUrl ? (
+        <div className="space-y-1">
+          <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
+            Source URL
+          </p>
+          <p className="break-all text-sm text-muted">{resolvedSourceUrl}</p>
+        </div>
+      ) : null}
+      {imageDetailRows.length > 0 ? (
+        <div className="space-y-2">
+          <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
+            Image
+          </p>
+          {imageDetailRows.map((row) => (
+            <div key={row.label} className="space-y-0.5">
+              <p className="text-[0.6875rem] font-medium text-muted-light">
+                {row.label}
+              </p>
+              <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted">
+                {row.value}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : null}
+      {allChips.length > 0 ? (
+        <div className="space-y-2">
+          <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
+            Topics
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {allChips.map((label) => (
+              <MetadataChip key={label} label={label} />
+            ))}
+          </div>
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+export function LifeLabNoteDetailsSection({
+  note,
+  sectionId,
+  sectionLabel,
+}: {
+  note: LifeLabNote;
+  sectionId: LifeLabSectionId;
+  sectionLabel: string;
+}) {
+  const showFullTitle = lifeLabNoteDisplayTitleDiffers(note);
+  const dateLine = note.dateLabel ?? note.modifiedAtLabel;
+  const lectureSourceLabel = lectureNoteSourceLabel({
+    relativePath: note.relativePath,
+    metadata: note.metadata,
+  });
+  const statusLabel = resolveStudyStatusLabel(note.metadata);
+  const isYoutube = isYoutubeVideoNote(note);
+  const resolvedSourceUrl = isYoutube
+    ? resolveLifeLabSourceUrl({ metadata: note.metadata })
+    : null;
+  const allChips = collectAllMetadataChips(note.metadata, {
+    sectionId,
+    sectionLabel,
+    subfolderLabel: note.subfolderLabel,
+    variant: "detail-mobile",
+  });
+  const imageDetailRows = collectLifeLabImageDetailRows({
+    metadata: note.metadata,
+    visualAnchorContent: extractVisualAnchorSection(note.content),
+  });
+  const showDetails =
+    allChips.length > 0 ||
+    showFullTitle ||
+    Boolean(resolvedSourceUrl) ||
+    imageDetailRows.length > 0 ||
+    Boolean(statusLabel) ||
+    Boolean(lectureSourceLabel) ||
+    Boolean(dateLine);
+
+  if (!showDetails) {
+    return null;
+  }
+
+  return (
+    <LifeLabDetailsDisclosure tagCount={allChips.length} className="mt-6">
+      <NoteDetailsBody
+        note={note}
+        sectionId={sectionId}
+        sectionLabel={sectionLabel}
+      />
+    </LifeLabDetailsDisclosure>
   );
 }
 
@@ -70,203 +223,109 @@ export function LifeLabNoteDetailHeader({
   readAloudPreferences,
   openAiNarrationAvailable,
   archived = false,
+  activeMode = "overview",
+  showCoaching = false,
+  hero,
 }: LifeLabNoteDetailHeaderProps) {
   const displayTitle = lifeLabNoteDisplayTitle(note);
-  const showFullTitle = lifeLabNoteDisplayTitleDiffers(note);
-  const titleDirection = resolveTextDirection(displayTitle);
   const dateLine = note.dateLabel ?? note.modifiedAtLabel;
   const lectureSourceLabel = lectureNoteSourceLabel({
     relativePath: note.relativePath,
     metadata: note.metadata,
   });
-  const statusLabel = resolveStudyStatusLabel(note.metadata);
   const flashcardCount =
     note.flashcards?.length ?? note.flashcardCount ?? 0;
-  const showStudy = flashcardCount > 0;
-  const itemKey = buildNoteItemKey({
-    sectionId,
-    relativePath: note.relativePath,
-    slug: note.slug,
-  });
-
-  const chipContext = {
-    sectionId,
-    sectionLabel,
-    subfolderLabel: note.subfolderLabel,
-  };
-  const mobileChipContext = { ...chipContext, variant: "detail-mobile" as const };
-  const desktopChipContext = {
-    ...chipContext,
-    variant: "detail-compact" as const,
-  };
-  const allChips = collectAllMetadataChips(note.metadata, mobileChipContext);
-  const { visible: mobileVisible } = selectVisibleMetadataChips(
-    note.metadata,
-    mobileChipContext,
-  );
-  const resolvedSourceUrl = isYoutubeVideoNote(note)
+  const showFlashcards = flashcardCount > 0;
+  const isYoutube = isYoutubeVideoNote(note);
+  const channelLabel = isYoutube
+    ? resolveRawStandaloneChannelName(note.metadata)
+    : null;
+  const resolvedSourceUrl = isYoutube
     ? resolveLifeLabSourceUrl({ metadata: note.metadata })
     : null;
-  const imageDetailRows = collectLifeLabImageDetailRows({
-    metadata: note.metadata,
-    visualAnchorContent: extractVisualAnchorSection(note.content),
+  const platformLabel = resolvedSourceUrl
+    ? getSourcePlatformLabel(resolvedSourceUrl)
+    : null;
+  const back = resolveLifeLabNoteBackLink({
+    sectionId,
+    sectionLabel,
+    playlistNav,
   });
-  const showDetails =
-    allChips.length > 0 ||
-    showFullTitle ||
-    Boolean(resolvedSourceUrl) ||
-    imageDetailRows.length > 0;
+  const noteHref = `/life-lab/${sectionId}/${note.slug}`;
+  const coachingTabEnabled =
+    showCoaching && isLifeLabNoteCoachingTabEnabled();
+
+  const modeTabs = [
+    { id: "overview", label: "Overview", href: noteHref },
+    ...(showFlashcards
+      ? [
+          {
+            id: "flashcards",
+            label: "Flashcards",
+            href: `${noteHref}?view=flashcards`,
+          },
+        ]
+      : []),
+    ...(coachingTabEnabled
+      ? [{ id: "coaching", label: "Coaching", href: "/coaching" }]
+      : []),
+  ];
 
   return (
-    <header className="mb-3 space-y-2 border-b border-border/50 pb-3 md:mb-4 md:space-y-3 md:pb-4">
-      <div className="space-y-1">
-        <h1
-          className="line-clamp-2 text-base font-semibold leading-snug tracking-tight text-foreground [overflow-wrap:anywhere] md:text-[1.625rem] md:leading-tight"
-          dir={titleDirection}
-          lang={textDirectionLang(titleDirection)}
-        >
-          {displayTitle}
-        </h1>
-        <p className="text-xs text-muted" dir="auto">
-          {[sectionLabel, lectureSourceLabel, dateLine]
-            .filter(Boolean)
-            .join(" · ")}
-        </p>
-        {resolvedSourceUrl ? <LifeLabSourceLink href={resolvedSourceUrl} /> : null}
-      </div>
+    <div className="space-y-3 md:space-y-4" data-life-lab-note-detail-header="">
+      <LifeLabContentHeader
+        backHref={back.href}
+        backLabel={back.label}
+        title={displayTitle}
+        metadata={
+          isYoutube ? (
+            <LifeLabCompactSourceMeta
+              channelLabel={channelLabel}
+              platformLabel={platformLabel}
+              dateLabel={dateLine}
+              sourceHref={resolvedSourceUrl}
+            />
+          ) : (
+            <LifeLabCompactSourceMeta
+              platformLabel={lectureSourceLabel ?? sectionLabel}
+              dateLabel={dateLine}
+            />
+          )
+        }
+      />
 
-      <div className="flex flex-wrap items-center gap-2">
-        {playlistNav ? (
-          <LifeLabPlaylistVideoNav
-            navigation={playlistNav}
-            variant="header-icons"
-            enableKeyboardShortcuts={false}
+      {hero}
+
+      {modeTabs.length > 1 ? (
+        <LifeLabModeTabs tabs={modeTabs} activeId={activeMode} />
+      ) : null}
+
+      <LifeLabPrimaryActions
+        listen={
+          <LifeLabNoteListen
+            title={note.title}
+            content={note.content}
+            metadata={note.metadata}
+            sectionId={sectionId}
+            slug={note.slug}
+            fileId={note.fileId}
+            preferences={readAloudPreferences}
+            openAiNarrationAvailable={openAiNarrationAvailable}
+            includeFlashcards
           />
-        ) : null}
-        {showStudy ? (
-          <Link
-            href={`/life-lab/${sectionId}/${note.slug}?view=flashcards`}
-            className="rounded-full bg-accent-cream px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent-cream/80"
-          >
-            Flashcards · {flashcardCount} cards
-          </Link>
-        ) : null}
-        <Link
-          href={`/life-lab/${sectionId}`}
-          className="rounded-full border border-border/70 px-3 py-1.5 text-xs font-medium text-muted transition-colors hover:bg-accent-cream/50 hover:text-foreground"
-        >
-          Back
-        </Link>
-        <LifeLabItemMoreMenu>
-          <LifeLabArchiveMenuItem
-            itemKey={itemKey}
-            section={sectionId}
-            itemType={
-              sectionId === "learning-dictionary"
-                ? "dictionary-entry"
-                : "note"
-            }
+        }
+        more={
+          <LifeLabNoteMoreMenu
+            note={note}
+            sectionId={sectionId}
             archived={archived}
-            labels={{
-              archive: ACTION_LABELS.archiveLifeLabNote,
-              unarchive: ACTION_LABELS.unarchiveLifeLabNote,
-            }}
           />
-        </LifeLabItemMoreMenu>
-        <LifeLabNoteDevToolbar note={note} />
-        <LifeLabNoteListen
-          title={note.title}
-          content={note.content}
-          metadata={note.metadata}
-          sectionId={sectionId}
-          slug={note.slug}
-          fileId={note.fileId}
-          preferences={readAloudPreferences}
-          openAiNarrationAvailable={openAiNarrationAvailable}
-          includeFlashcards
-        />
-      </div>
+        }
+      />
 
       {archived ? (
-        <span className="inline-flex rounded-full border border-border/70 px-2 py-0.5 text-[0.6875rem] font-medium text-muted">
-          Archived
-        </span>
+        <span className="inline-flex text-xs text-muted">Archived</span>
       ) : null}
-
-      {statusLabel || mobileVisible.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-1.5">
-          {statusLabel ? <StudyStatusBadge label={statusLabel} /> : null}
-          <LifeLabMetadataChips
-            metadata={note.metadata}
-            sectionId={sectionId}
-            sectionLabel={sectionLabel}
-            subfolderLabel={note.subfolderLabel}
-            variant="detail-mobile"
-            className="md:hidden"
-          />
-          <LifeLabMetadataChips
-            metadata={note.metadata}
-            sectionId={sectionId}
-            sectionLabel={sectionLabel}
-            subfolderLabel={note.subfolderLabel}
-            variant="detail-compact"
-            className="hidden md:flex"
-          />
-        </div>
-      ) : null}
-
-      {showDetails ? (
-        <details className="ui-settings-details group">
-          <summary className="ui-settings-details-summary">
-            Details
-            {allChips.length > 0 ? ` · ${allChips.length} tags` : ""}
-          </summary>
-          <div className="ui-settings-details-body space-y-3">
-            {showFullTitle ? (
-              <div className="space-y-1">
-                <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
-                  Full title
-                </p>
-                <p className="text-sm leading-relaxed text-foreground" dir="auto">
-                  {note.title}
-                </p>
-              </div>
-            ) : null}
-            {resolvedSourceUrl ? (
-              <div className="space-y-1">
-                <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
-                  Source URL
-                </p>
-                <p className="break-all text-sm text-muted">{resolvedSourceUrl}</p>
-              </div>
-            ) : null}
-            {imageDetailRows.length > 0 ? (
-              <div className="space-y-2">
-                <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
-                  Image
-                </p>
-                {imageDetailRows.map((row) => (
-                  <div key={row.label} className="space-y-0.5">
-                    <p className="text-[0.6875rem] font-medium text-muted-light">
-                      {row.label}
-                    </p>
-                    <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted">
-                      {row.value}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            ) : null}
-            {allChips.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5">
-                {allChips.map((label) => (
-                  <MetadataChip key={label} label={label} />
-                ))}
-              </div>
-            ) : null}
-          </div>
-        </details>
-      ) : null}
-    </header>
+    </div>
   );
 }

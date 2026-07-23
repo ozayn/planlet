@@ -3,19 +3,31 @@ import {
   isFlashcardSectionTitle,
 } from "@/lib/life-lab/flashcards";
 import { isHiddenTechnicalHeading } from "@/lib/life-lab/hidden-markdown-sections";
+import { isLearningMapSection } from "@/lib/life-lab/learning-map-sections";
 import {
   isLectureNotesCollapsibleSectionTitle,
+  isLectureNotesSectionId,
   isShortVersionSectionTitle,
 } from "@/lib/life-lab/lecture-notes";
+import { extractMermaidCode } from "@/lib/life-lab/mermaid-outline";
 import { transformMarkdownTables } from "@/lib/life-lab/reading-briefs";
 import {
   isFullTranscriptSectionTitle,
   isTranscriptMetadataOnly,
 } from "@/lib/life-lab/transcript-sections";
-import type { LifeLabFlashcard } from "@/lib/life-lab/constants";
+import type {
+  LifeLabFlashcard,
+  LifeLabSectionId,
+} from "@/lib/life-lab/constants";
 
 export type LifeLabNoteContentBlock =
   | { kind: "markdown"; content: string }
+  | {
+      kind: "learning-map";
+      title: string;
+      mermaidCode: string;
+      introMarkdown?: string;
+    }
   | { kind: "flashcards"; cards: LifeLabFlashcard[]; title: string }
   | {
       kind: "transcript";
@@ -26,15 +38,18 @@ export type LifeLabNoteContentBlock =
 
 export type BuildLifeLabNoteContentBlocksOptions = {
   prioritizeShortVersion?: boolean;
+  prioritizeLearningMap?: boolean;
   collapseTranscriptNotes?: boolean;
 };
 
-function listMarkdownH2Sections(body: string): {
+type MarkdownH2Section = {
   title: string;
   content: string;
   start: number;
   end: number;
-}[] {
+};
+
+function listMarkdownH2Sections(body: string): MarkdownH2Section[] {
   const regex = /^##\s+(.+?)\s*$/gm;
   const matches = [...body.matchAll(regex)];
 
@@ -61,14 +76,39 @@ function noteHasSpecialSections(
     (section) =>
       isFlashcardSectionTitle(section.title) ||
       isFullTranscriptSectionTitle(section.title) ||
+      isLearningMapSection(section.title) ||
       (collapseTranscriptNotes &&
         isLectureNotesCollapsibleSectionTitle(section.title)),
   );
 }
 
+function introMarkdownFromLearningMapBody(content: string): string | undefined {
+  const withoutFence = content
+    .replace(/```mermaid\s*\n[\s\S]*?```/i, "")
+    .trim();
+
+  if (!withoutFence) {
+    return undefined;
+  }
+
+  const plain = withoutFence
+    .replace(/^#+\s+/gm, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (!plain || plain.length > 220) {
+    return undefined;
+  }
+
+  return plain;
+}
+
 function sectionToBlock(
   section: { title: string; content: string },
-  options: { collapseTranscriptNotes: boolean },
+  options: {
+    collapseTranscriptNotes: boolean;
+    compactLearningMap: boolean;
+  },
 ): LifeLabNoteContentBlock | null {
   if (isHiddenTechnicalHeading(section.title)) {
     return null;
@@ -117,6 +157,19 @@ function sectionToBlock(
     };
   }
 
+  if (options.compactLearningMap && isLearningMapSection(section.title)) {
+    const mermaidCode = extractMermaidCode(section.content);
+
+    if (mermaidCode) {
+      return {
+        kind: "learning-map",
+        title: section.title,
+        mermaidCode,
+        introMarkdown: introMarkdownFromLearningMapBody(section.content),
+      };
+    }
+  }
+
   return {
     kind: "markdown",
     content: transformMarkdownTables(
@@ -127,7 +180,10 @@ function sectionToBlock(
 
 function buildBlocksInDocumentOrder(
   body: string,
-  options: { collapseTranscriptNotes: boolean },
+  options: {
+    collapseTranscriptNotes: boolean;
+    compactLearningMap: boolean;
+  },
 ): LifeLabNoteContentBlock[] {
   const sections = listMarkdownH2Sections(body);
   const blocks: LifeLabNoteContentBlock[] = [];
@@ -158,16 +214,27 @@ function buildBlocksInDocumentOrder(
   return blocks;
 }
 
-function prioritizeShortVersionBlocks(
+/**
+ * Shared learning content order:
+ * preface → Learning Map → Short version → remaining H2s in document order.
+ */
+function prioritizeLearningContentBlocks(
   body: string,
-  options: { collapseTranscriptNotes: boolean },
+  options: {
+    collapseTranscriptNotes: boolean;
+    compactLearningMap: boolean;
+    prioritizeLearningMap: boolean;
+    prioritizeShortVersion: boolean;
+  },
 ): LifeLabNoteContentBlock[] {
   const sections = listMarkdownH2Sections(body);
-  const shortVersion = sections.find((section) =>
-    isShortVersionSectionTitle(section.title),
-  );
+  const learningMap = options.prioritizeLearningMap
+    ? sections.find((section) => isLearningMapSection(section.title))
+    : undefined;
+  const shortVersion = options.prioritizeShortVersion
+    ? sections.find((section) => isShortVersionSectionTitle(section.title))
+    : undefined;
   const blocks: LifeLabNoteContentBlock[] = [];
-
   const firstH2Start = sections[0]?.start ?? body.length;
   const preface = body.slice(0, firstH2Start).trim();
 
@@ -175,16 +242,27 @@ function prioritizeShortVersionBlocks(
     blocks.push({ kind: "markdown", content: preface });
   }
 
-  if (shortVersion) {
-    const shortBlock = sectionToBlock(shortVersion, options);
+  const prioritySections = [learningMap, shortVersion].filter(
+    (section): section is MarkdownH2Section => Boolean(section),
+  );
 
-    if (shortBlock) {
-      blocks.push(shortBlock);
+  const emittedStarts = new Set<number>();
+
+  for (const section of prioritySections) {
+    if (emittedStarts.has(section.start)) {
+      continue;
+    }
+
+    const block = sectionToBlock(section, options);
+
+    if (block) {
+      blocks.push(block);
+      emittedStarts.add(section.start);
     }
   }
 
   for (const section of sections) {
-    if (shortVersion && section.start === shortVersion.start) {
+    if (emittedStarts.has(section.start)) {
       continue;
     }
 
@@ -198,22 +276,49 @@ function prioritizeShortVersionBlocks(
   return blocks;
 }
 
+export function resolveLifeLabNoteContentBlockOptions(
+  sectionId?: LifeLabSectionId,
+): BuildLifeLabNoteContentBlocksOptions {
+  const isLectureNotes = isLectureNotesSectionId(sectionId);
+  const isPodcastEpisode = sectionId === "podcasts";
+
+  return {
+    prioritizeLearningMap: true,
+    prioritizeShortVersion: isLectureNotes || isPodcastEpisode,
+    collapseTranscriptNotes: isLectureNotes || isPodcastEpisode,
+  };
+}
+
 export function buildLifeLabNoteContentBlocks(
   body: string,
   options: BuildLifeLabNoteContentBlocksOptions = {},
 ): LifeLabNoteContentBlock[] {
   const collapseTranscriptNotes = options.collapseTranscriptNotes === true;
   const prioritizeShortVersion = options.prioritizeShortVersion === true;
+  const prioritizeLearningMap = options.prioritizeLearningMap === true;
+  const compactLearningMap = prioritizeLearningMap;
+  const blockOptions = { collapseTranscriptNotes, compactLearningMap };
 
-  if (!noteHasSpecialSections(body, collapseTranscriptNotes)) {
-    if (!prioritizeShortVersion) {
-      return [{ kind: "markdown", content: body }];
-    }
+  const needsSplit =
+    noteHasSpecialSections(body, collapseTranscriptNotes) ||
+    prioritizeShortVersion ||
+    prioritizeLearningMap;
+
+  if (!needsSplit) {
+    return [{ kind: "markdown", content: body }];
   }
 
-  const blocks = prioritizeShortVersion
-    ? prioritizeShortVersionBlocks(body, { collapseTranscriptNotes })
-    : buildBlocksInDocumentOrder(body, { collapseTranscriptNotes });
+  if (prioritizeLearningMap || prioritizeShortVersion) {
+    const blocks = prioritizeLearningContentBlocks(body, {
+      ...blockOptions,
+      prioritizeLearningMap,
+      prioritizeShortVersion,
+    });
+
+    return blocks.length > 0 ? blocks : [{ kind: "markdown", content: body }];
+  }
+
+  const blocks = buildBlocksInDocumentOrder(body, blockOptions);
 
   return blocks.length > 0 ? blocks : [{ kind: "markdown", content: body }];
 }
@@ -236,6 +341,9 @@ export function listRenderedVisibleSectionTitles(
     switch (block.kind) {
       case "markdown":
         titles.push(...extractH2TitlesFromMarkdown(block.content));
+        break;
+      case "learning-map":
+        titles.push(block.title);
         break;
       case "flashcards":
         titles.push(block.title);

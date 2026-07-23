@@ -76,6 +76,10 @@ describe("life lab archive wiring", () => {
       join(root, "components/life-lab/life-lab-section-notes.tsx"),
       "utf8",
     );
+    const moreMenu = readFileSync(
+      join(root, "components/life-lab/life-lab-note-more-menu.tsx"),
+      "utf8",
+    );
     const header = readFileSync(
       join(root, "components/life-lab/life-lab-note-detail-header.tsx"),
       "utf8",
@@ -84,7 +88,8 @@ describe("life lab archive wiring", () => {
 
     assert.match(notes, /LifeLabItemMoreMenu/);
     assert.match(notes, /LifeLabArchiveMenuItem/);
-    assert.match(header, /LifeLabArchiveMenuItem/);
+    assert.match(moreMenu, /LifeLabArchiveMenuItem/);
+    assert.match(header, /LifeLabNoteMoreMenu/);
     assert.match(labels, /archiveLifeLabNote/);
     assert.match(labels, /unarchiveFlashcardDeck/);
   });

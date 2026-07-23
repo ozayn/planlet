@@ -52,13 +52,19 @@ describe("flashcards Life Lab wiring", () => {
       join(root, "components/life-lab/life-lab-note-detail-header.tsx"),
       "utf8",
     );
+    const modeTabs = readFileSync(
+      join(root, "components/life-lab/life-lab-mode-tabs.tsx"),
+      "utf8",
+    );
     const notePage = readFileSync(
       join(root, "app/(app)/life-lab/[section]/[slug]/page.tsx"),
       "utf8",
     );
 
-    assert.match(header, /Flashcards · \{flashcardCount\} cards/);
+    assert.match(header, /label: "Flashcards"/);
     assert.match(header, /\?view=flashcards/);
+    assert.doesNotMatch(header, /Flashcards · \{flashcardCount\} cards/);
+    assert.match(modeTabs, /data-life-lab-mode-tabs/);
     assert.match(notePage, /view === "flashcards"/);
     assert.match(notePage, /section === "flashcards"/);
   });

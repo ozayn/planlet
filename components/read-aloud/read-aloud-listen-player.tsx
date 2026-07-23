@@ -701,26 +701,52 @@ export function ReadAloudListenPlayer({
         </div>
       ) : (
         <div className="flex flex-wrap items-center gap-2">
-          {sectionCount > 1 ? (
-            <label className="flex items-center gap-1.5 text-xs text-muted">
-              <span>Start from</span>
-              <select
-                value={startSectionId}
-                onChange={(event) => setStartSectionId(event.target.value)}
-                className="max-w-[10rem] rounded-full border border-border/70 bg-transparent px-2 py-1 text-xs text-foreground"
-              >
-                {readableSections.map((section) => (
-                  <option key={section.id} value={section.id}>
-                    {section.title}
-                  </option>
-                ))}
-              </select>
-            </label>
-          ) : null}
           <ListenPrimaryButton onClick={handleStart} ariaLabel={primaryAriaLabel}>
             <Play className="size-3.5" aria-hidden="true" />
             Listen
           </ListenPrimaryButton>
+          {sectionCount > 1 ? (
+            <div className="relative" ref={sectionMenuRef}>
+              <IconButton
+                onClick={() => setSectionMenuOpen((open) => !open)}
+                ariaLabel="Choose starting section"
+                active={sectionMenuOpen}
+              >
+                <ChevronRight className="size-3.5" aria-hidden="true" />
+              </IconButton>
+              {sectionMenuOpen ? (
+                <div
+                  className="absolute left-0 top-full z-20 mt-1 max-h-64 min-w-[12rem] overflow-y-auto rounded-xl border border-border/70 bg-surface p-1 shadow-sm"
+                  data-life-lab-start-section-menu=""
+                >
+                  <p className="px-2.5 py-1.5 text-[0.6875rem] text-muted-light">
+                    Start from
+                  </p>
+                  {readableSections.map((section) => (
+                    <button
+                      key={section.id}
+                      type="button"
+                      className={`flex w-full items-center rounded-lg px-2.5 py-2 text-left text-xs hover:bg-accent-cream/50 hover:text-foreground ${
+                        section.id === startSectionId
+                          ? "bg-accent-cream/40 text-foreground"
+                          : "text-muted"
+                      }`}
+                      onClick={() => {
+                        setStartSectionId(section.id);
+                        sessionStorage.writeStoredStartSectionId(
+                          sessionScopeId,
+                          section.id,
+                        );
+                        setSectionMenuOpen(false);
+                      }}
+                    >
+                      {section.title}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       )}
 

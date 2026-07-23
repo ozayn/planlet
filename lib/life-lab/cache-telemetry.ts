@@ -31,6 +31,10 @@ export type LifeLabRequestMeta = {
   route?: string;
   playlistId?: string;
   sectionId?: string;
+  noteId?: string;
+  noteSlug?: string;
+  cacheKey?: string;
+  navigationSource?: string;
 };
 
 type LifeLabRequestTelemetry = {
@@ -48,6 +52,10 @@ export type LifeLabRequestSummary = {
   route: string | null;
   playlistId: string | null;
   sectionId: string | null;
+  noteId: string | null;
+  noteSlug: string | null;
+  cacheKey: string | null;
+  navigationSource: string | null;
   cacheHits: number;
   cacheMisses: number;
   notePayloadHits: number;
@@ -287,6 +295,10 @@ export function buildLifeLabRequestSummary(
     route: snapshot.meta.route ?? null,
     playlistId: snapshot.meta.playlistId ?? null,
     sectionId: snapshot.meta.sectionId ?? null,
+    noteId: snapshot.meta.noteId ?? null,
+    noteSlug: snapshot.meta.noteSlug ?? null,
+    cacheKey: snapshot.meta.cacheKey ?? null,
+    navigationSource: snapshot.meta.navigationSource ?? null,
     cacheHits,
     cacheMisses,
     notePayloadHits,

@@ -1,6 +1,7 @@
 import { formatCount } from "@/lib/life-lab/collection-metadata";
 import { normalizeLearningMapArtifactMarkdown } from "@/lib/life-lab/mermaid-direction";
 import { prepareLifeLabMarkdownForReading } from "@/lib/life-lab/markdown-display";
+import { extractMermaidCode } from "@/lib/life-lab/mermaid-outline";
 import { stripLeadingMarkdownH1 } from "@/lib/life-lab/note-content";
 import { titleFromMarkdownHeading } from "@/lib/life-lab/slug";
 
@@ -195,11 +196,7 @@ export function parsePlaylistClusterRows(content: string): PlaylistClusterRow[] 
   });
 }
 
-export function extractMermaidCode(content: string): string | null {
-  const match = content.match(/```mermaid\s*\n([\s\S]*?)```/i);
-
-  return match?.[1]?.trim() ?? null;
-}
+export { extractMermaidCode } from "@/lib/life-lab/mermaid-outline";
 
 export function prepareClusterDiagramMarkdown(rawBody: string): {
   content: string;

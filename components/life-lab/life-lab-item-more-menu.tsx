@@ -90,7 +90,10 @@ export function LifeLabItemMoreMenu({
           onClick={(event) => {
             event.preventDefault();
             event.stopPropagation();
-            setOpen(false);
+            const target = event.target as HTMLElement | null;
+            if (target?.closest('[role="menuitem"]')) {
+              setOpen(false);
+            }
           }}
         >
           {children}

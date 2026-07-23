@@ -27,7 +27,10 @@ export function compareReadAloudSectionOrder(
   const narrationSectionTitles = sections
     .filter((section) => section.category !== "NOTE_TITLE")
     .map((section) => section.title);
-  const renderedSectionTitles = listRenderedVisibleSectionTitles(preparedContent);
+  const renderedSectionTitles = listRenderedVisibleSectionTitles(
+    preparedContent,
+    { prioritizeLearningMap: true },
+  );
   const markdownSectionTitles = listMarkdownReadableSectionTitles(input.content);
 
   const includedRenderedTitles = renderedSectionTitles.filter((title) =>

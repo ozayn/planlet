@@ -28,6 +28,8 @@ export function LifeLabVideoRow({
     <li>
       <Link
         href={`/life-lab/${sectionId}/${note.slug}`}
+        prefetch
+        data-life-lab-note-link=""
         className="group flex items-start gap-3 rounded-lg px-1 py-2 transition-colors hover:bg-accent-cream/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border"
       >
         <LifeLabMediaThumbnail image={thumbnail} title={note.title} />

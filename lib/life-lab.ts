@@ -136,14 +136,16 @@ import {
   titleFromFilename,
 } from "@/lib/life-lab/slug";
 import {
+  buildPlaylistNavigationFromVideoNotes,
+  buildVideoPlaylistNavigation,
+  findPlaylistIndexSlugByMetadata,
   isPlaylistIndexNote,
-  isPlaylistIndexSummaryRecord,
   isYoutubeVideoNote,
   parsePlaylistIndexNote,
   resolveYoutubeVideoPlaylistNavigation,
-  type PlaylistIndexDisplay,
   type PlaylistVideoNavigation,
 } from "@/lib/life-lab/playlist-index";
+import { cache } from "react";
 import {
   buildPlaylistAssetsBundle,
   buildPlaylistClusterFile,
@@ -1142,32 +1144,41 @@ async function getNoteContentCached(
   sectionId: LifeLabSectionId,
   slug: string,
 ): Promise<LifeLabNote | null> {
-  const { records: baseRecords } = await getSectionFileIndexCached(sectionId);
-  const baseRecord = baseRecords.find((item) => item.slug === slug);
-
-  if (!baseRecord) {
-    return null;
-  }
-
-  const payload = await getNotePayloadCached(sectionId, baseRecord);
-
-  if (!payload) {
-    return null;
-  }
-
-  if (
-    sectionId === "lecture-notes" &&
-    !shouldIncludeLectureNoteInPlanlet({
-      sectionId,
-      relativePath: payload.record.relativePath,
-      metadata: payload.record.metadata,
-    })
-  ) {
-    return null;
-  }
-
-  return buildLifeLabNote(payload.record, sectionId, payload.rawContent);
+  return getNoteContentCachedDeduped(sectionId, slug);
 }
+
+const getNoteContentCachedDeduped = cache(
+  async (
+    sectionId: LifeLabSectionId,
+    slug: string,
+  ): Promise<LifeLabNote | null> => {
+    const { records: baseRecords } = await getSectionFileIndexCached(sectionId);
+    const baseRecord = baseRecords.find((item) => item.slug === slug);
+
+    if (!baseRecord) {
+      return null;
+    }
+
+    const payload = await getNotePayloadCached(sectionId, baseRecord);
+
+    if (!payload) {
+      return null;
+    }
+
+    if (
+      sectionId === "lecture-notes" &&
+      !shouldIncludeLectureNoteInPlanlet({
+        sectionId,
+        relativePath: payload.record.relativePath,
+        metadata: payload.record.metadata,
+      })
+    ) {
+      return null;
+    }
+
+    return buildLifeLabNote(payload.record, sectionId, payload.rawContent);
+  },
+);
 
 type PlaylistAssetIndexNote = Pick<
   LifeLabNote,
@@ -1891,83 +1902,126 @@ export async function getLifeLabSectionData(
 export async function getLifeLabNoteData(
   sectionId: string,
   slug: string,
-  options: { refresh?: boolean } = {},
+  options: { refresh?: boolean; navigationSource?: string } = {},
 ): Promise<{
   availability: LifeLabAvailability;
   note: LifeLabNote | null;
 }> {
-  return runLifeLabRequestTelemetry(
-    async () => {
-      const availability = getLifeLabAvailability();
-
-      if (
-        isLifeLabSectionBlocked(sectionId) ||
-        !isLifeLabSectionId(sectionId)
-      ) {
-        return { availability, note: null };
-      }
-
-      if (availability.status !== "ready") {
-        return { availability, note: null };
-      }
-
-      try {
-        if (options.refresh) {
-          const { records: baseRecords } =
-            await getSectionFileIndexCached(sectionId);
-          const baseRecord = baseRecords.find((item) => item.slug === slug);
-
-          if (baseRecord) {
-            refreshLifeLabNoteCache(sectionId, slug, baseRecord.fileId);
-          }
-        }
-
-        const mapResult = await getSectionFolderMap();
-
-        if (!mapResult.ok) {
-          return {
-            availability: unavailableAvailability(mapResult.error),
-            note: null,
-          };
-        }
-
-        const loadedAt = new Date().toISOString();
-        const note = options.refresh
-          ? await loadNoteContent(sectionId, slug)
-          : await getNoteContentCached(sectionId, slug);
-
-        if (!note) {
-          return { availability, note: null };
-        }
-
-        const cache = resolveNoteCacheDiagnostic(
-          note.fileId,
-          sectionId,
-          loadedAt,
-          options.refresh ?? false,
-        );
-
-        return {
-          availability,
-          note: attachLifeLabNoteLoadMeta(note, cache),
-        };
-      } catch (error) {
-        const normalized =
-          error instanceof Error
-            ? error
-            : new LifeLabDriveError("Failed to load Life Lab note.");
-        logLifeLabFolderMapFailure(normalized);
-
-        return {
-          availability: unavailableAvailability(normalized, true),
-          note: null,
-        };
-      }
-    },
-    { refreshRequested: options.refresh ?? false },
+  return getLifeLabNoteDataCached(
+    sectionId,
+    slug,
+    options.refresh ?? false,
+    options.navigationSource ?? "direct",
   );
 }
 
+const getLifeLabNoteDataCached = cache(
+  async (
+    sectionId: string,
+    slug: string,
+    refresh: boolean,
+    navigationSource: string,
+  ): Promise<{
+    availability: LifeLabAvailability;
+    note: LifeLabNote | null;
+  }> => {
+    return runLifeLabRequestTelemetry(
+      async () => {
+        setLifeLabRequestMeta({
+          route: `/life-lab/${sectionId}/${slug}`,
+          sectionId,
+          noteSlug: slug,
+          navigationSource,
+        });
+
+        const availability = getLifeLabAvailability();
+
+        if (
+          isLifeLabSectionBlocked(sectionId) ||
+          !isLifeLabSectionId(sectionId)
+        ) {
+          return { availability, note: null };
+        }
+
+        if (availability.status !== "ready") {
+          return { availability, note: null };
+        }
+
+        try {
+          if (refresh) {
+            const { records: baseRecords } =
+              await getSectionFileIndexCached(sectionId);
+            const baseRecord = baseRecords.find((item) => item.slug === slug);
+
+            if (baseRecord) {
+              refreshLifeLabNoteCache(sectionId, slug, baseRecord.fileId);
+            }
+          }
+
+          const mapResult = await getSectionFolderMap();
+
+          if (!mapResult.ok) {
+            return {
+              availability: unavailableAvailability(mapResult.error),
+              note: null,
+            };
+          }
+
+          const loadedAt = new Date().toISOString();
+          const note = refresh
+            ? await loadNoteContent(sectionId, slug)
+            : await getNoteContentCached(sectionId, slug);
+
+          if (!note) {
+            return { availability, note: null };
+          }
+
+          setLifeLabRequestMeta({
+            noteId: note.fileId,
+            cacheKey: lifeLabNotePayloadCacheKey(note.fileId),
+          });
+
+          const cacheDiagnostic = resolveNoteCacheDiagnostic(
+            note.fileId,
+            sectionId,
+            loadedAt,
+            refresh,
+          );
+
+          return {
+            availability,
+            note: attachLifeLabNoteLoadMeta(note, cacheDiagnostic),
+          };
+        } catch (error) {
+          const normalized =
+            error instanceof Error
+              ? error
+              : new LifeLabDriveError("Failed to load Life Lab note.");
+          logLifeLabFolderMapFailure(normalized);
+
+          return {
+            availability: unavailableAvailability(normalized, true),
+            note: null,
+          };
+        }
+      },
+      {
+        refreshRequested: refresh,
+        meta: {
+          route: `/life-lab/${sectionId}/${slug}`,
+          sectionId,
+          noteSlug: slug,
+          navigationSource,
+        },
+      },
+    );
+  },
+);
+
+/**
+ * Prefer a single owning playlist-index payload (or zero) over loading every
+ * playlist index in the section. Falls back to lightweight section records.
+ */
 export async function getYoutubeVideoPlaylistNavigation(
   sectionId: LifeLabSectionId,
   slug: string,
@@ -1983,28 +2037,89 @@ export async function getYoutubeVideoPlaylistNavigation(
     return null;
   }
 
-  const playlistIndexRecords = records.filter((record) =>
-    isPlaylistIndexSummaryRecord(record),
-  );
+  const candidateSlug = findPlaylistIndexSlugByMetadata(records, videoRecord);
 
-  const playlistContents = new Map<string, PlaylistIndexDisplay>();
+  if (candidateSlug) {
+    const playlistNote = await getNoteContentCached(sectionId, candidateSlug);
 
-  for (const record of playlistIndexRecords) {
-    const playlistNote = await getNoteContentCached(sectionId, record.slug);
+    if (playlistNote) {
+      const display = parsePlaylistIndexNote(playlistNote);
+      const indexedNavigation = buildVideoPlaylistNavigation(
+        display,
+        videoRecord.slug,
+        candidateSlug,
+        sectionId,
+      );
 
-    if (!playlistNote) {
-      continue;
+      if (indexedNavigation) {
+        return indexedNavigation;
+      }
+
+      return resolveYoutubeVideoPlaylistNavigation(
+        records,
+        videoRecord,
+        sectionId,
+        new Map([[candidateSlug, display]]),
+      );
     }
-
-    playlistContents.set(record.slug, parsePlaylistIndexNote(playlistNote));
   }
 
-  return resolveYoutubeVideoPlaylistNavigation(
+  return buildPlaylistNavigationFromVideoNotes(records, videoRecord, sectionId);
+}
+
+/**
+ * First-paint playlist chrome from the section file index only (no note payloads).
+ */
+export async function getYoutubeVideoPlaylistNavigationLightweight(
+  sectionId: LifeLabSectionId,
+  slug: string,
+): Promise<PlaylistVideoNavigation | null> {
+  if (sectionId !== "youtube-learning") {
+    return null;
+  }
+
+  const { records } = await getSectionNotesCached(sectionId);
+  const videoRecord = records.find((record) => record.slug === slug);
+
+  if (!videoRecord || !isYoutubeVideoNote(videoRecord)) {
+    return null;
+  }
+
+  const fromMembers = buildPlaylistNavigationFromVideoNotes(
     records,
     videoRecord,
     sectionId,
-    playlistContents,
   );
+
+  if (fromMembers) {
+    return fromMembers;
+  }
+
+  const indexSlug = findPlaylistIndexSlugByMetadata(records, videoRecord);
+
+  if (!indexSlug) {
+    return null;
+  }
+
+  const indexRecord = records.find((record) => record.slug === indexSlug);
+
+  if (!indexRecord) {
+    return null;
+  }
+
+  return {
+    playlistIndexHref: `/life-lab/${sectionId}/${indexSlug}`,
+    playlistTitle:
+      indexRecord.metadata?.playlist?.trim() ||
+      indexRecord.title ||
+      "Playlist",
+    previous: null,
+    next: null,
+    currentEpisode:
+      videoRecord.metadata?.episode != null
+        ? String(videoRecord.metadata.episode)
+        : null,
+  };
 }
 
 async function loadNoteContent(

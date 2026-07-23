@@ -56,10 +56,10 @@ describe("read aloud section order", () => {
     assert.deepEqual(
       diagnostic.narrationSectionTitles,
       [
+        "Learning Map",
         "Short version",
         "Summary",
         "Key ideas",
-        "Learning Map",
         "Connections",
         "Questions",
         "Optional Flashcards",
@@ -108,10 +108,10 @@ describe("read aloud section order", () => {
 
     assert.equal(diagnostic.firstMismatch, null);
     assert.deepEqual(diagnostic.narrationSectionTitles, [
+      "Learning Map",
       "Short version",
       "Summary",
       "Key ideas",
-      "Learning Map",
       "Connections",
     ]);
   });
