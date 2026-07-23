@@ -5,15 +5,18 @@ alwaysApply: true
 
 # Planlet UI preferences
 
+Canonical philosophy: **`docs/DESIGN_PHILOSOPHY.md`**. Audit UI changes against it before completion.
+
 Keep Planlet aligned with these design principles:
 
-- **Minimal, reductive, clean** — remove before adding; clarity over feature density
-- **Mobile-first** — thumb-friendly spacing, compact layouts, conventional interactions
-- **Progressive disclosure** — show less by default; reveal detail on demand
-- **No visual noise** — no raw URLs, debug output, filenames, or internal metadata in main UI
-- **Restrained metadata** — avoid too many chips or controls on list/card surfaces
-- **Short previews** — prefer truncated excerpts and “Show more” over long inline text
-- **Scannable lists, calm details** — list pages should scan fast; detail pages can be richer but still readable
+- **Content first** — when content and chrome compete, prefer content
+- **When in doubt, remove** — every control must earn its place
+- **Interfaces disappear** — no permanent instructional hints users quickly learn
+- **Information once** — no duplicated titles, sources, filters, or metadata
+- **Progressive disclosure** — frequent actions visible; occasional in More; rare in Settings
+- **Mobile-first** — thumb-friendly spacing; drawers closed by default; cards dominate
+- **Calm reading** — soft hierarchy, restrained chips, truncated previews, “Show more”
+- **Shared components** — reuse Read Aloud, Archive, More, Flashcards patterns
 
 ## Life Lab
 

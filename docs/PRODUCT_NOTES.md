@@ -31,13 +31,16 @@ Planlet is a mobile-first planning app that turns Farsi/English daily, monthly, 
 
 ## Design principles
 
-- **Minimal** — only what supports daily planning
-- **Conventional interactions** — familiar patterns, no novelty for its own sake
-- **Reductive design** — remove before adding
-- **Mobile-first** — thumb-friendly navigation and spacing
-- **Google Keep-like lightness** — quick, calm, low friction (not a clone)
-- **Calm dashboard** — soft surfaces, gentle typography, no urgency cues
-- **No over-engineering** — ship the smallest useful version
+Canonical reference: **[DESIGN_PHILOSOPHY.md](./DESIGN_PHILOSOPHY.md)**.
+
+Summary:
+
+- **Content first** — the interface supports reading and exploration
+- **When in doubt, remove** — every control must earn its place
+- **Progressive disclosure** — frequent actions visible; the rest in More/Settings
+- **Mobile-first** — design for the phone; desktop expands
+- **Calm reading** — prefer whitespace, typography, and soft hierarchy over chrome
+- **Consistency** — shared components for Read Aloud, Archive, More, Flashcards, etc.
 - **User edits override AI** — when AI arrives, suggestions are never authoritative
 - **Farsi-friendly content** — English UI; user content in Farsi, English, or mixed displays well with RTL/LTR-safe layout
 

@@ -1,6 +1,16 @@
 import { prisma } from "@/lib/prisma";
 import type { LifeLabItemType } from "@/lib/life-lab/item-key";
 
+function lifeLabItemStateDelegate() {
+  const delegate = prisma.lifeLabItemState;
+  if (!delegate || typeof delegate.findUnique !== "function") {
+    throw new Error(
+      "Prisma LifeLabItemState client is unavailable. Restart the app after running prisma generate.",
+    );
+  }
+  return delegate;
+}
+
 export type LifeLabItemStateRecord = {
   id: string;
   userId: string;
@@ -22,7 +32,7 @@ export type ArchivedLifeLabItem = {
 export async function listArchivedLifeLabItems(
   userId: string,
 ): Promise<ArchivedLifeLabItem[]> {
-  const rows = await prisma.lifeLabItemState.findMany({
+  const rows = await lifeLabItemStateDelegate().findMany({
     where: {
       userId,
       archivedAt: { not: null },
@@ -53,29 +63,37 @@ export async function listArchivedLifeLabItems(
 export async function getArchivedLifeLabItemKeySet(
   userId: string,
 ): Promise<Set<string>> {
-  const rows = await prisma.lifeLabItemState.findMany({
-    where: {
-      userId,
-      archivedAt: { not: null },
-    },
-    select: { itemKey: true },
-  });
+  try {
+    const rows = await lifeLabItemStateDelegate().findMany({
+      where: {
+        userId,
+        archivedAt: { not: null },
+      },
+      select: { itemKey: true },
+    });
 
-  return new Set(rows.map((row) => row.itemKey));
+    return new Set(rows.map((row) => row.itemKey));
+  } catch {
+    return new Set();
+  }
 }
 
 export async function isLifeLabItemArchived(
   userId: string,
   itemKey: string,
 ): Promise<boolean> {
-  const row = await prisma.lifeLabItemState.findUnique({
-    where: {
-      userId_itemKey: { userId, itemKey },
-    },
-    select: { archivedAt: true },
-  });
+  try {
+    const row = await lifeLabItemStateDelegate().findUnique({
+      where: {
+        userId_itemKey: { userId, itemKey },
+      },
+      select: { archivedAt: true },
+    });
 
-  return Boolean(row?.archivedAt);
+    return Boolean(row?.archivedAt);
+  } catch {
+    return false;
+  }
 }
 
 export async function archiveLifeLabItem(input: {
@@ -85,7 +103,7 @@ export async function archiveLifeLabItem(input: {
   itemType: LifeLabItemType;
 }): Promise<LifeLabItemStateRecord> {
   const now = new Date();
-  const row = await prisma.lifeLabItemState.upsert({
+  const row = await lifeLabItemStateDelegate().upsert({
     where: {
       userId_itemKey: {
         userId: input.userId,
@@ -121,7 +139,7 @@ export async function unarchiveLifeLabItem(input: {
   userId: string;
   itemKey: string;
 }): Promise<LifeLabItemStateRecord | null> {
-  const existing = await prisma.lifeLabItemState.findUnique({
+  const existing = await lifeLabItemStateDelegate().findUnique({
     where: {
       userId_itemKey: {
         userId: input.userId,
@@ -134,7 +152,7 @@ export async function unarchiveLifeLabItem(input: {
     return null;
   }
 
-  const row = await prisma.lifeLabItemState.update({
+  const row = await lifeLabItemStateDelegate().update({
     where: { id: existing.id },
     data: { archivedAt: null },
   });

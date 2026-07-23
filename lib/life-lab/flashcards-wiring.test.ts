@@ -34,12 +34,14 @@ describe("flashcards Life Lab wiring", () => {
       "utf8",
     );
 
-    assert.match(explore, /Tap to reveal answer/);
+    assert.doesNotMatch(explore, /Tap to reveal answer/);
     assert.match(explore, /Show all cards/);
     assert.match(explore, /serializeMemoNextDeck/);
     assert.match(explore, /FlashcardReadAloudControls/);
     assert.match(explore, /aria-expanded=\{session\.revealed\}/);
     assert.match(explore, /data-flashcard-layout="card-first"/);
+    assert.match(explore, /cursor-pointer/);
+    assert.match(explore, /Activate to reveal/);
     assert.doesNotMatch(explore, /correct|incorrect|score/i);
     assert.match(decksPage, /No Life Lab flashcard decks have been created yet/);
     assert.match(decksPage, /data-flashcards-layout="decks-v2"/);

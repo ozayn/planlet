@@ -3452,6 +3452,45 @@ body {
   }
 }
 
+.flashcard-face {
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.flashcard-face:has(.flashcard-face-toggle:hover) {
+  border-color: color-mix(in srgb, var(--border) 80%, var(--foreground) 20%);
+}
+
+.flashcard-face:has(.flashcard-face-toggle:focus-visible) {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--focus-ring);
+}
+
+.flashcard-answer-reveal {
+  animation: flashcard-answer-fade 0.22s ease-out;
+}
+
+@keyframes flashcard-answer-fade {
+  from {
+    opacity: 0;
+    transform: translateY(0.35rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flashcard-answer-reveal {
+    animation: none;
+  }
+
+  .flashcard-face-toggle {
+    transition: none;
+  }
+}
+
 @media print {
   .ui-reading-content {
     max-width: none !important;

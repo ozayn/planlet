@@ -4,6 +4,12 @@ A gentle planner for tasks, intentions, and the shape of your days.
 
 Planlet is a mobile-first planning app that turns Farsi/English daily, monthly, and yearly intentions into structured plans. It is not a full calendar replacement.
 
+## Design philosophy
+
+UI and interaction work should follow **[docs/DESIGN_PHILOSOPHY.md](./docs/DESIGN_PHILOSOPHY.md)** — content first, remove by default, progressive disclosure, mobile-first, calm reading.
+
+See also [CONTRIBUTING.md](./CONTRIBUTING.md) and [docs/BRANDING.md](./docs/BRANDING.md).
+
 ## Tech stack
 
 - Next.js (App Router)

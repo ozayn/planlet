@@ -63,15 +63,27 @@ describe("flashcard explore focused layout", () => {
     assert.equal((explore.match(/data-flashcard-back="true"/g) ?? []).length, 1);
   });
 
-  it("uses compact Listen and hides speech diagnostics by default", () => {
-    assert.match(explore, /compact/);
-    assert.match(readAloud, /Listen/);
+  it("uses a compact monochrome speech icon toolbar", () => {
+    assert.match(explore, /FlashcardReadAloudControls/);
+    assert.match(readAloud, /SpeechIconToolbar/);
+    assert.match(readAloud, /Read question/);
+    assert.match(readAloud, /Read answer/);
+    assert.match(readAloud, /Read both/);
     assert.match(readAloud, /developerMode/);
-    assert.match(readAloud, /SpeechDevDiagnostic/);
-    assert.match(
+    assert.doesNotMatch(readAloud, /aria-label="Listen"/);
+    assert.doesNotMatch(
       readAloud,
-      /developerMode \? \(\s*<SpeechDevDiagnostic/,
+      /speech: \{diagnostics\.browserName\}/,
     );
+  });
+
+  it("removes permanent reveal hint and keeps discoverable card interaction", () => {
+    assert.doesNotMatch(explore, /Tap to reveal answer/);
+    assert.match(explore, /cursor-pointer/);
+    assert.match(explore, /active:scale-\[0\.992\]/);
+    assert.match(explore, /aria-label=\{session\.revealed \? "Hide answer" : "Reveal answer"\}/);
+    assert.match(explore, /Activate to reveal/);
+    assert.match(globals, /flashcard-answer-fade/);
   });
 
   it("uses a responsive card min-height and card-first layout marker", () => {

@@ -574,20 +574,23 @@ export function FlashcardExplore({
 
         <button
           type="button"
-          className="flashcard-face-toggle block w-full min-h-[clamp(12.5rem,42dvh,28rem)] text-left sm:min-h-[clamp(14rem,40dvh,30rem)]"
+          className="flashcard-face-toggle block w-full min-h-[clamp(12.5rem,42dvh,28rem)] cursor-pointer touch-manipulation text-left transition-[transform,opacity] duration-150 ease-out active:scale-[0.992] active:opacity-95 sm:min-h-[clamp(14rem,40dvh,30rem)]"
           onClick={() => session.setRevealed((value) => !value)}
           aria-expanded={session.revealed}
           aria-label={session.revealed ? "Hide answer" : "Reveal answer"}
         >
           <span className="sr-only" aria-live="polite">
-            {session.revealed ? "Answer revealed" : "Answer hidden"}
+            {session.revealed ? "Answer revealed" : "Answer hidden. Activate to reveal."}
           </span>
           <CardFaceText
             text={currentCard!.question}
             className="text-lg sm:text-xl"
           />
           {session.revealed ? (
-            <div className="mt-4 space-y-3 border-t border-border/60 pt-4 sm:mt-5 sm:pt-5">
+            <div
+              className="flashcard-answer-reveal mt-4 space-y-3 border-t border-border/60 pt-4 sm:mt-5 sm:pt-5"
+              data-flashcard-answer="revealed"
+            >
               <CardFaceText
                 text={currentCard!.answer}
                 className="text-base sm:text-lg"
@@ -604,11 +607,7 @@ export function FlashcardExplore({
                 </p>
               ) : null}
             </div>
-          ) : (
-            <p className="mt-4 text-sm text-muted-light print:hidden">
-              Tap to reveal answer
-            </p>
-          )}
+          ) : null}
         </button>
       </div>
 
