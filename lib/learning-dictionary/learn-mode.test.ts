@@ -145,11 +145,23 @@ describe("dictionary learn UI wiring", () => {
     "utf8",
   );
 
-  it("keeps Browse available and adds Learn mode", () => {
+  it("keeps Browse available and adds Learn mode on standalone and Life Lab routes", () => {
     assert.match(page, /DictionaryModeTabs/);
     assert.match(page, /LearningDictionaryBrowser/);
     assert.match(page, /DictionaryLearnView/);
     assert.match(page, /view === "learn"/);
+
+    const lifeLabPage = readFileSync(
+      join(root, "app/(app)/life-lab/[section]/page.tsx"),
+      "utf8",
+    );
+    const lifeLabDictionary = readFileSync(
+      join(root, "components/life-lab/life-lab-learning-dictionary-page.tsx"),
+      "utf8",
+    );
+    assert.match(lifeLabPage, /LifeLabLearningDictionaryPage/);
+    assert.match(lifeLabDictionary, /data-learning-dictionary-view/);
+    assert.match(lifeLabDictionary, /DictionaryLearnView/);
   });
 
   it("shows one term at a time with reveal before meaning", () => {

@@ -6,7 +6,26 @@ import { join } from "node:path";
 describe("learning dictionary life-lab render wiring", () => {
   const root = join(import.meta.dirname, "../..");
 
-  it("section browser mounts dedicated Learning Dictionary renderer", () => {
+  it("life-lab learning-dictionary route mounts dedicated Browse/Learn page", () => {
+    const sectionPage = readFileSync(
+      join(root, "app/(app)/life-lab/[section]/page.tsx"),
+      "utf8",
+    );
+    const dedicated = readFileSync(
+      join(root, "components/life-lab/life-lab-learning-dictionary-page.tsx"),
+      "utf8",
+    );
+
+    assert.match(sectionPage, /section === "learning-dictionary"/);
+    assert.match(sectionPage, /LifeLabLearningDictionaryPage/);
+    assert.match(dedicated, /data-learning-dictionary-view=\{activeView\}/);
+    assert.match(dedicated, /DictionaryModeTabs/);
+    assert.match(dedicated, /DictionaryLearnView/);
+    assert.match(dedicated, /LifeLabSectionBrowser/);
+    assert.match(dedicated, /data-life-lab-learning-dictionary-page/);
+  });
+
+  it("section browser still mounts dedicated Learning Dictionary browse renderer", () => {
     const browserSource = readFileSync(
       join(root, "components/life-lab/life-lab-section-browser.tsx"),
       "utf8",
@@ -53,7 +72,7 @@ describe("learning dictionary life-lab render wiring", () => {
     assert.doesNotMatch(sectionSource, /StudyStatusBadge/);
   });
 
-  it("learning-dictionary branch prefers dedicated content over LifeLabSectionNotes", () => {
+  it("learning-dictionary browse branch prefers dedicated content over LifeLabSectionNotes", () => {
     const browserSource = readFileSync(
       join(root, "components/life-lab/life-lab-section-browser.tsx"),
       "utf8",
@@ -64,5 +83,31 @@ describe("learning dictionary life-lab render wiring", () => {
 
     assert.ok(branchMatch);
     assert.match(branchMatch![0], /LearningDictionaryPageContent/);
+  });
+
+  it("Learn view reuses reveal controls and does not use the generic section-only path for the route", () => {
+    const sectionPage = readFileSync(
+      join(root, "app/(app)/life-lab/[section]/page.tsx"),
+      "utf8",
+    );
+    const learn = readFileSync(
+      join(root, "components/learning-dictionary/dictionary-learn-view.tsx"),
+      "utf8",
+    );
+
+    // Early dedicated branch for learning-dictionary (before generic PageHeader flow).
+    const dedicatedIndex = sectionPage.indexOf(
+      'if (section === "learning-dictionary")',
+    );
+    const genericBrowserIndex = sectionPage.lastIndexOf("<LifeLabSectionBrowser");
+    assert.ok(dedicatedIndex >= 0);
+    assert.ok(genericBrowserIndex > dedicatedIndex);
+
+    assert.match(learn, /Tap to reveal meaning/);
+    assert.match(learn, /Reveal meaning/);
+    assert.match(learn, /LearningStateControls/);
+    assert.match(learn, /dir="auto"/);
+    assert.match(learn, /pb-\[calc\(5\.5rem\+env\(safe-area-inset-bottom\)\)\]/);
+    assert.match(learn, /browseHref/);
   });
 });

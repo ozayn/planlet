@@ -17,7 +17,7 @@ export function DictionaryModeTabs({
     const params = new URLSearchParams(searchParams.toString());
 
     if (mode === "browse") {
-      params.delete("view");
+      params.set("view", "browse");
     } else {
       params.set("view", "learn");
     }

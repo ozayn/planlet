@@ -34,6 +34,8 @@ import {
 
 type DictionaryLearnViewProps = {
   items: DictionaryLearnItem[];
+  /** Browse destination for empty/done actions. */
+  browseHref?: string;
 };
 
 function useCloseNavDrawerOnceOnMount() {
@@ -140,7 +142,10 @@ function ExploreCard({
   );
 }
 
-export function DictionaryLearnView({ items }: DictionaryLearnViewProps) {
+export function DictionaryLearnView({
+  items,
+  browseHref = "/learning-dictionary",
+}: DictionaryLearnViewProps) {
   useCloseNavDrawerOnceOnMount();
 
   const [sessionSize, setSessionSize] = useState<DictionarySessionSize>(10);
@@ -287,7 +292,7 @@ export function DictionaryLearnView({ items }: DictionaryLearnViewProps) {
       <div className="space-y-3 rounded-xl border border-border/60 px-4 py-6 text-center">
         <p className="text-sm text-muted">Nothing to review right now.</p>
         <Link
-          href="/learning-dictionary"
+          href={browseHref}
           className="inline-flex min-h-11 items-center justify-center text-sm font-medium text-foreground"
         >
           Browse dictionary
@@ -309,7 +314,7 @@ export function DictionaryLearnView({ items }: DictionaryLearnViewProps) {
             Review known concepts
           </button>
           <Link
-            href="/learning-dictionary"
+            href={browseHref}
             className="inline-flex min-h-11 items-center text-sm font-medium text-foreground"
           >
             Browse dictionary
@@ -327,7 +332,7 @@ export function DictionaryLearnView({ items }: DictionaryLearnViewProps) {
         learning={summary.learning}
         onContinue={() => restartSession()}
         onDone={() => {
-          window.location.href = "/learning-dictionary";
+          window.location.href = browseHref;
         }}
       />
     );
