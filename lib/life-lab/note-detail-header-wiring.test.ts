@@ -52,6 +52,7 @@ describe("Life Lab note detail header chrome", () => {
     assert.doesNotMatch(header, /LifeLabNoteDevToolbar/);
     assert.match(moreMenu, /LifeLabItemMoreMenu/);
     assert.match(moreMenu, /LifeLabArchiveMenuItem/);
+    assert.match(moreMenu, /LifeLabExportPdfMenuItem/);
     assert.match(moreMenu, /Copy link/);
     assert.match(moreMenu, /Share/);
   });
@@ -183,5 +184,27 @@ describe("Life Lab note detail header chrome", () => {
     );
     assert.match(modeTabs, /overflow-x-auto/);
     assert.match(modeTabs, /min-h-11/);
+  });
+
+  it("keys fixed header slots and shared meta/action lists semantically", () => {
+    const primaryActions = readFileSync(
+      join(root, "components/life-lab/life-lab-primary-actions.tsx"),
+      "utf8",
+    );
+
+    assert.match(header, /key="title"/);
+    assert.match(header, /key="hero"/);
+    assert.match(header, /key="tabs"/);
+    assert.match(header, /key="actions"/);
+    assert.match(header, /key="archived"/);
+    assert.match(header, /data-life-lab-note-hero/);
+    assert.match(notePage, /key="note-hero"/);
+
+    assert.match(compactMeta, /key=\{part\.id\}/);
+    assert.doesNotMatch(compactMeta, /key=\{index\}/);
+    assert.match(primaryActions, /key=\{action\.id\}/);
+    assert.match(primaryActions, /id: "listen"/);
+    assert.match(primaryActions, /id: "export-pdf"/);
+    assert.match(primaryActions, /id: "more"/);
   });
 });

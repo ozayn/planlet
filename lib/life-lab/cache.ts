@@ -5,7 +5,7 @@ export const LIFE_LAB_SECTIONS_CACHE_TAG = "life-lab:sections";
 export const LIFE_LAB_FOLDER_MAP_CACHE_VERSION = "v3-flashcards";
 
 /** Bump when section listing or playlist browse logic changes materially. */
-export const LIFE_LAB_SECTION_FILE_INDEX_CACHE_VERSION = "v9-flashcards";
+export const LIFE_LAB_SECTION_FILE_INDEX_CACHE_VERSION = "v10-uncapped-listings";
 
 /** Bump when note payload enrichment or serialized metadata shape changes. */
 export const LIFE_LAB_NOTE_PAYLOAD_CACHE_VERSION = "v7-flashcards";

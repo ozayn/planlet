@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { LifeLabCompactSourceMeta } from "@/components/life-lab/life-lab-compact-source-meta";
 import { LifeLabContentHeader } from "@/components/life-lab/life-lab-content-header";
 import { LifeLabDetailsDisclosure } from "@/components/life-lab/life-lab-details-disclosure";
+import { LifeLabExportPdfIconButton } from "@/components/life-lab/life-lab-export-pdf-icon-button";
 import { LifeLabModeTabs } from "@/components/life-lab/life-lab-mode-tabs";
 import { LifeLabNoteListen } from "@/components/life-lab/life-lab-note-listen";
 import { LifeLabNoteMoreMenu } from "@/components/life-lab/life-lab-note-more-menu";
@@ -86,77 +87,79 @@ function NoteDetailsBody({
 
   return (
     <>
-      {statusLabel ? (
-        <div className="space-y-1">
-          <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
-            Study status
-          </p>
-          <p className="text-sm text-foreground">{statusLabel}</p>
-        </div>
-      ) : null}
-      {dateLine ? (
-        <div className="space-y-1">
-          <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
-            Date
-          </p>
-          <p className="text-sm text-foreground">{dateLine}</p>
-        </div>
-      ) : null}
-      {lectureSourceLabel ? (
-        <div className="space-y-1">
-          <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
-            Source
-          </p>
-          <p className="text-sm text-foreground">{lectureSourceLabel}</p>
-        </div>
-      ) : null}
-      {showFullTitle ? (
-        <div className="space-y-1">
-          <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
-            Full title
-          </p>
-          <p className="text-sm leading-relaxed text-foreground" dir="auto">
-            {note.title}
-          </p>
-        </div>
-      ) : null}
-      {resolvedSourceUrl ? (
-        <div className="space-y-1">
-          <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
-            Source URL
-          </p>
-          <p className="break-all text-sm text-muted">{resolvedSourceUrl}</p>
-        </div>
-      ) : null}
-      {imageDetailRows.length > 0 ? (
-        <div className="space-y-2">
-          <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
-            Image
-          </p>
-          {imageDetailRows.map((row) => (
-            <div key={row.label} className="space-y-0.5">
-              <p className="text-[0.6875rem] font-medium text-muted-light">
-                {row.label}
-              </p>
-              <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted">
-                {row.value}
-              </p>
-            </div>
-          ))}
-        </div>
-      ) : null}
-      {allChips.length > 0 ? (
-        <div className="space-y-2">
-          <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
-            Topics
-          </p>
-          <div className="flex flex-wrap gap-1.5">
-            {allChips.map((label) => (
-              <MetadataChip key={label} label={label} />
+      {[
+        statusLabel ? (
+          <div key="study-status" className="space-y-1">
+            <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
+              Study status
+            </p>
+            <p className="text-sm text-foreground">{statusLabel}</p>
+          </div>
+        ) : null,
+        dateLine ? (
+          <div key="date" className="space-y-1">
+            <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
+              Date
+            </p>
+            <p className="text-sm text-foreground">{dateLine}</p>
+          </div>
+        ) : null,
+        lectureSourceLabel ? (
+          <div key="source" className="space-y-1">
+            <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
+              Source
+            </p>
+            <p className="text-sm text-foreground">{lectureSourceLabel}</p>
+          </div>
+        ) : null,
+        showFullTitle ? (
+          <div key="full-title" className="space-y-1">
+            <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
+              Full title
+            </p>
+            <p className="text-sm leading-relaxed text-foreground" dir="auto">
+              {note.title}
+            </p>
+          </div>
+        ) : null,
+        resolvedSourceUrl ? (
+          <div key="source-url" className="space-y-1">
+            <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
+              Source URL
+            </p>
+            <p className="break-all text-sm text-muted">{resolvedSourceUrl}</p>
+          </div>
+        ) : null,
+        imageDetailRows.length > 0 ? (
+          <div key="image" className="space-y-2">
+            <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
+              Image
+            </p>
+            {imageDetailRows.map((row) => (
+              <div key={row.label} className="space-y-0.5">
+                <p className="text-[0.6875rem] font-medium text-muted-light">
+                  {row.label}
+                </p>
+                <p className="whitespace-pre-wrap text-sm leading-relaxed text-muted">
+                  {row.value}
+                </p>
+              </div>
             ))}
           </div>
-        </div>
-      ) : null}
+        ) : null,
+        allChips.length > 0 ? (
+          <div key="topics" className="space-y-2">
+            <p className="text-[0.6875rem] font-semibold uppercase tracking-wide text-muted">
+              Topics
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {allChips.map((label) => (
+                <MetadataChip key={`topic:${label}`} label={label} />
+              ))}
+            </div>
+          </div>
+        ) : null,
+      ]}
     </>
   );
 }
@@ -273,59 +276,76 @@ export function LifeLabNoteDetailHeader({
 
   return (
     <div className="space-y-3 md:space-y-4" data-life-lab-note-detail-header="">
-      <LifeLabContentHeader
-        backHref={back.href}
-        backLabel={back.label}
-        title={displayTitle}
-        metadata={
-          isYoutube ? (
-            <LifeLabCompactSourceMeta
-              channelLabel={channelLabel}
-              platformLabel={platformLabel}
-              dateLabel={dateLine}
-              sourceHref={resolvedSourceUrl}
-            />
-          ) : (
-            <LifeLabCompactSourceMeta
-              platformLabel={lectureSourceLabel ?? sectionLabel}
-              dateLabel={dateLine}
-            />
-          )
-        }
-      />
-
-      {hero}
-
-      {modeTabs.length > 1 ? (
-        <LifeLabModeTabs tabs={modeTabs} activeId={activeMode} />
-      ) : null}
-
-      <LifeLabPrimaryActions
-        listen={
-          <LifeLabNoteListen
-            title={note.title}
-            content={note.content}
-            metadata={note.metadata}
-            sectionId={sectionId}
-            slug={note.slug}
-            fileId={note.fileId}
-            preferences={readAloudPreferences}
-            openAiNarrationAvailable={openAiNarrationAvailable}
-            includeFlashcards
+      {[
+        <div key="title">
+          <LifeLabContentHeader
+            backHref={back.href}
+            backLabel={back.label}
+            title={displayTitle}
+            metadata={
+              isYoutube ? (
+                <LifeLabCompactSourceMeta
+                  channelLabel={channelLabel}
+                  platformLabel={platformLabel}
+                  dateLabel={dateLine}
+                  sourceHref={resolvedSourceUrl}
+                />
+              ) : (
+                <LifeLabCompactSourceMeta
+                  platformLabel={lectureSourceLabel ?? sectionLabel}
+                  dateLabel={dateLine}
+                />
+              )
+            }
           />
-        }
-        more={
-          <LifeLabNoteMoreMenu
-            note={note}
-            sectionId={sectionId}
-            archived={archived}
+        </div>,
+        hero ? (
+          <div key="hero" data-life-lab-note-hero="">
+            {hero}
+          </div>
+        ) : null,
+        modeTabs.length > 1 ? (
+          <div key="tabs" className="print:hidden">
+            <LifeLabModeTabs tabs={modeTabs} activeId={activeMode} />
+          </div>
+        ) : null,
+        <div key="actions" className="print:hidden">
+          <LifeLabPrimaryActions
+            listen={
+              <LifeLabNoteListen
+                title={note.title}
+                content={note.content}
+                metadata={note.metadata}
+                sectionId={sectionId}
+                slug={note.slug}
+                fileId={note.fileId}
+                preferences={readAloudPreferences}
+                openAiNarrationAvailable={openAiNarrationAvailable}
+                includeFlashcards
+              />
+            }
+            exportPdf={
+              <LifeLabExportPdfIconButton
+                sectionId={sectionId}
+                slug={note.slug}
+                desktopOnly
+              />
+            }
+            more={
+              <LifeLabNoteMoreMenu
+                note={note}
+                sectionId={sectionId}
+                archived={archived}
+              />
+            }
           />
-        }
-      />
-
-      {archived ? (
-        <span className="inline-flex text-xs text-muted">Archived</span>
-      ) : null}
+        </div>,
+        archived ? (
+          <span key="archived" className="inline-flex text-xs text-muted">
+            Archived
+          </span>
+        ) : null,
+      ]}
     </div>
   );
 }

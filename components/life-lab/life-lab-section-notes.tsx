@@ -93,6 +93,10 @@ function LifeLabListingDiagnosticPanel({
       label: "Pagination occurred",
       value: diagnostic.paginationOccurred ? "Yes" : "No",
     },
+    {
+      label: "Truncated by max files",
+      value: diagnostic.truncatedByMaxFiles ? "Yes" : "No",
+    },
   ];
 
   if (diagnostic.cache) {

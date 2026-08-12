@@ -22,7 +22,8 @@ describe("flashcards Life Lab wiring", () => {
     assert.match(sectionPage, /<FlashcardsPageContent/);
     assert.match(sectionPage, /getLifeLabFlashcardSummary/);
     assert.match(sectionPage, /Study all ·/);
-    assert.match(home, /getLifeLabFlashcardSummary/);
+    // Home omits flashcard summary parsing; section page remains the source of totals.
+    assert.doesNotMatch(home, /getLifeLabFlashcardSummary/);
     assert.match(home, /lifeLabSectionIconMap/);
     assert.match(home, /Layers3|lifeLabSectionIconMap/);
     assert.doesNotMatch(home, /Layers2/);

@@ -167,7 +167,7 @@ describe("life lab listing cache keys", () => {
 
     assert.equal(
       lifeLabSectionFileIndexCacheKey(sectionId),
-      "life-lab-section-file-index:v9-flashcards:youtube-learning",
+      "life-lab-section-file-index:v10-uncapped-listings:youtube-learning",
     );
     assert.equal(
       lifeLabNotePayloadCacheKey(fileId),

@@ -19,6 +19,8 @@ import { LifeLabNoteDevToolbar } from "@/components/life-lab/life-lab-note-dev-t
 import { LifeLabNoteQualityPanel } from "@/components/life-lab/life-lab-note-quality-panel";
 import { LifeLabNoteDevInfoPanel } from "@/components/life-lab/life-lab-note-dev-info-panel";
 import { LifeLabNoteTechnicalDebugPanel } from "@/components/life-lab/life-lab-note-technical-debug-panel";
+import { LifeLabNotePrintDocument } from "@/components/life-lab/life-lab-note-print-document";
+import { LifeLabPrintAutoTrigger } from "@/components/life-lab/life-lab-print-auto-trigger";
 import { LifeLabRefreshButton } from "@/components/life-lab/life-lab-refresh-button";
 import { LifeLabStatusPanel } from "@/components/life-lab/life-lab-status-panel";
 import { LifeLabSpeechVisibilityProvider } from "@/components/life-lab/life-lab-speech-visibility";
@@ -38,7 +40,10 @@ import { canUseLifeLabRefreshBypass } from "@/lib/life-lab/cache";
 import { isLifeLabDevToolsEnabled } from "@/lib/life-lab/dev";
 import { buildMermaidDiagramAssetBindings } from "@/lib/life-lab/diagram-assets";
 import { stripLeadingMarkdownH1 } from "@/lib/life-lab/note-content";
-import { isReadingBriefNote } from "@/lib/life-lab/reading-briefs";
+import {
+  isReadingBriefNote,
+  readingBriefDisplayTitle,
+} from "@/lib/life-lab/reading-briefs";
 import { buildNoteItemKey } from "@/lib/life-lab/item-key";
 import { isLifeLabItemArchived } from "@/lib/life-lab/item-state";
 import {
@@ -53,6 +58,13 @@ import {
   isPodcastEpisodeNote,
   isPodcastShowIndex,
 } from "@/lib/life-lab/podcasts";
+import {
+  resolveLifeLabPrintDateLabel,
+  resolveLifeLabPrintDocumentTitle,
+  resolveLifeLabPrintSubtitle,
+} from "@/lib/life-lab/print-document";
+import { lectureNoteSourceLabel } from "@/lib/life-lab/lecture-notes";
+import { resolveRawStandaloneChannelName } from "@/lib/life-lab/standalone-channel";
 import { isAdminRole } from "@/lib/auth-roles";
 import { canAccessLifeLabPage } from "@/lib/roles";
 
@@ -164,6 +176,7 @@ export default async function LifeLabNotePage({
   const openAiNarrationAvailable = isLifeLabOpenAiTtsEnabled();
   const showFlashcardsView =
     view === "flashcards" && (note.flashcards?.length ?? 0) > 0;
+  const showPrintView = view === "print";
   const flashcardsWithDictionary = showFlashcardsView
     ? await enrichFlashcardsWithLearningDictionary(note.flashcards ?? [])
     : [];
@@ -177,6 +190,25 @@ export default async function LifeLabNotePage({
       ? resolveLifeLabSourceUrl({ metadata: note.metadata })
       : null;
 
+  const printTitle = isReadingBrief
+    ? readingBriefDisplayTitle(resolveLifeLabPrintDocumentTitle(note))
+    : resolveLifeLabPrintDocumentTitle(note);
+  const printSubtitle = resolveLifeLabPrintSubtitle({
+    metadata: note.metadata,
+    sectionLabel: note.sectionLabel,
+    channelLabel: isYoutubeVideoNote(note)
+      ? resolveRawStandaloneChannelName(note.metadata)
+      : null,
+    sourceLabel: lectureNoteSourceLabel({
+      relativePath: note.relativePath,
+      metadata: note.metadata,
+    }),
+  });
+  const printDateLabel = resolveLifeLabPrintDateLabel(note);
+  const printHeroImage =
+    imagePlacement.leadImage ??
+    (isPodcastEpisode ? imagePlacement.headerImage : null);
+
   return (
     <LifeLabReadingModeProvider metadata={note.metadata}>
       <LifeLabDiagramAssetProvider
@@ -187,13 +219,89 @@ export default async function LifeLabNotePage({
         <LifeLabSpeechVisibilityProvider>
       <section
         className={`ui-life-lab-surface ui-page-stack ${
-          isReadingBrief || isPlaylistIndex || isPodcastIndex || isPodcastEpisode
-            ? "space-y-3 md:space-y-4"
-            : "space-y-4 md:space-y-6"
+          showPrintView
+            ? "ui-life-lab-print-surface space-y-4"
+            : isReadingBrief || isPlaylistIndex || isPodcastIndex || isPodcastEpisode
+              ? "space-y-3 md:space-y-4"
+              : "space-y-4 md:space-y-6"
         }`}
+        data-life-lab-note-view={showPrintView ? "print" : showFlashcardsView ? "flashcards" : "overview"}
       >
+      {showPrintView ? (
+        <>
+          <LifeLabPrintAutoTrigger
+            sectionId={note.sectionId}
+            slug={note.slug}
+          />
+          {availability.status !== "ready" ? (
+            <LifeLabStatusPanel availability={availability} isAdmin={isAdmin} />
+          ) : (
+            <LifeLabNotePrintDocument
+              title={printTitle}
+              subtitle={printSubtitle}
+              dateLabel={printDateLabel}
+              hero={
+                printHeroImage ? (
+                  <LifeLabNoteImageFigure
+                    image={printHeroImage}
+                    variant="detail"
+                    fallbackTitle={printTitle}
+                  />
+                ) : null
+              }
+            >
+              {isReadingBrief ? (
+                <LifeLabReadingBriefNote
+                  content={note.content}
+                  sectionId={note.sectionId}
+                  slug={note.slug}
+                  title={note.title}
+                  metadata={note.metadata}
+                  flashcards={[]}
+                />
+              ) : isPlaylistIndex ? (
+                <LifeLabPlaylistIndexNote
+                  note={note}
+                  relatedNotes={relatedNotes}
+                  playlistAssets={playlistAssets}
+                  isAdmin={false}
+                  dev={undefined}
+                  loadMeta={{
+                    fromCache: false,
+                    loadedAt: "",
+                    cache: undefined,
+                  }}
+                  technicalProvenance={undefined}
+                />
+              ) : isPodcastIndex ? (
+                <LifeLabPodcastShow
+                  note={note}
+                  relatedNotes={podcastNotes}
+                />
+              ) : isPodcastEpisode ? (
+                <LifeLabNoteContent
+                  content={noteBodyContent}
+                  sectionId={note.sectionId}
+                  metadata={note.metadata}
+                  noteTitle={printTitle}
+                  variant="print"
+                />
+              ) : (
+                <LifeLabNoteContent
+                  content={noteBodyContent}
+                  sectionId={note.sectionId}
+                  metadata={note.metadata}
+                  noteTitle={printTitle}
+                  variant="print"
+                />
+              )}
+            </LifeLabNotePrintDocument>
+          )}
+        </>
+      ) : (
+        <>
       {!showFlashcardsView && !isDefaultNoteDetail ? (
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-2 print:hidden">
           <LifeLabReadingControls />
           <LifeLabRefreshButton
             scope="note"
@@ -250,6 +358,7 @@ export default async function LifeLabNotePage({
           hero={
             showNoteImage ? (
               <LifeLabNoteImageFigure
+                key="note-hero"
                 image={imagePlacement.leadImage!}
                 variant="detail"
                 fallbackTitle={note.title}
@@ -340,7 +449,7 @@ export default async function LifeLabNotePage({
             )}
           </article>
           {showDevTools ? (
-            <div className="flex justify-end">
+            <div className="flex justify-end print:hidden">
               <LifeLabNoteDevToolbar note={note} />
             </div>
           ) : null}
@@ -367,6 +476,8 @@ export default async function LifeLabNotePage({
               }}
             />
           ) : null}
+        </>
+      )}
         </>
       )}
         </>

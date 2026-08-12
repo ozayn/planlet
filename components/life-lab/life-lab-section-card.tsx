@@ -6,7 +6,8 @@ type LifeLabSectionCardProps = {
   title: string;
   href: string;
   icon: LucideIcon;
-  meta: string;
+  /** Optional count/meta line. Prefer omitting over stale or expensive totals. */
+  meta?: string;
   isEmpty?: boolean;
   secondaryAction?: {
     href: string;
@@ -33,7 +34,7 @@ export function LifeLabSectionCard({
       <Link
         href={href}
         className="absolute inset-0 rounded-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-foreground"
-        aria-label={`${title}. ${meta}`}
+        aria-label={meta ? `${title}. ${meta}` : title}
       />
 
       <div className="relative z-10 flex min-w-0 items-start gap-3 pointer-events-none">
@@ -46,9 +47,11 @@ export function LifeLabSectionCard({
           <h2 className="text-[length:var(--density-text-h3)] font-semibold leading-snug text-foreground">
             {title}
           </h2>
-          <p className="mt-1 text-[length:var(--density-text-sm)] text-muted">
-            {meta}
-          </p>
+          {meta ? (
+            <p className="mt-1 text-[length:var(--density-text-sm)] text-muted">
+              {meta}
+            </p>
+          ) : null}
           {status}
         </div>
       </div>

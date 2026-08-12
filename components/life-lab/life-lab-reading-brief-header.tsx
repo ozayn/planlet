@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 
+import { LifeLabExportPdfIconButton } from "@/components/life-lab/life-lab-export-pdf-icon-button";
+import { LifeLabExportPdfMenuItem } from "@/components/life-lab/life-lab-export-pdf-menu-item";
+import { LifeLabItemMoreMenu } from "@/components/life-lab/life-lab-item-more-menu";
 import { LifeLabMetadataChips } from "@/components/life-lab/life-lab-metadata-chips";
 import { LifeLabNoteListen } from "@/components/life-lab/life-lab-note-listen";
 import type { LifeLabReadAloudPreferences } from "@/lib/life-lab/read-aloud-preferences";
@@ -107,6 +110,19 @@ export function LifeLabReadingBriefHeader({
           openAiNarrationAvailable={openAiNarrationAvailable}
           includeFlashcards
         />
+        <LifeLabExportPdfIconButton
+          sectionId={sectionId}
+          slug={note.slug}
+          desktopOnly
+        />
+        <span className="sm:hidden">
+          <LifeLabItemMoreMenu>
+            <LifeLabExportPdfMenuItem
+              sectionId={sectionId}
+              slug={note.slug}
+            />
+          </LifeLabItemMoreMenu>
+        </span>
         {allChips.length > mobileVisible.length ? (
           <details className="ui-settings-details group md:hidden">
             <summary className="ui-settings-details-summary !inline-flex !rounded-full !border !border-border/70 !bg-transparent !py-1.5 !px-3 !text-xs !font-medium !normal-case !tracking-normal !text-muted hover:!bg-accent-cream/50 hover:!text-foreground">

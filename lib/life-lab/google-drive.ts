@@ -31,6 +31,7 @@ export type DriveListingStats = {
   foldersTraversed: number;
   maxDepthUsed: number;
   paginationOccurred: boolean;
+  truncatedByMaxFiles: boolean;
 };
 
 export class LifeLabDriveError extends Error {
@@ -348,6 +349,7 @@ export async function listMarkdownFilesRecursive(
     foldersTraversed: 0,
     maxDepthUsed: 0,
     paginationOccurred: false,
+    truncatedByMaxFiles: false,
   };
 
   async function walk(
@@ -355,7 +357,12 @@ export async function listMarkdownFilesRecursive(
     prefix: string,
     folderDepth: number,
   ): Promise<void> {
-    if (folderDepth > maxDepth || results.length >= maxFiles) {
+    if (folderDepth > maxDepth) {
+      return;
+    }
+
+    if (results.length >= maxFiles) {
+      stats.truncatedByMaxFiles = true;
       return;
     }
 
@@ -372,6 +379,7 @@ export async function listMarkdownFilesRecursive(
 
     for (const item of children) {
       if (results.length >= maxFiles) {
+        stats.truncatedByMaxFiles = true;
         break;
       }
 

@@ -44,7 +44,10 @@ export function LifeLabLearningMapCompact({
       <MermaidBlock code={mermaidCode} />
 
       {labels.length > 0 ? (
-        <ul className="flex flex-wrap gap-1.5" data-life-lab-learning-map-outline="">
+        <ul
+          className="flex flex-wrap gap-1.5 print:hidden"
+          data-life-lab-learning-map-outline=""
+        >
           {labels.map((label) => (
             <li
               key={label}
@@ -60,7 +63,7 @@ export function LifeLabLearningMapCompact({
         ref={openButtonRef}
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex min-h-11 items-center text-sm font-medium text-muted transition-colors hover:text-foreground"
+        className="inline-flex min-h-11 items-center text-sm font-medium text-muted transition-colors hover:text-foreground print:hidden"
         data-life-lab-learning-map-expand=""
       >
         Open full map

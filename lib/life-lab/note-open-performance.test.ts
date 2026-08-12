@@ -196,7 +196,7 @@ describe("Life Lab note-open performance wiring", () => {
       });
       finishLifeLabCacheLookup({
         type: "section",
-        key: "life-lab-section-file-index:v9-flashcards:youtube-learning",
+        key: "life-lab-section-file-index:v10-uncapped-listings:youtube-learning",
         durationMs: 1,
       });
       finishLifeLabCacheLookup({

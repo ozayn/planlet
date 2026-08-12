@@ -3560,6 +3560,166 @@ body {
     border-inline-start: 0;
     padding-inline-start: 0;
   }
+
+  /* Life Lab note PDF / print document */
+  @page {
+    margin: 18mm 16mm;
+  }
+
+  body {
+    background: #fff !important;
+    color: #111 !important;
+  }
+
+  .ui-life-lab-print-screen-bar,
+  [data-life-lab-print-screen-bar],
+  [data-life-lab-primary-actions],
+  [data-life-lab-more-menu],
+  [data-life-lab-export-pdf],
+  [data-life-lab-learning-map-expand],
+  [data-life-lab-learning-map-outline],
+  .ui-life-lab-flashcard,
+  .ui-life-lab-flashcard-list,
+  .ui-mermaid-affordances,
+  .ui-mermaid-dialog-overlay {
+    display: none !important;
+  }
+
+  .ui-life-lab-print-document {
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    color: #111 !important;
+    box-shadow: none !important;
+    border: 0 !important;
+  }
+
+  .ui-life-lab-print-kicker {
+    margin: 0 0 0.35rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: #555 !important;
+  }
+
+  .ui-life-lab-print-title {
+    margin: 0;
+    font-size: 1.5rem;
+    line-height: 1.25;
+    font-weight: 650;
+    color: #111 !important;
+  }
+
+  .ui-life-lab-print-meta {
+    margin: 0.4rem 0 0;
+    font-size: 0.875rem;
+    color: #444 !important;
+  }
+
+  .ui-life-lab-print-hero {
+    margin: 1rem 0 1.25rem;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .ui-life-lab-print-hero img {
+    max-width: 100% !important;
+    height: auto !important;
+    border-radius: 0 !important;
+  }
+
+  .ui-life-lab-print-body .ui-markdown h2,
+  .ui-life-lab-print-body h2 {
+    break-after: avoid;
+    page-break-after: avoid;
+    margin-top: 1.35rem;
+  }
+
+  .ui-life-lab-print-body .ui-markdown h3,
+  .ui-life-lab-print-body h3 {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+
+  .ui-life-lab-print-body .ui-mermaid,
+  .ui-life-lab-print-body table,
+  .ui-life-lab-print-body .ui-timeline-table,
+  .ui-life-lab-print-body figure {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .ui-life-lab-print-body .ui-mermaid {
+    margin: 0.75rem 0;
+    max-width: 100% !important;
+    overflow: visible !important;
+  }
+
+  .ui-life-lab-print-body .ui-mermaid-svg,
+  .ui-life-lab-print-body .ui-mermaid-svg svg {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  .ui-life-lab-print-surface .ui-card-padded,
+  .ui-life-lab-print-surface .ui-reading-content {
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    max-width: none !important;
+  }
+
+  .ui-app-main {
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+}
+
+.ui-life-lab-print-screen-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border: 1px solid color-mix(in oklab, var(--border) 70%, transparent);
+  border-radius: 0.75rem;
+  background: var(--surface);
+  padding: 0.65rem 0.85rem;
+}
+
+.ui-life-lab-print-document {
+  color: var(--foreground);
+}
+
+.ui-life-lab-print-kicker {
+  margin: 0 0 0.35rem;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ui-life-lab-print-title {
+  margin: 0;
+  font-size: clamp(1.35rem, 2.4vw, 1.75rem);
+  line-height: 1.25;
+  font-weight: 650;
+}
+
+.ui-life-lab-print-meta {
+  margin: 0.4rem 0 0;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.ui-life-lab-print-hero {
+  margin: 1rem 0 1.25rem;
+}
+
+.ui-life-lab-print-body {
+  margin-top: 0.25rem;
 }
 
 .ui-activity-timer-ring {

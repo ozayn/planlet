@@ -3,6 +3,7 @@
 import { useState, type ReactNode } from "react";
 
 import { LifeLabArchiveMenuItem } from "@/components/life-lab/life-lab-archive-menu-item";
+import { LifeLabExportPdfMenuItem } from "@/components/life-lab/life-lab-export-pdf-menu-item";
 import { LifeLabItemMoreMenu } from "@/components/life-lab/life-lab-item-more-menu";
 import { LifeLabReadingControls } from "@/components/life-lab/life-lab-reading-controls";
 import { LifeLabRefreshButton } from "@/components/life-lab/life-lab-refresh-button";
@@ -69,6 +70,7 @@ export function LifeLabNoteMoreMenu({
           unarchive: ACTION_LABELS.unarchiveLifeLabNote,
         }}
       />
+      <LifeLabExportPdfMenuItem sectionId={sectionId} slug={note.slug} />
       <button
         type="button"
         role="menuitem"

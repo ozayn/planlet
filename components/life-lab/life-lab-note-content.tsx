@@ -23,6 +23,8 @@ type LifeLabNoteContentProps = {
   sectionId?: LifeLabSectionId;
   metadata?: LifeLabNoteMetadata;
   noteTitle?: string;
+  /** `print` omits flashcards/Q&A and expands collapsible study content. */
+  variant?: "reading" | "print";
 };
 
 function CollapsibleDictionaryStudySection({
@@ -103,6 +105,7 @@ export function LifeLabNoteContent({
   sectionId,
   metadata,
   noteTitle = "",
+  variant = "reading",
 }: LifeLabNoteContentProps) {
   const deduplicatedContent = suppressExactLifeLabMarkdownDuplicates(
     suppressExactHeaderMetadataLines(content, metadata),
@@ -110,7 +113,9 @@ export function LifeLabNoteContent({
   );
   const blocks = buildLifeLabNoteContentBlocks(
     deduplicatedContent,
-    resolveLifeLabNoteContentBlockOptions(sectionId),
+    resolveLifeLabNoteContentBlockOptions(sectionId, {
+      forPrint: variant === "print",
+    }),
   );
 
   return (
@@ -118,6 +123,7 @@ export function LifeLabNoteContent({
       className="space-y-3 md:space-y-4"
       data-life-lab-note-content=""
       data-life-lab-content-order="learning-map-first"
+      data-life-lab-content-variant={variant}
     >
       {blocks.map((block, index) => (
         <LifeLabNoteContentBlockView

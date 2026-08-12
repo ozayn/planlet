@@ -61,20 +61,12 @@ export function AppLayoutShell({
         data-flashcard-shell={isFlashcardDeck ? "focus" : undefined}
       >
         <div className="flex min-h-0 flex-1">
-          <AppNavSidebar access={access} />
+          <div className="print:hidden">
+            <AppNavSidebar access={access} />
+          </div>
           <div className="flex min-w-0 flex-1 flex-col">
-            <DesktopNav
-              userName={userName}
-              userEmail={userEmail}
-              userImage={userImage}
-              isAdmin={isAdmin}
-              canGiveFeedback={canGiveFeedback}
-              signOutButton={signOutButton}
-              unreadNotificationCount={unreadNotificationCount}
-              notifications={notifications}
-            />
-            {hideMobileAppBar ? null : (
-              <MobileAppBar
+            <div className="print:hidden">
+              <DesktopNav
                 userName={userName}
                 userEmail={userEmail}
                 userImage={userImage}
@@ -83,8 +75,22 @@ export function AppLayoutShell({
                 signOutButton={signOutButton}
                 unreadNotificationCount={unreadNotificationCount}
                 notifications={notifications}
-                leadingAction={<AppNavMenuButton />}
               />
+            </div>
+            {hideMobileAppBar ? null : (
+              <div className="print:hidden">
+                <MobileAppBar
+                  userName={userName}
+                  userEmail={userEmail}
+                  userImage={userImage}
+                  isAdmin={isAdmin}
+                  canGiveFeedback={canGiveFeedback}
+                  signOutButton={signOutButton}
+                  unreadNotificationCount={unreadNotificationCount}
+                  notifications={notifications}
+                  leadingAction={<AppNavMenuButton />}
+                />
+              </div>
             )}
             <main
               className={`ui-app-main relative z-0 mx-auto w-full flex-1 ${
@@ -99,7 +105,11 @@ export function AppLayoutShell({
             </main>
           </div>
         </div>
-        {hideBottomNav ? null : <BottomNav items={mobileNavItems} />}
+        {hideBottomNav ? null : (
+          <div className="print:hidden">
+            <BottomNav items={mobileNavItems} />
+          </div>
+        )}
       </div>
     </AppNavDrawerProvider>
   );

@@ -237,7 +237,7 @@ export async function setLifeLabItemStudyStatus(input: {
 
 export function excludeArchivedByKey<T>(
   items: T[],
-  archivedKeys: Set<string>,
+  archivedKeys: ReadonlySet<string>,
   getKey: (item: T) => string,
 ): T[] {
   if (archivedKeys.size === 0) {

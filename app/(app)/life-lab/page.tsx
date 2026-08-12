@@ -8,81 +8,19 @@ import { LifeLabRefreshButton } from "@/components/life-lab/life-lab-refresh-but
 import { LifeLabSectionCard } from "@/components/life-lab/life-lab-section-card";
 import { LifeLabStatusPanel } from "@/components/life-lab/life-lab-status-panel";
 import { PageHeader } from "@/components/page-header";
-import {
-  getLifeLabBrowseData,
-  getLifeLabFlashcardSummary,
-  getLifeLabHomeData,
-} from "@/lib/life-lab";
-import {
-  formatSectionContentMeta,
-  type ContentCountType,
-} from "@/lib/life-lab/collection-metadata";
-import { canViewLifeLabTechnicalDebug } from "@/lib/life-lab/dev";
-import {
-  formatFlashcardSectionMeta,
-  type LifeLabFlashcardSummary,
-} from "@/lib/life-lab/flashcard-summary";
+import { getLifeLabBrowseData, getLifeLabHomeData } from "@/lib/life-lab";
 import { buildNoteItemKey } from "@/lib/life-lab/item-key";
 import {
   excludeArchivedByKey,
   getArchivedLifeLabItemKeySet,
 } from "@/lib/life-lab/item-state";
+import {
+  countBrowseNotesBySection,
+  homeSectionCardMeta,
+} from "@/lib/life-lab/section-counts";
 import { lifeLabSectionIconMap } from "@/lib/life-lab/section-icons";
-import type { LifeLabSectionId } from "@/lib/life-lab/constants";
 import { isAdminRole } from "@/lib/auth-roles";
 import { canAccessLifeLabPage } from "@/lib/roles";
-
-function contentTypeForSection(sectionId: LifeLabSectionId): ContentCountType {
-  if (sectionId === "flashcards") {
-    return "deck";
-  }
-
-  if (sectionId === "podcasts") {
-    return "podcast";
-  }
-
-  return "note";
-}
-
-function FlashcardSummaryDebug({
-  summary,
-}: {
-  summary: LifeLabFlashcardSummary;
-}) {
-  return (
-    <details className="rounded-lg border border-border/60 bg-surface px-3 py-2 text-xs text-muted">
-      <summary className="cursor-pointer font-medium text-muted">
-        Debug · Flashcards summary
-      </summary>
-      <dl className="mt-2 grid gap-1 sm:grid-cols-2">
-        <div>
-          Valid decks: {summary.activeDeckCount}
-        </div>
-        <div>
-          Studyable cards: {summary.cardCount}
-        </div>
-        <div>
-          Archived decks: {summary.archivedDeckCount}
-        </div>
-        <div>
-          Empty decks: {summary.emptyDeckCount}
-        </div>
-        <div>
-          Malformed decks: {summary.malformedDeckCount}
-        </div>
-        <div>
-          Unavailable references: {summary.referenceUnavailableCount}
-        </div>
-        <div>
-          Embedded: {summary.embeddedDeckCount}
-        </div>
-        <div>
-          Standalone: {summary.standaloneDeckCount}
-        </div>
-      </dl>
-    </details>
-  );
-}
 
 export default async function LifeLabPage() {
   const session = await auth();
@@ -92,15 +30,11 @@ export default async function LifeLabPage() {
   }
 
   const archivedKeys = await getArchivedLifeLabItemKeySet(session.user.id);
-  const [{ availability, sections }, browseData, flashcardLibrary] =
-    await Promise.all([
-      getLifeLabHomeData(),
-      getLifeLabBrowseData(),
-      getLifeLabFlashcardSummary(archivedKeys),
-    ]);
+  const [{ availability, sections }, browseData] = await Promise.all([
+    getLifeLabHomeData(),
+    getLifeLabBrowseData(),
+  ]);
   const isAdmin = isAdminRole(session.user.role);
-  const showFlashcardDebug = canViewLifeLabTechnicalDebug(isAdmin);
-  const flashcardSummary = flashcardLibrary.summary;
   const visibleBrowseNotes = excludeArchivedByKey(
     browseData.notes,
     archivedKeys,
@@ -111,6 +45,11 @@ export default async function LifeLabPage() {
         slug: note.slug,
       }),
   );
+  // Counts only when browse already loaded the same notes (no extra Drive/parsing).
+  const browseCounts =
+    availability.status === "ready"
+      ? countBrowseNotesBySection(visibleBrowseNotes)
+      : null;
 
   return (
     <section className="ui-life-lab-surface ui-page-stack space-y-6">
@@ -145,16 +84,14 @@ export default async function LifeLabPage() {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:items-stretch">
               {sections.map((section) => {
                 const Icon = lifeLabSectionIconMap[section.id];
-                const isFlashcards = section.id === "flashcards";
-                const meta = isFlashcards
-                  ? formatFlashcardSectionMeta(flashcardSummary)
-                  : formatSectionContentMeta(
-                      section.noteCount,
-                      contentTypeForSection(section.id),
-                    );
-                const isEmpty = isFlashcards
-                  ? flashcardSummary.activeDeckCount <= 0
-                  : section.noteCount <= 0;
+                const meta = homeSectionCardMeta({
+                  sectionId: section.id,
+                  browseCounts,
+                });
+                const isEmpty =
+                  section.id !== "flashcards" &&
+                  browseCounts != null &&
+                  (browseCounts.get(section.id) ?? 0) <= 0;
 
                 return (
                   <LifeLabSectionCard
@@ -164,23 +101,11 @@ export default async function LifeLabPage() {
                     icon={Icon}
                     meta={meta}
                     isEmpty={isEmpty}
-                    secondaryAction={
-                      isFlashcards && flashcardSummary.cardCount > 0
-                        ? {
-                            href: "/life-lab/study",
-                            label: "Study all",
-                          }
-                        : undefined
-                    }
                   />
                 );
               })}
             </div>
           </div>
-
-          {showFlashcardDebug ? (
-            <FlashcardSummaryDebug summary={flashcardSummary} />
-          ) : null}
         </>
       )}
     </section>

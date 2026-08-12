@@ -121,6 +121,10 @@ import {
 } from "@/lib/life-lab/flashcard-summary";
 import { resolveFlashcardDeckPathFromMetadata } from "@/lib/life-lab/flashcards";
 import {
+  isLifeLabWorkingFolderName,
+  isLifeLabWorkingRelativePath,
+} from "@/lib/life-lab/section-counts";
+import {
   classifyNoteGroup,
   groupLifeLabNotes,
   noteAssignmentPriority,
@@ -540,6 +544,7 @@ function toListingDiagnostic(stats: DriveListingStats): LifeLabListingDiagnostic
     foldersTraversed: stats.foldersTraversed,
     maxDepthUsed: stats.maxDepthUsed,
     paginationOccurred: stats.paginationOccurred,
+    truncatedByMaxFiles: stats.truncatedByMaxFiles,
   };
 }
 
@@ -573,25 +578,34 @@ async function listSectionMarkdownFiles(
   folderId: string,
   sectionId?: LifeLabSectionId,
 ) {
+  const sectionSkip =
+    sectionId === "film-lab"
+      ? (folderName: string, prefix: string) =>
+          isFilmLabExcludedFolder(folderName, prefix)
+      : sectionId === "lecture-notes"
+        ? (folderName: string, prefix: string) => {
+            const nextPrefix = prefix ? `${prefix}/${folderName}` : folderName;
+            return isLectureNotesBlockedRelativePath(nextPrefix);
+          }
+        : sectionId === "podcasts"
+          ? (folderName: string, prefix: string) =>
+              isPodcastBlockedFolder(folderName, prefix)
+          : sectionId === "flashcards"
+            ? (folderName: string) => isFlashcardBlockedFolder(folderName)
+            : null;
+
   return listMarkdownFilesRecursive(credentials, folderId, {
     maxDepth:
       sectionId === "podcasts" || sectionId === "flashcards" ? 10 : undefined,
     isFileIncluded:
       sectionId === "flashcards" ? isFlashcardDeckDriveFile : undefined,
-    shouldSkipFolder:
-      sectionId === "film-lab"
-        ? (folderName, prefix) => isFilmLabExcludedFolder(folderName, prefix)
-        : sectionId === "lecture-notes"
-          ? (folderName, prefix) => {
-              const nextPrefix = prefix ? `${prefix}/${folderName}` : folderName;
-              return isLectureNotesBlockedRelativePath(nextPrefix);
-            }
-          : sectionId === "podcasts"
-            ? (folderName, prefix) =>
-                isPodcastBlockedFolder(folderName, prefix)
-            : sectionId === "flashcards"
-              ? (folderName) => isFlashcardBlockedFolder(folderName)
-          : undefined,
+    shouldSkipFolder: (folderName, prefix) => {
+      if (isLifeLabWorkingFolderName(folderName)) {
+        return true;
+      }
+
+      return sectionSkip?.(folderName, prefix) ?? false;
+    },
   });
 }
 
@@ -599,31 +613,35 @@ function filterSectionMarkdownEntries(
   entries: DriveMarkdownEntry[],
   sectionId: LifeLabSectionId,
 ): DriveMarkdownEntry[] {
+  const withoutWorking = entries.filter(
+    (entry) => !isLifeLabWorkingRelativePath(entry.relativePath),
+  );
+
   if (sectionId === "film-lab") {
-    return entries.filter(
+    return withoutWorking.filter(
       (entry) => !isFilmLabExcludedRelativePath(entry.relativePath),
     );
   }
 
   if (sectionId === "lecture-notes") {
-    return entries.filter(
+    return withoutWorking.filter(
       (entry) => !isLectureNotesBlockedRelativePath(entry.relativePath),
     );
   }
 
   if (sectionId === "podcasts") {
-    return entries.filter((entry) =>
+    return withoutWorking.filter((entry) =>
       isPodcastVisibleMarkdown(entry.relativePath),
     );
   }
 
   if (sectionId === "flashcards") {
-    return entries.filter((entry) =>
+    return withoutWorking.filter((entry) =>
       isFlashcardVisibleRelativePath(entry.relativePath),
     );
   }
 
-  return entries;
+  return withoutWorking;
 }
 
 function filterEnrichedSectionRecords(
@@ -700,6 +718,7 @@ async function loadSectionFileIndex(
     foldersTraversed: 0,
     maxDepthUsed: 0,
     paginationOccurred: false,
+    truncatedByMaxFiles: false,
   };
 
   const mapResult = options.useCachedFolderMap === false
@@ -1667,37 +1686,19 @@ export async function getLifeLabHomeData(): Promise<{
       };
     }
 
-    try {
-      const sections = await Promise.all(
-        getAllowedLifeLabSectionIds().map(async (sectionId) => {
-          const { records } = await getSectionNotesCached(sectionId);
+    // Section cards are labels only here. Counts come from browse data the
+    // landing page already loads — never scan every section index just for meta.
+    const sections = getAllowedLifeLabSectionIds().map((sectionId) => ({
+      id: sectionId,
+      label: getLifeLabSectionLabel(sectionId),
+    }));
 
-          return {
-            id: sectionId,
-            label: getLifeLabSectionLabel(sectionId),
-            noteCount: records.length,
-          };
-        }),
-      );
-
-      return {
-        availability: {
-          status: "ready",
-        },
-        sections,
-      };
-    } catch (error) {
-      const normalized =
-        error instanceof Error
-          ? error
-          : new LifeLabDriveError("Failed to load Life Lab sections.");
-      logLifeLabFolderMapFailure(normalized);
-
-      return {
-        availability: unavailableAvailability(normalized, true),
-        sections: [],
-      };
-    }
+    return {
+      availability: {
+        status: "ready",
+      },
+      sections,
+    };
   });
 }
 

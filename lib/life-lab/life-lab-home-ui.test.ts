@@ -33,13 +33,14 @@ describe("Life Lab home landing UI", () => {
     "utf8",
   );
 
-  it("uses canonical flashcard summary for landing counts", () => {
-    assert.match(home, /getLifeLabFlashcardSummary/);
-    assert.match(home, /formatFlashcardSectionMeta/);
+  it("does not parse flashcards on the landing page for counts", () => {
+    assert.doesNotMatch(home, /getLifeLabFlashcardSummary/);
+    assert.doesNotMatch(home, /formatFlashcardSectionMeta/);
+    assert.doesNotMatch(home, /Study all/);
     assert.match(home, /LifeLabSectionCard/);
     assert.match(home, /lifeLabSectionIconMap/);
-    assert.doesNotMatch(home, /flashcardNoteCount/);
-    assert.doesNotMatch(home, /Study all flashcards \(/);
+    assert.match(home, /homeSectionCardMeta/);
+    assert.match(home, /countBrowseNotesBySection/);
   });
 
   it("removes detached Study all chip from under search", () => {
@@ -75,11 +76,12 @@ describe("Life Lab home landing UI", () => {
     assert.equal(formatSectionContentMeta(0, "deck"), "No items yet");
   });
 
-  it("uses one-column mobile section grid and shared card component", () => {
+  it("uses one-column mobile section grid and optional card meta", () => {
     assert.match(home, /grid-cols-1/);
     assert.match(home, /sm:grid-cols-2/);
     assert.match(sectionCard, /min-h-11/);
     assert.match(sectionCard, /absolute inset-0/);
+    assert.match(sectionCard, /meta\?:/);
     assert.doesNotMatch(sectionCard, />\s*Open\s*</);
   });
 
@@ -89,11 +91,5 @@ describe("Life Lab home landing UI", () => {
       `life-lab-flashcard-summary:${LIFE_LAB_FLASHCARD_SUMMARY_CACHE_VERSION}`,
     );
     assert.match(LIFE_LAB_FLASHCARD_SUMMARY_CACHE_VERSION, /canonical-counts/);
-  });
-
-  it("keeps Study all on the Flashcards card using card count", () => {
-    assert.match(home, /secondaryAction/);
-    assert.match(home, /label: "Study all"/);
-    assert.match(home, /flashcardSummary\.cardCount > 0/);
   });
 });

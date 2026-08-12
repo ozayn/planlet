@@ -252,6 +252,10 @@ export const ACTION_LABELS = {
     title: "Unarchive",
     ariaLabel: "Unarchive note",
   },
+  exportLifeLabNotePdf: {
+    title: "Export PDF",
+    ariaLabel: "Export PDF",
+  },
   archivePodcastEpisode: {
     title: "Archive",
     ariaLabel: "Archive episode",

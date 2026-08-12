@@ -10,7 +10,12 @@ export {
 
 export const LIFE_LAB_MAX_FOLDER_DEPTH = 5;
 
-export const LIFE_LAB_MAX_FILES_PER_SECTION = 300;
+/**
+ * Safety ceiling for recursive Drive markdown walks.
+ * Must stay well above real section sizes — a prior value of 300 capped
+ * YouTube Learning home/section counts and hid newly synced notes.
+ */
+export const LIFE_LAB_MAX_FILES_PER_SECTION = 5000;
 
 export const LIFE_LAB_DRIVE_READONLY_SCOPE =
   "https://www.googleapis.com/auth/drive.readonly";
@@ -72,7 +77,8 @@ export const LIFE_LAB_BLOCKED_SECTION_IDS = [
 export type LifeLabSectionSummary = {
   id: LifeLabSectionId;
   label: string;
-  noteCount: number;
+  /** Optional; prefer omitting on home when counting would require extra I/O. */
+  noteCount?: number;
 };
 
 export type LifeLabNoteImage = {
@@ -226,6 +232,8 @@ export type LifeLabListingDiagnostic = {
   foldersTraversed: number;
   maxDepthUsed: number;
   paginationOccurred: boolean;
+  /** True when the recursive Drive walk stopped at LIFE_LAB_MAX_FILES_PER_SECTION. */
+  truncatedByMaxFiles?: boolean;
   cache?: LifeLabCacheDiagnostic;
 };
 

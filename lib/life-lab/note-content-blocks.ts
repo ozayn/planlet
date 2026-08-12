@@ -15,6 +15,7 @@ import {
   isShortVersionSectionTitle,
 } from "@/lib/life-lab/lecture-notes";
 import { extractMermaidCode } from "@/lib/life-lab/mermaid-outline";
+import { shouldExcludeSectionFromLifeLabPrint } from "@/lib/life-lab/print-section-policy";
 import { transformMarkdownTables } from "@/lib/life-lab/reading-briefs";
 import {
   isFullTranscriptSectionTitle,
@@ -46,6 +47,8 @@ export type BuildLifeLabNoteContentBlocksOptions = {
   prioritizeShortVersion?: boolean;
   prioritizeLearningMap?: boolean;
   collapseTranscriptNotes?: boolean;
+  /** When true, omit study/Q&A/flashcards and expand transcripts for PDF/print. */
+  forPrint?: boolean;
 };
 
 type MarkdownH2Section = {
@@ -115,15 +118,29 @@ function sectionToBlock(
   options: {
     collapseTranscriptNotes: boolean;
     compactLearningMap: boolean;
+    forPrint: boolean;
   },
 ): LifeLabNoteContentBlock | null {
   if (isHiddenTechnicalHeading(section.title)) {
     return null;
   }
 
+  if (options.forPrint && shouldExcludeSectionFromLifeLabPrint(section.title)) {
+    return null;
+  }
+
   if (isFullTranscriptSectionTitle(section.title)) {
     if (isTranscriptMetadataOnly(section.content)) {
       return null;
+    }
+
+    if (options.forPrint) {
+      return {
+        kind: "markdown",
+        content: transformMarkdownTables(
+          `## ${section.title}\n\n${section.content}`,
+        ),
+      };
     }
 
     return {
@@ -142,6 +159,15 @@ function sectionToBlock(
       return null;
     }
 
+    if (options.forPrint) {
+      return {
+        kind: "markdown",
+        content: transformMarkdownTables(
+          `## ${section.title}\n\n${section.content}`,
+        ),
+      };
+    }
+
     return {
       kind: "transcript",
       title: section.title,
@@ -151,6 +177,10 @@ function sectionToBlock(
   }
 
   if (isFlashcardSectionTitle(section.title)) {
+    if (options.forPrint) {
+      return null;
+    }
+
     const cards = extractFlashcardsFromSectionText(section.content);
 
     if (cards.length === 0) {
@@ -165,12 +195,27 @@ function sectionToBlock(
   }
 
   if (isDictionaryStudySectionTitle(section.title)) {
+    const sectionKind = classifyDictionaryStudySection(section.title);
+
+    if (options.forPrint && sectionKind === "candidates") {
+      return null;
+    }
+
+    if (options.forPrint) {
+      return {
+        kind: "markdown",
+        content: transformMarkdownTables(
+          `## ${section.title}\n\n${section.content}`,
+        ),
+      };
+    }
+
     return {
       kind: "dictionary-section",
       section: {
         title: section.title,
         content: transformMarkdownTables(section.content),
-        kind: classifyDictionaryStudySection(section.title),
+        kind: sectionKind,
       },
     };
   }
@@ -201,6 +246,7 @@ function buildBlocksInDocumentOrder(
   options: {
     collapseTranscriptNotes: boolean;
     compactLearningMap: boolean;
+    forPrint: boolean;
   },
 ): LifeLabNoteContentBlock[] {
   const sections = listMarkdownH2Sections(body);
@@ -242,6 +288,7 @@ function prioritizeLearningContentBlocks(
   options: {
     collapseTranscriptNotes: boolean;
     compactLearningMap: boolean;
+    forPrint: boolean;
     prioritizeLearningMap: boolean;
     prioritizeShortVersion: boolean;
   },
@@ -297,6 +344,7 @@ function prioritizeLearningContentBlocks(
 
 export function resolveLifeLabNoteContentBlockOptions(
   sectionId?: LifeLabSectionId,
+  options: { forPrint?: boolean } = {},
 ): BuildLifeLabNoteContentBlocksOptions {
   const isLectureNotes = isLectureNotesSectionId(sectionId);
   const isPodcastEpisode = sectionId === "podcasts";
@@ -305,6 +353,7 @@ export function resolveLifeLabNoteContentBlockOptions(
     prioritizeLearningMap: true,
     prioritizeShortVersion: isLectureNotes || isPodcastEpisode,
     collapseTranscriptNotes: isLectureNotes || isPodcastEpisode,
+    forPrint: options.forPrint === true,
   };
 }
 
@@ -315,13 +364,15 @@ export function buildLifeLabNoteContentBlocks(
   const collapseTranscriptNotes = options.collapseTranscriptNotes === true;
   const prioritizeShortVersion = options.prioritizeShortVersion === true;
   const prioritizeLearningMap = options.prioritizeLearningMap === true;
+  const forPrint = options.forPrint === true;
   const compactLearningMap = prioritizeLearningMap;
-  const blockOptions = { collapseTranscriptNotes, compactLearningMap };
+  const blockOptions = { collapseTranscriptNotes, compactLearningMap, forPrint };
 
   const needsSplit =
     noteHasSpecialSections(body, collapseTranscriptNotes) ||
     prioritizeShortVersion ||
-    prioritizeLearningMap;
+    prioritizeLearningMap ||
+    forPrint;
 
   if (!needsSplit) {
     return [{ kind: "markdown", content: body }];
