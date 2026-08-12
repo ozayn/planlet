@@ -35,6 +35,19 @@ describe("Life Lab note PDF export wiring", () => {
     "utf8",
   );
 
+  const trigger = readFileSync(
+    join(root, "components/life-lab/life-lab-print-auto-trigger.tsx"),
+    "utf8",
+  );
+  const learningMap = readFileSync(
+    join(root, "components/life-lab/life-lab-learning-map-compact.tsx"),
+    "utf8",
+  );
+  const diagramFit = readFileSync(
+    join(root, "lib/life-lab/print-diagram-fit.ts"),
+    "utf8",
+  );
+
   it("opens Export PDF from More on mobile and a desktop icon", () => {
     assert.match(moreMenu, /LifeLabExportPdfMenuItem/);
     assert.match(header, /LifeLabExportPdfIconButton/);
@@ -57,6 +70,31 @@ describe("Life Lab note PDF export wiring", () => {
     assert.match(page, /variant="print"/);
     assert.match(noteContent, /variant === "print"/);
     assert.doesNotMatch(page, /puppeteer|playwright|pdfkit|jspdf/i);
+  });
+
+  it("sets document.title from the note title before print and restores it after", () => {
+    assert.match(page, /buildLifeLabPrintWindowTitle\(printTitle\)/);
+    assert.match(trigger, /document\.title = documentTitle/);
+    assert.match(trigger, /restoreDocumentTitle/);
+    assert.match(trigger, /afterprint/);
+    assert.match(trigger, /fitLifeLabPrintDiagrams/);
+  });
+
+  it("keeps Learning Map heading + Mermaid as one print diagram unit", () => {
+    assert.match(learningMap, /data-life-lab-print-diagram-unit/);
+    assert.match(learningMap, /data-life-lab-print-diagram-caption/);
+    assert.match(globals, /data-life-lab-print-diagram-unit/);
+    assert.match(globals, /break-inside:\s*avoid/);
+    assert.match(diagramFit, /computePrintDiagramScale/);
+    assert.match(diagramFit, /fitLifeLabPrintDiagrams/);
+  });
+
+  it("fixes Persian ordered-list markers and RTL print typography", () => {
+    assert.match(globals, /counter\(list-item,\s*persian\)/);
+    assert.match(globals, /unicode-bidi:\s*isolate/);
+    assert.match(globals, /line-clamp:\s*unset/);
+    assert.match(globals, /\[dir="rtl"\]/);
+    assert.match(globals, /\\200e/);
   });
 
   it("centralizes include/exclude policy for print sections", () => {

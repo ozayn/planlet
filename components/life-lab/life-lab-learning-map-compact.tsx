@@ -31,17 +31,26 @@ export function LifeLabLearningMapCompact({
       data-life-lab-learning-map="section"
       aria-label={title}
     >
-      <h2 className="text-base font-semibold tracking-tight text-foreground md:text-lg">
-        {title}
-      </h2>
+      {/* Heading + diagram stay one print unit; outline/controls stay outside. */}
+      <div
+        className="ui-life-lab-print-diagram-unit space-y-3"
+        data-life-lab-print-diagram-unit=""
+      >
+        <h2
+          className="text-base font-semibold tracking-tight text-foreground md:text-lg"
+          data-life-lab-print-diagram-caption=""
+        >
+          {title}
+        </h2>
 
-      {introMarkdown ? (
-        <p className="text-sm leading-relaxed text-muted" dir="auto">
-          {introMarkdown}
-        </p>
-      ) : null}
+        {introMarkdown ? (
+          <p className="text-sm leading-relaxed text-muted" dir="auto">
+            {introMarkdown}
+          </p>
+        ) : null}
 
-      <MermaidBlock code={mermaidCode} />
+        <MermaidBlock code={mermaidCode} />
+      </div>
 
       {labels.length > 0 ? (
         <ul

@@ -145,7 +145,14 @@ function createMarkdownComponents(
       const mermaidCode = getMermaidCode(children);
 
       if (mermaidCode) {
-        return <MermaidBlock code={mermaidCode} />;
+        return (
+          <div
+            className="ui-life-lab-print-diagram-unit"
+            data-life-lab-print-diagram-unit=""
+          >
+            <MermaidBlock code={mermaidCode} />
+          </div>
+        );
       }
 
       return <pre>{children}</pre>;

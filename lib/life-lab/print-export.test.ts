@@ -9,7 +9,10 @@ import {
 } from "@/lib/life-lab/print-section-policy";
 import {
   lifeLabNotePrintHref,
+  buildLifeLabPrintWindowTitle,
+  cleanLifeLabSlugForPrintFilename,
   resolveLifeLabPrintDocumentTitle,
+  sanitizeLifeLabPrintFilenameStem,
 } from "@/lib/life-lab/print-document";
 
 describe("life lab print section policy", () => {
@@ -131,6 +134,7 @@ describe("life lab print document title", () => {
     const title = resolveLifeLabPrintDocumentTitle({
       title: "Raw video title with noise",
       sectionId: "youtube-learning",
+      slug: "videos__example",
       relativePath: "videos/2026-08-12-example.md",
       metadata: {
         display_title: "عنوان فارسی",
@@ -139,6 +143,45 @@ describe("life lab print document title", () => {
     });
 
     assert.equal(title, "عنوان فارسی");
+  });
+
+  it("falls back to cleaned slug when titles are empty", () => {
+    const title = resolveLifeLabPrintDocumentTitle({
+      title: "   ",
+      sectionId: "lecture-notes",
+      slug: "ancient-iran__parthian-power",
+      relativePath: "ancient-iran/parthian-power.md",
+      metadata: {},
+    });
+
+    assert.match(title, /ancient iran/i);
+    assert.match(title, /parthian power/i);
+  });
+
+  it("builds a note-based window title for Save as PDF filenames", () => {
+    assert.equal(
+      buildLifeLabPrintWindowTitle("Topstep X Transition"),
+      "Life Lab - Topstep X Transition",
+    );
+    assert.equal(
+      buildLifeLabPrintWindowTitle(
+        "بازی تاج و تخت در ایران باستان - قدرت رستم از شاه بیشتر بود",
+      ),
+      "Life Lab - بازی تاج و تخت در ایران باستان - قدرت رستم از شاه بیشتر بود",
+    );
+  });
+
+  it("preserves Persian characters and strips only invalid filename chars", () => {
+    const stem = sanitizeLifeLabPrintFilenameStem(
+      'یادداشت: "رستم"/شاه؟',
+    );
+    assert.match(stem, /یادداشت/);
+    assert.match(stem, /رستم/);
+    assert.doesNotMatch(stem, /[<>:"/\\|?*]/);
+  });
+
+  it("does not treat a bare YouTube-like slug as a filename", () => {
+    assert.equal(cleanLifeLabSlugForPrintFilename("dQw4w9WgXcQ"), "");
   });
 
   it("builds the print view href", () => {

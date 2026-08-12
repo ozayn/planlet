@@ -31,6 +31,11 @@ export function MermaidBlock({ code }: MermaidBlockProps) {
   const { sizeProfile, scrollable, isMobile } = useMermaidViewport(containerRef, {
     variant: "inline",
     contentReady: Boolean(code.trim()),
+    // Print view: keep a stable profile so Mermaid is not re-rendered mid-wait
+    // when the viewport ResizeObserver updates sizeProfile.
+    enabled:
+      typeof document === "undefined" ||
+      !document.querySelector("[data-life-lab-note-view='print']"),
   });
   const { preparedSvg, failed } = useMermaidRender(code, {
     sizeProfile,

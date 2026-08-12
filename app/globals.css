@@ -3609,6 +3609,13 @@ body {
     line-height: 1.25;
     font-weight: 650;
     color: #111 !important;
+    overflow: visible !important;
+    white-space: normal !important;
+    text-overflow: clip !important;
+    height: auto !important;
+    max-height: none !important;
+    -webkit-line-clamp: unset !important;
+    line-clamp: unset !important;
   }
 
   .ui-life-lab-print-meta {
@@ -3621,6 +3628,8 @@ body {
     margin: 1rem 0 1.25rem;
     break-inside: avoid;
     page-break-inside: avoid;
+    break-after: auto;
+    page-break-after: auto;
   }
 
   .ui-life-lab-print-hero img {
@@ -3629,37 +3638,149 @@ body {
     border-radius: 0 !important;
   }
 
+  .ui-life-lab-print-body .ui-markdown h1,
   .ui-life-lab-print-body .ui-markdown h2,
-  .ui-life-lab-print-body h2 {
+  .ui-life-lab-print-body .ui-markdown h3,
+  .ui-life-lab-print-body h1,
+  .ui-life-lab-print-body h2,
+  .ui-life-lab-print-body h3 {
     break-after: avoid;
     page-break-after: avoid;
+    overflow: visible !important;
+    white-space: normal !important;
+    height: auto !important;
+    max-height: none !important;
+    -webkit-line-clamp: unset !important;
+    line-clamp: unset !important;
+  }
+
+  .ui-life-lab-print-body .ui-markdown h2,
+  .ui-life-lab-print-body h2 {
     margin-top: 1.35rem;
   }
 
-  .ui-life-lab-print-body .ui-markdown h3,
-  .ui-life-lab-print-body h3 {
+  .ui-life-lab-print-body .ui-markdown p,
+  .ui-life-lab-print-body .ui-markdown li,
+  .ui-life-lab-print-body .ui-markdown dd,
+  .ui-life-lab-print-body .ui-markdown blockquote {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+    -webkit-line-clamp: unset !important;
+    line-clamp: unset !important;
+    white-space: normal !important;
+    text-overflow: clip !important;
+    letter-spacing: normal;
+    word-spacing: normal;
+  }
+
+  .ui-life-lab-print-body .ui-markdown p[dir="rtl"],
+  .ui-life-lab-print-body .ui-markdown li[dir="rtl"],
+  .ui-life-lab-print-body .ui-markdown h1[dir="rtl"],
+  .ui-life-lab-print-body .ui-markdown h2[dir="rtl"],
+  .ui-life-lab-print-body .ui-markdown h3[dir="rtl"],
+  .ui-life-lab-print-body .ui-markdown[lang="fa"] p,
+  .ui-life-lab-print-body .ui-markdown[lang="fa"] li {
+    direction: rtl;
+    text-align: right;
+    line-height: 1.75;
+    unicode-bidi: isolate;
+  }
+
+  .ui-life-lab-print-body .ui-markdown p[dir="auto"],
+  .ui-life-lab-print-body .ui-markdown li[dir="auto"] {
+    unicode-bidi: plaintext;
+    line-height: 1.7;
+  }
+
+  /* Prevent RTL from reversing "1." into ".1" — isolate LTR markers. */
+  .ui-life-lab-print-body .ui-markdown ol[dir="rtl"],
+  .ui-life-lab-print-body .ui-markdown ol[lang="fa"] {
+    list-style-type: persian;
+    list-style-position: outside;
+    padding-inline-start: 1.75rem;
+    padding-inline-end: 0;
+  }
+
+  .ui-life-lab-print-body .ui-markdown ol[dir="rtl"] > li::marker,
+  .ui-life-lab-print-body .ui-markdown ol[lang="fa"] > li::marker {
+    content: counter(list-item, persian) ".\200e ";
+    unicode-bidi: isolate;
+    direction: ltr;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ui-life-lab-print-body .ui-markdown ul[dir="rtl"],
+  .ui-life-lab-print-body .ui-markdown ul[lang="fa"] {
+    padding-inline-start: 1.25rem;
+    padding-inline-end: 0;
+    list-style-position: outside;
+  }
+
+  .ui-life-lab-print-body .ui-vocabulary-field,
+  .ui-life-lab-print-body .ui-markdown dl {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .ui-life-lab-print-body table,
+  .ui-life-lab-print-body .ui-timeline-table,
+  .ui-life-lab-print-body figure:not(.ui-life-lab-print-diagram-unit) {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Heading + Mermaid as one print unit; JS may scale SVG to page height. */
+  .ui-life-lab-print-diagram-unit,
+  .ui-life-lab-print-body [data-life-lab-print-diagram-unit] {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    break-before: auto;
+    page-break-before: auto;
+    overflow: visible !important;
+    max-width: 100%;
+  }
+
+  .ui-life-lab-print-diagram-unit [data-life-lab-print-diagram-caption],
+  .ui-life-lab-print-diagram-unit h2,
+  .ui-life-lab-print-diagram-unit h3 {
     break-after: avoid;
     page-break-after: avoid;
   }
 
   .ui-life-lab-print-body .ui-mermaid,
-  .ui-life-lab-print-body table,
-  .ui-life-lab-print-body .ui-timeline-table,
-  .ui-life-lab-print-body figure {
+  .ui-life-lab-print-body .ui-mermaid-scroll,
+  .ui-life-lab-print-body .ui-mermaid-svg {
     break-inside: avoid;
     page-break-inside: avoid;
-  }
-
-  .ui-life-lab-print-body .ui-mermaid {
-    margin: 0.75rem 0;
+    margin: 0.5rem 0;
     max-width: 100% !important;
+    max-height: none !important;
+    height: auto !important;
     overflow: visible !important;
   }
 
-  .ui-life-lab-print-body .ui-mermaid-svg,
-  .ui-life-lab-print-body .ui-mermaid-svg svg {
+  .ui-life-lab-print-body .ui-mermaid-print-fit {
+    display: flex !important;
+    justify-content: center !important;
+    width: 100% !important;
+    overflow: visible !important;
+  }
+
+  .ui-life-lab-print-body .ui-mermaid-svg svg,
+  .ui-life-lab-print-body .ui-mermaid svg {
     max-width: 100% !important;
     height: auto !important;
+  }
+
+  /* CSS fallback when JS scale has not run: never taller than ~one page. */
+  .ui-life-lab-print-diagram-unit .ui-mermaid-svg svg:not([data-life-lab-print-diagram-scale]),
+  .ui-life-lab-print-diagram-unit .ui-mermaid svg:not([data-life-lab-print-diagram-scale]) {
+    max-width: 100% !important;
+    max-height: 210mm !important;
+    width: auto !important;
+    height: auto !important;
+    margin-inline: auto;
   }
 
   .ui-life-lab-print-surface .ui-card-padded,

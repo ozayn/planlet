@@ -59,6 +59,7 @@ import {
   isPodcastShowIndex,
 } from "@/lib/life-lab/podcasts";
 import {
+  buildLifeLabPrintWindowTitle,
   resolveLifeLabPrintDateLabel,
   resolveLifeLabPrintDocumentTitle,
   resolveLifeLabPrintSubtitle,
@@ -232,6 +233,7 @@ export default async function LifeLabNotePage({
           <LifeLabPrintAutoTrigger
             sectionId={note.sectionId}
             slug={note.slug}
+            documentTitle={buildLifeLabPrintWindowTitle(printTitle)}
           />
           {availability.status !== "ready" ? (
             <LifeLabStatusPanel availability={availability} isAdmin={isAdmin} />
