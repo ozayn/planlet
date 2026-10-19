@@ -43,7 +43,7 @@ export function PlanLifeAreaSections({
   moveCompletedToTop = true,
 }: PlanLifeAreaSectionsProps) {
   const router = useRouter();
-  const { tasks } = partitionPlanItems(items);
+  const tasks = useMemo(() => partitionPlanItems(items).tasks, [items]);
   const groups = useMemo(
     () =>
       groupPlanItemsByPrimaryLifeArea(tasks, lifeAreas, {
@@ -66,14 +66,16 @@ export function PlanLifeAreaSections({
 
   useEffect(() => {
     setOpenIds((current) => {
+      let changed = false;
       const next = new Set(current);
       for (const group of groups) {
         if (group.items.length > 0 && !next.has(group.areaId)) {
           // Newly populated areas open by default.
           next.add(group.areaId);
+          changed = true;
         }
       }
-      return next;
+      return changed ? next : current;
     });
   }, [groups]);
 

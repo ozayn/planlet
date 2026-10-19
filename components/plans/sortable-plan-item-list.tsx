@@ -442,7 +442,15 @@ export function SortablePlanItemList({
   }, []);
 
   useEffect(() => {
-    setItems(initialItems);
+    setItems((current) => {
+      if (
+        current.length === initialItems.length &&
+        current.every((item, index) => item === initialItems[index])
+      ) {
+        return current;
+      }
+      return initialItems;
+    });
   }, [initialItems]);
 
   function computeDragIntents(
