@@ -64,25 +64,32 @@ describe("Focus Priorities feature wiring", () => {
     assert.doesNotMatch(lib, /prisma\.planItem\.update/);
   });
 
-  it("opens an editable draft before saving Add to today", () => {
+  it("opens an editable draft when a priority row is clicked", () => {
     const suggestions = readFileSync(
       join(root, "components/plans/life-area-focus-priorities.tsx"),
       "utf8",
     );
+    const sections = readFileSync(
+      join(root, "components/plans/plan-life-area-sections.tsx"),
+      "utf8",
+    );
     const lib = readFileSync(join(root, "lib/focus-priorities/index.ts"), "utf8");
 
-    assert.match(suggestions, /Priorities/);
-    assert.match(suggestions, /\+ Add/);
     assert.match(suggestions, /Save to today/);
     assert.match(suggestions, /confirmFocusPriorityTaskDraftAction/);
     assert.match(suggestions, /startDraft/);
-    assert.match(suggestions, /LifeAreaColorDot/);
-    assert.match(suggestions, /priority\.lifeAreaName/);
+    assert.match(suggestions, /Add \$\{priority\.title\} to today/);
+    assert.match(suggestions, /min-h-11/);
+    assert.doesNotMatch(suggestions, /LifeAreaColorDot/);
+    assert.doesNotMatch(suggestions, /\+ Add/);
+    assert.doesNotMatch(suggestions, />\s*Priorities\s*</);
     assert.doesNotMatch(suggestions, /addFocusPriorityToTodayAction/);
+    assert.match(sections, /LifeAreaColorDot/);
+    assert.match(sections, /\+ Add/);
     assert.match(lib, /confirmFocusPriorityTaskDraft/);
   });
 
-  it("keeps Technical Practice subtopics nested behind expand", () => {
+  it("shows Technical Practice subtopics in the draft, not as separate cards", () => {
     const suggestions = readFileSync(
       join(root, "components/plans/life-area-focus-priorities.tsx"),
       "utf8",
@@ -93,7 +100,6 @@ describe("Focus Priorities feature wiring", () => {
     );
 
     assert.match(suggestions, /priority\.subtopics/);
-    assert.match(suggestions, /aria-expanded/);
     assert.match(constants, /Technical Practice/);
     assert.match(constants, /Statistics & Experimentation/);
 

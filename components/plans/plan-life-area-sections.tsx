@@ -137,104 +137,72 @@ export function PlanLifeAreaSections({
   }
 
   if (groups.length === 0) {
-    return <p className="text-sm text-muted">No Life Areas yet.</p>;
+    return (
+      <p className="text-[length:var(--density-text-sm)] text-muted">
+        No Life Areas yet.
+      </p>
+    );
   }
 
   return (
-    <div className="space-y-2 overflow-x-hidden">
+    <div className="overflow-x-hidden divide-y divide-border-soft/70">
       {groups.map((group) => {
         const isUncategorized = group.areaId === UNCATEGORIZED_LIFE_AREA_ID;
         const hasTasks = group.items.length > 0;
         const open = openIds.has(group.areaId);
         const isAdding = addingAreaId === group.areaId;
-        const showBody = open || isAdding;
         const areaPriorities = isUncategorized
           ? []
           : (prioritiesByArea.get(group.areaId) ?? []);
-        const prioritySuggestions =
-          areaPriorities.length > 0 ? (
-            <LifeAreaFocusPriorities
-              priorities={areaPriorities}
-              lifeAreas={lifeAreas}
-              canAdd={canEdit}
-            />
-          ) : null;
-
-        if (!hasTasks && !isUncategorized) {
-          return (
-            <section key={group.areaId} className="space-y-1">
-              <div className="flex min-h-11 items-center justify-between gap-2">
-                <span className="flex min-w-0 items-center gap-2 text-sm text-muted">
-                  <LifeAreaColorDot
-                    name={group.areaName}
-                    uncategorized={isUncategorized}
-                  />
-                  <span className="truncate">{group.areaName}</span>
-                </span>
-                {canEdit ? (
-                  <button
-                    type="button"
-                    className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg px-2 text-sm font-medium text-muted transition-colors hover:bg-accent-cream hover:text-foreground disabled:opacity-40"
-                    disabled={pending}
-                    aria-label={`Add task to ${group.areaName}`}
-                    onClick={() => startAdd(group.areaId)}
-                    {...passwordManagerSafeControlProps}
-                  >
-                    + Add
-                  </button>
-                ) : null}
-              </div>
-              {prioritySuggestions}
-              {isAdding && canEdit ? (
-                <AreaQuickAdd
-                  draft={draft}
-                  pending={pending}
-                  onDraftChange={setDraft}
-                  onSubmit={() => submitAdd(group.areaId)}
-                  onCancel={() => {
-                    setAddingAreaId(null);
-                    setDraft("");
-                  }}
-                />
-              ) : null}
-            </section>
-          );
-        }
+        const hasPriorities = areaPriorities.length > 0;
+        const showTasks = hasTasks && open;
 
         return (
-          <section key={group.areaId} className="space-y-2">
+          <section key={group.areaId} className="py-1.5 first:pt-0 last:pb-0">
             <div className="flex min-h-11 items-center gap-1">
-              <button
-                type="button"
-                className="flex min-h-11 min-w-0 flex-1 items-center justify-between gap-2 text-left"
-                aria-expanded={open}
-                onClick={() => toggleOpen(group.areaId)}
-              >
-                <span className="flex min-w-0 items-center gap-2 text-sm font-medium text-foreground">
+              {hasTasks ? (
+                <button
+                  type="button"
+                  className="flex min-h-11 min-w-0 flex-1 items-center gap-2 text-left"
+                  aria-expanded={open}
+                  onClick={() => toggleOpen(group.areaId)}
+                  {...passwordManagerSafeControlProps}
+                >
                   <LifeAreaColorDot
                     name={group.areaName}
                     uncategorized={isUncategorized}
                   />
-                  <span className="min-w-0 truncate">
+                  <span className="min-w-0 flex-1 truncate text-[length:var(--density-segment-font-size)] font-medium leading-snug text-foreground">
                     {group.areaName}
                     {group.archived ? (
-                      <span className="ml-1.5 text-xs font-normal text-muted">
+                      <span className="ml-1.5 text-[length:var(--density-text-xs)] font-normal text-muted">
                         archived
                       </span>
                     ) : null}
                   </span>
-                </span>
-                <span className="shrink-0 text-xs text-muted">
-                  {group.items.length}
-                  <span className="ml-2" aria-hidden="true">
-                    {open ? "▾" : "▸"}
+                  <span className="shrink-0 text-[length:var(--density-text-xs)] text-muted">
+                    {group.items.length}
+                    <span className="ml-1.5" aria-hidden="true">
+                      {open ? "▾" : "▸"}
+                    </span>
                   </span>
-                </span>
-              </button>
+                </button>
+              ) : (
+                <div className="flex min-h-11 min-w-0 flex-1 items-center gap-2">
+                  <LifeAreaColorDot
+                    name={group.areaName}
+                    uncategorized={isUncategorized}
+                  />
+                  <span className="min-w-0 truncate text-[length:var(--density-segment-font-size)] font-medium leading-snug text-foreground">
+                    {group.areaName}
+                  </span>
+                </div>
+              )}
+
               {canEdit && !isUncategorized ? (
                 <button
                   type="button"
-                  className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg px-2 text-sm font-medium text-muted transition-colors hover:bg-accent-cream hover:text-foreground disabled:opacity-40"
+                  className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center rounded-lg px-2 text-[length:var(--density-text-sm)] font-medium text-muted transition-colors hover:bg-accent-cream hover:text-foreground disabled:opacity-40"
                   disabled={pending}
                   aria-label={`Add task to ${group.areaName}`}
                   onClick={() => startAdd(group.areaId)}
@@ -245,10 +213,16 @@ export function PlanLifeAreaSections({
               ) : null}
             </div>
 
-            {prioritySuggestions}
+            {hasPriorities || isAdding || showTasks ? (
+              <div className="mt-1 space-y-1">
+                {hasPriorities ? (
+                  <LifeAreaFocusPriorities
+                    priorities={areaPriorities}
+                    lifeAreas={lifeAreas}
+                    canAdd={canEdit}
+                  />
+                ) : null}
 
-            {showBody ? (
-              <div className="space-y-2">
                 {isAdding && canEdit && !isUncategorized ? (
                   <AreaQuickAdd
                     draft={draft}
@@ -261,7 +235,8 @@ export function PlanLifeAreaSections({
                     }}
                   />
                 ) : null}
-                {hasTasks && open ? (
+
+                {showTasks ? (
                   <SortablePlanItemList
                     planId={planId}
                     items={group.items}
@@ -282,7 +257,11 @@ export function PlanLifeAreaSections({
         );
       })}
 
-      {error ? <p className="text-sm text-accent-red">{error}</p> : null}
+      {error ? (
+        <p className="pt-2 text-[length:var(--density-text-sm)] text-accent-red">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -308,7 +287,7 @@ function AreaQuickAdd({
         disabled={pending}
         placeholder="What needs doing?"
         autoFocus
-        className="ui-input min-h-11 flex-1 text-sm"
+        className="ui-input min-h-11 flex-1 text-[length:var(--density-text-sm)]"
         onChange={(event) => onDraftChange(event.target.value)}
         onKeyDown={(event) => {
           if (event.key === "Enter") {
@@ -323,7 +302,7 @@ function AreaQuickAdd({
       />
       <button
         type="button"
-        className="ui-btn-secondary min-h-11 px-3 text-sm"
+        className="ui-btn-secondary min-h-11 px-3 text-[length:var(--density-text-sm)]"
         disabled={pending || !draft.trim()}
         onClick={onSubmit}
         {...passwordManagerSafeControlProps}

@@ -4,7 +4,6 @@ import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
 import { confirmFocusPriorityTaskDraftAction } from "@/app/(app)/focus-priorities/actions";
-import { LifeAreaColorDot } from "@/components/plans/life-area-color-dot";
 import type { SerializedFocusPriority } from "@/lib/focus-priorities/types";
 import type { SerializedLifeArea } from "@/lib/life-areas/types";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
@@ -23,8 +22,8 @@ type DraftState = {
 };
 
 /**
- * Compact quiet suggestions under a Life Area heading.
- * Not tasks — excluded from task counts and status tallies.
+ * Secondary Focus Priority rows under a Life Area heading.
+ * Click a row to open an editable task draft — no separate Add control.
  */
 export function LifeAreaFocusPriorities({
   priorities,
@@ -32,7 +31,6 @@ export function LifeAreaFocusPriorities({
   canAdd = true,
 }: LifeAreaFocusPrioritiesProps) {
   const router = useRouter();
-  const [expandedId, setExpandedId] = useState<string | null>(null);
   const [draft, setDraft] = useState<DraftState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
@@ -47,8 +45,10 @@ export function LifeAreaFocusPriorities({
   }
 
   function startDraft(priority: SerializedFocusPriority) {
+    if (!canAdd) {
+      return;
+    }
     setError(null);
-    setExpandedId(priority.id);
     setDraft({
       priorityId: priority.id,
       title: priority.suggestedTaskTitle,
@@ -89,66 +89,27 @@ export function LifeAreaFocusPriorities({
   }
 
   return (
-    <div className="space-y-1 px-0.5">
-      <p className="text-[0.6875rem] text-muted-light">Priorities</p>
+    <div className="ml-4 space-y-0.5 border-l border-border-soft pl-2.5 sm:ml-5">
       <ul className="space-y-0.5">
         {priorities.map((priority) => {
-          const expanded = expandedId === priority.id;
           const drafting = draft?.priorityId === priority.id;
 
           return (
             <li key={priority.id} className="space-y-1">
-              <div className="flex min-h-9 items-center justify-between gap-2">
-                <button
-                  type="button"
-                  className="flex min-w-0 flex-1 items-center gap-1.5 text-left text-xs text-muted transition-colors hover:text-foreground"
-                  aria-expanded={expanded}
-                  onClick={() =>
-                    setExpandedId((current) =>
-                      current === priority.id ? null : priority.id,
-                    )
-                  }
-                  {...passwordManagerSafeControlProps}
-                >
-                  <LifeAreaColorDot
-                    name={priority.lifeAreaName}
-                    size="sm"
-                  />
-                  <span className="truncate">{priority.title}</span>
-                </button>
-                {canAdd ? (
-                  <button
-                    type="button"
-                    className="shrink-0 rounded-md px-1.5 py-1 text-xs font-medium text-muted transition-colors hover:bg-accent-cream hover:text-foreground disabled:opacity-40"
-                    disabled={pending}
-                    aria-label={`Add ${priority.title} to today`}
-                    onClick={() => startDraft(priority)}
-                    {...passwordManagerSafeControlProps}
-                  >
-                    + Add
-                  </button>
-                ) : null}
-              </div>
-
-              {expanded && !drafting ? (
-                <div className="space-y-1 pb-1 pl-0.5">
+              {drafting && draft ? (
+                <div className="space-y-1.5 rounded-lg border border-border-soft px-2 py-2">
                   {priority.description ? (
-                    <p className="text-xs leading-relaxed text-muted-light">
+                    <p className="text-[length:var(--density-text-xs)] leading-snug text-muted-light">
                       {priority.description}
                     </p>
                   ) : null}
                   {priority.subtopics.length > 0 ? (
-                    <p className="text-xs text-muted-light">
+                    <p className="text-[length:var(--density-text-caption)] text-muted-light">
                       {priority.subtopics.join(" · ")}
                     </p>
                   ) : null}
-                </div>
-              ) : null}
-
-              {drafting && draft ? (
-                <div className="space-y-1.5 rounded-lg border border-border-soft px-2 py-2">
                   <input
-                    className="ui-input w-full text-sm"
+                    className="ui-input w-full text-[length:var(--density-text-sm)]"
                     value={draft.title}
                     disabled={pending}
                     aria-label="Task title"
@@ -169,7 +130,7 @@ export function LifeAreaFocusPriorities({
                   />
                   <div className="flex flex-col gap-1.5 sm:flex-row">
                     <input
-                      className="ui-input w-full text-sm sm:w-28"
+                      className="ui-input w-full text-[length:var(--density-text-sm)] sm:w-28"
                       type="number"
                       inputMode="numeric"
                       min={1}
@@ -188,7 +149,7 @@ export function LifeAreaFocusPriorities({
                     />
                     {areaOptions.length > 0 ? (
                       <select
-                        className="ui-input min-w-0 flex-1 text-sm"
+                        className="ui-input min-w-0 flex-1 text-[length:var(--density-text-sm)]"
                         value={draft.primaryLifeAreaId}
                         disabled={pending}
                         aria-label="Life Area"
@@ -211,7 +172,7 @@ export function LifeAreaFocusPriorities({
                   <div className="flex gap-1.5">
                     <button
                       type="button"
-                      className="ui-btn-secondary min-h-9 px-3 text-sm"
+                      className="ui-btn-secondary min-h-11 px-3 text-[length:var(--density-text-sm)]"
                       disabled={pending || !draft.title.trim()}
                       onClick={confirmDraft}
                       {...passwordManagerSafeControlProps}
@@ -220,7 +181,7 @@ export function LifeAreaFocusPriorities({
                     </button>
                     <button
                       type="button"
-                      className="rounded-lg px-2 py-1.5 text-xs font-medium text-muted transition-colors hover:bg-accent-cream hover:text-foreground"
+                      className="min-h-11 rounded-lg px-2 text-[length:var(--density-text-xs)] font-medium text-muted transition-colors hover:bg-accent-cream hover:text-foreground"
                       disabled={pending}
                       onClick={() => setDraft(null)}
                       {...passwordManagerSafeControlProps}
@@ -229,12 +190,27 @@ export function LifeAreaFocusPriorities({
                     </button>
                   </div>
                 </div>
-              ) : null}
+              ) : (
+                <button
+                  type="button"
+                  className="flex min-h-11 w-full items-center rounded-md px-1.5 text-left text-[length:var(--density-text-sm)] text-muted transition-colors hover:bg-accent-cream/60 hover:text-foreground focus-visible:bg-accent-cream/60 focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--focus-ring-subtle)] disabled:opacity-40"
+                  disabled={pending || !canAdd}
+                  aria-label={`Add ${priority.title} to today`}
+                  onClick={() => startDraft(priority)}
+                  {...passwordManagerSafeControlProps}
+                >
+                  <span className="truncate">{priority.title}</span>
+                </button>
+              )}
             </li>
           );
         })}
       </ul>
-      {error ? <p className="text-xs text-accent-red">{error}</p> : null}
+      {error ? (
+        <p className="text-[length:var(--density-text-xs)] text-accent-red">
+          {error}
+        </p>
+      ) : null}
     </div>
   );
 }
