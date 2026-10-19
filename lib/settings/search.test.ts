@@ -76,6 +76,30 @@ describe("searchSettings", () => {
     );
   });
 
+  it("finds Focus Priorities for admins and hides them for non-admins", () => {
+    const adminResults = searchSettings(
+      buildSettingsSearchIndex(fullAccess),
+      "focus priorities",
+    );
+    assert.ok(
+      adminResults.some((result) => result.title === "Focus Priorities"),
+      "expected Focus Priorities for admin",
+    );
+
+    const nonAdmin: SettingsAccessContext = {
+      ...fullAccess,
+      isAdmin: false,
+    };
+    const nonAdminResults = searchSettings(
+      buildSettingsSearchIndex(nonAdmin),
+      "focus priorities",
+    );
+    assert.equal(
+      nonAdminResults.some((result) => result.title === "Focus Priorities"),
+      false,
+    );
+  });
+
   it("returns empty results for blank queries", () => {
     assert.deepEqual(
       searchSettings(buildSettingsSearchIndex(fullAccess), "   "),

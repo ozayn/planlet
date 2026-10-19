@@ -5,7 +5,11 @@ import { useRouter } from "next/navigation";
 import type { PlanItemView, TaskOrganizationDisplay } from "@/app/generated/prisma/client";
 
 import { createPlanItemAction } from "@/app/(app)/plans/actions";
+import { LifeAreaColorDot } from "@/components/plans/life-area-color-dot";
+import { LifeAreaFocusPriorities } from "@/components/plans/life-area-focus-priorities";
 import { SortablePlanItemList } from "@/components/plans/sortable-plan-item-list";
+import { groupFocusPrioritiesByLifeArea } from "@/lib/focus-priorities/group";
+import type { SerializedFocusPriority } from "@/lib/focus-priorities/types";
 import { UNCATEGORIZED_LIFE_AREA_ID } from "@/lib/life-areas/constants";
 import { groupPlanItemsByPrimaryLifeArea } from "@/lib/life-areas/group";
 import type { SerializedLifeArea } from "@/lib/life-areas/types";
@@ -23,6 +27,7 @@ type PlanLifeAreaSectionsProps = {
   planId: string;
   items: SerializedPlanItem[];
   lifeAreas: SerializedLifeArea[];
+  focusPriorities?: SerializedFocusPriority[];
   itemView?: PlanItemView;
   canEdit?: boolean;
   sourcePlanDate?: string;
@@ -35,6 +40,7 @@ export function PlanLifeAreaSections({
   planId,
   items,
   lifeAreas,
+  focusPriorities = [],
   itemView = "MINIMAL",
   canEdit = true,
   sourcePlanDate,
@@ -50,6 +56,10 @@ export function PlanLifeAreaSections({
         includeEmptyAreas: true,
       }),
     [tasks, lifeAreas],
+  );
+  const prioritiesByArea = useMemo(
+    () => groupFocusPrioritiesByLifeArea(focusPriorities),
+    [focusPriorities],
   );
 
   const [openIds, setOpenIds] = useState<Set<string>>(() =>
@@ -138,13 +148,28 @@ export function PlanLifeAreaSections({
         const open = openIds.has(group.areaId);
         const isAdding = addingAreaId === group.areaId;
         const showBody = open || isAdding;
+        const areaPriorities = isUncategorized
+          ? []
+          : (prioritiesByArea.get(group.areaId) ?? []);
+        const prioritySuggestions =
+          areaPriorities.length > 0 ? (
+            <LifeAreaFocusPriorities
+              priorities={areaPriorities}
+              lifeAreas={lifeAreas}
+              canAdd={canEdit}
+            />
+          ) : null;
 
         if (!hasTasks && !isUncategorized) {
           return (
             <section key={group.areaId} className="space-y-1">
               <div className="flex min-h-11 items-center justify-between gap-2">
-                <span className="min-w-0 truncate text-sm text-muted">
-                  {group.areaName}
+                <span className="flex min-w-0 items-center gap-2 text-sm text-muted">
+                  <LifeAreaColorDot
+                    name={group.areaName}
+                    uncategorized={isUncategorized}
+                  />
+                  <span className="truncate">{group.areaName}</span>
                 </span>
                 {canEdit ? (
                   <button
@@ -159,6 +184,7 @@ export function PlanLifeAreaSections({
                   </button>
                 ) : null}
               </div>
+              {prioritySuggestions}
               {isAdding && canEdit ? (
                 <AreaQuickAdd
                   draft={draft}
@@ -184,13 +210,19 @@ export function PlanLifeAreaSections({
                 aria-expanded={open}
                 onClick={() => toggleOpen(group.areaId)}
               >
-                <span className="min-w-0 truncate text-sm font-medium text-foreground">
-                  {group.areaName}
-                  {group.archived ? (
-                    <span className="ml-1.5 text-xs font-normal text-muted">
-                      archived
-                    </span>
-                  ) : null}
+                <span className="flex min-w-0 items-center gap-2 text-sm font-medium text-foreground">
+                  <LifeAreaColorDot
+                    name={group.areaName}
+                    uncategorized={isUncategorized}
+                  />
+                  <span className="min-w-0 truncate">
+                    {group.areaName}
+                    {group.archived ? (
+                      <span className="ml-1.5 text-xs font-normal text-muted">
+                        archived
+                      </span>
+                    ) : null}
+                  </span>
                 </span>
                 <span className="shrink-0 text-xs text-muted">
                   {group.items.length}
@@ -212,6 +244,8 @@ export function PlanLifeAreaSections({
                 </button>
               ) : null}
             </div>
+
+            {prioritySuggestions}
 
             {showBody ? (
               <div className="space-y-2">

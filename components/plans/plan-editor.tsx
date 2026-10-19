@@ -21,6 +21,7 @@ import { ShareWithUserPanel } from "@/components/plans/share-with-user-panel";
 import { formatPlanActivityLabel } from "@/lib/plan-activity";
 import { isDefaultPlanTitle } from "@/lib/plan-title";
 import type { SerializedGratitude } from "@/lib/gratitude";
+import type { SerializedFocusPriority } from "@/lib/focus-priorities/types";
 import type { PlanOrganizeViewValue } from "@/lib/life-areas/types";
 import type { SerializedLifeArea } from "@/lib/life-areas/types";
 import type { SerializedObservation } from "@/lib/observations";
@@ -61,6 +62,7 @@ export type PlanEditorProps = {
   taskOrganizationDisplay?: TaskOrganizationDisplay;
   planOrganizeView?: PlanOrganizeViewValue;
   lifeAreas?: SerializedLifeArea[];
+  focusPriorities?: SerializedFocusPriority[];
   /** When false, the List | Life Areas control is rendered by the parent toolbar. */
   showOrganizeToggle?: boolean;
   headerActionsPlacement?: "inline" | "desktop-only" | "none";
@@ -92,6 +94,7 @@ export function PlanEditor({
   taskOrganizationDisplay = "ASSIGNED_ONLY",
   planOrganizeView = "LIST",
   lifeAreas = [],
+  focusPriorities = [],
   showOrganizeToggle = true,
   headerActionsPlacement = "inline",
   titleMode = "full",
@@ -274,6 +277,7 @@ export function PlanEditor({
             taskOrganizationDisplay={taskOrganizationDisplay}
             organizeView={planOrganizeView}
             lifeAreas={lifeAreas}
+            focusPriorities={focusPriorities}
           />
         ) : null}
 

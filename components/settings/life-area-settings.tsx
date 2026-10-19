@@ -10,6 +10,7 @@ import {
   reorderLifeAreasAction,
   restoreLifeAreaAction,
 } from "@/app/(app)/life-areas/actions";
+import { LifeAreaColorDot } from "@/components/plans/life-area-color-dot";
 import { GripVerticalIcon } from "@/components/ui/action-icons";
 import { MAX_LIFE_AREA_NAME_LENGTH } from "@/lib/life-areas/constants";
 import type { SerializedLifeArea } from "@/lib/life-areas/types";
@@ -144,8 +145,9 @@ export function LifeAreaSettings({ areas: initial }: LifeAreaSettingsProps) {
                     {...passwordManagerSafeControlProps}
                   />
                 ) : (
-                  <p className="truncate text-sm font-medium text-foreground">
-                    {area.name}
+                  <p className="flex min-w-0 items-center gap-2 text-sm font-medium text-foreground">
+                    <LifeAreaColorDot name={area.name} />
+                    <span className="truncate">{area.name}</span>
                   </p>
                 )}
               </div>
@@ -258,7 +260,10 @@ export function LifeAreaSettings({ areas: initial }: LifeAreaSettingsProps) {
                 key={area.id}
                 className="flex items-center justify-between gap-2 rounded-xl border border-border-soft px-2 py-2"
               >
-                <p className="min-w-0 truncate text-sm text-muted">{area.name}</p>
+                <p className="flex min-w-0 items-center gap-2 text-sm text-muted">
+                  <LifeAreaColorDot name={area.name} />
+                  <span className="truncate">{area.name}</span>
+                </p>
                 <button
                   type="button"
                   className="rounded-lg px-2 py-1.5 text-xs font-medium text-muted transition-colors hover:bg-accent-cream hover:text-foreground"

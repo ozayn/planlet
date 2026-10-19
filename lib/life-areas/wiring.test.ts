@@ -60,6 +60,7 @@ describe("Life Areas feature wiring", () => {
     assert.match(lifeSections, /SortablePlanItemList/);
     assert.match(lifeSections, /groupPlanItemsByPrimaryLifeArea/);
     assert.match(lifeSections, /UNCATEGORIZED_LIFE_AREA_ID/);
+    assert.match(lifeSections, /LifeAreaColorDot/);
     assert.match(lifeSections, /showLifeAreaAssign=/);
     assert.match(lifeSections, /showLifeAreaChange=/);
     assert.match(lifeSections, /includeEmptyAreas: true/);
@@ -70,6 +71,7 @@ describe("Life Areas feature wiring", () => {
     assert.match(lifeSections, /min-h-11/);
     assert.doesNotMatch(lifeSections, /PlanLifeAreaDailyOverview/);
     assert.doesNotMatch(lifeSections, /areas represented/);
+    assert.doesNotMatch(lifeSections, /backgroundColor:\s*group/);
     assert.match(card, /ItemLifeAreaAssignControl/);
     assert.match(card, /showLifeAreaAssign && canEdit && !isNested/);
     assert.match(card, /showLifeAreaChange && canEdit && !isNested/);

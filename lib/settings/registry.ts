@@ -435,6 +435,22 @@ export const SETTINGS_ITEMS: SettingsItemDefinition[] = [
     isAvailable: (access) => access.isSignedIn,
   },
   {
+    id: "focus-priorities",
+    categorySlug: "planner",
+    title: "Focus Priorities",
+    subtitle: "Ongoing priorities for Life Areas view",
+    keywords: [
+      "focus priorities",
+      "manage focus priorities",
+      "priorities",
+      "interview",
+      "job search",
+      "suggestions",
+    ],
+    anchor: "focus-priorities",
+    isAvailable: (access) => access.isSignedIn && access.isAdmin,
+  },
+  {
     id: "daily-reminder",
     categorySlug: "notifications",
     title: "Daily reminder",

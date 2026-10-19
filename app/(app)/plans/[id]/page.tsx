@@ -11,6 +11,7 @@ import {
 } from "@/lib/plan-sharing";
 import { getPlanReflectionData } from "@/lib/reflection-data";
 import { getPeriodSummaryHref } from "@/lib/period-summary-links";
+import { loadFocusPrioritiesForAdminUser } from "@/lib/focus-priorities";
 import { ensureDefaultLifeAreas } from "@/lib/life-areas";
 import { getPlanWithItems } from "@/lib/plans";
 import { prisma } from "@/lib/prisma";
@@ -44,11 +45,12 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
   }
 
   const serialized = serializePlan(plan);
-  const [planningPreferences, themeProjectCatalog, lifeAreas] =
+  const [planningPreferences, themeProjectCatalog, lifeAreas, focusPriorities] =
     await Promise.all([
       getPlanningPreferencesForUser(userId),
       getThemeProjectCatalog(userId),
       ensureDefaultLifeAreas(userId),
+      loadFocusPrioritiesForAdminUser(userId, session.user.role),
     ]);
 
   if (access === "view") {
@@ -127,6 +129,7 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
         taskOrganizationDisplay={planningPreferences.taskOrganizationDisplay}
         planOrganizeView={planningPreferences.planOrganizeView}
         lifeAreas={lifeAreas}
+        focusPriorities={focusPriorities}
       />
     </section>
   );

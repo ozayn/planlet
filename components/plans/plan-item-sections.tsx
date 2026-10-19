@@ -6,6 +6,7 @@ import { IntentionItemCard } from "@/components/plans/intention-item-card";
 import { NoteItemCard } from "@/components/plans/note-item-card";
 import { PlanLifeAreaSections } from "@/components/plans/plan-life-area-sections";
 import { SortablePlanItemList } from "@/components/plans/sortable-plan-item-list";
+import type { SerializedFocusPriority } from "@/lib/focus-priorities/types";
 import type { PlanOrganizeViewValue } from "@/lib/life-areas/types";
 import type { SerializedLifeArea } from "@/lib/life-areas/types";
 import { partitionPlanItems } from "@/lib/plan-item-sections";
@@ -24,6 +25,7 @@ type PlanItemSectionsProps = {
   moveCompletedToTop?: boolean;
   organizeView?: PlanOrganizeViewValue;
   lifeAreas?: SerializedLifeArea[];
+  focusPriorities?: SerializedFocusPriority[];
 };
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
@@ -45,6 +47,7 @@ export function PlanItemSections({
   moveCompletedToTop = true,
   organizeView = "LIST",
   lifeAreas = [],
+  focusPriorities = [],
 }: PlanItemSectionsProps) {
   const { tasks, intentions, notes } = partitionPlanItems(items);
   const showLifeAreas = organizeView === "LIFE_AREAS";
@@ -70,6 +73,7 @@ export function PlanItemSections({
               planId={planId}
               items={items}
               lifeAreas={lifeAreas}
+              focusPriorities={focusPriorities}
               itemView={itemView}
               canEdit={canEdit}
               sourcePlanDate={sourcePlanDate}

@@ -17,6 +17,7 @@ import {
 import { getPeriodSummaryHref } from "@/lib/period-summary-links";
 import { getPlanReflectionData } from "@/lib/reflection-data";
 import { buildMonthPlanPageTitle } from "@/lib/month-plan-header";
+import { loadFocusPrioritiesForAdminUser } from "@/lib/focus-priorities";
 import { ensureDefaultLifeAreas } from "@/lib/life-areas";
 import { getMonthPlan } from "@/lib/plans";
 import { serializePlan } from "@/lib/plan-serialize";
@@ -76,6 +77,7 @@ export default async function MonthPlanPage({ params }: MonthPlanPageProps) {
     recentShareRecipients,
     themeProjectCatalog,
     lifeAreas,
+    focusPriorities,
   ] = await Promise.all([
     getPlanSharesForOwner(plan.id, userId),
     getPlanningPreferencesForUser(userId),
@@ -83,6 +85,7 @@ export default async function MonthPlanPage({ params }: MonthPlanPageProps) {
     getRecentShareRecipients(userId, plan.id),
     getThemeProjectCatalog(userId),
     ensureDefaultLifeAreas(userId),
+    loadFocusPrioritiesForAdminUser(userId, session.user.role),
   ]);
 
   const periodSummaryHref = getPeriodSummaryHref("MONTH", plan.dateStart);
@@ -114,6 +117,7 @@ export default async function MonthPlanPage({ params }: MonthPlanPageProps) {
         taskOrganizationDisplay={planningPreferences.taskOrganizationDisplay}
         planOrganizeView={planningPreferences.planOrganizeView}
         lifeAreas={lifeAreas}
+        focusPriorities={focusPriorities}
       />
     </section>
   );

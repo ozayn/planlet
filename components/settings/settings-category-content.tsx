@@ -190,6 +190,20 @@ export function SettingsCategoryContent({
                   Manage →
                 </Link>
               </SettingsBlock>
+              {data.access.isAdmin ? (
+                <SettingsBlock
+                  id="focus-priorities"
+                  title="Focus Priorities"
+                  description="Quiet ongoing priorities in Life Areas view."
+                >
+                  <Link
+                    href="/focus-priorities"
+                    className="ui-text-link text-sm font-medium"
+                  >
+                    Manage Focus Priorities →
+                  </Link>
+                </SettingsBlock>
+              ) : null}
             </>
           ) : null}
         </div>

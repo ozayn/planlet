@@ -355,6 +355,7 @@ model User {
   themes        Theme[]
   projects      Project[]
   lifeAreas     LifeArea[]
+  focusPriorities FocusPriority[]
   planSharesOwned    PlanShare[] @relation("PlanShareOwner")
   planSharesReceived PlanShare[] @relation("PlanShareRecipient")
   sentKudos          PlanKudos[] @relation("SentKudos")
@@ -786,9 +787,33 @@ model LifeArea {
   createdAt  DateTime           @default(now())
   updatedAt  DateTime           @updatedAt
   taskLinks  PlanItemLifeArea[]
+  focusPriorities FocusPriority[]
 
   @@index([userId, sortOrder])
   @@index([userId, archivedAt])
+}
+
+/// Admin-only ongoing priorities shown as quiet suggestions in Life Areas view.
+/// Not linked to PlanItems — renaming/archiving never mutates existing tasks.
+model FocusPriority {
+  id                     String    @id @default(cuid())
+  userId                 String
+  user                   User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lifeAreaId             String
+  lifeArea               LifeArea  @relation(fields: [lifeAreaId], references: [id], onDelete: Cascade)
+  title                  String
+  description            String?   @db.Text
+  suggestedTaskTitle     String
+  defaultDurationMinutes Int?
+  subtopics              String[]  @default([])
+  sortOrder              Int       @default(0)
+  archivedAt             DateTime?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  @@index([userId, sortOrder])
+  @@index([userId, archivedAt])
+  @@index([lifeAreaId])
 }
 
 /// Optional Life Area association for a PlanItem (at most one primary).

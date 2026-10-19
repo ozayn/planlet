@@ -16,6 +16,7 @@ import {
   getRecentShareRecipients,
 } from "@/lib/plan-sharing";
 import { getPlanReflectionData } from "@/lib/reflection-data";
+import { loadFocusPrioritiesForAdminUser } from "@/lib/focus-priorities";
 import { ensureDefaultLifeAreas } from "@/lib/life-areas";
 import { getDayPlan } from "@/lib/plans";
 import { serializePlan } from "@/lib/plan-serialize";
@@ -77,6 +78,7 @@ export default async function DayPlanPage({ params }: DayPlanPageProps) {
     recentShareRecipients,
     themeProjectCatalog,
     lifeAreas,
+    focusPriorities,
   ] = await Promise.all([
     getPlanSharesForOwner(plan.id, userId),
     getPlanningPreferencesForUser(userId),
@@ -86,6 +88,7 @@ export default async function DayPlanPage({ params }: DayPlanPageProps) {
     getRecentShareRecipients(userId, plan.id),
     getThemeProjectCatalog(userId),
     ensureDefaultLifeAreas(userId),
+    loadFocusPrioritiesForAdminUser(userId, session.user.role),
   ]);
 
   return (
@@ -113,6 +116,7 @@ export default async function DayPlanPage({ params }: DayPlanPageProps) {
         taskOrganizationDisplay={planningPreferences.taskOrganizationDisplay}
         planOrganizeView={planningPreferences.planOrganizeView}
         lifeAreas={lifeAreas}
+        focusPriorities={focusPriorities}
       />
     </section>
   );

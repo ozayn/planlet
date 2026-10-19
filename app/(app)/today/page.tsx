@@ -13,6 +13,7 @@ import {
   getPlanSharesForOwner,
   getRecentShareRecipients,
 } from "@/lib/plan-sharing";
+import { loadFocusPrioritiesForAdminUser } from "@/lib/focus-priorities";
 import { ensureDefaultLifeAreas } from "@/lib/life-areas";
 import { getTodayPlan } from "@/lib/plans";
 import { serializePlan } from "@/lib/plan-serialize";
@@ -28,13 +29,19 @@ export default async function TodayPage() {
     redirect("/");
   }
 
-  const [plan, planningPreferences, themeProjectCatalog, lifeAreas] =
-    await Promise.all([
-      getTodayPlan(userId),
-      getPlanningPreferencesForUser(userId),
-      getThemeProjectCatalog(userId),
-      ensureDefaultLifeAreas(userId),
-    ]);
+  const [
+    plan,
+    planningPreferences,
+    themeProjectCatalog,
+    lifeAreas,
+    focusPriorities,
+  ] = await Promise.all([
+    getTodayPlan(userId),
+    getPlanningPreferencesForUser(userId),
+    getThemeProjectCatalog(userId),
+    ensureDefaultLifeAreas(userId),
+    loadFocusPrioritiesForAdminUser(userId, session.user.role),
+  ]);
   const [kudos, reflectionData, platformShares, recentShareRecipients] = plan
     ? await Promise.all([
         getKudosForPlan(plan.id, userId),
@@ -82,6 +89,7 @@ export default async function TodayPage() {
           taskOrganizationDisplay={planningPreferences.taskOrganizationDisplay}
           planOrganizeView={planningPreferences.planOrganizeView}
           lifeAreas={lifeAreas}
+          focusPriorities={focusPriorities}
         />
       ) : (
         <>

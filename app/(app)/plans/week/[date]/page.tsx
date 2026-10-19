@@ -17,6 +17,7 @@ import {
 import { getPeriodSummaryHref } from "@/lib/period-summary-links";
 import { getPlanReflectionData } from "@/lib/reflection-data";
 import { buildWeekPlanPageTitle } from "@/lib/week-plan-header";
+import { loadFocusPrioritiesForAdminUser } from "@/lib/focus-priorities";
 import { ensureDefaultLifeAreas } from "@/lib/life-areas";
 import { getWeekPlan } from "@/lib/plans";
 import { serializePlan } from "@/lib/plan-serialize";
@@ -76,6 +77,7 @@ export default async function WeekPlanPage({ params }: WeekPlanPageProps) {
     recentShareRecipients,
     themeProjectCatalog,
     lifeAreas,
+    focusPriorities,
   ] = await Promise.all([
     getPlanSharesForOwner(plan.id, userId),
     getPlanningPreferencesForUser(userId),
@@ -83,6 +85,7 @@ export default async function WeekPlanPage({ params }: WeekPlanPageProps) {
     getRecentShareRecipients(userId, plan.id),
     getThemeProjectCatalog(userId),
     ensureDefaultLifeAreas(userId),
+    loadFocusPrioritiesForAdminUser(userId, session.user.role),
   ]);
 
   const periodSummaryHref = getPeriodSummaryHref("WEEK", plan.dateStart);
@@ -111,6 +114,7 @@ export default async function WeekPlanPage({ params }: WeekPlanPageProps) {
         taskOrganizationDisplay={planningPreferences.taskOrganizationDisplay}
         planOrganizeView={planningPreferences.planOrganizeView}
         lifeAreas={lifeAreas}
+        focusPriorities={focusPriorities}
       />
     </section>
   );

@@ -397,6 +397,13 @@ export {
   shortLifeAreaLabel,
 } from "@/lib/life-areas/constants";
 export {
+  CUSTOM_LIFE_AREA_COLOR_PALETTE,
+  LIFE_AREA_COLOR_BY_NAME,
+  UNCATEGORIZED_LIFE_AREA_COLOR,
+  colorForCustomLifeArea,
+  resolveLifeAreaColor,
+} from "@/lib/life-areas/colors";
+export {
   planDefaultLifeAreaRenames,
   summarizeDailyLifeAreas,
 } from "@/lib/life-areas/overview";
