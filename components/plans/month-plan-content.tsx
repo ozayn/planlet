@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { MonthPlanNav } from "@/components/plans/month-plan-nav";
 import { PlanEditor } from "@/components/plans/plan-editor";
 import { PlanHeaderActions } from "@/components/plans/plan-header-actions";
+import { PlanOrganizeViewToggle } from "@/components/plans/plan-organize-view-toggle";
 import type { PlanEditorProps } from "@/components/plans/plan-editor";
 import {
   buildMonthPlanPageSubtitle,
@@ -30,6 +31,7 @@ export function MonthPlanContent({
   periodSummaryHref,
   periodSummaryLabel,
   canEdit = true,
+  planOrganizeView = "LIST",
   ...planEditorProps
 }: MonthPlanContentProps) {
   const sharePanelRef = useRef<HTMLDivElement>(null);
@@ -93,7 +95,10 @@ export function MonthPlanContent({
         <div className="ui-day-plan-toolbar-actions">
           <PlanHeaderActions {...headerActionProps} />
         </div>
-        <MonthPlanNav currentMonthStart={currentMonthStart} />
+        <div className="flex flex-col gap-2 overflow-x-hidden sm:flex-row sm:flex-wrap sm:items-center">
+          <MonthPlanNav currentMonthStart={currentMonthStart} />
+          <PlanOrganizeViewToggle value={planOrganizeView} />
+        </div>
       </div>
 
       <PlanEditor
@@ -106,6 +111,8 @@ export function MonthPlanContent({
         periodSummaryHref={periodSummaryHref}
         periodSummaryLabel={periodSummaryLabel}
         canEdit={canEdit}
+        planOrganizeView={planOrganizeView}
+        showOrganizeToggle={false}
         headerActionsPlacement="none"
         titleMode="custom-only"
         titleEditSignal={titleEditSignal}

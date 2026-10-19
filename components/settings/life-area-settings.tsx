@@ -107,8 +107,7 @@ export function LifeAreaSettings({ areas: initial }: LifeAreaSettingsProps) {
   return (
     <div className="space-y-3">
       <p className="text-sm text-muted">
-        Optional domains for the Life Areas plan view. Tasks can stay
-        uncategorized.
+        Add, rename, reorder, archive, or restore. Tasks can stay uncategorized.
       </p>
 
       {active.length === 0 ? (

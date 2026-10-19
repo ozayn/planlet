@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 
 import { PlanEditor } from "@/components/plans/plan-editor";
 import { PlanHeaderActions } from "@/components/plans/plan-header-actions";
+import { PlanOrganizeViewToggle } from "@/components/plans/plan-organize-view-toggle";
 import { YearPlanNav } from "@/components/plans/year-plan-nav";
 import type { PlanEditorProps } from "@/components/plans/plan-editor";
 import {
@@ -30,6 +31,7 @@ export function YearPlanContent({
   periodSummaryHref,
   periodSummaryLabel,
   canEdit = true,
+  planOrganizeView = "LIST",
   ...planEditorProps
 }: YearPlanContentProps) {
   const sharePanelRef = useRef<HTMLDivElement>(null);
@@ -93,7 +95,10 @@ export function YearPlanContent({
         <div className="ui-day-plan-toolbar-actions">
           <PlanHeaderActions {...headerActionProps} />
         </div>
-        <YearPlanNav currentYearStart={currentYearStart} />
+        <div className="flex flex-col gap-2 overflow-x-hidden sm:flex-row sm:flex-wrap sm:items-center">
+          <YearPlanNav currentYearStart={currentYearStart} />
+          <PlanOrganizeViewToggle value={planOrganizeView} />
+        </div>
       </div>
 
       <PlanEditor
@@ -106,6 +111,8 @@ export function YearPlanContent({
         periodSummaryHref={periodSummaryHref}
         periodSummaryLabel={periodSummaryLabel}
         canEdit={canEdit}
+        planOrganizeView={planOrganizeView}
+        showOrganizeToggle={false}
         headerActionsPlacement="none"
         titleMode="custom-only"
         titleEditSignal={titleEditSignal}

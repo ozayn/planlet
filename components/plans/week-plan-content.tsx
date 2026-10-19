@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 
 import { PlanEditor } from "@/components/plans/plan-editor";
 import { PlanHeaderActions } from "@/components/plans/plan-header-actions";
+import { PlanOrganizeViewToggle } from "@/components/plans/plan-organize-view-toggle";
 import { WeekPlanNav } from "@/components/plans/week-plan-nav";
 import type { PlanEditorProps } from "@/components/plans/plan-editor";
 import {
@@ -30,6 +31,7 @@ export function WeekPlanContent({
   periodSummaryHref,
   periodSummaryLabel,
   canEdit = true,
+  planOrganizeView = "LIST",
   ...planEditorProps
 }: WeekPlanContentProps) {
   const sharePanelRef = useRef<HTMLDivElement>(null);
@@ -96,7 +98,10 @@ export function WeekPlanContent({
         <div className="ui-day-plan-toolbar-actions">
           <PlanHeaderActions {...headerActionProps} />
         </div>
-        <WeekPlanNav currentWeekStart={currentWeekStart} />
+        <div className="flex flex-col gap-2 overflow-x-hidden sm:flex-row sm:flex-wrap sm:items-center">
+          <WeekPlanNav currentWeekStart={currentWeekStart} />
+          <PlanOrganizeViewToggle value={planOrganizeView} />
+        </div>
       </div>
 
       <PlanEditor
@@ -109,6 +114,8 @@ export function WeekPlanContent({
         periodSummaryHref={periodSummaryHref}
         periodSummaryLabel={periodSummaryLabel}
         canEdit={canEdit}
+        planOrganizeView={planOrganizeView}
+        showOrganizeToggle={false}
         headerActionsPlacement="none"
         titleMode="custom-only"
         titleEditSignal={titleEditSignal}

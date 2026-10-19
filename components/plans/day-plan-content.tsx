@@ -5,13 +5,13 @@ import { useRef, useState } from "react";
 import { DayPlanNav } from "@/components/plans/day-plan-nav";
 import { PlanEditor } from "@/components/plans/plan-editor";
 import { PlanHeaderActions } from "@/components/plans/plan-header-actions";
+import { PlanOrganizeViewToggle } from "@/components/plans/plan-organize-view-toggle";
 import type { PlanEditorProps } from "@/components/plans/plan-editor";
 import {
   buildDayPlanPageSubtitle,
   buildDayPlanPageTitle,
   type DayPlanPageVariant,
 } from "@/lib/day-plan-header";
-
 type DayPlanContentProps = Omit<
   PlanEditorProps,
   "headerActionsPlacement" | "titleMode" | "showMeta"
@@ -37,6 +37,7 @@ export function DayPlanContent({
   periodSummaryHref,
   periodSummaryLabel,
   canEdit = true,
+  planOrganizeView = "LIST",
   ...planEditorProps
 }: DayPlanContentProps) {
   const sharePanelRef = useRef<HTMLDivElement>(null);
@@ -108,7 +109,10 @@ export function DayPlanContent({
         <div className="ui-day-plan-toolbar-actions">
           <PlanHeaderActions {...headerActionProps} />
         </div>
-        <DayPlanNav currentDate={currentDate} timezone={timezone} />
+        <div className="flex flex-col gap-2 overflow-x-hidden sm:flex-row sm:flex-wrap sm:items-center">
+          <DayPlanNav currentDate={currentDate} timezone={timezone} />
+          <PlanOrganizeViewToggle value={planOrganizeView} />
+        </div>
       </div>
 
       <PlanEditor
@@ -121,6 +125,8 @@ export function DayPlanContent({
         periodSummaryHref={periodSummaryHref}
         periodSummaryLabel={periodSummaryLabel}
         canEdit={canEdit}
+        planOrganizeView={planOrganizeView}
+        showOrganizeToggle={false}
         headerActionsPlacement="none"
         titleMode="custom-only"
         titleEditSignal={titleEditSignal}

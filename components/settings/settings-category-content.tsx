@@ -181,7 +181,7 @@ export function SettingsCategoryContent({
               </SettingsBlock>
               <SettingsBlock
                 id="life-areas"
-                title="Life Areas"
+                title="Manage Life Areas"
                 description="Optional domains for the Life Areas plan view. List remains the default."
               >
                 <LifeAreaSettings areas={data.lifeAreas} />

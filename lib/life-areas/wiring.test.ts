@@ -84,6 +84,44 @@ describe("Life Areas feature wiring", () => {
     }
   });
 
+  it("mounts List | Life Areas on the actual period plan toolbars", () => {
+    const surfaces = [
+      "components/plans/day-plan-content.tsx",
+      "components/plans/week-plan-content.tsx",
+      "components/plans/month-plan-content.tsx",
+      "components/plans/year-plan-content.tsx",
+    ];
+
+    for (const relative of surfaces) {
+      const source = readFileSync(join(root, relative), "utf8");
+      assert.match(
+        source,
+        /PlanOrganizeViewToggle/,
+        `expected PlanOrganizeViewToggle in ${relative}`,
+      );
+      assert.match(
+        source,
+        /showOrganizeToggle=\{false\}/,
+        `expected toolbar-owned toggle in ${relative}`,
+      );
+    }
+
+    const editor = readFileSync(
+      join(root, "components/plans/plan-editor.tsx"),
+      "utf8",
+    );
+    assert.match(editor, /data-plan-view=\{planViewAttr\}/);
+    assert.match(editor, /PlanOrganizeViewToggle/);
+    assert.match(editor, /showOrganizeToggle = true/);
+
+    const toggle = readFileSync(
+      join(root, "components/plans/plan-organize-view-toggle.tsx"),
+      "utf8",
+    );
+    assert.match(toggle, /data-plan-organize-toggle/);
+    assert.match(toggle, /updatePlanOrganizeViewAction/);
+  });
+
   it("exposes optional Life Area picker in task details, not quick-add", () => {
     const details = readFileSync(
       join(root, "components/plans/item-details-sheet.tsx"),
@@ -99,13 +137,17 @@ describe("Life Areas feature wiring", () => {
     );
 
     assert.match(details, /ItemLifeAreaPicker/);
+    assert.doesNotMatch(details, /lifeAreas\.length > 0 && !isNote/);
     assert.match(picker, /Life Area/);
-    assert.match(picker, /\+ Add another area/);
+    assert.match(picker, /Select area/);
+    assert.match(picker, /\+ Create new Life Area/);
+    assert.match(picker, /createLifeAreaAction/);
     assert.match(picker, /setPlanItemLifeAreasAction/);
+    assert.match(picker, /\+ Add another area/);
     assert.doesNotMatch(editor, /ItemLifeAreaPicker/);
   });
 
-  it("registers Settings → Planning → Life Areas management", () => {
+  it("registers Settings → Planning → Manage Life Areas", () => {
     const registry = readFileSync(join(root, "lib/settings/registry.ts"), "utf8");
     const settings = readFileSync(
       join(root, "components/settings/settings-category-content.tsx"),
@@ -117,12 +159,16 @@ describe("Life Areas feature wiring", () => {
     );
 
     assert.match(registry, /id: "life-areas"/);
+    assert.match(registry, /title: "Manage Life Areas"/);
     assert.match(registry, /categorySlug: "planner"/);
     assert.match(settings, /LifeAreaSettings/);
     assert.match(settings, /id="life-areas"/);
+    assert.match(settings, /Manage Life Areas/);
+    assert.match(manage, /createLifeAreaAction/);
     assert.match(manage, /archiveLifeAreaAction/);
     assert.match(manage, /restoreLifeAreaAction/);
     assert.match(manage, /reorderLifeAreasAction/);
+    assert.match(manage, /renameLifeAreaAction/);
   });
 
   it("seeds defaults once and never duplicates associations in setPlanItemLifeAreas", () => {

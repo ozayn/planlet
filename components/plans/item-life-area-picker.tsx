@@ -1,9 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useId, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 
-import { setPlanItemLifeAreasAction } from "@/app/(app)/life-areas/actions";
+import {
+  createLifeAreaAction,
+  setPlanItemLifeAreasAction,
+} from "@/app/(app)/life-areas/actions";
+import { MAX_LIFE_AREA_NAME_LENGTH } from "@/lib/life-areas/constants";
 import type { SerializedLifeArea } from "@/lib/life-areas/types";
 import type { SerializedPlanItem } from "@/lib/plan-serialize";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
@@ -20,14 +24,22 @@ export function ItemLifeAreaPicker({
   lifeAreas,
 }: ItemLifeAreaPickerProps) {
   const router = useRouter();
+  const createFieldId = useId();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(false);
   const [showSecondary, setShowSecondary] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [areas, setAreas] = useState(lifeAreas);
+
+  useEffect(() => {
+    setAreas(lifeAreas);
+  }, [lifeAreas]);
 
   const activeAreas = useMemo(
-    () => lifeAreas.filter((area) => !area.archivedAt),
-    [lifeAreas],
+    () => areas.filter((area) => !area.archivedAt),
+    [areas],
   );
 
   const [primary, setPrimary] = useState(
@@ -65,8 +77,51 @@ export function ItemLifeAreaPicker({
     });
   }
 
+  function createAndAssign() {
+    const name = newName.trim();
+    if (!name) {
+      return;
+    }
+    setError(null);
+    startTransition(async () => {
+      const created = await createLifeAreaAction(name);
+      if (!created.success) {
+        setError(created.error);
+        return;
+      }
+
+      const nextSecondaries = secondaries.filter(
+        (id) => id !== created.area.id,
+      );
+      setAreas((current) => {
+        if (current.some((area) => area.id === created.area.id)) {
+          return current;
+        }
+        return [...current, created.area];
+      });
+      setPrimary(created.area.id);
+      setSecondaries(nextSecondaries);
+      setNewName("");
+      setCreating(false);
+
+      const assigned = await setPlanItemLifeAreasAction({
+        planId,
+        itemId: item.id,
+        primaryLifeAreaId: created.area.id,
+        secondaryLifeAreaIds: nextSecondaries,
+      });
+      if (!assigned.success) {
+        setError(assigned.error);
+        return;
+      }
+      router.refresh();
+    });
+  }
+
   const summary =
-    item.lifeAreas.find((area) => area.isPrimary)?.name ?? "None";
+    activeAreas.find((area) => area.id === primary)?.name ??
+    item.lifeAreas.find((area) => area.isPrimary)?.name ??
+    "None";
 
   return (
     <div className="space-y-2 border-t border-border-soft pt-3">
@@ -88,11 +143,11 @@ export function ItemLifeAreaPicker({
       {expanded ? (
         <div className="space-y-2">
           <label className="block space-y-1 text-sm">
-            <span className="text-xs text-muted">Primary</span>
+            <span className="text-xs text-muted">Select area</span>
             <select
-              className="ui-input w-full"
+              className="ui-input w-full min-h-11"
               value={primary}
-              disabled={pending || activeAreas.length === 0}
+              disabled={pending}
               onChange={(event) => {
                 const nextPrimary = event.target.value;
                 const nextSecondaries = secondaries.filter(
@@ -145,14 +200,77 @@ export function ItemLifeAreaPicker({
                   })}
               </ul>
             </div>
-          ) : (
+          ) : primary ? (
             <button
               type="button"
-              className="text-xs text-muted transition-colors hover:text-foreground disabled:opacity-40"
-              disabled={!primary || pending}
+              className="min-h-11 text-left text-xs text-muted transition-colors hover:text-foreground disabled:opacity-40"
+              disabled={pending}
               onClick={() => setShowSecondary(true)}
             >
               + Add another area
+            </button>
+          ) : null}
+
+          {creating ? (
+            <div className="space-y-2 rounded-xl border border-border-soft p-2">
+              <label className="block space-y-1 text-sm" htmlFor={createFieldId}>
+                <span className="text-xs text-muted">New Life Area</span>
+                <input
+                  id={createFieldId}
+                  className="ui-input w-full min-h-11"
+                  value={newName}
+                  maxLength={MAX_LIFE_AREA_NAME_LENGTH}
+                  disabled={pending}
+                  placeholder="Name"
+                  autoFocus
+                  onChange={(event) => setNewName(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter") {
+                      event.preventDefault();
+                      createAndAssign();
+                    }
+                    if (event.key === "Escape") {
+                      event.preventDefault();
+                      setCreating(false);
+                      setNewName("");
+                    }
+                  }}
+                  {...passwordManagerSafeControlProps}
+                />
+              </label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  className="ui-btn-secondary min-h-11 flex-1"
+                  disabled={pending || !newName.trim()}
+                  onClick={createAndAssign}
+                  {...passwordManagerSafeControlProps}
+                >
+                  Create
+                </button>
+                <button
+                  type="button"
+                  className="min-h-11 rounded-xl px-3 text-sm text-muted transition-colors hover:bg-accent-cream hover:text-foreground"
+                  disabled={pending}
+                  onClick={() => {
+                    setCreating(false);
+                    setNewName("");
+                  }}
+                  {...passwordManagerSafeControlProps}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="min-h-11 w-full text-left text-sm text-muted transition-colors hover:text-foreground disabled:opacity-40"
+              disabled={pending}
+              onClick={() => setCreating(true)}
+              {...passwordManagerSafeControlProps}
+            >
+              + Create new Life Area
             </button>
           )}
 

@@ -41,9 +41,10 @@ export function PlanOrganizeViewToggle({ value }: PlanOrganizeViewToggleProps) {
 
   return (
     <div
-      className="inline-flex rounded-lg border border-border-soft p-0.5"
+      className="inline-flex shrink-0 rounded-lg border border-border-soft p-0.5"
       role="group"
-      aria-label="Plan organization"
+      aria-label="List or Life Areas"
+      data-plan-organize-toggle=""
     >
       {OPTIONS.map((option) => {
         const active = selected === option.value;

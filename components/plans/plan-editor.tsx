@@ -61,6 +61,8 @@ export type PlanEditorProps = {
   taskOrganizationDisplay?: TaskOrganizationDisplay;
   planOrganizeView?: PlanOrganizeViewValue;
   lifeAreas?: SerializedLifeArea[];
+  /** When false, the List | Life Areas control is rendered by the parent toolbar. */
+  showOrganizeToggle?: boolean;
   headerActionsPlacement?: "inline" | "desktop-only" | "none";
   titleMode?: "full" | "custom-only";
   titleEditSignal?: number;
@@ -90,6 +92,7 @@ export function PlanEditor({
   taskOrganizationDisplay = "ASSIGNED_ONLY",
   planOrganizeView = "LIST",
   lifeAreas = [],
+  showOrganizeToggle = true,
   headerActionsPlacement = "inline",
   titleMode = "full",
   titleEditSignal = 0,
@@ -193,67 +196,73 @@ export function PlanEditor({
   const hideTitleVisually =
     titleMode === "custom-only" && !hasCustomTitle && !titleEditing;
 
+  const planViewAttr =
+    planOrganizeView === "LIFE_AREAS" ? "life-areas" : "list";
+
   return (
     <LifeAreaCatalogProvider areas={lifeAreas}>
-    <div
-      className={`ui-plan-editor ${titleMode === "custom-only" ? "space-y-4" : "space-y-6"}`}
-    >
-      {showMeta ? (
-        <header
-          className={`ui-plan-editor-header space-y-3${hideTitleVisually ? " sr-only" : ""}`}
-          aria-hidden={hideTitleVisually}
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1 space-y-1.5">
-              {titleEditor}
-              {titleMode === "full" ? metadata : null}
+      <div
+        className={`ui-plan-editor ${titleMode === "custom-only" ? "space-y-4" : "space-y-6"}`}
+        data-plan-view={planViewAttr}
+      >
+        {showMeta ? (
+          <header
+            className={`ui-plan-editor-header space-y-3${hideTitleVisually ? " sr-only" : ""}`}
+            aria-hidden={hideTitleVisually}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1 space-y-1.5">
+                {titleEditor}
+                {titleMode === "full" ? metadata : null}
+              </div>
+              {headerActionsNode}
             </div>
-            {headerActionsNode}
+            {plan.summary ? (
+              <p className="text-sm leading-relaxed text-muted" dir="auto">
+                {plan.summary}
+              </p>
+            ) : null}
+          </header>
+        ) : (
+          <header
+            className={`ui-plan-editor-header space-y-2${hideTitleVisually ? " sr-only" : ""}`}
+            aria-hidden={hideTitleVisually}
+          >
+            <div className="flex items-start justify-between gap-3">
+              {titleEditor}
+              {headerActionsNode}
+            </div>
+            {titleMode === "full" ? metadata : null}
+          </header>
+        )}
+
+        {showPlatformShare ? (
+          <div ref={sharePanelRef}>
+            <ShareWithUserPanel
+              planId={plan.id}
+              shares={platformShares}
+              recentRecipients={recentShareRecipients}
+              open={shareOpen}
+              onOpenChange={setShareOpen}
+            />
           </div>
-          {plan.summary ? (
-            <p className="text-sm leading-relaxed text-muted" dir="auto">
-              {plan.summary}
-            </p>
-          ) : null}
-        </header>
-      ) : (
-        <header
-          className={`ui-plan-editor-header space-y-2${hideTitleVisually ? " sr-only" : ""}`}
-          aria-hidden={hideTitleVisually}
-        >
-          <div className="flex items-start justify-between gap-3">
-            {titleEditor}
-            {headerActionsNode}
-          </div>
-          {titleMode === "full" ? metadata : null}
-        </header>
-      )}
+        ) : null}
 
-      {showPlatformShare ? (
-        <div ref={sharePanelRef}>
-          <ShareWithUserPanel
-            planId={plan.id}
-            shares={platformShares}
-            recentRecipients={recentShareRecipients}
-            open={shareOpen}
-            onOpenChange={setShareOpen}
-          />
-        </div>
-      ) : null}
+        <PlanKudosSummary kudos={kudos} />
 
-      <PlanKudosSummary kudos={kudos} />
-
-      {canEdit ? (
-        <section>
-          <AddItemForm planId={plan.id} />
-        </section>
-      ) : null}
-
-      {plan.items.length > 0 ? (
-        <section className="space-y-3">
+        {showOrganizeToggle ? (
           <div className="flex justify-start overflow-x-hidden">
             <PlanOrganizeViewToggle value={planOrganizeView} />
           </div>
+        ) : null}
+
+        {canEdit ? (
+          <section>
+            <AddItemForm planId={plan.id} />
+          </section>
+        ) : null}
+
+        {plan.items.length > 0 ? (
           <PlanItemSections
             planId={plan.id}
             items={plan.items}
@@ -265,27 +274,26 @@ export function PlanEditor({
             organizeView={planOrganizeView}
             lifeAreas={lifeAreas}
           />
-        </section>
-      ) : null}
+        ) : null}
 
-      {gratitudes !== undefined ? (
-        <GratitudeSection planId={plan.id} gratitudes={gratitudes} />
-      ) : null}
+        {gratitudes !== undefined ? (
+          <GratitudeSection planId={plan.id} gratitudes={gratitudes} />
+        ) : null}
 
-      {observations !== undefined ? (
-        <PrivateObservationsSection
-          planId={plan.id}
-          observations={observations}
-        />
-      ) : null}
+        {observations !== undefined ? (
+          <PrivateObservationsSection
+            planId={plan.id}
+            observations={observations}
+          />
+        ) : null}
 
-      {therapyThoughts !== undefined ? (
-        <TherapyThoughtsSection
-          planId={plan.id}
-          thoughts={therapyThoughts}
-        />
-      ) : null}
-    </div>
+        {therapyThoughts !== undefined ? (
+          <TherapyThoughtsSection
+            planId={plan.id}
+            thoughts={therapyThoughts}
+          />
+        ) : null}
+      </div>
     </LifeAreaCatalogProvider>
   );
 }

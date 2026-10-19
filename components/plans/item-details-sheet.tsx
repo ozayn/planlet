@@ -273,7 +273,7 @@ export function ItemDetailsSheet({
           />
         </div>
 
-        {lifeAreas.length > 0 && !isNote ? (
+        {!isNote ? (
           <ItemLifeAreaPicker
             planId={planId}
             item={item}
