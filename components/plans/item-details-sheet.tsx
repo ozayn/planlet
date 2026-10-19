@@ -13,8 +13,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 
 import { updatePlanItemAction } from "@/app/(app)/plans/actions";
+import { ItemLifeAreaPicker } from "@/components/plans/item-life-area-picker";
 import { ItemThemeProjectPicker } from "@/components/plans/item-theme-project-picker";
 import { getItemActionLabels } from "@/components/plans/item-action-labels";
+import { useLifeAreaCatalog } from "@/components/plans/life-area-catalog-context";
 import { SimpleSheet } from "@/components/ui/simple-sheet";
 import {
   getPlanItemTypeLabel,
@@ -122,6 +124,7 @@ export function ItemDetailsSheet({
   themeProjectCatalog = EMPTY_THEME_PROJECT_CATALOG,
 }: ItemDetailsSheetProps) {
   const router = useRouter();
+  const lifeAreas = useLifeAreaCatalog();
   const [isPending, startTransition] = useTransition();
   const [form, setForm] = useState(() => buildFormState(item));
   const labels = getItemActionLabels(item.type, isSubtask);
@@ -269,6 +272,14 @@ export function ItemDetailsSheet({
             emptyOptionLabel="+ Theme"
           />
         </div>
+
+        {lifeAreas.length > 0 && !isNote ? (
+          <ItemLifeAreaPicker
+            planId={planId}
+            item={item}
+            lifeAreas={lifeAreas}
+          />
+        ) : null}
 
         <Field label="Type" fieldId={typeFieldId}>
           <select

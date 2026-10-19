@@ -290,6 +290,10 @@ export function isAppNavItemActive(
     return pathname === "/timer" || pathname.startsWith("/timer/");
   }
 
+  if (key === "pomodoro") {
+    return pathname === "/pomodoro" || pathname.startsWith("/pomodoro/");
+  }
+
   if (key === "life-lab") {
     return pathname === "/life-lab" || pathname.startsWith("/life-lab/");
   }

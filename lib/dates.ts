@@ -295,20 +295,34 @@ export function formatDayPlanContextLabel(date: Date): string {
   }).format(date);
 }
 
-/** Compact label for day plan nav center (Today, Yesterday, Wed, Jun 10, …). */
-export function formatDayNavLabel(dateString: string): string {
-  const today = formatDateString(new Date());
-
-  if (dateString === today) {
+/**
+ * Relative day name for navigation destinations.
+ * Compares calendar date strings (YYYY-MM-DD); returns null when not adjacent.
+ */
+export function getRelativeDayNavigationLabel(
+  targetDate: string,
+  today: string,
+): "Yesterday" | "Today" | "Tomorrow" | null {
+  if (targetDate === today) {
     return "Today";
   }
-
-  if (dateString === shiftDateString(today, -1)) {
+  if (targetDate === shiftDateString(today, -1)) {
     return "Yesterday";
   }
-
-  if (dateString === shiftDateString(today, 1)) {
+  if (targetDate === shiftDateString(today, 1)) {
     return "Tomorrow";
+  }
+  return null;
+}
+
+/** Compact label for day plan nav center (Today, Yesterday, Wed, Jun 10, …). */
+export function formatDayNavLabel(
+  dateString: string,
+  today: string = formatDateString(new Date()),
+): string {
+  const relative = getRelativeDayNavigationLabel(dateString, today);
+  if (relative) {
+    return relative;
   }
 
   return shareDateFormatter({

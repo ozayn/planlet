@@ -69,4 +69,4 @@ Future feature decisions: **[LIFE_AREAS.md](./LIFE_AREAS.md)** (not implemented 
 - Deeper insights (streaks, themes, gentle summaries)
 - User language preference (EN / FA / mixed)
 - Notification nudges (opt-in, calm tone)
-- **Life Areas** — optional Plans view; see [LIFE_AREAS.md](./LIFE_AREAS.md) (do not implement until explicitly requested)
+- ~~**Life Areas**~~ — shipped as optional Plans view; see [LIFE_AREAS.md](./LIFE_AREAS.md)

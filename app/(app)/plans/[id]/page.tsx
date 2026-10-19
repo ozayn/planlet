@@ -11,6 +11,7 @@ import {
 } from "@/lib/plan-sharing";
 import { getPlanReflectionData } from "@/lib/reflection-data";
 import { getPeriodSummaryHref } from "@/lib/period-summary-links";
+import { ensureDefaultLifeAreas } from "@/lib/life-areas";
 import { getPlanWithItems } from "@/lib/plans";
 import { prisma } from "@/lib/prisma";
 import { serializePlan } from "@/lib/plan-serialize";
@@ -43,10 +44,12 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
   }
 
   const serialized = serializePlan(plan);
-  const [planningPreferences, themeProjectCatalog] = await Promise.all([
-    getPlanningPreferencesForUser(userId),
-    getThemeProjectCatalog(userId),
-  ]);
+  const [planningPreferences, themeProjectCatalog, lifeAreas] =
+    await Promise.all([
+      getPlanningPreferencesForUser(userId),
+      getThemeProjectCatalog(userId),
+      ensureDefaultLifeAreas(userId),
+    ]);
 
   if (access === "view") {
     const share = await prisma.planShare.findFirst({
@@ -122,6 +125,8 @@ export default async function PlanDetailPage({ params }: PlanDetailPageProps) {
         therapyThoughts={reflectionData.therapyThoughts}
         themeProjectCatalog={themeProjectCatalog}
         taskOrganizationDisplay={planningPreferences.taskOrganizationDisplay}
+        planOrganizeView={planningPreferences.planOrganizeView}
+        lifeAreas={lifeAreas}
       />
     </section>
   );

@@ -3,6 +3,7 @@ import { APP_TIMEZONE } from "@/config/time";
 import { PRODUCT } from "@/config/product";
 import { isAdminRole } from "@/lib/auth-roles";
 import { getActivityTimerPresetSettingsData } from "@/lib/activity-timer";
+import { ensureDefaultLifeAreas } from "@/lib/life-areas";
 import { getPomodoroPreferences } from "@/lib/pomodoro";
 import { listPomodoroActivities } from "@/lib/pomodoro/activities";
 import { getCoachingNarrationPreferencesForUser } from "@/lib/coaching/narration-preferences";
@@ -103,6 +104,7 @@ export async function loadSettingsPageData() {
     activityTimerPresetSettings,
     pomodoroPreferences,
     pomodoroActivities,
+    lifeAreas,
   ] = userId
     ? await Promise.all([
         getPlanningPreferencesForUser(userId),
@@ -125,11 +127,13 @@ export async function loadSettingsPageData() {
         access.hasPomodoroSettings
           ? listPomodoroActivities(userId)
           : Promise.resolve([]),
+        ensureDefaultLifeAreas(userId),
       ])
     : [
         {
           planItemView: "CHECKLIST" as const,
           taskOrganizationDisplay: "ASSIGNED_ONLY" as const,
+          planOrganizeView: "LIST" as const,
         },
         APP_TIMEZONE,
         null,
@@ -139,6 +143,7 @@ export async function loadSettingsPageData() {
         null,
         null,
         null,
+        [],
         [],
       ];
 
@@ -162,6 +167,7 @@ export async function loadSettingsPageData() {
     activityTimerPresetSettings,
     pomodoroPreferences,
     pomodoroActivities,
+    lifeAreas,
     openAiNarrationAvailable: isLifeLabOpenAiTtsEnabled(),
     technicalInfoRows: [
       { label: "Name", value: PRODUCT.name },

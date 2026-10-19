@@ -17,6 +17,7 @@ type DayPlanContentProps = Omit<
   "headerActionsPlacement" | "titleMode" | "showMeta"
 > & {
   currentDate: string;
+  timezone: string;
   pageVariant: DayPlanPageVariant;
   userFirstName?: string | null;
   headerAction?: React.ReactNode;
@@ -24,6 +25,7 @@ type DayPlanContentProps = Omit<
 
 export function DayPlanContent({
   currentDate,
+  timezone,
   pageVariant,
   userFirstName,
   headerAction,
@@ -106,7 +108,7 @@ export function DayPlanContent({
         <div className="ui-day-plan-toolbar-actions">
           <PlanHeaderActions {...headerActionProps} />
         </div>
-        <DayPlanNav currentDate={currentDate} />
+        <DayPlanNav currentDate={currentDate} timezone={timezone} />
       </div>
 
       <PlanEditor

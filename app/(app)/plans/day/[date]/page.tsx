@@ -16,10 +16,12 @@ import {
   getRecentShareRecipients,
 } from "@/lib/plan-sharing";
 import { getPlanReflectionData } from "@/lib/reflection-data";
+import { ensureDefaultLifeAreas } from "@/lib/life-areas";
 import { getDayPlan } from "@/lib/plans";
 import { serializePlan } from "@/lib/plan-serialize";
 import { getPlanningPreferencesForUser } from "@/lib/user-preferences";
 import { getThemeProjectCatalog } from "@/lib/themes-projects";
+import { FALLBACK_TIMEZONE } from "@/lib/user-timezone-constants";
 
 type DayPlanPageProps = {
   params: Promise<{ date: string }>;
@@ -43,6 +45,7 @@ export default async function DayPlanPage({ params }: DayPlanPageProps) {
   const plan = await getDayPlan(userId, date);
   const dateLabel = formatDayPlanContextLabel(date);
   const firstName = session.user?.name?.split(" ")[0];
+  const timezone = session.user?.timezone ?? FALLBACK_TIMEZONE;
 
   if (!plan) {
     return (
@@ -57,7 +60,7 @@ export default async function DayPlanPage({ params }: DayPlanPageProps) {
           }
         />
 
-        <DayPlanNav currentDate={dateString} />
+        <DayPlanNav currentDate={dateString} timezone={timezone} />
 
         <div className="ui-empty-state space-y-4">
           <p className="text-sm text-muted">No plan for this date yet.</p>
@@ -67,21 +70,29 @@ export default async function DayPlanPage({ params }: DayPlanPageProps) {
     );
   }
 
-  const [platformShares, planningPreferences, reflectionData, recentShareRecipients, themeProjectCatalog] =
-    await Promise.all([
-      getPlanSharesForOwner(plan.id, userId),
-      getPlanningPreferencesForUser(userId),
-        getPlanReflectionData(plan.id, userId, session.user, {
-          includeTherapyThoughts: true,
-        }),
-      getRecentShareRecipients(userId, plan.id),
-      getThemeProjectCatalog(userId),
-    ]);
+  const [
+    platformShares,
+    planningPreferences,
+    reflectionData,
+    recentShareRecipients,
+    themeProjectCatalog,
+    lifeAreas,
+  ] = await Promise.all([
+    getPlanSharesForOwner(plan.id, userId),
+    getPlanningPreferencesForUser(userId),
+    getPlanReflectionData(plan.id, userId, session.user, {
+      includeTherapyThoughts: true,
+    }),
+    getRecentShareRecipients(userId, plan.id),
+    getThemeProjectCatalog(userId),
+    ensureDefaultLifeAreas(userId),
+  ]);
 
   return (
     <section className="space-y-6">
       <DayPlanContent
         currentDate={dateString}
+        timezone={timezone}
         pageVariant="day"
         userFirstName={firstName}
         headerAction={
@@ -100,6 +111,8 @@ export default async function DayPlanPage({ params }: DayPlanPageProps) {
         therapyThoughts={reflectionData.therapyThoughts}
         themeProjectCatalog={themeProjectCatalog}
         taskOrganizationDisplay={planningPreferences.taskOrganizationDisplay}
+        planOrganizeView={planningPreferences.planOrganizeView}
+        lifeAreas={lifeAreas}
       />
     </section>
   );

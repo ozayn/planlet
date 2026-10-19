@@ -53,17 +53,28 @@ const itemOrderBy = [
   { createdAt: "asc" as const },
 ];
 
+const lifeAreaLinksInclude = {
+  include: {
+    lifeArea: {
+      select: { id: true, name: true, archivedAt: true },
+    },
+  },
+  orderBy: [{ isPrimary: "desc" as const }, { createdAt: "asc" as const }],
+};
+
 const planItemInclude = {
   subtasks: {
     orderBy: itemOrderBy,
     include: {
       theme: { select: { id: true, name: true } },
       project: { select: { id: true, name: true } },
+      lifeAreaLinks: lifeAreaLinksInclude,
       _count: { select: { comments: true } },
     },
   },
   theme: { select: { id: true, name: true } },
   project: { select: { id: true, name: true } },
+  lifeAreaLinks: lifeAreaLinksInclude,
   _count: { select: { comments: true } },
 };
 

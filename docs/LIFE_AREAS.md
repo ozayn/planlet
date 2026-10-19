@@ -1,8 +1,8 @@
-# Life Areas (future feature)
+# Life Areas
 
-**Status:** Not implemented. Design decisions only.
+**Status:** Implemented (optional Plans view).
 
-Life Areas are an optional way to view and reflect on plan tasks by life domain (for example Work, Health, Relationships). They must follow Planlet’s simplicity-first philosophy in [DESIGN_PHILOSOPHY.md](./DESIGN_PHILOSOPHY.md).
+Life Areas are an optional way to view plan tasks by life domain. They follow Planlet’s simplicity-first philosophy in [DESIGN_PHILOSOPHY.md](./DESIGN_PHILOSOPHY.md).
 
 ---
 
@@ -14,50 +14,23 @@ Life Areas must never become mandatory setup before planning or focusing.
 
 ---
 
-## Confirmed design decisions
+## Behavior
 
-1. **Optional alternative view in Plans**  
-   Life Areas are a view mode (or filter), not a replacement for the default plan list.
-
-2. **One primary Life Area per task**  
-   Each task may have at most one primary area for rollups and summaries.
-
-3. **Optional secondary Life Areas**  
-   Secondary areas are allowed for soft tagging, but primary remains the source of truth for time and counts.
-
-4. **Tasks can remain uncategorized**  
-   No task requires a Life Area. Uncategorized is a valid, first-class state.
-
-5. **No duplicate task display**  
-   A task appears once in a given view. Secondary areas must not clone the same task into multiple list rows that look like separate work.
-
-6. **No double-counting of time**  
-   Focused time and completion stats attribute a task to its primary area only (or to uncategorized). Secondary areas do not inflate totals.
-
-7. **Existing task creation remains unchanged**  
-   Creating a task stays as it is today. Area assignment is optional and can happen later.
-
-8. **Customizable areas without mandatory setup**  
-   Provide a small set of sensible default area names users can rename, hide, or extend. Do not force an onboarding wizard.
-
-9. **Deferred**  
-   Weekly intentions and time-allocation goals for Life Areas are out of scope for the first implementation.
+1. **Optional alternative view in Plans** — `List | Life Areas` toggle. List remains the default (`User.planOrganizeView`).
+2. **One primary Life Area per task** — enforced in app logic and a partial unique index.
+3. **Optional secondary Life Areas** — soft associations; do not duplicate task rows or time.
+4. **Tasks can remain uncategorized**.
+5. **No duplicate task display** — grouping uses primary only.
+6. **No double-counting of time (future)** — attribute to primary only when time tracking is added.
+7. **Task creation unchanged** — area assignment lives in the task details sheet (collapsed).
+8. **Customizable areas** — Settings → Planning → Life Areas (add / rename / reorder / archive / restore). Defaults seed once when the user has none.
+9. **Deferred** — Pomodoro / Activity Timer rollups, weekly intentions, balance summaries.
 
 ---
 
-## Implementation constraints (when built)
+## Data model
 
-- Reuse existing Plan / PlanItem models and patterns where possible.
-- Prefer progressive disclosure for area pickers (not on every create form by default).
-- Audit against DESIGN_PHILOSOPHY before shipping: defaults first, no required setup, mobile-first.
-- Do not add speculative Settings pages for unused Life Area analytics.
+- `LifeArea` — per-user named areas (`sortOrder`, `archivedAt`)
+- `PlanItemLifeArea` — `(planItemId, lifeAreaId)` unique; at most one `isPrimary = true` per item
 
----
-
-## Explicitly out of scope for v1
-
-- Required area assignment
-- Multi-primary areas
-- Automatic mandatory classification
-- Weekly intention / time-budget UI
-- Separate Life Areas home dashboard that duplicates Plans
+Tasks are never duplicated. Subtasks stay nested under parents; they do not auto-copy associations.

@@ -5,9 +5,11 @@ import type { PlanItemView, TaskOrganizationDisplay } from "@/app/generated/pris
 
 import { AddItemForm } from "@/components/plans/add-item-form";
 import { EditablePlanTitle } from "@/components/plans/editable-plan-title";
+import { LifeAreaCatalogProvider } from "@/components/plans/life-area-catalog-context";
 import { PlanHeaderActions } from "@/components/plans/plan-header-actions";
 import { PlanMetadata } from "@/components/plans/plan-metadata";
 import { PlanItemSections } from "@/components/plans/plan-item-sections";
+import { PlanOrganizeViewToggle } from "@/components/plans/plan-organize-view-toggle";
 import {
   PlanKudosSummary,
   type PlanKudosEntry,
@@ -19,6 +21,8 @@ import { ShareWithUserPanel } from "@/components/plans/share-with-user-panel";
 import { formatPlanActivityLabel } from "@/lib/plan-activity";
 import { isDefaultPlanTitle } from "@/lib/plan-title";
 import type { SerializedGratitude } from "@/lib/gratitude";
+import type { PlanOrganizeViewValue } from "@/lib/life-areas/types";
+import type { SerializedLifeArea } from "@/lib/life-areas/types";
 import type { SerializedObservation } from "@/lib/observations";
 import type { SerializedTherapyThought } from "@/lib/therapy-thoughts";
 import { formatDateString } from "@/lib/dates";
@@ -55,6 +59,8 @@ export type PlanEditorProps = {
   canEdit?: boolean;
   themeProjectCatalog?: ThemeProjectCatalog;
   taskOrganizationDisplay?: TaskOrganizationDisplay;
+  planOrganizeView?: PlanOrganizeViewValue;
+  lifeAreas?: SerializedLifeArea[];
   headerActionsPlacement?: "inline" | "desktop-only" | "none";
   titleMode?: "full" | "custom-only";
   titleEditSignal?: number;
@@ -82,6 +88,8 @@ export function PlanEditor({
   therapyThoughts,
   themeProjectCatalog = EMPTY_THEME_PROJECT_CATALOG,
   taskOrganizationDisplay = "ASSIGNED_ONLY",
+  planOrganizeView = "LIST",
+  lifeAreas = [],
   headerActionsPlacement = "inline",
   titleMode = "full",
   titleEditSignal = 0,
@@ -186,6 +194,7 @@ export function PlanEditor({
     titleMode === "custom-only" && !hasCustomTitle && !titleEditing;
 
   return (
+    <LifeAreaCatalogProvider areas={lifeAreas}>
     <div
       className={`ui-plan-editor ${titleMode === "custom-only" ? "space-y-4" : "space-y-6"}`}
     >
@@ -241,7 +250,10 @@ export function PlanEditor({
       ) : null}
 
       {plan.items.length > 0 ? (
-        <section>
+        <section className="space-y-3">
+          <div className="flex justify-start overflow-x-hidden">
+            <PlanOrganizeViewToggle value={planOrganizeView} />
+          </div>
           <PlanItemSections
             planId={plan.id}
             items={plan.items}
@@ -250,6 +262,8 @@ export function PlanEditor({
             sourcePlanDate={sourcePlanDate}
             themeProjectCatalog={themeProjectCatalog}
             taskOrganizationDisplay={taskOrganizationDisplay}
+            organizeView={planOrganizeView}
+            lifeAreas={lifeAreas}
           />
         </section>
       ) : null}
@@ -272,5 +286,6 @@ export function PlanEditor({
         />
       ) : null}
     </div>
+    </LifeAreaCatalogProvider>
   );
 }

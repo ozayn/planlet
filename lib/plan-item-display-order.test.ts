@@ -37,6 +37,7 @@ function item(
     themeName: null,
     projectId: null,
     projectName: null,
+    lifeAreas: [],
     commentCount: 0,
     subtasks: [],
   };

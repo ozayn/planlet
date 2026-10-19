@@ -38,4 +38,4 @@ Default path: open → Start → focus. Task association and advanced durations 
 
 ## Life Areas
 
-Not implemented. Design decisions: **`docs/LIFE_AREAS.md`**.
+Optional Plans view (`List | Life Areas`). List remains the default. Areas are customizable in Settings → Planning → Life Areas. Group by primary only; never duplicate tasks. Design decisions: **`docs/LIFE_AREAS.md`**.

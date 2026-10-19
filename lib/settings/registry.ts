@@ -418,6 +418,22 @@ export const SETTINGS_ITEMS: SettingsItemDefinition[] = [
     isAvailable: (access) => access.isSignedIn,
   },
   {
+    id: "life-areas",
+    categorySlug: "planner",
+    title: "Life Areas",
+    subtitle: "Optional domains for plan organization",
+    keywords: [
+      "life areas",
+      "career",
+      "health",
+      "relationships",
+      "categories",
+      "organize",
+    ],
+    anchor: "life-areas",
+    isAvailable: (access) => access.isSignedIn,
+  },
+  {
     id: "daily-reminder",
     categorySlug: "notifications",
     title: "Daily reminder",

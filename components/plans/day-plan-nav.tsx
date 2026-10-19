@@ -10,8 +10,9 @@ import {
   ChevronRightIcon,
 } from "@/components/ui/action-icons";
 import {
-  formatDateString,
   formatDayNavLabel,
+  getRelativeDayNavigationLabel,
+  getTodayDateString,
   shiftDateString,
 } from "@/lib/dates";
 import { ACTION_LABELS } from "@/lib/action-labels";
@@ -19,18 +20,54 @@ import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 
 type DayPlanNavProps = {
   currentDate: string;
+  /** User's configured Planlet timezone (IANA). */
+  timezone: string;
   showTodayLink?: boolean;
 };
 
+function useTodayDateString(timezone: string): string {
+  const [today, setToday] = useState(() => getTodayDateString(timezone));
+
+  useEffect(() => {
+    function refresh() {
+      setToday((current) => {
+        const next = getTodayDateString(timezone);
+        return current === next ? current : next;
+      });
+    }
+
+    refresh();
+
+    // Refresh near timezone midnight and periodically in case the tab slept.
+    const intervalId = window.setInterval(refresh, 60_000);
+
+    return () => {
+      window.clearInterval(intervalId);
+    };
+  }, [timezone]);
+
+  return today;
+}
+
 export function DayPlanNav({
   currentDate,
+  timezone,
   showTodayLink = true,
 }: DayPlanNavProps) {
   const router = useRouter();
-  const today = formatDateString(new Date());
+  const today = useTodayDateString(timezone);
   const [pickerValue, setPickerValue] = useState(currentDate);
   const [isDatePickerOpen, setIsDatePickerOpen] = useState(false);
   const dateInputRef = useRef<HTMLInputElement>(null);
+
+  const previousDate = shiftDateString(currentDate, -1);
+  const nextDate = shiftDateString(currentDate, 1);
+  const previousLabel =
+    getRelativeDayNavigationLabel(previousDate, today) ??
+    ACTION_LABELS.previousDay.title;
+  const nextLabel =
+    getRelativeDayNavigationLabel(nextDate, today) ??
+    ACTION_LABELS.nextDay.title;
 
   useEffect(() => {
     setPickerValue(currentDate);
@@ -67,14 +104,14 @@ export function DayPlanNav({
     <nav className="ui-plan-date-nav" aria-label="Day plan navigation">
       <div className="ui-plan-date-nav-controls">
         <Link
-          href={`/plans/day/${shiftDateString(currentDate, -1)}`}
+          href={`/plans/day/${previousDate}`}
           className="ui-plan-date-nav-btn ui-plan-date-nav-btn-icon"
-          aria-label={ACTION_LABELS.previousDay.ariaLabel}
-          title={ACTION_LABELS.previousDay.title}
+          aria-label={previousLabel}
+          title={previousLabel}
           {...passwordManagerSafeControlProps}
         >
           <ChevronLeftIcon className="ui-plan-date-nav-btn-glyph" aria-hidden="true" />
-          <span className="ui-plan-date-nav-btn-text">Previous day</span>
+          <span className="ui-plan-date-nav-btn-text">{previousLabel}</span>
         </Link>
 
         {showTodayLink ? (
@@ -86,19 +123,19 @@ export function DayPlanNav({
             aria-current={currentDate === today ? "page" : undefined}
             {...passwordManagerSafeControlProps}
           >
-            {formatDayNavLabel(currentDate)}
+            {formatDayNavLabel(currentDate, today)}
           </Link>
         ) : null}
 
         <Link
-          href={`/plans/day/${shiftDateString(currentDate, 1)}`}
+          href={`/plans/day/${nextDate}`}
           className="ui-plan-date-nav-btn ui-plan-date-nav-btn-icon"
-          aria-label={ACTION_LABELS.nextDay.ariaLabel}
-          title={ACTION_LABELS.nextDay.title}
+          aria-label={nextLabel}
+          title={nextLabel}
           {...passwordManagerSafeControlProps}
         >
           <ChevronRightIcon className="ui-plan-date-nav-btn-glyph" aria-hidden="true" />
-          <span className="ui-plan-date-nav-btn-text">Next day</span>
+          <span className="ui-plan-date-nav-btn-text">{nextLabel}</span>
         </Link>
 
         <button

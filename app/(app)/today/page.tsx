@@ -7,16 +7,18 @@ import { DayPlanNav } from "@/components/plans/day-plan-nav";
 import { DayPlanContent } from "@/components/plans/day-plan-content";
 import { PageHeader } from "@/components/page-header";
 import { getKudosForPlan } from "@/lib/kudos";
-import { formatDateString } from "@/lib/dates";
+import { getTodayDateString } from "@/lib/dates";
 import { getPlanReflectionData } from "@/lib/reflection-data";
 import {
   getPlanSharesForOwner,
   getRecentShareRecipients,
 } from "@/lib/plan-sharing";
+import { ensureDefaultLifeAreas } from "@/lib/life-areas";
 import { getTodayPlan } from "@/lib/plans";
 import { serializePlan } from "@/lib/plan-serialize";
 import { getPlanningPreferencesForUser } from "@/lib/user-preferences";
 import { getThemeProjectCatalog } from "@/lib/themes-projects";
+import { FALLBACK_TIMEZONE } from "@/lib/user-timezone-constants";
 
 export default async function TodayPage() {
   const session = await auth();
@@ -26,11 +28,13 @@ export default async function TodayPage() {
     redirect("/");
   }
 
-  const [plan, planningPreferences, themeProjectCatalog] = await Promise.all([
-    getTodayPlan(userId),
-    getPlanningPreferencesForUser(userId),
-    getThemeProjectCatalog(userId),
-  ]);
+  const [plan, planningPreferences, themeProjectCatalog, lifeAreas] =
+    await Promise.all([
+      getTodayPlan(userId),
+      getPlanningPreferencesForUser(userId),
+      getThemeProjectCatalog(userId),
+      ensureDefaultLifeAreas(userId),
+    ]);
   const [kudos, reflectionData, platformShares, recentShareRecipients] = plan
     ? await Promise.all([
         getKudosForPlan(plan.id, userId),
@@ -42,13 +46,15 @@ export default async function TodayPage() {
       ])
     : [[], { observations: undefined, gratitudes: undefined, therapyThoughts: undefined }, [], []];
   const firstName = session.user?.name?.split(" ")[0];
-  const todayDate = formatDateString(new Date());
+  const timezone = session.user?.timezone ?? FALLBACK_TIMEZONE;
+  const todayDate = getTodayDateString(timezone);
 
   return (
     <section className="ui-page-stack space-y-6">
       {plan ? (
         <DayPlanContent
           currentDate={todayDate}
+          timezone={timezone}
           pageVariant="today"
           userFirstName={firstName}
           headerAction={
@@ -74,6 +80,8 @@ export default async function TodayPage() {
           therapyThoughts={reflectionData.therapyThoughts}
           themeProjectCatalog={themeProjectCatalog}
           taskOrganizationDisplay={planningPreferences.taskOrganizationDisplay}
+          planOrganizeView={planningPreferences.planOrganizeView}
+          lifeAreas={lifeAreas}
         />
       ) : (
         <>
@@ -81,7 +89,7 @@ export default async function TodayPage() {
             title={firstName ? `Today, ${firstName}` : "Today"}
             subtitle="What matters right now."
           />
-          <DayPlanNav currentDate={todayDate} />
+          <DayPlanNav currentDate={todayDate} timezone={timezone} />
           <div className="space-y-6">
             <div className="ui-empty-state">
               <p className="text-sm text-muted">No list for today yet.</p>

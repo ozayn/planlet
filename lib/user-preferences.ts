@@ -1,9 +1,11 @@
 import type {
   PlanItemView,
+  PlanOrganizeView,
   ReadingDensity,
   TaskOrganizationDisplay,
 } from "@/app/generated/prisma/client";
 
+import type { PlanOrganizeViewValue } from "@/lib/life-areas/types";
 import { DEFAULT_TASK_ORGANIZATION_DISPLAY } from "@/lib/task-organization-display";
 import {
   readingDensityFromPrisma,
@@ -15,6 +17,7 @@ import { prisma } from "@/lib/prisma";
 export type PlanningPreferences = {
   planItemView: PlanItemView;
   taskOrganizationDisplay: TaskOrganizationDisplay;
+  planOrganizeView: PlanOrganizeViewValue;
 };
 
 export async function getPlanItemViewForUser(
@@ -32,6 +35,7 @@ export async function getPlanningPreferencesForUser(
     select: {
       planItemView: true,
       taskOrganizationDisplay: true,
+      planOrganizeView: true,
     },
   });
 
@@ -39,7 +43,22 @@ export async function getPlanningPreferencesForUser(
     planItemView: user?.planItemView ?? "CHECKLIST",
     taskOrganizationDisplay:
       user?.taskOrganizationDisplay ?? DEFAULT_TASK_ORGANIZATION_DISPLAY,
+    planOrganizeView:
+      user?.planOrganizeView === "LIFE_AREAS" ? "LIFE_AREAS" : "LIST",
   };
+}
+
+export async function updatePlanOrganizeViewPreference(
+  userId: string,
+  planOrganizeView: PlanOrganizeView | PlanOrganizeViewValue,
+): Promise<void> {
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      planOrganizeView:
+        planOrganizeView === "LIFE_AREAS" ? "LIFE_AREAS" : "LIST",
+    },
+  });
 }
 
 export async function updatePlanItemView(

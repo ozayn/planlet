@@ -17,6 +17,7 @@ import {
 import { getPeriodSummaryHref } from "@/lib/period-summary-links";
 import { getPlanReflectionData } from "@/lib/reflection-data";
 import { buildYearPlanPageTitle } from "@/lib/year-plan-header";
+import { ensureDefaultLifeAreas } from "@/lib/life-areas";
 import { getYearPlan } from "@/lib/plans";
 import { serializePlan } from "@/lib/plan-serialize";
 import { getPlanningPreferencesForUser } from "@/lib/user-preferences";
@@ -68,14 +69,21 @@ export default async function YearPlanPage({ params }: YearPlanPageProps) {
     );
   }
 
-  const [platformShares, planningPreferences, reflectionData, recentShareRecipients, themeProjectCatalog] =
-    await Promise.all([
-      getPlanSharesForOwner(plan.id, userId),
-      getPlanningPreferencesForUser(userId),
-      getPlanReflectionData(plan.id, userId, session.user),
-      getRecentShareRecipients(userId, plan.id),
-      getThemeProjectCatalog(userId),
-    ]);
+  const [
+    platformShares,
+    planningPreferences,
+    reflectionData,
+    recentShareRecipients,
+    themeProjectCatalog,
+    lifeAreas,
+  ] = await Promise.all([
+    getPlanSharesForOwner(plan.id, userId),
+    getPlanningPreferencesForUser(userId),
+    getPlanReflectionData(plan.id, userId, session.user),
+    getRecentShareRecipients(userId, plan.id),
+    getThemeProjectCatalog(userId),
+    ensureDefaultLifeAreas(userId),
+  ]);
 
   const periodSummaryHref = getPeriodSummaryHref("YEAR", plan.dateStart);
 
@@ -101,6 +109,8 @@ export default async function YearPlanPage({ params }: YearPlanPageProps) {
         therapyThoughts={undefined}
         themeProjectCatalog={themeProjectCatalog}
         taskOrganizationDisplay={planningPreferences.taskOrganizationDisplay}
+        planOrganizeView={planningPreferences.planOrganizeView}
+        lifeAreas={lifeAreas}
       />
     </section>
   );

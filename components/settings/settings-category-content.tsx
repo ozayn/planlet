@@ -3,6 +3,7 @@ import Link from "next/link";
 import { SignOutButton } from "@/components/sign-out-button";
 import { ActiveTimerNotificationSettings } from "@/components/settings/active-timer-notification-settings";
 import { ActivityTimerPresetSettings } from "@/components/settings/activity-timer-preset-settings";
+import { LifeAreaSettings } from "@/components/settings/life-area-settings";
 import { PomodoroActivitySettings } from "@/components/settings/pomodoro-activity-settings";
 import { PomodoroSettings } from "@/components/settings/pomodoro-settings";
 import { MobileNavSettings } from "@/components/settings/mobile-nav-settings";
@@ -177,6 +178,13 @@ export function SettingsCategoryContent({
                 <Link href="/themes" className="ui-text-link text-sm font-medium">
                   Manage themes & projects
                 </Link>
+              </SettingsBlock>
+              <SettingsBlock
+                id="life-areas"
+                title="Life Areas"
+                description="Optional domains for the Life Areas plan view. List remains the default."
+              >
+                <LifeAreaSettings areas={data.lifeAreas} />
               </SettingsBlock>
             </>
           ) : null}

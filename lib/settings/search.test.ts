@@ -64,6 +64,18 @@ describe("searchSettings", () => {
     );
   });
 
+  it("finds Life Areas under Planning when searching life areas", () => {
+    const results = searchSettings(
+      buildSettingsSearchIndex(fullAccess),
+      "life areas",
+    );
+
+    assert.ok(
+      results.some((result) => result.title === "Life Areas"),
+      "expected Life Areas in life areas search results",
+    );
+  });
+
   it("returns empty results for blank queries", () => {
     assert.deepEqual(
       searchSettings(buildSettingsSearchIndex(fullAccess), "   "),

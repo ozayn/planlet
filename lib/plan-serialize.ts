@@ -36,6 +36,13 @@ export type SerializedPlanItem = {
   themeName: string | null;
   projectId: string | null;
   projectName: string | null;
+  /** Optional Life Area links; at most one isPrimary. */
+  lifeAreas: Array<{
+    id: string;
+    name: string;
+    isPrimary: boolean;
+    archived: boolean;
+  }>;
   commentCount: number;
   subtasks: SerializedPlanItem[];
 };
@@ -76,6 +83,10 @@ type PlanItemWithSubtasks = {
   completedAt?: Date | null;
   theme?: { id: string; name: string } | null;
   project?: { id: string; name: string } | null;
+  lifeAreaLinks?: Array<{
+    isPrimary: boolean;
+    lifeArea: { id: string; name: string; archivedAt: Date | null };
+  }>;
   _count?: { comments: number };
   subtasks?: PlanItemWithSubtasks[];
 };
@@ -107,6 +118,12 @@ export function serializePlanItem(item: PlanItemWithSubtasks): SerializedPlanIte
     themeName: item.theme?.name ?? null,
     projectId: item.project?.id ?? null,
     projectName: item.project?.name ?? null,
+    lifeAreas: (item.lifeAreaLinks ?? []).map((link) => ({
+      id: link.lifeArea.id,
+      name: link.lifeArea.name,
+      isPrimary: link.isPrimary,
+      archived: link.lifeArea.archivedAt != null,
+    })),
     commentCount: item._count?.comments ?? 0,
     subtasks: (item.subtasks ?? []).map(serializePlanItem),
   };

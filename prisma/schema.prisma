@@ -169,6 +169,12 @@ enum PlanItemView {
   CHECKLIST
 }
 
+/// How plan tasks are organized in the plan UI (List remains the default).
+enum PlanOrganizeView {
+  LIST
+  LIFE_AREAS
+}
+
 enum ReadingDensity {
   COMPACT
   COMFORTABLE
@@ -333,6 +339,7 @@ model User {
   coachingOpenAiTtsVoice            String?
   coachingOpenAiNarrationStyle      CoachingOpenAiNarrationStyle @default(KIND_BRITISH_MENTOR)
   planItemView              PlanItemView @default(CHECKLIST)
+  planOrganizeView          PlanOrganizeView @default(LIST)
   readingDensity            ReadingDensity @default(COMPACT)
   taskOrganizationDisplay   TaskOrganizationDisplay @default(ASSIGNED_ONLY)
   mobileNavItems            String[]    @default([])
@@ -346,6 +353,7 @@ model User {
   plans         Plan[]
   themes        Theme[]
   projects      Project[]
+  lifeAreas     LifeArea[]
   planSharesOwned    PlanShare[] @relation("PlanShareOwner")
   planSharesReceived PlanShare[] @relation("PlanShareRecipient")
   sentKudos          PlanKudos[] @relation("SentKudos")
@@ -756,6 +764,7 @@ model PlanItem {
   project           Project?           @relation(fields: [projectId], references: [id], onDelete: SetNull)
   comments          PlanItemComment[]
   reflections       PlanItemReflection[]
+  lifeAreaLinks     PlanItemLifeArea[]
   createdAt         DateTime           @default(now())
   updatedAt         DateTime           @updatedAt
 
@@ -763,6 +772,37 @@ model PlanItem {
   @@index([parentItemId])
   @@index([themeId])
   @@index([projectId])
+}
+
+/// User-defined life domains for optional Plans organization.
+model LifeArea {
+  id         String             @id @default(cuid())
+  userId     String
+  user       User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  sortOrder  Int                @default(0)
+  archivedAt DateTime?
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+  taskLinks  PlanItemLifeArea[]
+
+  @@index([userId, sortOrder])
+  @@index([userId, archivedAt])
+}
+
+/// Optional Life Area association for a PlanItem (at most one primary).
+model PlanItemLifeArea {
+  id         String   @id @default(cuid())
+  planItemId String
+  planItem   PlanItem @relation(fields: [planItemId], references: [id], onDelete: Cascade)
+  lifeAreaId String
+  lifeArea   LifeArea @relation(fields: [lifeAreaId], references: [id], onDelete: Cascade)
+  isPrimary  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@unique([planItemId, lifeAreaId])
+  @@index([lifeAreaId])
+  @@index([planItemId, isPrimary])
 }
 
 model PlanItemReflection {

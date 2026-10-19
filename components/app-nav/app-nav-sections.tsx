@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { AppNavIcon } from "@/components/app-nav/app-nav-icon";
 import {
   getAppNavSections,
   isAppNavItemActive,
@@ -19,7 +20,7 @@ type AppNavSectionsProps = {
 
 function navLinkClass(active: boolean, collapsed: boolean): string {
   return [
-    "ui-app-nav-link flex min-h-10 items-center rounded-xl text-sm transition-colors hover:bg-accent-cream",
+    "ui-app-nav-link flex min-h-11 items-center gap-2 rounded-xl text-sm transition-colors hover:bg-accent-cream",
     collapsed ? "justify-center px-2" : "px-3",
     active
       ? "bg-accent-cream/60 font-medium text-foreground"
@@ -54,18 +55,11 @@ export function AppNavSections({
                     onClick={onNavigate}
                     className={navLinkClass(isActive, collapsed)}
                     aria-current={isActive ? "page" : undefined}
+                    aria-label={collapsed ? item.label : undefined}
                     title={collapsed ? item.label : undefined}
                   >
-                    {collapsed ? (
-                      <span
-                        className={`flex h-2 w-2 rounded-full ${
-                          isActive ? "bg-accent-blue" : "bg-muted-light"
-                        }`}
-                        aria-hidden="true"
-                      />
-                    ) : (
-                      item.label
-                    )}
+                    <AppNavIcon navKey={item.key} />
+                    {collapsed ? null : item.label}
                   </Link>
                 </li>
               );
