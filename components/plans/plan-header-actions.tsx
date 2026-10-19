@@ -1,5 +1,6 @@
 "use client";
 
+import type { SerializedLifeArea } from "@/lib/life-areas/types";
 import type { SerializedPlan } from "@/lib/plan-serialize";
 
 import { PlanMoreMenu } from "@/components/plans/plan-more-menu";
@@ -20,6 +21,8 @@ type PlanHeaderActionsProps = {
   periodSummaryLabel?: string;
   showEditTitle?: boolean;
   onEditTitle?: () => void;
+  lifeAreas?: SerializedLifeArea[];
+  moveCompletedToTop?: boolean;
 };
 
 export function PlanHeaderActions({
@@ -34,6 +37,8 @@ export function PlanHeaderActions({
   periodSummaryLabel,
   showEditTitle = false,
   onEditTitle,
+  lifeAreas,
+  moveCompletedToTop,
 }: PlanHeaderActionsProps) {
   const showMore =
     showDeletePlan || Boolean(periodSummaryHref) || showEditTitle;
@@ -44,7 +49,13 @@ export function PlanHeaderActions({
 
   return (
     <div className="ui-plan-header-actions flex shrink-0 items-center gap-1">
-      {showCopyExport ? <SharePlanPanel plan={plan} /> : null}
+      {showCopyExport ? (
+        <SharePlanPanel
+          plan={plan}
+          lifeAreas={lifeAreas}
+          moveCompletedToTop={moveCompletedToTop}
+        />
+      ) : null}
       {showPlatformShare && onShareToggle ? (
         <button
           type="button"

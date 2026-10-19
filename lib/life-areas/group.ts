@@ -5,11 +5,20 @@ import {
 import type { LifeAreaTaskGroup } from "@/lib/life-areas/types";
 import type { SerializedPlanItem } from "@/lib/plan-serialize";
 
-function resolvePrimaryArea(item: SerializedPlanItem): {
+export type PrimaryLifeAreaRef = {
   id: string;
   name: string;
   archived: boolean;
-} | null {
+};
+
+export type LifeAreaGroup<T> = {
+  areaId: string;
+  areaName: string;
+  archived: boolean;
+  items: T[];
+};
+
+function resolvePrimaryArea(item: SerializedPlanItem): PrimaryLifeAreaRef | null {
   const primary = item.lifeAreas.find((area) => area.isPrimary);
   if (primary) {
     return {
@@ -22,19 +31,20 @@ function resolvePrimaryArea(item: SerializedPlanItem): {
 }
 
 /**
- * Group root tasks by primary Life Area. Each task appears once.
+ * Group items by primary Life Area. Each item appears once.
  * Secondary associations never create additional rows.
  * Empty areas are omitted. Uncategorized appears only when needed.
  */
-export function groupPlanItemsByPrimaryLifeArea(
-  items: SerializedPlanItem[],
-  areaOrder: Array<{ id: string; name: string; archivedAt: string | null }>,
-): LifeAreaTaskGroup[] {
+export function groupByPrimaryLifeArea<T>(
+  items: T[],
+  resolvePrimary: (item: T) => PrimaryLifeAreaRef | null,
+  areaOrder: Array<{ id: string; name: string; archivedAt?: string | null }>,
+): LifeAreaGroup<T>[] {
   const orderIndex = new Map(areaOrder.map((area, index) => [area.id, index]));
-  const buckets = new Map<string, LifeAreaTaskGroup>();
+  const buckets = new Map<string, LifeAreaGroup<T>>();
 
   for (const item of items) {
-    const primary = resolvePrimaryArea(item);
+    const primary = resolvePrimary(item);
     const key = primary?.id ?? UNCATEGORIZED_LIFE_AREA_ID;
     const existing = buckets.get(key);
     if (existing) {
@@ -50,7 +60,7 @@ export function groupPlanItemsByPrimaryLifeArea(
     });
   }
 
-  const groups = [...buckets.values()].sort((a, b) => {
+  return [...buckets.values()].sort((a, b) => {
     if (a.areaId === UNCATEGORIZED_LIFE_AREA_ID) {
       return 1;
     }
@@ -64,8 +74,18 @@ export function groupPlanItemsByPrimaryLifeArea(
     }
     return a.areaName.localeCompare(b.areaName);
   });
+}
 
-  return groups;
+/**
+ * Group root tasks by primary Life Area. Each task appears once.
+ * Secondary associations never create additional rows.
+ * Empty areas are omitted. Uncategorized appears only when needed.
+ */
+export function groupPlanItemsByPrimaryLifeArea(
+  items: SerializedPlanItem[],
+  areaOrder: Array<{ id: string; name: string; archivedAt: string | null }>,
+): LifeAreaTaskGroup[] {
+  return groupByPrimaryLifeArea(items, resolvePrimaryArea, areaOrder);
 }
 
 /** Normalize primary + secondary ids: unique, primary not in secondary. */

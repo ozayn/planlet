@@ -8,10 +8,12 @@ import type {
 } from "@/app/generated/prisma/client";
 
 import { formatPlanPeriodForShare } from "@/lib/dates";
+import { groupByPrimaryLifeArea } from "@/lib/life-areas/group";
 import {
   orderPlanItemsForDisplay,
   type PlanItemDisplayOrderOptions,
 } from "@/lib/plan-item-display-order";
+import { isTaskItemType } from "@/lib/plan-item-sections";
 import type { SerializedPlan, SerializedPlanItem } from "@/lib/plan-serialize";
 import { isDefaultPlanTitle } from "@/lib/plan-title";
 import {
@@ -30,6 +32,9 @@ export type SharePlanItem = {
   timeHint?: TimeHint | null;
   comment?: string | null;
   shareable: boolean;
+  primaryLifeAreaId?: string | null;
+  primaryLifeAreaName?: string | null;
+  primaryLifeAreaArchived?: boolean;
   subtasks?: SharePlanItem[];
 };
 
@@ -41,6 +46,12 @@ export type SharePlan = {
   dateStart: Date;
   dateEnd: Date;
   items: SharePlanItem[];
+};
+
+export type ShareLifeAreaOrderEntry = {
+  id: string;
+  name: string;
+  archivedAt?: string | null;
 };
 
 export type ShareHeaderOptions = {
@@ -56,6 +67,8 @@ export type SharePlanOptions = {
   format: ShareExportFormat;
   mode?: ShareMode;
   includeSubtasks?: boolean;
+  /** User Life Area catalog order for the By Life Area format. */
+  lifeAreaOrder?: ShareLifeAreaOrderEntry[];
 };
 
 export type ShareSectionKey =
@@ -241,7 +254,64 @@ function getRenderStyle(
   if (mode === "UPDATE") {
     return "simple";
   }
-  return format === "PLAIN_TEXT" ? "simple" : "pretty";
+  if (format === "PLAIN_TEXT") {
+    return "simple";
+  }
+  // LIFE_AREAS and TELEGRAM use pretty status icons / section headers.
+  return "pretty";
+}
+
+function resolveShareItemPrimary(item: SharePlanItem) {
+  if (!item.primaryLifeAreaId || !item.primaryLifeAreaName) {
+    return null;
+  }
+  return {
+    id: item.primaryLifeAreaId,
+    name: item.primaryLifeAreaName,
+    archived: Boolean(item.primaryLifeAreaArchived),
+  };
+}
+
+/** Group shareable root tasks by primary Life Area (secondaries never duplicate). */
+export function groupShareItemsByPrimaryLifeArea(
+  items: SharePlanItem[],
+  areaOrder: ShareLifeAreaOrderEntry[] = [],
+) {
+  const tasks = shareableItems(items).filter((item) => isTaskItemType(item.type));
+  return groupByPrimaryLifeArea(tasks, resolveShareItemPrimary, areaOrder);
+}
+
+function renderLifeAreaBody(
+  plan: SharePlan,
+  options: SharePlanOptions,
+): string[] {
+  const mode = options.mode ?? "PLAN";
+  const includeSubtasks = options.includeSubtasks ?? true;
+  const style: ShareRenderStyle = "pretty";
+  const groups = groupShareItemsByPrimaryLifeArea(
+    plan.items,
+    options.lifeAreaOrder ?? [],
+  );
+  const lines: string[] = [];
+
+  for (const group of groups) {
+    if (group.items.length === 0) {
+      continue;
+    }
+
+    lines.push(formatSectionHeader(group.areaName, style));
+
+    for (const item of group.items) {
+      lines.push(formatItemLine(item, style, mode));
+      if (includeSubtasks && item.subtasks?.length) {
+        lines.push(...formatSubtaskLines(item.subtasks, style, mode));
+      }
+    }
+
+    lines.push("");
+  }
+
+  return lines;
 }
 
 function titleSeparator(style: ShareRenderStyle): string {
@@ -430,10 +500,14 @@ function formatPlanShare(
   const lang = inferShareLanguage(plan);
   const header = buildShareHeader(plan, { mode, style });
 
-  const body =
-    mode === "UPDATE"
-      ? renderUpdateBody(plan, lang)
-      : renderGroupedBody(plan, options, lang, style);
+  let body: string[];
+  if (mode === "UPDATE") {
+    body = renderUpdateBody(plan, lang);
+  } else if (options.format === "LIFE_AREAS") {
+    body = renderLifeAreaBody(plan, options);
+  } else {
+    body = renderGroupedBody(plan, options, lang, style);
+  }
 
   const lines = [header, "", ...body];
 
@@ -454,7 +528,7 @@ export function generateShareText(
   return formatPlanShare(plan, { ...options, mode });
 }
 
-export type ShareUiFormat = "plan" | "plain" | "update";
+export type ShareUiFormat = "plan" | "plain" | "update" | "lifeAreas";
 
 export const SHARE_UI_FORMAT_META: Record<
   ShareUiFormat,
@@ -472,14 +546,23 @@ export const SHARE_UI_FORMAT_META: Record<
     label: "Progress update",
     description: "Done, partial, and skipped items only.",
   },
+  lifeAreas: {
+    label: "By Life Area",
+    description: "Tasks grouped by primary Life Area.",
+  },
 };
 
-export function shareUiFormatToOptions(format: ShareUiFormat): SharePlanOptions {
+export function shareUiFormatToOptions(
+  format: ShareUiFormat,
+  lifeAreaOrder: ShareLifeAreaOrderEntry[] = [],
+): SharePlanOptions {
   switch (format) {
     case "plain":
       return { format: "PLAIN_TEXT", mode: "PLAN" };
     case "update":
       return { format: "SUMMARY", mode: "UPDATE" };
+    case "lifeAreas":
+      return { format: "LIFE_AREAS", mode: "PLAN", lifeAreaOrder };
     case "plan":
     default:
       return { format: "TELEGRAM", mode: "PLAN" };
@@ -494,6 +577,8 @@ export function shareUiFormatToExportFormat(
       return "PLAIN_TEXT";
     case "update":
       return "SUMMARY";
+    case "lifeAreas":
+      return "LIFE_AREAS";
     case "plan":
     default:
       return "TELEGRAM";
@@ -508,18 +593,24 @@ export function serializedPlanToSharePlan(
 
   const mapItem = (
     item: SerializedPlanItem,
-  ): SharePlanItem => ({
-    title: item.title,
-    status: item.status,
-    type: item.type,
-    timeHint: item.timeHint,
-    comment: item.comment,
-    shareable: item.shareable,
-    subtasks:
-      "subtasks" in item && item.subtasks
-        ? item.subtasks.map(mapItem)
-        : undefined,
-  });
+  ): SharePlanItem => {
+    const primary = item.lifeAreas.find((area) => area.isPrimary);
+    return {
+      title: item.title,
+      status: item.status,
+      type: item.type,
+      timeHint: item.timeHint,
+      comment: item.comment,
+      shareable: item.shareable,
+      primaryLifeAreaId: primary?.id ?? null,
+      primaryLifeAreaName: primary?.name ?? null,
+      primaryLifeAreaArchived: primary?.archived ?? false,
+      subtasks:
+        "subtasks" in item && item.subtasks
+          ? item.subtasks.map(mapItem)
+          : undefined,
+    };
+  };
 
   return {
     title: plan.title,

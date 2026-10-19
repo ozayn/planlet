@@ -32,6 +32,7 @@ export function WeekPlanContent({
   periodSummaryLabel,
   canEdit = true,
   planOrganizeView = "LIST",
+  lifeAreas,
   ...planEditorProps
 }: WeekPlanContentProps) {
   const sharePanelRef = useRef<HTMLDivElement>(null);
@@ -65,6 +66,7 @@ export function WeekPlanContent({
     periodSummaryLabel,
     showEditTitle: canEdit,
     onEditTitle: () => setTitleEditSignal((current) => current + 1),
+    lifeAreas,
   };
 
   const pageTitle = buildWeekPlanPageTitle(currentWeekStart);
@@ -115,6 +117,7 @@ export function WeekPlanContent({
         periodSummaryLabel={periodSummaryLabel}
         canEdit={canEdit}
         planOrganizeView={planOrganizeView}
+        lifeAreas={lifeAreas}
         showOrganizeToggle={false}
         headerActionsPlacement="none"
         titleMode="custom-only"

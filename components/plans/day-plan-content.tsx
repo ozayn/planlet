@@ -38,6 +38,7 @@ export function DayPlanContent({
   periodSummaryLabel,
   canEdit = true,
   planOrganizeView = "LIST",
+  lifeAreas,
   ...planEditorProps
 }: DayPlanContentProps) {
   const sharePanelRef = useRef<HTMLDivElement>(null);
@@ -71,6 +72,7 @@ export function DayPlanContent({
     periodSummaryLabel,
     showEditTitle: canEdit,
     onEditTitle: () => setTitleEditSignal((current) => current + 1),
+    lifeAreas,
   };
 
   const pageTitle = buildDayPlanPageTitle(
@@ -126,6 +128,7 @@ export function DayPlanContent({
         periodSummaryLabel={periodSummaryLabel}
         canEdit={canEdit}
         planOrganizeView={planOrganizeView}
+        lifeAreas={lifeAreas}
         showOrganizeToggle={false}
         headerActionsPlacement="none"
         titleMode="custom-only"

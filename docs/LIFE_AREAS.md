@@ -25,7 +25,8 @@ Life Areas must never become mandatory setup before planning or focusing.
 7. **Task creation unchanged** — area assignment lives in the task details sheet (collapsed).
 8. **Life Areas view assignment** — Uncategorized tasks show **+ Area**. Categorized tasks use **Change area** in the task More menu (same selector; includes **Remove from Life Area**). Changing primary preserves secondary associations and never duplicates the task row.
 9. **Customizable areas** — Settings → Planner → Life Areas → Manage (dedicated `/life-areas` page for add / rename / reorder / archive / restore). Defaults seed once when the user has none.
-10. **Deferred** — Pomodoro / Activity Timer rollups, weekly intentions, balance summaries.
+10. **Copy as text** — optional **By Life Area** format groups shareable root tasks by primary area (same ordering / Uncategorized rules as the Life Areas view). Secondary areas never duplicate rows. Private items stay excluded.
+11. **Deferred** — Pomodoro / Activity Timer rollups, weekly intentions, balance summaries.
 
 ---
 

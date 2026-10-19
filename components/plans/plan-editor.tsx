@@ -148,6 +148,7 @@ export function PlanEditor({
       deleteRedirectTo={deleteRedirectTo}
       periodSummaryHref={periodSummaryHref}
       periodSummaryLabel={periodSummaryLabel}
+      lifeAreas={lifeAreas}
     />
   );
 

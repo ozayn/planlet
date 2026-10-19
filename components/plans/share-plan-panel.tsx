@@ -6,6 +6,7 @@ import { createShareExportAction } from "@/app/(app)/plans/actions";
 import { ClipboardCopyIcon } from "@/components/ui/action-icons";
 import { SimpleSheet } from "@/components/ui/simple-sheet";
 import { ACTION_LABELS } from "@/lib/action-labels";
+import type { SerializedLifeArea } from "@/lib/life-areas/types";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 import type { SerializedPlan } from "@/lib/plan-serialize";
 import {
@@ -21,13 +22,21 @@ type SharePlanPanelProps = {
   plan: SerializedPlan;
   /** When unset, uses the app default (completed items first). */
   moveCompletedToTop?: boolean;
+  /** Catalog order for the By Life Area format. */
+  lifeAreas?: SerializedLifeArea[];
 };
 
-const FORMAT_OPTIONS: ShareUiFormat[] = ["plan", "plain", "update"];
+const FORMAT_OPTIONS: ShareUiFormat[] = [
+  "plan",
+  "plain",
+  "update",
+  "lifeAreas",
+];
 
 export function SharePlanPanel({
   plan,
   moveCompletedToTop,
+  lifeAreas = [],
 }: SharePlanPanelProps) {
   const [open, setOpen] = useState(false);
   const [format, setFormat] = useState<ShareUiFormat>("plan");
@@ -37,14 +46,28 @@ export function SharePlanPanel({
   const [isSaving, setIsSaving] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const lifeAreaOrder = useMemo(
+    () =>
+      lifeAreas.map((area) => ({
+        id: area.id,
+        name: area.name,
+        archivedAt: area.archivedAt,
+      })),
+    [lifeAreas],
+  );
+
   const sharePlan = useMemo(
     () => serializedPlanToSharePlan(plan, { moveCompletedToTop }),
     [plan, moveCompletedToTop],
   );
 
   const previewText = useMemo(
-    () => generateShareText(sharePlan, shareUiFormatToOptions(format)),
-    [sharePlan, format],
+    () =>
+      generateShareText(
+        sharePlan,
+        shareUiFormatToOptions(format, lifeAreaOrder),
+      ),
+    [sharePlan, format, lifeAreaOrder],
   );
 
   async function handleCopy() {
@@ -145,7 +168,7 @@ export function SharePlanPanel({
             For messaging apps. Private items are excluded.
           </p>
 
-          <fieldset className="space-y-3">
+          <fieldset className="min-w-0 space-y-3 overflow-x-hidden">
             <legend className="ui-label">Format</legend>
             <div className="flex flex-wrap gap-2">
               {FORMAT_OPTIONS.map((option) => {
@@ -154,7 +177,7 @@ export function SharePlanPanel({
                 return (
                   <label
                     key={option}
-                    className={`flex min-h-11 cursor-pointer items-center rounded-xl px-4 text-sm transition-colors ${
+                    className={`flex min-h-11 cursor-pointer items-center rounded-xl px-3 text-sm transition-colors sm:px-4 ${
                       format === option ? "ui-segment-active" : "ui-segment"
                     }`}
                   >

@@ -82,6 +82,7 @@ enum ShareExportFormat {
   PLAIN_TEXT
   TELEGRAM
   SUMMARY
+  LIFE_AREAS
 }
 
 enum UserRole {

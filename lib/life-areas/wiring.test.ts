@@ -241,4 +241,23 @@ describe("Life Areas feature wiring", () => {
     assert.doesNotMatch(sections, /showLifeAreaChange/);
     assert.doesNotMatch(sections, /showLifeAreaAssign/);
   });
+
+  it("wires Copy as text By Life Area through the share panel", () => {
+    const share = readFileSync(join(root, "lib/share-plan.ts"), "utf8");
+    const panel = readFileSync(
+      join(root, "components/plans/share-plan-panel.tsx"),
+      "utf8",
+    );
+    const schema = readFileSync(join(root, "prisma/schema.prisma"), "utf8");
+
+    assert.match(share, /lifeAreas/);
+    assert.match(share, /LIFE_AREAS/);
+    assert.match(share, /groupShareItemsByPrimaryLifeArea/);
+    assert.match(share, /groupByPrimaryLifeArea/);
+    assert.match(panel, /By Life Area/);
+    assert.match(panel, /flex flex-wrap gap-2/);
+    assert.match(panel, /overflow-x-hidden/);
+    assert.match(panel, /lifeAreas/);
+    assert.match(schema, /LIFE_AREAS/);
+  });
 });
