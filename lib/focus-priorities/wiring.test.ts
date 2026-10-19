@@ -6,7 +6,7 @@ import { describe, it } from "node:test";
 describe("Focus Priorities feature wiring", () => {
   const root = join(import.meta.dirname, "../..");
 
-  it("stores description and nested subtopics on FocusPriority", () => {
+  it("stores description, subtopics, and auto-add daily preference", () => {
     const schema = readFileSync(join(root, "prisma/schema.prisma"), "utf8");
     const migration = readFileSync(
       join(
@@ -15,12 +15,24 @@ describe("Focus Priorities feature wiring", () => {
       ),
       "utf8",
     );
+    const autoAddMigration = readFileSync(
+      join(
+        root,
+        "prisma/migrations/20261019250000_focus_priority_auto_add_daily/migration.sql",
+      ),
+      "utf8",
+    );
 
     assert.match(schema, /model FocusPriority/);
     assert.match(schema, /description\s+String\?\s+@db\.Text/);
     assert.match(schema, /subtopics\s+String\[\]/);
+    assert.match(schema, /autoAddToDailyPlan\s+Boolean\s+@default\(false\)/);
+    assert.match(schema, /model FocusPriorityDailyPlacement/);
+    assert.match(schema, /@@unique\(\[userId, focusPriorityId, dayDate\]\)/);
     assert.match(migration, /ADD COLUMN "description"/);
     assert.match(migration, /ADD COLUMN "subtopics"/);
+    assert.match(autoAddMigration, /autoAddToDailyPlan/);
+    assert.match(autoAddMigration, /FocusPriorityDailyPlacement/);
   });
 
   it("exposes admin-only Settings manage link and dedicated page", () => {
@@ -145,6 +157,40 @@ describe("Focus Priorities feature wiring", () => {
     assert.doesNotMatch(settings, /Portfolio Polish/);
     assert.match(settings, /description/);
     assert.match(settings, /subtopics/);
+    assert.match(settings, /Add to daily plan automatically/);
+    assert.match(settings, /autoAddToDailyPlan/);
+  });
+
+  it("wires idempotent auto-add onto today using the user timezone", () => {
+    const lib = readFileSync(join(root, "lib/focus-priorities/index.ts"), "utf8");
+    const autoAdd = readFileSync(
+      join(root, "lib/focus-priorities/auto-add.ts"),
+      "utf8",
+    );
+    const todayPage = readFileSync(
+      join(root, "app/(app)/today/page.tsx"),
+      "utf8",
+    );
+    const constants = readFileSync(
+      join(root, "lib/focus-priorities/constants.ts"),
+      "utf8",
+    );
+
+    assert.match(autoAdd, /ensureAutoFocusPriorityTasksForToday/);
+    assert.match(autoAdd, /FocusPriorityDailyPlacement|focusPriorityDailyPlacement/);
+    assert.match(autoAdd, /getUserTimezone/);
+    assert.match(autoAdd, /getTodayDateString/);
+    assert.match(autoAdd, /getOrCreateDayPlan/);
+    assert.match(autoAdd, /decideAutoAddPlacement/);
+    assert.match(lib, /ensureAutoFocusPriorityTasksForToday/);
+    assert.match(lib, /loadFocusPrioritiesForAdminUser/);
+    // Today loads priorities (auto-add) before getTodayPlan.
+    const focusLoad = todayPage.indexOf("loadFocusPrioritiesForAdminUser");
+    const planLoad = todayPage.indexOf("getTodayPlan");
+    assert.ok(focusLoad >= 0 && planLoad >= 0 && focusLoad < planLoad);
+    assert.match(constants, /Shoulder physical therapy/);
+    assert.match(constants, /Foot physical therapy/);
+    assert.match(constants, /autoAddToDailyPlan: true/);
   });
 
   it("passes Focus Priorities only into the Life Areas sections branch", () => {

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { getTodayDateString } from "@/lib/dates";
+import { decideAutoAddPlacement } from "@/lib/focus-priorities/auto-add";
 import {
   CANONICAL_FOCUS_PRIORITY_SEEDS,
   LEGACY_FOCUS_PRIORITY_DEFAULTS,
@@ -27,6 +28,7 @@ function priority(
     suggestedTaskTitle: defaultSuggestedTaskTitle(overrides.title),
     defaultDurationMinutes: 30,
     subtopics: [],
+    autoAddToDailyPlan: false,
     sortOrder: 0,
     archivedAt: null,
     ...overrides,
@@ -50,11 +52,11 @@ describe("focus priorities helpers", () => {
     );
   });
 
-  it("defines exactly four active canonical priorities and archived Portfolio Polish", () => {
+  it("defines six active canonical priorities including PT auto-add seeds", () => {
     const active = CANONICAL_FOCUS_PRIORITY_SEEDS.filter((seed) => !seed.archived);
     const archived = CANONICAL_FOCUS_PRIORITY_SEEDS.filter((seed) => seed.archived);
 
-    assert.equal(active.length, 4);
+    assert.equal(active.length, 6);
     assert.deepEqual(
       active.map((seed) => seed.title),
       [
@@ -62,6 +64,8 @@ describe("focus priorities helpers", () => {
         "Networking & Follow-ups",
         "Technical Practice",
         "Interview Stories & Mock Practice",
+        "Shoulder physical therapy",
+        "Foot physical therapy",
       ],
     );
     assert.deepEqual(
@@ -83,7 +87,33 @@ describe("focus priorities helpers", () => {
       technical.suggestedTaskTitle,
       "Practice SQL for 35 minutes and review mistakes.",
     );
-    assert.ok(MAX_FOCUS_PRIORITIES_PER_USER >= 5);
+    assert.equal(technical.autoAddToDailyPlan, false);
+
+    const shoulder = active.find(
+      (seed) => seed.title === "Shoulder physical therapy",
+    );
+    const foot = active.find((seed) => seed.title === "Foot physical therapy");
+    assert.ok(shoulder);
+    assert.ok(foot);
+    assert.equal(shoulder.lifeAreaName, "Health & Wellbeing");
+    assert.equal(foot.lifeAreaName, "Health & Wellbeing");
+    assert.equal(
+      shoulder.suggestedTaskTitle,
+      "Do shoulder physical therapy exercises",
+    );
+    assert.equal(foot.suggestedTaskTitle, "Do foot physical therapy exercises");
+    assert.equal(shoulder.autoAddToDailyPlan, true);
+    assert.equal(foot.autoAddToDailyPlan, true);
+    assert.ok(
+      active
+        .filter(
+          (seed) =>
+            seed.title !== "Shoulder physical therapy" &&
+            seed.title !== "Foot physical therapy",
+        )
+        .every((seed) => seed.autoAddToDailyPlan === false),
+    );
+    assert.ok(MAX_FOCUS_PRIORITIES_PER_USER >= 7);
   });
 
   it("consolidates exact legacy defaults without touching customized rows", () => {
@@ -225,5 +255,15 @@ describe("focus priorities helpers", () => {
       getTodayDateString("UTC", nearMidnightUtc),
       "2026-10-20",
     );
+  });
+
+  it("skips auto-add when a placement already exists for the day", () => {
+    assert.deepEqual(
+      decideAutoAddPlacement({ hasPlacementForDay: true }),
+      { action: "skip", reason: "already_placed" },
+    );
+    assert.deepEqual(decideAutoAddPlacement({ hasPlacementForDay: false }), {
+      action: "create",
+    });
   });
 });

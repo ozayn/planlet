@@ -356,6 +356,7 @@ model User {
   projects      Project[]
   lifeAreas     LifeArea[]
   focusPriorities FocusPriority[]
+  focusPriorityDailyPlacements FocusPriorityDailyPlacement[]
   planSharesOwned    PlanShare[] @relation("PlanShareOwner")
   planSharesReceived PlanShare[] @relation("PlanShareRecipient")
   sentKudos          PlanKudos[] @relation("SentKudos")
@@ -806,14 +807,36 @@ model FocusPriority {
   suggestedTaskTitle     String
   defaultDurationMinutes Int?
   subtopics              String[]  @default([])
+  /// When true, ensure one suggested task on today's day plan (user timezone).
+  autoAddToDailyPlan     Boolean   @default(false)
   sortOrder              Int       @default(0)
   archivedAt             DateTime?
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
+  dailyPlacements        FocusPriorityDailyPlacement[]
 
   @@index([userId, sortOrder])
   @@index([userId, archivedAt])
+  @@index([userId, autoAddToDailyPlan])
   @@index([lifeAreaId])
+}
+
+/// Ledger so auto-add is idempotent per local calendar day — including when
+/// the user deletes or skips that day's generated task.
+model FocusPriorityDailyPlacement {
+  id              String        @id @default(cuid())
+  userId          String
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  focusPriorityId String
+  focusPriority   FocusPriority @relation(fields: [focusPriorityId], references: [id], onDelete: Cascade)
+  /// YYYY-MM-DD in the user's Planlet timezone.
+  dayDate         String
+  planItemId      String?
+  createdAt       DateTime      @default(now())
+
+  @@unique([userId, focusPriorityId, dayDate])
+  @@index([userId, dayDate])
+  @@index([focusPriorityId, dayDate])
 }
 
 /// Optional Life Area association for a PlanItem (at most one primary).

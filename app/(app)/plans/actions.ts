@@ -9,6 +9,8 @@ import type {
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { auth } from "@/auth";
+import { loadFocusPrioritiesForAdminUser } from "@/lib/focus-priorities";
 import { requireUserId } from "@/lib/require-auth";
 import { parsePlanFromText } from "@/lib/ai/parse-plan";
 import { AI_USAGE_FEATURES } from "@/lib/ai/usage";
@@ -176,6 +178,11 @@ export async function createTodayPlanAction() {
   const timezone = await getUserTimezone(userId);
   const dayDate = getTodayDateString(timezone);
   const plan = await getOrCreateDayPlan(userId, parseDateString(dayDate));
+  // Admin Focus Priority auto-add (no-op for other roles).
+  const session = await auth();
+  if (session?.user?.id === userId) {
+    await loadFocusPrioritiesForAdminUser(userId, session.user.role);
+  }
   await recordUserActivity(userId);
   revalidatePlanPaths(plan.id, { dayDate });
 }

@@ -1,3 +1,4 @@
+import { ensureAutoFocusPriorityTasksForToday } from "@/lib/focus-priorities/auto-add";
 import {
   CANONICAL_FOCUS_PRIORITY_SEEDS,
   MAX_FOCUS_PRIORITIES_PER_USER,
@@ -42,6 +43,7 @@ type FocusPriorityRow = {
   suggestedTaskTitle: string;
   defaultDurationMinutes: number | null;
   subtopics: string[];
+  autoAddToDailyPlan: boolean;
   sortOrder: number;
   archivedAt: Date | null;
   lifeArea: { name: string };
@@ -119,6 +121,7 @@ function serializePriority(row: FocusPriorityRow): SerializedFocusPriority {
     suggestedTaskTitle: row.suggestedTaskTitle,
     defaultDurationMinutes: row.defaultDurationMinutes,
     subtopics: row.subtopics ?? [],
+    autoAddToDailyPlan: Boolean(row.autoAddToDailyPlan),
     sortOrder: row.sortOrder,
     archivedAt: row.archivedAt?.toISOString() ?? null,
   };
@@ -188,6 +191,7 @@ export async function loadFocusPrioritiesForAdminUser(
     return [];
   }
   await ensureDefaultFocusPriorities(userId);
+  await ensureAutoFocusPriorityTasksForToday(userId);
   return listActiveFocusPrioritiesForView(userId);
 }
 
@@ -205,6 +209,7 @@ function seedCreateData(
     suggestedTaskTitle: seed.suggestedTaskTitle,
     defaultDurationMinutes: seed.defaultDurationMinutes,
     subtopics: [...seed.subtopics],
+    autoAddToDailyPlan: seed.autoAddToDailyPlan,
     sortOrder,
     archivedAt: seed.archived ? new Date() : null,
   };
@@ -297,6 +302,7 @@ export async function ensureDefaultFocusPriorities(
         subtopics: [...seed.subtopics],
         lifeAreaId: area.id,
         // Intentionally does not re-archive restored priorities (e.g. Portfolio Polish).
+        // Intentionally does not overwrite autoAddToDailyPlan — user preference.
       },
     });
   }
@@ -317,6 +323,7 @@ export async function createFocusPriority(
   );
   const defaultDurationMinutes = sanitizeDuration(input.defaultDurationMinutes);
   const subtopics = sanitizeSubtopics(input.subtopics);
+  const autoAddToDailyPlan = Boolean(input.autoAddToDailyPlan);
   await requireOwnedLifeArea(userId, input.lifeAreaId);
 
   const count = await prisma.focusPriority.count({ where: { userId } });
@@ -341,6 +348,7 @@ export async function createFocusPriority(
       suggestedTaskTitle,
       defaultDurationMinutes,
       subtopics,
+      autoAddToDailyPlan,
       sortOrder: last ? last.sortOrder + 1 : 0,
     },
     include: priorityInclude,
@@ -363,6 +371,7 @@ export async function updateFocusPriority(
   );
   const defaultDurationMinutes = sanitizeDuration(input.defaultDurationMinutes);
   const subtopics = sanitizeSubtopics(input.subtopics);
+  const autoAddToDailyPlan = Boolean(input.autoAddToDailyPlan);
   await requireOwnedLifeArea(userId, input.lifeAreaId);
 
   // Updates only FocusPriority rows — never PlanItem / task history.
@@ -374,6 +383,7 @@ export async function updateFocusPriority(
       suggestedTaskTitle,
       defaultDurationMinutes,
       subtopics,
+      autoAddToDailyPlan,
       lifeAreaId: input.lifeAreaId,
     },
     include: priorityInclude,
@@ -547,6 +557,11 @@ export async function addFocusPriorityToToday(
 }
 
 export { groupFocusPrioritiesByLifeArea } from "@/lib/focus-priorities/group";
+
+export {
+  decideAutoAddPlacement,
+  ensureAutoFocusPriorityTasksForToday,
+} from "@/lib/focus-priorities/auto-add";
 
 export type {
   FocusPriorityTaskDraftInput,

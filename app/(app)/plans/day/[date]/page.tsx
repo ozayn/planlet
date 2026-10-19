@@ -43,10 +43,16 @@ export default async function DayPlanPage({ params }: DayPlanPageProps) {
   }
 
   const date = parseDateString(dateString);
-  const plan = await getDayPlan(userId, date);
   const dateLabel = formatDayPlanContextLabel(date);
   const firstName = session.user?.name?.split(" ")[0];
   const timezone = session.user?.timezone ?? FALLBACK_TIMEZONE;
+
+  // Seeds + today's auto-add (admin-only) before plan load so new items appear.
+  const focusPriorities = await loadFocusPrioritiesForAdminUser(
+    userId,
+    session.user.role,
+  );
+  const plan = await getDayPlan(userId, date);
 
   if (!plan) {
     return (
@@ -78,7 +84,6 @@ export default async function DayPlanPage({ params }: DayPlanPageProps) {
     recentShareRecipients,
     themeProjectCatalog,
     lifeAreas,
-    focusPriorities,
   ] = await Promise.all([
     getPlanSharesForOwner(plan.id, userId),
     getPlanningPreferencesForUser(userId),
@@ -88,7 +93,6 @@ export default async function DayPlanPage({ params }: DayPlanPageProps) {
     getRecentShareRecipients(userId, plan.id),
     getThemeProjectCatalog(userId),
     ensureDefaultLifeAreas(userId),
-    loadFocusPrioritiesForAdminUser(userId, session.user.role),
   ]);
 
   return (

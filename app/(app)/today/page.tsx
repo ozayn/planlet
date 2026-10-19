@@ -29,19 +29,20 @@ export default async function TodayPage() {
     redirect("/");
   }
 
-  const [
-    plan,
-    planningPreferences,
-    themeProjectCatalog,
-    lifeAreas,
-    focusPriorities,
-  ] = await Promise.all([
-    getTodayPlan(userId),
-    getPlanningPreferencesForUser(userId),
-    getThemeProjectCatalog(userId),
-    ensureDefaultLifeAreas(userId),
-    loadFocusPrioritiesForAdminUser(userId, session.user.role),
-  ]);
+  // Seed + auto-add Focus Priority tasks before loading today's plan so new
+  // items appear on the first paint (admin-only; no-op for other roles).
+  const focusPriorities = await loadFocusPrioritiesForAdminUser(
+    userId,
+    session.user.role,
+  );
+
+  const [plan, planningPreferences, themeProjectCatalog, lifeAreas] =
+    await Promise.all([
+      getTodayPlan(userId),
+      getPlanningPreferencesForUser(userId),
+      getThemeProjectCatalog(userId),
+      ensureDefaultLifeAreas(userId),
+    ]);
   const [kudos, reflectionData, platformShares, recentShareRecipients] = plan
     ? await Promise.all([
         getKudosForPlan(plan.id, userId),

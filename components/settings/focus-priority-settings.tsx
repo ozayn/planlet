@@ -37,6 +37,7 @@ type DraftFields = {
   suggestedTaskTitle: string;
   defaultDurationMinutes: string;
   subtopics: string;
+  autoAddToDailyPlan: boolean;
 };
 
 function emptyDraft(lifeAreaId: string): DraftFields {
@@ -47,6 +48,7 @@ function emptyDraft(lifeAreaId: string): DraftFields {
     suggestedTaskTitle: "",
     defaultDurationMinutes: "",
     subtopics: "",
+    autoAddToDailyPlan: false,
   };
 }
 
@@ -61,6 +63,7 @@ function toDraft(priority: SerializedFocusPriority): DraftFields {
         ? ""
         : String(priority.defaultDurationMinutes),
     subtopics: formatSubtopicsInput(priority.subtopics),
+    autoAddToDailyPlan: priority.autoAddToDailyPlan,
   };
 }
 
@@ -83,6 +86,7 @@ function toWriteInput(draft: DraftFields) {
       draft.suggestedTaskTitle.trim() || defaultSuggestedTaskTitle(title),
     defaultDurationMinutes: parseDuration(draft.defaultDurationMinutes),
     subtopics: parseSubtopicsInput(draft.subtopics),
+    autoAddToDailyPlan: draft.autoAddToDailyPlan,
   };
 }
 
@@ -241,6 +245,11 @@ export function FocusPrioritySettings({
                       <p className="truncate text-xs text-muted-light">
                         {priority.suggestedTaskTitle}
                       </p>
+                      {priority.autoAddToDailyPlan ? (
+                        <p className="text-xs text-muted-light">
+                          Adds to daily plan automatically
+                        </p>
+                      ) : null}
                       {priority.subtopics.length > 0 ? (
                         <p className="truncate text-xs text-muted-light">
                           {priority.subtopics.join(" · ")}
@@ -492,6 +501,28 @@ function PriorityFields({
         }
         {...passwordManagerSafeControlProps}
       />
+      <label className="flex min-h-11 cursor-pointer items-start gap-2.5 rounded-xl px-0.5 py-1 text-sm text-foreground">
+        <input
+          type="checkbox"
+          className="mt-1 h-4 w-4 shrink-0 rounded border-border-soft"
+          checked={draft.autoAddToDailyPlan}
+          disabled={pending}
+          onChange={(event) =>
+            onChange({
+              ...draft,
+              autoAddToDailyPlan: event.target.checked,
+            })
+          }
+          {...passwordManagerSafeControlProps}
+        />
+        <span>
+          <span className="font-medium">Add to daily plan automatically</span>
+          <span className="mt-0.5 block text-xs text-muted">
+            Creates one suggested task for today in your Planlet timezone. Skips
+            if already added or removed today.
+          </span>
+        </span>
+      </label>
     </div>
   );
 }

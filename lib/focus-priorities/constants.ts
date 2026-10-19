@@ -10,11 +10,13 @@ export type FocusPrioritySeed = {
   suggestedTaskTitle: string;
   defaultDurationMinutes: number | null;
   subtopics: readonly string[];
+  /** Default for new seeds only; user preference is never overwritten on sync. */
+  autoAddToDailyPlan: boolean;
   archived: boolean;
 };
 
 /**
- * Canonical admin Focus Priorities (4 active + 1 archived).
+ * Canonical admin Focus Priorities (6 active + 1 archived).
  * Seeded / consolidated idempotently; never overwrites customized rows.
  */
 export const CANONICAL_FOCUS_PRIORITY_SEEDS: readonly FocusPrioritySeed[] = [
@@ -26,6 +28,7 @@ export const CANONICAL_FOCUS_PRIORITY_SEEDS: readonly FocusPrioritySeed[] = [
     suggestedTaskTitle: "Tailor and submit one relevant application.",
     defaultDurationMinutes: null,
     subtopics: [],
+    autoAddToDailyPlan: false,
     archived: false,
   },
   {
@@ -36,6 +39,7 @@ export const CANONICAL_FOCUS_PRIORITY_SEEDS: readonly FocusPrioritySeed[] = [
     suggestedTaskTitle: "Spend 30 minutes on selected replies and outreach.",
     defaultDurationMinutes: 30,
     subtopics: [],
+    autoAddToDailyPlan: false,
     archived: false,
   },
   {
@@ -52,6 +56,7 @@ export const CANONICAL_FOCUS_PRIORITY_SEEDS: readonly FocusPrioritySeed[] = [
       "Machine Learning",
       "Analytical Case Studies",
     ],
+    autoAddToDailyPlan: false,
     archived: false,
   },
   {
@@ -62,6 +67,27 @@ export const CANONICAL_FOCUS_PRIORITY_SEEDS: readonly FocusPrioritySeed[] = [
     suggestedTaskTitle: "Rehearse one project explanation aloud.",
     defaultDurationMinutes: null,
     subtopics: [],
+    autoAddToDailyPlan: false,
+    archived: false,
+  },
+  {
+    title: "Shoulder physical therapy",
+    lifeAreaName: "Health & Wellbeing",
+    description: "Ongoing shoulder physical therapy practice.",
+    suggestedTaskTitle: "Do shoulder physical therapy exercises",
+    defaultDurationMinutes: null,
+    subtopics: [],
+    autoAddToDailyPlan: true,
+    archived: false,
+  },
+  {
+    title: "Foot physical therapy",
+    lifeAreaName: "Health & Wellbeing",
+    description: "Ongoing foot physical therapy practice.",
+    suggestedTaskTitle: "Do foot physical therapy exercises",
+    defaultDurationMinutes: null,
+    subtopics: [],
+    autoAddToDailyPlan: true,
     archived: false,
   },
   {
@@ -72,6 +98,7 @@ export const CANONICAL_FOCUS_PRIORITY_SEEDS: readonly FocusPrioritySeed[] = [
     suggestedTaskTitle: "Polish one portfolio artifact for an application.",
     defaultDurationMinutes: null,
     subtopics: [],
+    autoAddToDailyPlan: false,
     archived: true,
   },
 ] as const;
