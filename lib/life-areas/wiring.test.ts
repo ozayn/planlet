@@ -61,15 +61,42 @@ describe("Life Areas feature wiring", () => {
     assert.match(lifeSections, /groupPlanItemsByPrimaryLifeArea/);
     assert.match(lifeSections, /UNCATEGORIZED_LIFE_AREA_ID/);
     assert.match(lifeSections, /showLifeAreaAssign=/);
+    assert.match(lifeSections, /showLifeAreaChange=/);
     assert.match(lifeSections, /overflow-x-hidden/);
     assert.match(lifeSections, /min-h-11/);
     assert.match(card, /ItemLifeAreaAssignControl/);
     assert.match(card, /showLifeAreaAssign && canEdit && !isNested/);
+    assert.match(card, /showLifeAreaChange && canEdit && !isNested/);
+    assert.match(card, /onChangeLifeArea/);
+    assert.match(card, /setChangeAreaOpen\(true\)/);
     assert.match(assign, /\+ Area/);
     assert.match(assign, /\+ Create new area/);
+    assert.match(assign, /Remove from Life Area/);
     assert.match(assign, /createPortal/);
-    assert.match(assign, /setPlanItemLifeAreasAction/);
+    assert.match(assign, /setPlanItemPrimaryLifeAreaAction/);
     assert.match(assign, /createLifeAreaAction/);
+    assert.match(assign, /router\.refresh\(\)/);
+    assert.match(assign, /mode === "change"/);
+
+    const menu = readFileSync(
+      join(root, "components/plans/item-actions-menu.tsx"),
+      "utf8",
+    );
+    assert.match(menu, /onChangeLifeArea/);
+    assert.match(menu, /Change area/);
+  });
+
+  it("preserves secondaries when changing primary via dedicated action", () => {
+    const lib = readFileSync(join(root, "lib/life-areas/index.ts"), "utf8");
+    const actions = readFileSync(
+      join(root, "app/(app)/life-areas/actions.ts"),
+      "utf8",
+    );
+    assert.match(lib, /export async function setPlanItemPrimaryLifeArea/);
+    assert.match(lib, /nextSelectionAfterPrimaryChange/);
+    assert.match(lib, /planItemLifeArea\.findMany/);
+    assert.match(actions, /setPlanItemPrimaryLifeAreaAction/);
+    assert.match(actions, /setPlanItemPrimaryLifeArea\(/);
   });
 
   it("wires day/week/month/year/today plans with lifeAreas props", () => {
@@ -204,5 +231,14 @@ describe("Life Areas feature wiring", () => {
     assert.match(lib, /normalizeLifeAreaSelection/);
     assert.match(lib, /planItemLifeArea\.deleteMany/);
     assert.match(lib, /isPrimary: lifeAreaId === normalized\.primaryLifeAreaId/);
+  });
+
+  it("keeps List view free of Change area / + Area row controls", () => {
+    const sections = readFileSync(
+      join(root, "components/plans/plan-item-sections.tsx"),
+      "utf8",
+    );
+    assert.doesNotMatch(sections, /showLifeAreaChange/);
+    assert.doesNotMatch(sections, /showLifeAreaAssign/);
   });
 });

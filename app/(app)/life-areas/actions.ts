@@ -12,6 +12,7 @@ import {
   reorderLifeAreas,
   restoreLifeArea,
   setPlanItemLifeAreas,
+  setPlanItemPrimaryLifeArea,
   updatePlanOrganizeView,
   type PlanOrganizeViewValue,
 } from "@/lib/life-areas";
@@ -186,6 +187,35 @@ export async function setPlanItemLifeAreasAction(input: {
           : error instanceof Error
             ? error.message
             : "Could not update Life Areas.",
+    };
+  }
+}
+
+/** Change or clear primary only; preserves secondary Life Areas. */
+export async function setPlanItemPrimaryLifeAreaAction(input: {
+  planId: string;
+  itemId: string;
+  primaryLifeAreaId: string | null;
+}) {
+  try {
+    const userId = await requireUserId();
+    await setPlanItemPrimaryLifeArea({
+      userId,
+      planItemId: input.itemId,
+      primaryLifeAreaId: input.primaryLifeAreaId,
+    });
+    revalidatePath(`/plans/${input.planId}`);
+    revalidatePlans();
+    return { success: true as const };
+  } catch (error) {
+    return {
+      success: false as const,
+      error:
+        error instanceof LifeAreaError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : "Could not update Life Area.",
     };
   }
 }

@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   groupPlanItemsByPrimaryLifeArea,
+  nextSelectionAfterPrimaryChange,
   normalizeLifeAreaSelection,
 } from "@/lib/life-areas/group";
 import {
@@ -66,6 +67,46 @@ describe("normalizeLifeAreaSelection", () => {
       }),
       { primaryLifeAreaId: null, secondaryLifeAreaIds: ["x"] },
     );
+  });
+});
+
+describe("nextSelectionAfterPrimaryChange", () => {
+  it("changes primary and preserves secondaries", () => {
+    assert.deepEqual(
+      nextSelectionAfterPrimaryChange({
+        currentPrimaryId: "career",
+        currentSecondaryIds: ["learn", "health"],
+        nextPrimaryId: "health",
+      }),
+      {
+        primaryLifeAreaId: "health",
+        secondaryLifeAreaIds: ["learn"],
+      },
+    );
+  });
+
+  it("removes primary while keeping secondary associations", () => {
+    assert.deepEqual(
+      nextSelectionAfterPrimaryChange({
+        currentPrimaryId: "career",
+        currentSecondaryIds: ["learn"],
+        nextPrimaryId: null,
+      }),
+      {
+        primaryLifeAreaId: null,
+        secondaryLifeAreaIds: ["learn"],
+      },
+    );
+  });
+
+  it("does not duplicate a task id across primary and secondary", () => {
+    const next = nextSelectionAfterPrimaryChange({
+      currentPrimaryId: "a",
+      currentSecondaryIds: ["b", "c"],
+      nextPrimaryId: "b",
+    });
+    assert.equal(next.primaryLifeAreaId, "b");
+    assert.ok(!next.secondaryLifeAreaIds.includes("b"));
   });
 });
 

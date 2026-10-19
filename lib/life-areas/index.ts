@@ -3,7 +3,10 @@ import {
   MAX_LIFE_AREA_NAME_LENGTH,
   MAX_LIFE_AREAS_PER_USER,
 } from "@/lib/life-areas/constants";
-import { normalizeLifeAreaSelection } from "@/lib/life-areas/group";
+import {
+  nextSelectionAfterPrimaryChange,
+  normalizeLifeAreaSelection,
+} from "@/lib/life-areas/group";
 import type {
   PlanOrganizeViewValue,
   SerializedLifeArea,
@@ -306,9 +309,57 @@ export async function setPlanItemLifeAreas(input: {
   });
 }
 
+/**
+ * Update only the primary Life Area; preserve existing secondary links.
+ * Pass null to move the task to Uncategorized.
+ */
+export async function setPlanItemPrimaryLifeArea(input: {
+  userId: string;
+  planItemId: string;
+  primaryLifeAreaId: string | null;
+}): Promise<void> {
+  const existing = await prisma.planItemLifeArea.findMany({
+    where: {
+      planItemId: input.planItemId,
+      planItem: { plan: { userId: input.userId } },
+    },
+    select: { lifeAreaId: true, isPrimary: true },
+  });
+
+  if (
+    existing.length === 0 &&
+    !(await prisma.planItem.findFirst({
+      where: { id: input.planItemId, plan: { userId: input.userId } },
+      select: { id: true },
+    }))
+  ) {
+    throw new LifeAreaError("Task not found.");
+  }
+
+  const currentPrimaryId =
+    existing.find((row) => row.isPrimary)?.lifeAreaId ?? null;
+  const currentSecondaryIds = existing
+    .filter((row) => !row.isPrimary)
+    .map((row) => row.lifeAreaId);
+
+  const next = nextSelectionAfterPrimaryChange({
+    currentPrimaryId,
+    currentSecondaryIds,
+    nextPrimaryId: input.primaryLifeAreaId,
+  });
+
+  await setPlanItemLifeAreas({
+    userId: input.userId,
+    planItemId: input.planItemId,
+    primaryLifeAreaId: next.primaryLifeAreaId,
+    secondaryLifeAreaIds: next.secondaryLifeAreaIds,
+  });
+}
+
 export type { SerializedLifeArea, PlanOrganizeViewValue } from "@/lib/life-areas/types";
 export {
   groupPlanItemsByPrimaryLifeArea,
+  nextSelectionAfterPrimaryChange,
   normalizeLifeAreaSelection,
 } from "@/lib/life-areas/group";
 export {

@@ -59,6 +59,8 @@ type ItemActionsMenuProps = {
   onAddSubtask?: () => void;
   onTaskNote?: () => void;
   onComments?: () => void;
+  /** Life Areas view: open the shared area selector for categorized tasks. */
+  onChangeLifeArea?: () => void;
   commentCount?: number;
 };
 
@@ -80,6 +82,7 @@ export function ItemActionsMenu({
   onAddSubtask,
   onTaskNote,
   onComments,
+  onChangeLifeArea,
   commentCount = 0,
 }: ItemActionsMenuProps) {
   const router = useRouter();
@@ -298,6 +301,8 @@ export function ItemActionsMenu({
   const menuShowsTaskNote =
     mobileFullMenu && itemType !== "NOTE" && Boolean(onTaskNote);
   const menuShowsComments = Boolean(onComments) && !overflowOnly;
+  const menuShowsChangeLifeArea =
+    canEdit && !isSubtask && Boolean(onChangeLifeArea);
   const menuShowsDelete = canEdit;
 
   const hasMenuItems =
@@ -310,6 +315,7 @@ export function ItemActionsMenu({
     menuShowsAddSubtask ||
     menuShowsTaskNote ||
     menuShowsComments ||
+    menuShowsChangeLifeArea ||
     menuShowsDelete;
 
   const hasItemsAboveDelete =
@@ -321,7 +327,8 @@ export function ItemActionsMenu({
     menuShowsMoveToRoot ||
     menuShowsAddSubtask ||
     menuShowsTaskNote ||
-    menuShowsComments;
+    menuShowsComments ||
+    menuShowsChangeLifeArea;
 
   const menuItemClassName =
     "flex min-h-10 w-full items-center gap-2.5 px-3 text-left text-sm text-foreground transition-colors hover:bg-accent-cream focus-visible:bg-accent-cream focus-visible:outline-none";
@@ -480,6 +487,18 @@ export function ItemActionsMenu({
                 {commentCount > 0 ? (
                   <span className="text-xs text-muted">{commentCount}</span>
                 ) : null}
+              </button>
+            ) : null}
+            {menuShowsChangeLifeArea ? (
+              <button
+                type="button"
+                role="menuitem"
+                aria-label="Change Life Area"
+                {...passwordManagerSafeControlProps}
+                onClick={() => runAction(onChangeLifeArea!)}
+                className={menuItemClassName}
+              >
+                <span>Change area</span>
               </button>
             ) : null}
             {menuShowsDelete ? (

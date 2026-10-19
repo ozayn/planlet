@@ -98,6 +98,9 @@ export function PlanLifeAreaSections({
                 showLifeAreaAssign={
                   canEdit && group.areaId === UNCATEGORIZED_LIFE_AREA_ID
                 }
+                showLifeAreaChange={
+                  canEdit && group.areaId !== UNCATEGORIZED_LIFE_AREA_ID
+                }
               />
             ) : null}
           </section>

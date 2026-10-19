@@ -6,7 +6,7 @@ import type {
 } from "@dnd-kit/core";
 import type { PlanItemView, TaskOrganizationDisplay } from "@/app/generated/prisma/client";
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 
 import { updatePlanItemAction } from "@/app/(app)/plans/actions";
 import { AddItemForm } from "@/components/plans/add-item-form";
@@ -63,6 +63,8 @@ type PlanItemCardProps = {
   taskOrganizationDisplay?: TaskOrganizationDisplay;
   /** Life Areas view only: show + Area for uncategorized root tasks. */
   showLifeAreaAssign?: boolean;
+  /** Life Areas view only: Change area in the task More menu. */
+  showLifeAreaChange?: boolean;
 };
 
 export function PlanItemCard({
@@ -86,6 +88,7 @@ export function PlanItemCard({
   themeProjectCatalog = EMPTY_THEME_PROJECT_CATALOG,
   taskOrganizationDisplay = "ASSIGNED_ONLY",
   showLifeAreaAssign = false,
+  showLifeAreaChange = false,
 }: PlanItemCardProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -95,7 +98,11 @@ export function PlanItemCard({
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [noteEditorOpen, setNoteEditorOpen] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
+  const [changeAreaOpen, setChangeAreaOpen] = useState(false);
+  const lifeAreaAnchorRef = useRef<HTMLDivElement>(null);
   const visibleActionsAreShown = useMediaQuery("(min-width: 768px)");
+  const currentPrimaryLifeAreaId =
+    item.lifeAreas.find((area) => area.isPrimary)?.id ?? null;
 
   useEffect(() => {
     if (!editingTitle) {
@@ -258,9 +265,29 @@ export function PlanItemCard({
               ) : null}
             </div>
 
-            <div className="ui-item-card-actions ui-plan-item-actions flex shrink-0 items-center gap-0.5">
+            <div
+              ref={lifeAreaAnchorRef}
+              className="ui-item-card-actions ui-plan-item-actions flex shrink-0 items-center gap-0.5"
+            >
               {showLifeAreaAssign && canEdit && !isNested ? (
-                <ItemLifeAreaAssignControl planId={planId} itemId={item.id} />
+                <ItemLifeAreaAssignControl
+                  planId={planId}
+                  itemId={item.id}
+                  mode="assign"
+                  currentPrimaryLifeAreaId={currentPrimaryLifeAreaId}
+                />
+              ) : null}
+              {showLifeAreaChange && canEdit && !isNested ? (
+                <ItemLifeAreaAssignControl
+                  planId={planId}
+                  itemId={item.id}
+                  mode="change"
+                  currentPrimaryLifeAreaId={currentPrimaryLifeAreaId}
+                  showTrigger={false}
+                  open={changeAreaOpen}
+                  onOpenChange={setChangeAreaOpen}
+                  anchorRef={lifeAreaAnchorRef}
+                />
               ) : null}
               <ItemThemeProjectRowControl
                 planId={planId}
@@ -365,6 +392,11 @@ export function PlanItemCard({
                 }
                 onTaskNote={canEdit ? handleTaskNoteClick : undefined}
                 onComments={() => setCommentsOpen(true)}
+                onChangeLifeArea={
+                  showLifeAreaChange && canEdit && !isNested
+                    ? () => setChangeAreaOpen(true)
+                    : undefined
+                }
               />
             </div>
           </div>

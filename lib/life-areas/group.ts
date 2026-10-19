@@ -91,3 +91,22 @@ export function normalizeLifeAreaSelection(input: {
 
   return { primaryLifeAreaId: primary, secondaryLifeAreaIds: secondary };
 }
+
+/**
+ * Change or clear primary while keeping secondary associations.
+ * The new primary is removed from secondaries if present; the previous
+ * primary is not auto-added as a secondary.
+ */
+export function nextSelectionAfterPrimaryChange(input: {
+  currentPrimaryId: string | null | undefined;
+  currentSecondaryIds: string[];
+  nextPrimaryId: string | null;
+}): {
+  primaryLifeAreaId: string | null;
+  secondaryLifeAreaIds: string[];
+} {
+  return normalizeLifeAreaSelection({
+    primaryLifeAreaId: input.nextPrimaryId,
+    secondaryLifeAreaIds: input.currentSecondaryIds,
+  });
+}
