@@ -1,10 +1,15 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 import { confirmFocusPriorityTaskDraftAction } from "@/app/(app)/focus-priorities/actions";
+import { DurationMinutesInput } from "@/components/ui/duration-minutes-input";
 import type { SerializedFocusPriority } from "@/lib/focus-priorities/types";
+import {
+  getMutationError,
+  invokeServerAction,
+} from "@/lib/invoke-server-action";
 import type { SerializedLifeArea } from "@/lib/life-areas/types";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
 
@@ -31,8 +36,11 @@ export function LifeAreaFocusPriorities({
   canAdd = true,
 }: LifeAreaFocusPrioritiesProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const [draft, setDraft] = useState<DraftState | null>(null);
+  const [showAreaPicker, setShowAreaPicker] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const areaOptions = useMemo(
@@ -49,6 +57,8 @@ export function LifeAreaFocusPriorities({
       return;
     }
     setError(null);
+    setSuccess(null);
+    setShowAreaPicker(false);
     setDraft({
       priorityId: priority.id,
       title: priority.suggestedTaskTitle,
@@ -61,29 +71,55 @@ export function LifeAreaFocusPriorities({
   }
 
   function confirmDraft() {
-    if (!draft) {
+    if (!draft || pending) {
       return;
     }
     const title = draft.title.trim();
     if (!title) {
       return;
     }
-    const duration = draft.durationMinutes.trim()
-      ? Number(draft.durationMinutes)
-      : null;
+    const durationRaw = draft.durationMinutes.trim();
+    const duration = durationRaw ? Number(durationRaw) : null;
+    if (durationRaw && !Number.isFinite(duration)) {
+      setError("Enter a valid duration in minutes.");
+      return;
+    }
     setError(null);
+    setSuccess(null);
     startTransition(async () => {
-      const result = await confirmFocusPriorityTaskDraftAction({
-        priorityId: draft.priorityId,
-        title,
-        durationMinutes: Number.isFinite(duration) ? duration : null,
-        primaryLifeAreaId: draft.primaryLifeAreaId || null,
-      });
-      if (!result.success) {
-        setError(result.error);
+      const invoked = await invokeServerAction(() =>
+        confirmFocusPriorityTaskDraftAction({
+          priorityId: draft.priorityId,
+          title,
+          durationMinutes: duration,
+          primaryLifeAreaId: draft.primaryLifeAreaId || null,
+        }),
+      );
+      const mutationError = getMutationError(invoked);
+      if (mutationError) {
+        setError(mutationError.message);
         return;
       }
+      if (!invoked.ok || !invoked.value.success) {
+        setError("Could not add task to today.");
+        return;
+      }
+
+      const { dayDate } = invoked.value;
       setDraft(null);
+      setShowAreaPicker(false);
+
+      const onTodaySurface =
+        pathname === "/today" || pathname === `/plans/day/${dayDate}`;
+
+      if (onTodaySurface) {
+        setSuccess("Added to today");
+        router.refresh();
+        return;
+      }
+
+      // Task lands on today's Daily Plan — leave week/month/year views.
+      router.push("/today");
       router.refresh();
     });
   }
@@ -123,52 +159,50 @@ export function LifeAreaFocusPriorities({
                       }
                       if (event.key === "Escape") {
                         setDraft(null);
+                        setShowAreaPicker(false);
                       }
                     }}
                     autoFocus
                     {...passwordManagerSafeControlProps}
                   />
-                  <div className="flex flex-col gap-1.5 sm:flex-row">
-                    <input
-                      className="ui-input w-full text-[length:var(--density-text-sm)] sm:w-28"
-                      type="number"
-                      inputMode="numeric"
-                      min={1}
-                      max={1440}
-                      value={draft.durationMinutes}
+                  <DurationMinutesInput
+                    value={draft.durationMinutes}
+                    disabled={pending}
+                    onChange={(durationMinutes) =>
+                      setDraft({ ...draft, durationMinutes })
+                    }
+                  />
+                  {showAreaPicker && areaOptions.length > 0 ? (
+                    <select
+                      className="ui-input w-full text-[length:var(--density-text-sm)]"
+                      value={draft.primaryLifeAreaId}
                       disabled={pending}
-                      placeholder="Minutes"
-                      aria-label="Duration in minutes"
+                      aria-label="Life Area"
                       onChange={(event) =>
                         setDraft({
                           ...draft,
-                          durationMinutes: event.target.value,
+                          primaryLifeAreaId: event.target.value,
                         })
                       }
                       {...passwordManagerSafeControlProps}
-                    />
-                    {areaOptions.length > 0 ? (
-                      <select
-                        className="ui-input min-w-0 flex-1 text-[length:var(--density-text-sm)]"
-                        value={draft.primaryLifeAreaId}
-                        disabled={pending}
-                        aria-label="Life Area"
-                        onChange={(event) =>
-                          setDraft({
-                            ...draft,
-                            primaryLifeAreaId: event.target.value,
-                          })
-                        }
-                        {...passwordManagerSafeControlProps}
-                      >
-                        {areaOptions.map((area) => (
-                          <option key={area.id} value={area.id}>
-                            {area.name}
-                          </option>
-                        ))}
-                      </select>
-                    ) : null}
-                  </div>
+                    >
+                      {areaOptions.map((area) => (
+                        <option key={area.id} value={area.id}>
+                          {area.name}
+                        </option>
+                      ))}
+                    </select>
+                  ) : areaOptions.length > 0 ? (
+                    <button
+                      type="button"
+                      className="min-h-11 text-left text-[length:var(--density-text-xs)] font-medium text-muted transition-colors hover:text-foreground"
+                      disabled={pending}
+                      onClick={() => setShowAreaPicker(true)}
+                      {...passwordManagerSafeControlProps}
+                    >
+                      Change Life Area
+                    </button>
+                  ) : null}
                   <div className="flex gap-1.5">
                     <button
                       type="button"
@@ -177,13 +211,16 @@ export function LifeAreaFocusPriorities({
                       onClick={confirmDraft}
                       {...passwordManagerSafeControlProps}
                     >
-                      Save to today
+                      {pending ? "Adding…" : "Add to today"}
                     </button>
                     <button
                       type="button"
                       className="min-h-11 rounded-lg px-2 text-[length:var(--density-text-xs)] font-medium text-muted transition-colors hover:bg-accent-cream hover:text-foreground"
                       disabled={pending}
-                      onClick={() => setDraft(null)}
+                      onClick={() => {
+                        setDraft(null);
+                        setShowAreaPicker(false);
+                      }}
                       {...passwordManagerSafeControlProps}
                     >
                       Cancel
@@ -207,8 +244,13 @@ export function LifeAreaFocusPriorities({
         })}
       </ul>
       {error ? (
-        <p className="text-[length:var(--density-text-xs)] text-accent-red">
+        <p className="text-[length:var(--density-text-xs)] text-accent-red" role="alert">
           {error}
+        </p>
+      ) : null}
+      {success ? (
+        <p className="text-[length:var(--density-text-xs)] text-muted" role="status">
+          {success}
         </p>
       ) : null}
     </div>

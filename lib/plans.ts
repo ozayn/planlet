@@ -17,12 +17,14 @@ import {
   formatDayPlanDisplayDate,
   getDayRange,
   getMonthRange,
+  getTodayDateString,
   getTodayRange,
   getWeekRange,
   getYearRange,
   isValidDateString,
   parseDateString,
 } from "@/lib/dates";
+import { getUserTimezone } from "@/lib/user-timezone";
 import { canEditPlan, canViewPlan } from "@/lib/plan-sharing";
 import { deriveParentStatusFromSubtasks, shouldCascadeDoneToSubtasks } from "@/lib/parent-task-status";
 import { resolveCompletedAt } from "@/lib/plan-item-completed-at";
@@ -195,7 +197,9 @@ export async function getDayPlan(userId: string, date: Date) {
 }
 
 export async function getTodayPlan(userId: string) {
-  return getDayPlan(userId, new Date());
+  const timezone = await getUserTimezone(userId);
+  const today = parseDateString(getTodayDateString(timezone));
+  return getDayPlan(userId, today);
 }
 
 export async function getOrCreateDayPlan(

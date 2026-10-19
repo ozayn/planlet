@@ -12,6 +12,7 @@ import {
 } from "@/app/(app)/focus-priorities/actions";
 import { LifeAreaColorDot } from "@/components/plans/life-area-color-dot";
 import { GripVerticalIcon } from "@/components/ui/action-icons";
+import { DurationMinutesInput } from "@/components/ui/duration-minutes-input";
 import {
   MAX_FOCUS_PRIORITY_DESCRIPTION_LENGTH,
   MAX_FOCUS_PRIORITY_TASK_TITLE_LENGTH,
@@ -472,20 +473,13 @@ function PriorityFields({
         }
         {...passwordManagerSafeControlProps}
       />
-      <input
-        className="ui-input w-full"
-        type="number"
-        inputMode="numeric"
-        min={1}
-        max={1440}
+      <DurationMinutesInput
         value={draft.defaultDurationMinutes}
         disabled={pending}
-        placeholder="Duration (minutes, optional)"
         aria-label="Default duration in minutes"
-        onChange={(event) =>
-          onChange({ ...draft, defaultDurationMinutes: event.target.value })
+        onChange={(defaultDurationMinutes) =>
+          onChange({ ...draft, defaultDurationMinutes })
         }
-        {...passwordManagerSafeControlProps}
       />
       <textarea
         className="ui-input min-h-16 w-full resize-y"

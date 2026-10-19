@@ -32,13 +32,16 @@ import {
   formatWeekStartString,
   formatYearStartString,
   getDateRangeForPlanType,
+  getDayRange,
   getMonthRange,
+  getTodayDateString,
   getTodayRange,
   getWeekRange,
   getYearRange,
   isValidDateString,
   parseDateString,
 } from "@/lib/dates";
+import { getUserTimezone } from "@/lib/user-timezone";
 import {
   createPlan,
   createPlanItem,
@@ -170,10 +173,11 @@ function parseActionDateString(dateString: string): Date {
 
 export async function createTodayPlanAction() {
   const userId = await requireUserId();
-  await getOrCreateDayPlan(userId, new Date());
+  const timezone = await getUserTimezone(userId);
+  const dayDate = getTodayDateString(timezone);
+  const plan = await getOrCreateDayPlan(userId, parseDateString(dayDate));
   await recordUserActivity(userId);
-  revalidatePath("/today");
-  revalidatePath("/plans");
+  revalidatePlanPaths(plan.id, { dayDate });
 }
 
 export async function createDayPlanForDateAction(dateString: string) {
@@ -277,7 +281,9 @@ export async function createPlanAction(type: PlanType) {
       if (existing) {
         redirect(`/plans/${existing.id}`);
       }
-      const range = getTodayRange(now);
+      const timezone = await getUserTimezone(userId);
+      const today = parseDateString(getTodayDateString(timezone, now));
+      const range = getDayRange(today);
       dateStart = range.start;
       dateEnd = range.end;
       title = buildDefaultPlanTitle({

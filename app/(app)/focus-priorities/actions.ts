@@ -37,6 +37,14 @@ function revalidateFocusPriorityPaths() {
   revalidatePath("/plans");
 }
 
+function revalidateTodayPlanPaths(planId: string, dayDate: string) {
+  revalidateFocusPriorityPaths();
+  revalidatePath(`/plans/${planId}`);
+  revalidatePath(`/plans/day/${dayDate}`);
+  revalidatePath("/today", "layout");
+  revalidatePath("/plans", "layout");
+}
+
 function toErrorMessage(error: unknown, fallback: string): string {
   if (
     error instanceof FocusPriorityAuthError ||
@@ -152,13 +160,12 @@ export async function confirmFocusPriorityTaskDraftAction(
     }
 
     const result = await confirmFocusPriorityTaskDraft(userId, input);
-    revalidateFocusPriorityPaths();
-    revalidatePath(`/plans/${result.planId}`);
+    revalidateTodayPlanPaths(result.planId, result.dayDate);
     return { success: true as const, ...result };
   } catch (error) {
     return {
       success: false as const,
-      error: toErrorMessage(error, "Could not save task to today."),
+      error: toErrorMessage(error, "Could not add task to today."),
     };
   }
 }
@@ -173,8 +180,7 @@ export async function addFocusPriorityToTodayAction(priorityId: string) {
     }
 
     const result = await addFocusPriorityToToday(userId, priorityId);
-    revalidateFocusPriorityPaths();
-    revalidatePath(`/plans/${result.planId}`);
+    revalidateTodayPlanPaths(result.planId, result.dayDate);
     return { success: true as const, ...result };
   } catch (error) {
     return {

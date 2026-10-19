@@ -74,12 +74,20 @@ describe("Focus Priorities feature wiring", () => {
       "utf8",
     );
     const lib = readFileSync(join(root, "lib/focus-priorities/index.ts"), "utf8");
+    const actions = readFileSync(
+      join(root, "app/(app)/focus-priorities/actions.ts"),
+      "utf8",
+    );
 
-    assert.match(suggestions, /Save to today/);
+    assert.match(suggestions, /Add to today/);
     assert.match(suggestions, /confirmFocusPriorityTaskDraftAction/);
     assert.match(suggestions, /startDraft/);
     assert.match(suggestions, /Add \$\{priority\.title\} to today/);
     assert.match(suggestions, /min-h-11/);
+    assert.match(suggestions, /router\.push\("\/today"\)/);
+    assert.match(suggestions, /Change Life Area/);
+    assert.match(suggestions, /invokeServerAction/);
+    assert.doesNotMatch(suggestions, /Save to today/);
     assert.doesNotMatch(suggestions, /LifeAreaColorDot/);
     assert.doesNotMatch(suggestions, /\+ Add/);
     assert.doesNotMatch(suggestions, />\s*Priorities\s*</);
@@ -87,6 +95,12 @@ describe("Focus Priorities feature wiring", () => {
     assert.match(sections, /LifeAreaColorDot/);
     assert.match(sections, /\+ Add/);
     assert.match(lib, /confirmFocusPriorityTaskDraft/);
+    assert.match(lib, /resolveUserTodayDateString/);
+    assert.match(lib, /getUserTimezone/);
+    assert.match(lib, /getOrCreateDayPlan/);
+    assert.match(lib, /parseDateString\(dayDate\)/);
+    assert.match(actions, /revalidatePath\(`\/plans\/day\/\$\{dayDate\}`\)/);
+    assert.match(actions, /revalidatePath\("\/today", "layout"\)/);
   });
 
   it("shows Technical Practice subtopics in the draft, not as separate cards", () => {

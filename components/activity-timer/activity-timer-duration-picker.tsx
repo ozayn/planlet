@@ -1,5 +1,6 @@
 "use client";
 
+import { DurationMinutesInput } from "@/components/ui/duration-minutes-input";
 import {
   QUICK_COUNTDOWN_DURATION_OPTIONS,
   QUICK_TARGET_DURATION_OPTIONS,
@@ -156,25 +157,19 @@ export function ActivityTimerDurationPicker({
             <span className="text-sm text-muted">seconds</span>
           </div>
         ) : (
-          <div className="flex items-center gap-2">
-            <input
-              inputMode="numeric"
-              value={customMinutes}
-              onChange={(event) => {
-                const value = event.target.value;
-                onCustomMinutesChange(value);
-                const minutes = Number.parseInt(value || "0", 10);
-                onTargetChange(
-                  Number.isFinite(minutes) && minutes > 0 ? minutes * 60 : null,
-                );
-              }}
-              className="ui-input w-24"
-              placeholder="20"
-              disabled={disabled}
-              aria-label="Custom target minutes"
-            />
-            <span className="text-sm text-muted">minutes</span>
-          </div>
+          <DurationMinutesInput
+            value={customMinutes}
+            disabled={disabled}
+            placeholder="20"
+            aria-label="Custom target minutes"
+            onChange={(value) => {
+              onCustomMinutesChange(value);
+              const minutes = Number.parseInt(value || "0", 10);
+              onTargetChange(
+                Number.isFinite(minutes) && minutes > 0 ? minutes * 60 : null,
+              );
+            }}
+          />
         )
       ) : null}
     </div>

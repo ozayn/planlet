@@ -17,6 +17,7 @@ import { ItemLifeAreaPicker } from "@/components/plans/item-life-area-picker";
 import { ItemThemeProjectPicker } from "@/components/plans/item-theme-project-picker";
 import { getItemActionLabels } from "@/components/plans/item-action-labels";
 import { useLifeAreaCatalog } from "@/components/plans/life-area-catalog-context";
+import { DurationMinutesInput } from "@/components/ui/duration-minutes-input";
 import { SimpleSheet } from "@/components/ui/simple-sheet";
 import {
   getPlanItemTypeLabel,
@@ -436,21 +437,18 @@ export function ItemDetailsSheet({
                     setForm((current) => ({ ...current, timeHint: value }))
                   }
                 />
-                <Field label="Duration (minutes)" fieldId={durationFieldId}>
-                  <input
+                <Field label="Duration" fieldId={durationFieldId}>
+                  <DurationMinutesInput
                     id={durationFieldId}
                     name={`itemDuration-${item.id}`}
-                    type="number"
-                    {...passwordManagerSafeControlProps}
                     min={0}
                     value={form.durationMinutes}
-                    onChange={(event) =>
+                    onChange={(durationMinutes) =>
                       setForm((current) => ({
                         ...current,
-                        durationMinutes: event.target.value,
+                        durationMinutes,
                       }))
                     }
-                    className="ui-input min-h-12 py-3"
                   />
                 </Field>
               </div>

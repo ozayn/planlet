@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import { getTodayDateString } from "@/lib/dates";
 import {
   CANONICAL_FOCUS_PRIORITY_SEEDS,
   LEGACY_FOCUS_PRIORITY_DEFAULTS,
@@ -210,6 +211,19 @@ describe("focus priorities helpers", () => {
     assert.equal(
       createdTaskTitle,
       "Practice SQL for 35 minutes and review mistakes.",
+    );
+  });
+
+  it("resolves today with the user timezone calendar date, not UTC day", () => {
+    // 2026-10-20 02:30 UTC is still 2026-10-19 in America/New_York.
+    const nearMidnightUtc = new Date("2026-10-20T02:30:00.000Z");
+    assert.equal(
+      getTodayDateString("America/New_York", nearMidnightUtc),
+      "2026-10-19",
+    );
+    assert.equal(
+      getTodayDateString("UTC", nearMidnightUtc),
+      "2026-10-20",
     );
   });
 });

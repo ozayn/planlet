@@ -13,10 +13,12 @@ import type {
   FocusPriorityWriteInput,
   SerializedFocusPriority,
 } from "@/lib/focus-priorities/types";
+import { getTodayDateString, parseDateString } from "@/lib/dates";
 import { ensureDefaultLifeAreas } from "@/lib/life-areas";
 import { createPlanItem, getOrCreateDayPlan } from "@/lib/plans";
 import { prisma } from "@/lib/prisma";
 import { isAdmin } from "@/lib/roles";
+import { getUserTimezone } from "@/lib/user-timezone";
 
 export class FocusPriorityError extends Error {
   constructor(message: string) {
@@ -439,7 +441,20 @@ export type AddFocusPriorityToTodayResult = {
   planId: string;
   itemId: string;
   created: boolean;
+  /** YYYY-MM-DD in the user's Planlet timezone. */
+  dayDate: string;
 };
+
+/**
+ * Resolves today's calendar date for Daily Plan writes using the user's timezone.
+ */
+export async function resolveUserTodayDateString(
+  userId: string,
+  now = new Date(),
+): Promise<string> {
+  const timezone = await getUserTimezone(userId);
+  return getTodayDateString(timezone, now);
+}
 
 /**
  * Confirms an edited task draft onto today's day plan.
@@ -468,7 +483,8 @@ export async function confirmFocusPriorityTaskDraft(
     input.primaryLifeAreaId?.trim() || priority.lifeAreaId;
   await requireOwnedLifeArea(userId, primaryLifeAreaId);
 
-  const plan = await getOrCreateDayPlan(userId, new Date());
+  const dayDate = await resolveUserTodayDateString(userId);
+  const plan = await getOrCreateDayPlan(userId, parseDateString(dayDate));
   const existing = await prisma.planItem.findFirst({
     where: {
       planId: plan.id,
@@ -482,7 +498,12 @@ export async function confirmFocusPriorityTaskDraft(
   });
 
   if (existing) {
-    return { planId: plan.id, itemId: existing.id, created: false };
+    return {
+      planId: plan.id,
+      itemId: existing.id,
+      created: false,
+      dayDate,
+    };
   }
 
   const item = await createPlanItem({
@@ -494,9 +515,13 @@ export async function confirmFocusPriorityTaskDraft(
     primaryLifeAreaId,
   });
 
-  return { planId: plan.id, itemId: item.id, created: true };
+  return {
+    planId: plan.id,
+    itemId: item.id,
+    created: true,
+    dayDate,
+  };
 }
-
 /** @deprecated Prefer confirmFocusPriorityTaskDraft with an edited draft. */
 export async function addFocusPriorityToToday(
   userId: string,
