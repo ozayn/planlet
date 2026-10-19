@@ -63,6 +63,15 @@ export function getActivityTimerEmails(): string[] {
   return parseEmailList(process.env.ACTIVITY_TIMER_EMAILS);
 }
 
+export function getPomodoroEmails(): string[] {
+  const dedicated = parseEmailList(process.env.POMODORO_EMAILS);
+  if (dedicated.length > 0) {
+    return dedicated;
+  }
+  // Fall back to Activity Timer allowlist so the current authorized users get access.
+  return getActivityTimerEmails();
+}
+
 export function isAdminEmail(email?: string | null): boolean {
   if (!email?.trim()) {
     return false;
@@ -149,6 +158,14 @@ export function isActivityTimerEmail(email?: string | null): boolean {
   }
 
   return getActivityTimerEmails().includes(email.trim().toLowerCase());
+}
+
+export function isPomodoroEmail(email?: string | null): boolean {
+  if (!email?.trim()) {
+    return false;
+  }
+
+  return getPomodoroEmails().includes(email.trim().toLowerCase());
 }
 
 export function isEmailAllowed(email?: string | null): boolean {

@@ -1,0 +1,6 @@
+export class PomodoroError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PomodoroError";
+  }
+}

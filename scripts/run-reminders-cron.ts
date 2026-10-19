@@ -2,6 +2,7 @@ import "dotenv/config";
 
 import { performance } from "node:perf_hooks";
 
+import { runPomodoroPushCron } from "@/lib/pomodoro/cron";
 import { runReminderCron } from "@/lib/reminders";
 import { prisma } from "@/lib/prisma";
 
@@ -29,8 +30,11 @@ async function main() {
   }
 
   const result = await runReminderCron({ debug, now });
-
   console.log("[cron:reminders] Summary:", result);
+
+  const pomodoroPush = await runPomodoroPushCron({ debug, now });
+  console.log("[cron:pomodoro-push] Summary:", pomodoroPush);
+
   await prisma.$disconnect();
   console.log(
     `[cron:reminders] exited in ${Math.round(performance.now() - scriptStart)}ms`,

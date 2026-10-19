@@ -3863,6 +3863,91 @@ body {
   }
 }
 
+.ui-pomodoro-page {
+  min-height: min(70vh, 40rem);
+  overflow-x: hidden;
+}
+
+/*
+  Shared stage centers phase, ring, controls, and dots on one axis.
+  The ring wrapper owns width; the inner .ui-activity-timer-ring must
+  fill it (not use density timer widths) so the SVG never overflows
+  and shifts off-center relative to the buttons below.
+*/
+.ui-pomodoro-stage {
+  display: flex;
+  width: 100%;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.ui-pomodoro-ring {
+  display: flex;
+  width: min(72vw, 14.5rem);
+  max-width: 100%;
+  margin-inline: auto;
+  align-items: center;
+  justify-content: center;
+}
+
+.ui-pomodoro-ring .ui-activity-timer-ring {
+  width: 100%;
+  max-width: 100%;
+  margin-inline: 0;
+}
+
+.ui-pomodoro-controls {
+  display: flex;
+  width: 100%;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.ui-pomodoro-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.ui-pomodoro-focus-mode {
+  padding-block-start: 0.5rem;
+}
+
+.ui-pomodoro-focus-mode .ui-pomodoro-ring {
+  width: min(80vw, 18rem);
+}
+
+@media (min-width: 640px) {
+  .ui-pomodoro-ring {
+    width: min(100%, 16.5rem);
+  }
+
+  .ui-pomodoro-focus-mode .ui-pomodoro-ring {
+    width: min(100%, 20rem);
+  }
+}
+
+@media (min-width: 768px) {
+  .ui-pomodoro-ring {
+    width: min(100%, 18rem);
+  }
+
+  .ui-pomodoro-focus-mode .ui-pomodoro-ring {
+    width: min(100%, 22rem);
+  }
+}
+
+@media (max-width: 640px) {
+  .ui-pomodoro-page {
+    padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 .ui-activity-timer-page .ui-btn-primary,
 .ui-activity-timer-page .ui-btn-secondary {
   min-height: var(--density-timer-btn-min-height);

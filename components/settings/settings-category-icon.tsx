@@ -70,6 +70,13 @@ export function SettingsCategoryIcon({
           <path strokeLinecap="round" d="M12 9.5V13l2.5 1.5M9.5 3.5h5" />
         </IconShell>
       );
+    case "pomodoro":
+      return (
+        <IconShell className={className}>
+          <circle cx="12" cy="12.5" r="7" />
+          <path strokeLinecap="round" d="M12 9v3.5l2 1.25M12 4.5v1.25" />
+        </IconShell>
+      );
     case "life-lab":
       return (
         <IconShell className={className}>

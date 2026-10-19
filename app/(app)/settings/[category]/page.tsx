@@ -4,6 +4,7 @@ import { SettingsBackHeader } from "@/components/settings/settings-back-header";
 import { SettingsCategoryContent } from "@/components/settings/settings-category-content";
 import { SettingsHashScroll } from "@/components/settings/settings-hash-scroll";
 import { SettingsShell } from "@/components/settings/settings-shell";
+import { resolveSettingsCategoryBackLink } from "@/lib/settings/back-link";
 import { loadSettingsPageData } from "@/lib/settings/load-context";
 import {
   getSettingsCategory,
@@ -12,12 +13,15 @@ import {
 
 type SettingsCategoryPageProps = {
   params: Promise<{ category: string }>;
+  searchParams: Promise<{ from?: string }>;
 };
 
 export default async function SettingsCategoryPage({
   params,
+  searchParams,
 }: SettingsCategoryPageProps) {
   const { category } = await params;
+  const { from } = await searchParams;
 
   if (!isSettingsCategorySlug(category)) {
     notFound();
@@ -30,9 +34,15 @@ export default async function SettingsCategoryPage({
     notFound();
   }
 
+  const back = resolveSettingsCategoryBackLink({ category, from });
+
   return (
     <SettingsShell>
-      <SettingsBackHeader title={definition.title} />
+      <SettingsBackHeader
+        title={definition.title}
+        backHref={back.href}
+        backLabel={back.label}
+      />
       <SettingsHashScroll />
       <SettingsCategoryContent slug={category} data={data} />
     </SettingsShell>

@@ -12,6 +12,7 @@ export type UserAccess = {
   canUseLifeLabFeatures?: boolean | null;
   canUseIdeasFeatures?: boolean | null;
   canUseActivityTimerFeatures?: boolean | null;
+  canUsePomodoroFeatures?: boolean | null;
 };
 
 type RoleInput = UserRole | string | null | undefined;
@@ -114,6 +115,14 @@ export function canUseActivityTimerFeatures(user: UserAccess): boolean {
   }
 
   return user.canUseActivityTimerFeatures === true;
+}
+
+export function canUsePomodoroFeatures(user: UserAccess): boolean {
+  if (isAdmin(user)) {
+    return true;
+  }
+
+  return user.canUsePomodoroFeatures === true;
 }
 
 export function canUseTherapyThoughts(user: UserAccess | RoleInput): boolean {

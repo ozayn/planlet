@@ -18,7 +18,11 @@ self.addEventListener("push", (event) => {
       body: payload.body,
       icon: "/icon-192.png",
       badge: "/icon-192.png",
-      data: { url: payload.url || "/" },
+      tag: payload.tag || undefined,
+      data: {
+        url: payload.url || "/",
+        kind: payload.kind || "generic",
+      },
     }),
   );
 });
@@ -101,7 +105,13 @@ self.addEventListener("notificationclick", (event) => {
     return;
   }
 
-  if (kind === "complete" || action === "open-timer" || action === "default") {
+  if (
+    kind === "complete" ||
+    kind === "focus-complete" ||
+    kind === "break-complete" ||
+    action === "open-timer" ||
+    action === "default"
+  ) {
     event.waitUntil(focusOrOpenTimer(targetUrl));
   }
 });

@@ -3,6 +3,8 @@ import { APP_TIMEZONE } from "@/config/time";
 import { PRODUCT } from "@/config/product";
 import { isAdminRole } from "@/lib/auth-roles";
 import { getActivityTimerPresetSettingsData } from "@/lib/activity-timer";
+import { getPomodoroPreferences } from "@/lib/pomodoro";
+import { listPomodoroActivities } from "@/lib/pomodoro/activities";
 import { getCoachingNarrationPreferencesForUser } from "@/lib/coaching/narration-preferences";
 import { getLifeLabReadAloudPreferencesForUser } from "@/lib/life-lab/read-aloud-preferences";
 import { resolveMobileNavItems } from "@/lib/mobile-nav";
@@ -15,6 +17,7 @@ import {
 } from "@/lib/env";
 import {
   canUseActivityTimerFeatures,
+  canUsePomodoroFeatures,
   canUseBodyJourneyFeatures,
   canUseCareerJourneyFeatures,
   canUseCoachingFeatures,
@@ -42,6 +45,7 @@ export async function loadSettingsAccessContext(): Promise<SettingsAccessContext
   const canUseLifeLab = canUseLifeLabFeatures(user ?? {});
   const canUseCoaching = canUseCoachingFeatures(user ?? {});
   const canUseTimer = canUseActivityTimerFeatures(user ?? {});
+  const canUsePomodoro = canUsePomodoroFeatures(user ?? {});
   const showReflectionCoaching =
     canUseCoaching ||
     canUseReflectionFeatures(user ?? {}) ||
@@ -51,6 +55,7 @@ export async function loadSettingsAccessContext(): Promise<SettingsAccessContext
     userId && (canUseLifeLab || canUseCoaching),
   );
   const hasTimerPresets = Boolean(userId && (canUseTimer || isAdmin));
+  const hasPomodoroSettings = Boolean(userId && (canUsePomodoro || isAdmin));
 
   return {
     isSignedIn: Boolean(userId),
@@ -58,9 +63,11 @@ export async function loadSettingsAccessContext(): Promise<SettingsAccessContext
     canUseLifeLabFeatures: canUseLifeLab,
     canUseCoachingFeatures: canUseCoaching,
     canUseActivityTimerFeatures: canUseTimer,
+    canUsePomodoroFeatures: canUsePomodoro,
     showReflectionCoaching,
     hasReadAloudSettings,
     hasTimerPresets,
+    hasPomodoroSettings,
     hasNotifications: Boolean(userId),
   };
 }
@@ -80,6 +87,7 @@ export async function loadSettingsPageData() {
     canUseLifeLabFeatures: canUseLifeLabFeatures(user ?? {}),
     canUseIdeasFeatures: canUseIdeasFeatures(user ?? {}),
     canUseActivityTimerFeatures: canUseActivityTimerFeatures(user ?? {}),
+    canUsePomodoroFeatures: canUsePomodoroFeatures(user ?? {}),
     canUseJobTrackerFeatures: canUseJobTrackerFeatures(user ?? {}),
     canUseCareerJourneyFeatures: canUseCareerJourneyFeatures(user ?? {}),
   };
@@ -93,6 +101,8 @@ export async function loadSettingsPageData() {
     readAloudPreferences,
     coachingNarrationPreferences,
     activityTimerPresetSettings,
+    pomodoroPreferences,
+    pomodoroActivities,
   ] = userId
     ? await Promise.all([
         getPlanningPreferencesForUser(userId),
@@ -109,6 +119,12 @@ export async function loadSettingsPageData() {
         access.hasTimerPresets
           ? getActivityTimerPresetSettingsData(userId)
           : Promise.resolve(null),
+        access.hasPomodoroSettings
+          ? getPomodoroPreferences(userId)
+          : Promise.resolve(null),
+        access.hasPomodoroSettings
+          ? listPomodoroActivities(userId)
+          : Promise.resolve([]),
       ])
     : [
         {
@@ -122,6 +138,8 @@ export async function loadSettingsPageData() {
         null,
         null,
         null,
+        null,
+        [],
       ];
 
   const timezoneMode = session?.user?.timezoneMode ?? "AUTOMATIC";
@@ -142,6 +160,8 @@ export async function loadSettingsPageData() {
     readAloudPreferences,
     coachingNarrationPreferences,
     activityTimerPresetSettings,
+    pomodoroPreferences,
+    pomodoroActivities,
     openAiNarrationAvailable: isLifeLabOpenAiTtsEnabled(),
     technicalInfoRows: [
       { label: "Name", value: PRODUCT.name },

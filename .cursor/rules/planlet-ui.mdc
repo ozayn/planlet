@@ -7,8 +7,11 @@ alwaysApply: true
 
 Canonical philosophy: **`docs/DESIGN_PHILOSOPHY.md`**. Audit UI changes against it before completion.
 
+**North star:** Planlet should make life easier to manage, not become another thing the user has to manage.
+
 Keep Planlet aligned with these design principles:
 
+- **Simplicity first** — sensible defaults; one-click primary actions; no mandatory setup
 - **Content first** — when content and chrome compete, prefer content
 - **When in doubt, remove** — every control must earn its place
 - **Interfaces disappear** — no permanent instructional hints users quickly learn
@@ -16,7 +19,9 @@ Keep Planlet aligned with these design principles:
 - **Progressive disclosure** — frequent actions visible; occasional in More; rare in Settings
 - **Mobile-first** — thumb-friendly spacing; drawers closed by default; cards dominate
 - **Calm reading** — soft hierarchy, restrained chips, truncated previews, “Show more”
-- **Shared components** — reuse Read Aloud, Archive, More, Flashcards patterns
+- **Shared components** — reuse Read Aloud, Archive, More, Flashcards, timer patterns
+
+Before adding a setting, control, or feature, ask whether a default, progressive disclosure, or existing component is enough.
 
 ## Life Lab
 
@@ -26,3 +31,11 @@ List pages: compact cards, filtered previews, capped chips, grouped “Show more
 Detail pages: structured content and progressive sections; keep the default view calm.
 
 Match existing patterns in `components/life-lab/` and `lib/life-lab/card-preview.ts`.
+
+## Pomodoro
+
+Default path: open → Start → focus. Task association and advanced durations live behind progressive disclosure / Settings — never as mandatory setup on the main page.
+
+## Life Areas
+
+Not implemented. Design decisions: **`docs/LIFE_AREAS.md`**.

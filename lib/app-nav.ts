@@ -8,6 +8,7 @@ import {
   canShowLifeLabInProfileMenu,
   canShowIdeasInProfileMenu,
   canShowActivityTimerInProfileMenu,
+  canShowPomodoroInProfileMenu,
   type ProfileMenuAccess,
 } from "@/lib/profile-menu";
 
@@ -23,6 +24,7 @@ export type AppNavItemKey =
   | "learning-journey"
   | "ideas"
   | "timer"
+  | "pomodoro"
   | "life-lab"
   | "learning-dictionary"
   | "body-journey"
@@ -59,6 +61,10 @@ function planningItems(access: AppNavAccess, now = new Date()): AppNavItem[] {
 
   if (canShowActivityTimerInProfileMenu(access)) {
     items.push({ key: "timer", label: "Timer", href: "/timer" });
+  }
+
+  if (canShowPomodoroInProfileMenu(access)) {
+    items.push({ key: "pomodoro", label: "Pomodoro", href: "/pomodoro" });
   }
 
   return items;
@@ -148,6 +154,7 @@ export const ALL_APP_NAV_ITEM_KEYS: AppNavItemKey[] = [
   "learning-journey",
   "ideas",
   "timer",
+  "pomodoro",
   "life-lab",
   "learning-dictionary",
   "body-journey",
@@ -183,6 +190,8 @@ export function canAccessAppNavItem(
       return canShowIdeasInProfileMenu(access);
     case "timer":
       return canShowActivityTimerInProfileMenu(access);
+    case "pomodoro":
+      return canShowPomodoroInProfileMenu(access);
     case "life-lab":
       return canShowLifeLabInProfileMenu(access);
     case "learning-dictionary":

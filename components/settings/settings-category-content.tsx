@@ -3,6 +3,8 @@ import Link from "next/link";
 import { SignOutButton } from "@/components/sign-out-button";
 import { ActiveTimerNotificationSettings } from "@/components/settings/active-timer-notification-settings";
 import { ActivityTimerPresetSettings } from "@/components/settings/activity-timer-preset-settings";
+import { PomodoroActivitySettings } from "@/components/settings/pomodoro-activity-settings";
+import { PomodoroSettings } from "@/components/settings/pomodoro-settings";
 import { MobileNavSettings } from "@/components/settings/mobile-nav-settings";
 import { PlanItemViewSettings } from "@/components/settings/plan-item-view-settings";
 import { ReadingDensitySettings } from "@/components/settings/reading-density-settings";
@@ -93,6 +95,22 @@ export function SettingsCategoryContent({
               data={data.activityTimerPresetSettings}
               embedded
             />
+          </SettingsBlock>
+        </div>
+      ) : null;
+    case "pomodoro":
+      return data.pomodoroPreferences ? (
+        <div className="ui-settings-category-stack">
+          <PomodoroSettings
+            preferences={data.pomodoroPreferences}
+            embedded
+          />
+          <SettingsBlock
+            id="pomodoro-activities"
+            title="Manage activities"
+            description="Favorite focus activities for quick selection. Planner tasks stay in the Planner."
+          >
+            <PomodoroActivitySettings activities={data.pomodoroActivities} />
           </SettingsBlock>
         </div>
       ) : null;

@@ -161,3 +161,63 @@ npm run db:migrate
 ## iPhone notes
 
 Install Planlet to the Home Screen first, then open it from the icon before enabling notifications.
+
+Web Push on iOS requires:
+
+- iOS 16.4+
+- Planlet added to the Home Screen (standalone PWA)
+- Notification permission granted from that installed app
+- An active push subscription saved via Settings
+
+Safari tabs that are not installed as a Home Screen app cannot receive Web Push.
+
+---
+
+## Pomodoro completion push
+
+Pomodoro can schedule a **one-shot Web Push** when a focus or break phase starts. The send time is stored in Postgres (`PomodoroPushJob`) and processed by the same Railway reminders cron worker — not by an in-memory `setTimeout`.
+
+### Opt-in
+
+1. Settings → Pomodoro → **Completion notifications** (requests permission only after the toggle; registers `/api/push/subscribe`).
+2. Web Push must be configured (`WEB_PUSH_*` env vars).
+3. Optional: Settings → Notifications → phone notifications (same subscription store).
+
+### Lifecycle
+
+| Event | Job action |
+|-------|------------|
+| Start / resume phase | Cancel pending jobs; insert one job with `sendAt = now + remaining` |
+| Pause / stop | Cancel pending jobs |
+| Preference duration change while running | Update target duration and reschedule `sendAt` |
+| Notifications disabled | Cancel pending jobs |
+| Phase completes (client or cron) | Cancel that phase’s pending job; schedule next if auto-start |
+
+Jobs are unique on `transitionToken` so a phase can produce at most one successful push (`pending` → `sending` → `sent`).
+
+### Payload (generic — no task titles)
+
+- Focus: title `Focus complete`, body `Time for a break.`, url `/pomodoro`, kind `focus-complete`
+- Break: title `Break complete`, body `Ready for another focus session?`, url `/pomodoro`, kind `break-complete`
+
+### Cron schedule recommendation
+
+Reminders historically used `*/10 * * * *`. For Pomodoro completion timing, prefer **every minute**:
+
+```cron
+* * * * *
+```
+
+With a 10-minute cron, a 5-minute break completion may arrive several minutes late. The worker still runs `runReminderCron()` then `runPomodoroPushCron()` each invocation.
+
+### Platform limitations (do not over-claim reliability)
+
+Verified delivery depends on the OS and browser. Expect gaps when:
+
+- The browser process is fully suspended / killed
+- The device is offline
+- Push subscription expired (Planlet removes 404/410 endpoints)
+- iOS restrictions above are not met
+- Battery / focus modes suppress notifications
+
+**Do not claim reliable background delivery until verified on the target desktop browsers, Android Chrome, and an installed iOS Home Screen PWA.** Manual checks should include: Planlet open, another tab active, browser minimized, phone locked, and installed PWA.

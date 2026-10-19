@@ -33,16 +33,21 @@ Planlet is a mobile-first planning app that turns Farsi/English daily, monthly, 
 
 Canonical reference: **[DESIGN_PHILOSOPHY.md](./DESIGN_PHILOSOPHY.md)**.
 
+**North star:** Planlet should make life easier to manage, not become another thing the user has to manage.
+
 Summary:
 
-- **Content first** — the interface supports reading and exploration
+- **Simplicity first** — sensible defaults, one-click primary actions, minimal required setup
+- **Content first** — the interface supports reading, planning, and exploration
 - **When in doubt, remove** — every control must earn its place
 - **Progressive disclosure** — frequent actions visible; the rest in More/Settings
 - **Mobile-first** — design for the phone; desktop expands
-- **Calm reading** — prefer whitespace, typography, and soft hierarchy over chrome
-- **Consistency** — shared components for Read Aloud, Archive, More, Flashcards, etc.
+- **Calm reading / calm focus** — prefer whitespace, typography, and soft hierarchy over chrome
+- **Consistency** — shared components for Read Aloud, Archive, More, Flashcards, timers, etc.
 - **User edits override AI** — when AI arrives, suggestions are never authoritative
 - **Farsi-friendly content** — English UI; user content in Farsi, English, or mixed displays well with RTL/LTR-safe layout
+
+Future feature decisions: **[LIFE_AREAS.md](./LIFE_AREAS.md)** (not implemented yet).
 
 ## Visual direction
 
@@ -64,3 +69,4 @@ Summary:
 - Deeper insights (streaks, themes, gentle summaries)
 - User language preference (EN / FA / mixed)
 - Notification nudges (opt-in, calm tone)
+- **Life Areas** — optional Plans view; see [LIFE_AREAS.md](./LIFE_AREAS.md) (do not implement until explicitly requested)

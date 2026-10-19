@@ -17,6 +17,7 @@ import {
   canUseLifeLabFeatures,
   canUseIdeasFeatures,
   canUseActivityTimerFeatures,
+  canUsePomodoroFeatures,
 } from "@/lib/roles";
 import { serializeNotification } from "@/lib/notification-serialize";
 import {
@@ -66,6 +67,7 @@ export default async function AppLayout({
     canUseActivityTimerFeatures: canUseActivityTimerFeatures(
       session?.user ?? {},
     ),
+    canUsePomodoroFeatures: canUsePomodoroFeatures(session?.user ?? {}),
     canUseJobTrackerFeatures: canUseJobTrackerFeatures(session?.user ?? {}),
     canUseCareerJourneyFeatures: canUseCareerJourneyFeatures(
       session?.user ?? {},

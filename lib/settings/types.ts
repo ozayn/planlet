@@ -5,6 +5,7 @@ export const SETTINGS_CATEGORY_SLUGS = [
   "ai",
   "voice-audio",
   "timer",
+  "pomodoro",
   "life-lab",
   "planner",
   "notifications",
@@ -19,6 +20,7 @@ export type SettingsCategoryIconName =
   | "ai"
   | "voice-audio"
   | "timer"
+  | "pomodoro"
   | "life-lab"
   | "planner"
   | "notifications"
@@ -31,9 +33,11 @@ export type SettingsAccessContext = {
   canUseLifeLabFeatures: boolean;
   canUseCoachingFeatures: boolean;
   canUseActivityTimerFeatures: boolean;
+  canUsePomodoroFeatures: boolean;
   showReflectionCoaching: boolean;
   hasReadAloudSettings: boolean;
   hasTimerPresets: boolean;
+  hasPomodoroSettings: boolean;
   hasNotifications: boolean;
 };
 

@@ -321,6 +321,7 @@ model User {
   canUseLifeLabFeatures       Boolean   @default(false)
   canUseIdeasFeatures         Boolean   @default(false)
   canUseActivityTimerFeatures Boolean   @default(false)
+  canUsePomodoroFeatures      Boolean   @default(false)
   lifeLabReadAloudProvider    LifeLabReadAloudProvider @default(DEVICE)
   lifeLabSpeechVoiceId        String?
   lifeLabSpeechRate           Float     @default(1)
@@ -375,6 +376,11 @@ model User {
   activityTimerPresets          ActivityTimerPreset[]
   activityTimerSessions         ActivityTimerSession[]
   activityTimerSessionNotes     ActivityTimerSessionNote[]
+  pomodoroPreference            PomodoroPreference?
+  pomodoroActiveRun             PomodoroActiveRun?
+  pomodoroFocusLogs             PomodoroFocusLog[]
+  pomodoroPushJobs              PomodoroPushJob[]
+  pomodoroActivities            PomodoroActivity[]
   planItemReflections           PlanItemReflection[]
   aiUsageLogs                   AiUsageLog[]
   coachingNarrationCaches       CoachingNarrationCache[]
@@ -1082,6 +1088,103 @@ model ActivityTimerSessionNote {
 
   @@index([sessionId, recordedAt])
   @@index([userId, recordedAt])
+}
+
+model PomodoroPreference {
+  userId                    String   @id
+  user                      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  focusDurationSeconds      Int      @default(1500)
+  shortBreakSeconds         Int      @default(300)
+  longBreakSeconds          Int      @default(900)
+  sessionsBeforeLongBreak   Int      @default(4)
+  autoStartBreaks           Boolean  @default(false)
+  autoStartFocus            Boolean  @default(false)
+  completionSound           Boolean  @default(true)
+  notificationsEnabled      Boolean  @default(false)
+  updatedAt                 DateTime @updatedAt
+}
+
+/// Optional favorite focus activities for Pomodoro (not Planner tasks).
+model PomodoroActivity {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, sortOrder])
+}
+
+/// At most one active Pomodoro run per user (enforced by userId @unique).
+model PomodoroActiveRun {
+  id                       String    @id @default(cuid())
+  userId                   String    @unique
+  user                     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// focus | short_break | long_break
+  phase                    String
+  /// running | paused | awaiting_next
+  status                   String
+  /// 1-based focus session index within the current cycle
+  focusIndex               Int       @default(1)
+  /// Completed focus sessions in the current cycle (0..sessionsBeforeLongBreak)
+  completedFocusCount      Int       @default(0)
+  startedAt                DateTime?
+  pausedAt                 DateTime?
+  accumulatedPausedSeconds Int       @default(0)
+  targetDurationSeconds    Int
+  taskId                   String?
+  customTitle              String?
+  /// Idempotency token for phase completion / stop
+  transitionToken          String?
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
+
+  @@index([userId, status])
+}
+
+model PomodoroFocusLog {
+  id                     String   @id @default(cuid())
+  userId                 String
+  user                   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  runId                  String?
+  taskId                 String?
+  customTitle            String?
+  phase                  String   @default("focus")
+  plannedDurationSeconds Int
+  actualFocusedSeconds   Int
+  startedAt              DateTime
+  endedAt                DateTime
+  completed              Boolean  @default(false)
+  interrupted            Boolean  @default(false)
+  cycleNumber            Int      @default(1)
+  createdAt              DateTime @default(now())
+
+  @@index([userId, startedAt])
+  @@index([userId, endedAt])
+}
+
+/// Persistent one-shot Web Push jobs for Pomodoro phase completion.
+/// Processed by the reminders cron worker — not an in-memory timer.
+model PomodoroPushJob {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  runId           String
+  /// Matches PomodoroActiveRun.transitionToken for idempotent delivery.
+  transitionToken String    @unique
+  /// focus | short_break | long_break
+  phase           String
+  sendAt          DateTime
+  /// pending | sending | sent | cancelled | failed
+  status          String    @default("pending")
+  sentAt          DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([status, sendAt])
+  @@index([userId, status])
 }
 
 model AppSetting {

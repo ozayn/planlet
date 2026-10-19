@@ -10,6 +10,7 @@ import {
   isLifeLabEmail,
   isIdeasEmail,
   isActivityTimerEmail,
+  isPomodoroEmail,
   isReflectorEmail,
 } from "@/lib/auth-allowlist";
 import { isAdmin } from "@/lib/roles";
@@ -27,6 +28,7 @@ export type ResolvedUserAccess = {
   canUseLifeLabFeatures: boolean;
   canUseIdeasFeatures: boolean;
   canUseActivityTimerFeatures: boolean;
+  canUsePomodoroFeatures: boolean;
 };
 
 type ExistingUserAccess = {
@@ -41,6 +43,7 @@ type ExistingUserAccess = {
   canUseLifeLabFeatures?: boolean;
   canUseIdeasFeatures?: boolean;
   canUseActivityTimerFeatures?: boolean;
+  canUsePomodoroFeatures?: boolean;
 };
 
 export function resolveUserAccessFromEmail(
@@ -60,6 +63,7 @@ export function resolveUserAccessFromEmail(
       canUseLifeLabFeatures: false,
       canUseIdeasFeatures: true,
       canUseActivityTimerFeatures: true,
+      canUsePomodoroFeatures: true,
     };
   }
 
@@ -81,6 +85,7 @@ export function resolveUserAccessFromEmail(
   const canUseLifeLabFeatures = role === "PERSONAL";
   const canUseIdeasFeatures = isIdeasEmail(email);
   const canUseActivityTimerFeatures = isActivityTimerEmail(email);
+  const canUsePomodoroFeatures = isPomodoroEmail(email);
 
   return {
     role,
@@ -94,6 +99,7 @@ export function resolveUserAccessFromEmail(
     canUseLifeLabFeatures,
     canUseIdeasFeatures,
     canUseActivityTimerFeatures,
+    canUsePomodoroFeatures,
   };
 }
 
@@ -124,6 +130,7 @@ export async function syncUserAccessOnSignIn(
       canUseLifeLabFeatures: true,
       canUseIdeasFeatures: true,
       canUseActivityTimerFeatures: true,
+      canUsePomodoroFeatures: true,
     },
   });
 
@@ -140,7 +147,8 @@ export async function syncUserAccessOnSignIn(
     existing?.canUseLearningJourneyFeatures !== access.canUseLearningJourneyFeatures ||
     existing?.canUseLifeLabFeatures !== access.canUseLifeLabFeatures ||
     existing?.canUseIdeasFeatures !== access.canUseIdeasFeatures ||
-    existing?.canUseActivityTimerFeatures !== access.canUseActivityTimerFeatures
+    existing?.canUseActivityTimerFeatures !== access.canUseActivityTimerFeatures ||
+    existing?.canUsePomodoroFeatures !== access.canUsePomodoroFeatures
   ) {
     await prisma.user.update({
       where: { id: userId },

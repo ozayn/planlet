@@ -19,6 +19,7 @@ declare module "next-auth" {
       canUseLifeLabFeatures: boolean;
       canUseIdeasFeatures: boolean;
       canUseActivityTimerFeatures: boolean;
+      canUsePomodoroFeatures: boolean;
       timezone: string;
       timezoneMode: TimezoneMode;
     };

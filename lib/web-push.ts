@@ -7,6 +7,9 @@ export type PushPayload = {
   title: string;
   body: string;
   url: string;
+  /** Optional SW routing hint (e.g. Pomodoro focus-complete). */
+  kind?: string;
+  tag?: string;
 };
 
 type StoredPushSubscription = {

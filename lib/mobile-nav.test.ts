@@ -144,6 +144,33 @@ describe("getSelectableMobileNavSections", () => {
 
     assert.ok(planning?.items.some((item) => item.key === "timer"));
   });
+
+  it("shows Pomodoro in planning options for authorized users", () => {
+    const sections = getSelectableMobileNavSections({
+      ...baseAccess,
+      canUsePomodoroFeatures: true,
+    });
+    const planning = sections.find((section) => section.title === "Planning");
+
+    assert.ok(planning?.items.some((item) => item.key === "pomodoro"));
+    assert.equal(
+      planning?.items.find((item) => item.key === "pomodoro")?.label,
+      "Pomodoro",
+    );
+  });
+
+  it("hides Pomodoro for users without access", () => {
+    const sections = getSelectableMobileNavSections({
+      ...baseAccess,
+      canUsePomodoroFeatures: false,
+    });
+    const planning = sections.find((section) => section.title === "Planning");
+
+    assert.equal(
+      planning?.items.some((item) => item.key === "pomodoro"),
+      false,
+    );
+  });
 });
 
 describe("getMobileDrawerItems", () => {

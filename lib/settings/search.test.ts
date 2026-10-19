@@ -11,9 +11,11 @@ const fullAccess: SettingsAccessContext = {
   canUseLifeLabFeatures: true,
   canUseCoachingFeatures: true,
   canUseActivityTimerFeatures: true,
+  canUsePomodoroFeatures: true,
   showReflectionCoaching: true,
   hasReadAloudSettings: true,
   hasTimerPresets: true,
+  hasPomodoroSettings: true,
   hasNotifications: true,
 };
 

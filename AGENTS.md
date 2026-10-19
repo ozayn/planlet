@@ -6,4 +6,6 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ## Design
 
-Before completing UI/UX work, audit against **[docs/DESIGN_PHILOSOPHY.md](./docs/DESIGN_PHILOSOPHY.md)**. Prefer removal, deduplication, content-first layouts, and shared components. Workspace rule: `.cursor/rules/planlet-ui.mdc`.
+Before completing UI/UX work, audit against **[docs/DESIGN_PHILOSOPHY.md](./docs/DESIGN_PHILOSOPHY.md)**.
+
+North star: Planlet should make life easier to manage, not become another thing the user has to manage. Prefer sensible defaults, removal, deduplication, content-first layouts, and shared components. Workspace rule: `.cursor/rules/planlet-ui.mdc`.
