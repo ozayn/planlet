@@ -62,8 +62,14 @@ describe("Life Areas feature wiring", () => {
     assert.match(lifeSections, /UNCATEGORIZED_LIFE_AREA_ID/);
     assert.match(lifeSections, /showLifeAreaAssign=/);
     assert.match(lifeSections, /showLifeAreaChange=/);
+    assert.match(lifeSections, /includeEmptyAreas: true/);
+    assert.match(lifeSections, /\+ Add/);
+    assert.match(lifeSections, /primaryLifeAreaId/);
+    assert.match(lifeSections, /createPlanItemAction/);
     assert.match(lifeSections, /overflow-x-hidden/);
     assert.match(lifeSections, /min-h-11/);
+    assert.doesNotMatch(lifeSections, /PlanLifeAreaDailyOverview/);
+    assert.doesNotMatch(lifeSections, /areas represented/);
     assert.match(card, /ItemLifeAreaAssignControl/);
     assert.match(card, /showLifeAreaAssign && canEdit && !isNested/);
     assert.match(card, /showLifeAreaChange && canEdit && !isNested/);
@@ -228,9 +234,27 @@ describe("Life Areas feature wiring", () => {
     const lib = readFileSync(join(root, "lib/life-areas/index.ts"), "utf8");
     assert.match(lib, /existingCount > 0/);
     assert.match(lib, /DEFAULT_LIFE_AREA_NAMES/);
+    assert.match(lib, /applyDefaultLifeAreaRenames/);
     assert.match(lib, /normalizeLifeAreaSelection/);
     assert.match(lib, /planItemLifeArea\.deleteMany/);
     assert.match(lib, /isPrimary: lifeAreaId === normalized\.primaryLifeAreaId/);
+  });
+
+  it("shows Life Areas view whenever selected, including empty plans", () => {
+    const sections = readFileSync(
+      join(root, "components/plans/plan-item-sections.tsx"),
+      "utf8",
+    );
+    const editor = readFileSync(
+      join(root, "components/plans/plan-editor.tsx"),
+      "utf8",
+    );
+    const group = readFileSync(join(root, "lib/life-areas/group.ts"), "utf8");
+
+    assert.match(sections, /!showLifeAreas/);
+    assert.match(editor, /planOrganizeView === "LIFE_AREAS"/);
+    assert.match(group, /includeEmptyAreas/);
+    assert.doesNotMatch(sections, /showDailyLifeAreaOverview/);
   });
 
   it("keeps List view free of Change area / + Area row controls", () => {

@@ -362,6 +362,7 @@ export async function createPlanItemAction(input: {
   title: string;
   parentItemId?: string;
   type?: PlanItemType;
+  primaryLifeAreaId?: string | null;
 }): Promise<PlanItemActionResult> {
   try {
     const userId = await requireUserId();
@@ -377,6 +378,7 @@ export async function createPlanItemAction(input: {
       title,
       parentItemId: input.parentItemId,
       type: input.type,
+      primaryLifeAreaId: input.primaryLifeAreaId,
     });
 
     await recordUserActivity(userId);

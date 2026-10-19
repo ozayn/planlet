@@ -140,7 +140,7 @@ describe("groupPlanItemsByPrimaryLifeArea", () => {
     assert.equal(groups[2]?.areaName, UNCATEGORIZED_LIFE_AREA_LABEL);
   });
 
-  it("hides empty areas and keeps list view tasks uncategorized by default", () => {
+  it("hides empty areas by default (share / compact exports)", () => {
     const groups = groupPlanItemsByPrimaryLifeArea(
       [task("only")],
       [
@@ -151,6 +151,51 @@ describe("groupPlanItemsByPrimaryLifeArea", () => {
 
     assert.equal(groups.length, 1);
     assert.equal(groups[0]?.areaId, UNCATEGORIZED_LIFE_AREA_ID);
+  });
+
+  it("includes empty active areas when requested and hides archived + empty Uncategorized", () => {
+    const groups = groupPlanItemsByPrimaryLifeArea(
+      [
+        task("t1", [
+          { id: "career", name: "Career", isPrimary: true, archived: false },
+        ]),
+      ],
+      [
+        { id: "career", name: "Career", archivedAt: null },
+        { id: "health", name: "Health", archivedAt: null },
+        { id: "old", name: "Archived", archivedAt: "2026-01-01T00:00:00.000Z" },
+      ],
+      { includeEmptyAreas: true },
+    );
+
+    assert.deepEqual(
+      groups.map((group) => [group.areaId, group.items.map((item) => item.id)]),
+      [
+        ["career", ["t1"]],
+        ["health", []],
+      ],
+    );
+    assert.ok(!groups.some((group) => group.areaId === "old"));
+    assert.ok(
+      !groups.some((group) => group.areaId === UNCATEGORIZED_LIFE_AREA_ID),
+    );
+  });
+
+  it("keeps Uncategorized only when it has tasks, after active areas", () => {
+    const groups = groupPlanItemsByPrimaryLifeArea(
+      [task("loose")],
+      [
+        { id: "career", name: "Career", archivedAt: null },
+        { id: "health", name: "Health", archivedAt: null },
+      ],
+      { includeEmptyAreas: true },
+    );
+
+    assert.deepEqual(
+      groups.map((group) => group.areaId),
+      ["career", "health", UNCATEGORIZED_LIFE_AREA_ID],
+    );
+    assert.deepEqual(groups[2]?.items.map((item) => item.id), ["loose"]);
   });
 
   it("preserves input order within each primary group", () => {

@@ -263,7 +263,7 @@ export function PlanEditor({
           </section>
         ) : null}
 
-        {plan.items.length > 0 ? (
+        {plan.items.length > 0 || planOrganizeView === "LIFE_AREAS" ? (
           <PlanItemSections
             planId={plan.id}
             items={plan.items}

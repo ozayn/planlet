@@ -543,6 +543,8 @@ export type CreatePlanItemInput = {
   sortOrder?: number;
   themeId?: string | null;
   projectId?: string | null;
+  /** Optional primary Life Area assigned on create. */
+  primaryLifeAreaId?: string | null;
 };
 
 export async function createPlanItem(input: CreatePlanItemInput) {
@@ -585,6 +587,17 @@ export async function createPlanItem(input: CreatePlanItemInput) {
     input.projectId,
   );
 
+  const primaryLifeAreaId = input.primaryLifeAreaId?.trim() || null;
+  if (primaryLifeAreaId) {
+    const owned = await prisma.lifeArea.findFirst({
+      where: { id: primaryLifeAreaId, userId: input.userId },
+      select: { id: true },
+    });
+    if (!owned) {
+      throw new PlanError("Life Area not found.");
+    }
+  }
+
   const item = await prisma.$transaction(async (tx) => {
     const created = await tx.planItem.create({
       data: {
@@ -609,6 +622,16 @@ export async function createPlanItem(input: CreatePlanItemInput) {
         sortOrder,
         themeId: assignment.themeId,
         projectId: assignment.projectId,
+        ...(primaryLifeAreaId
+          ? {
+              lifeAreaLinks: {
+                create: {
+                  lifeAreaId: primaryLifeAreaId,
+                  isPrimary: true,
+                },
+              },
+            }
+          : {}),
       },
       include: planItemInclude,
     });

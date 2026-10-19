@@ -30,22 +30,46 @@ function resolvePrimaryArea(item: SerializedPlanItem): PrimaryLifeAreaRef | null
   return null;
 }
 
+export type GroupByPrimaryLifeAreaOptions = {
+  /**
+   * When true, include every non-archived catalog area even with zero tasks.
+   * Uncategorized is still omitted when empty. Archived areas are never listed.
+   */
+  includeEmptyAreas?: boolean;
+};
+
 /**
  * Group items by primary Life Area. Each item appears once.
  * Secondary associations never create additional rows.
- * Empty areas are omitted. Uncategorized appears only when needed.
+ * Uncategorized appears only when it has tasks.
  */
 export function groupByPrimaryLifeArea<T>(
   items: T[],
   resolvePrimary: (item: T) => PrimaryLifeAreaRef | null,
   areaOrder: Array<{ id: string; name: string; archivedAt?: string | null }>,
+  options?: GroupByPrimaryLifeAreaOptions,
 ): LifeAreaGroup<T>[] {
-  const orderIndex = new Map(areaOrder.map((area, index) => [area.id, index]));
+  const activeAreas = areaOrder.filter((area) => !area.archivedAt);
+  const orderIndex = new Map(activeAreas.map((area, index) => [area.id, index]));
   const buckets = new Map<string, LifeAreaGroup<T>>();
+
+  if (options?.includeEmptyAreas) {
+    for (const area of activeAreas) {
+      buckets.set(area.id, {
+        areaId: area.id,
+        areaName: area.name,
+        archived: false,
+        items: [],
+      });
+    }
+  }
 
   for (const item of items) {
     const primary = resolvePrimary(item);
     const key = primary?.id ?? UNCATEGORIZED_LIFE_AREA_ID;
+
+    // Skip tasks whose only primary is an archived area when empty areas are
+    // seeded from the active catalog — still show them under that archived name.
     const existing = buckets.get(key);
     if (existing) {
       existing.items.push(item);
@@ -79,13 +103,19 @@ export function groupByPrimaryLifeArea<T>(
 /**
  * Group root tasks by primary Life Area. Each task appears once.
  * Secondary associations never create additional rows.
- * Empty areas are omitted. Uncategorized appears only when needed.
+ * Uncategorized appears only when needed.
  */
 export function groupPlanItemsByPrimaryLifeArea(
   items: SerializedPlanItem[],
   areaOrder: Array<{ id: string; name: string; archivedAt: string | null }>,
+  options?: GroupByPrimaryLifeAreaOptions,
 ): LifeAreaTaskGroup[] {
-  return groupByPrimaryLifeArea(items, resolvePrimaryArea, areaOrder);
+  return groupByPrimaryLifeArea(
+    items,
+    resolvePrimaryArea,
+    areaOrder,
+    options,
+  );
 }
 
 /** Normalize primary + secondary ids: unique, primary not in secondary. */

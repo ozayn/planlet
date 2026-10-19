@@ -7,6 +7,7 @@ import {
   nextSelectionAfterPrimaryChange,
   normalizeLifeAreaSelection,
 } from "@/lib/life-areas/group";
+import { planDefaultLifeAreaRenames } from "@/lib/life-areas/overview";
 import type {
   PlanOrganizeViewValue,
   SerializedLifeArea,
@@ -42,12 +43,38 @@ function serializeArea(row: {
   };
 }
 
+/**
+ * Rename legacy seeded defaults in place when the name still matches exactly.
+ * Preserves IDs and associations; never overwrites customized names.
+ */
+export async function applyDefaultLifeAreaRenames(
+  userId: string,
+): Promise<number> {
+  const rows = await prisma.lifeArea.findMany({
+    where: { userId },
+    select: { name: true },
+  });
+  const planned = planDefaultLifeAreaRenames(rows.map((row) => row.name));
+  let renamed = 0;
+
+  for (const { from, to } of planned) {
+    const result = await prisma.lifeArea.updateMany({
+      where: { userId, name: from },
+      data: { name: to },
+    });
+    renamed += result.count;
+  }
+
+  return renamed;
+}
+
 /** Seed defaults once when the user has no Life Areas at all. */
 export async function ensureDefaultLifeAreas(
   userId: string,
 ): Promise<SerializedLifeArea[]> {
   const existingCount = await prisma.lifeArea.count({ where: { userId } });
   if (existingCount > 0) {
+    await applyDefaultLifeAreaRenames(userId);
     return listLifeAreas(userId, { includeArchived: true });
   }
 
@@ -364,6 +391,12 @@ export {
 } from "@/lib/life-areas/group";
 export {
   DEFAULT_LIFE_AREA_NAMES,
+  DEFAULT_LIFE_AREA_RENAME_MAP,
   UNCATEGORIZED_LIFE_AREA_ID,
   UNCATEGORIZED_LIFE_AREA_LABEL,
+  shortLifeAreaLabel,
 } from "@/lib/life-areas/constants";
+export {
+  planDefaultLifeAreaRenames,
+  summarizeDailyLifeAreas,
+} from "@/lib/life-areas/overview";

@@ -47,15 +47,22 @@ export function PlanItemSections({
   lifeAreas = [],
 }: PlanItemSectionsProps) {
   const { tasks, intentions, notes } = partitionPlanItems(items);
-  if (tasks.length === 0 && intentions.length === 0 && notes.length === 0) {
+  const showLifeAreas = organizeView === "LIFE_AREAS";
+
+  // Life Areas lists every active area (including empty), so it can render
+  // even when the plan has no tasks yet.
+  if (
+    tasks.length === 0 &&
+    intentions.length === 0 &&
+    notes.length === 0 &&
+    !showLifeAreas
+  ) {
     return null;
   }
 
-  const showLifeAreas = organizeView === "LIFE_AREAS";
-
   return (
     <div className="ui-plan-item-sections space-y-6">
-      {tasks.length > 0 ? (
+      {tasks.length > 0 || showLifeAreas ? (
         <section className="ui-plan-section space-y-2">
           {showLifeAreas ? null : <SectionLabel>Tasks</SectionLabel>}
           {showLifeAreas ? (
