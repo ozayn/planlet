@@ -14,6 +14,7 @@ export const UNFINISHED_TASK_ALL_RANGE_LIMIT = 100;
 
 export type UnfinishedTaskRange =
   | "today"
+  | "today_and_earlier"
   | "week"
   | "month"
   | "recent"
@@ -24,6 +25,7 @@ export const UNFINISHED_TASK_RANGE_OPTIONS: {
   label: string;
 }[] = [
   { value: "today", label: "Today" },
+  { value: "today_and_earlier", label: "Today & earlier" },
   { value: "week", label: "This week" },
   { value: "month", label: "This month" },
   { value: "recent", label: "All recent" },

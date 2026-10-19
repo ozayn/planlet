@@ -49,7 +49,7 @@ export class UnfinishedTasksError extends Error {
 }
 
 export function resolveUnfinishedTaskRange(
-  range: Exclude<UnfinishedTaskRange, "all">,
+  range: Exclude<UnfinishedTaskRange, "all" | "today_and_earlier">,
   now = new Date(),
 ): DateRange {
   switch (range) {
@@ -73,6 +73,8 @@ export function planTypesForUnfinishedTaskRange(
   switch (range) {
     case "today":
       return ["DAY"];
+    case "today_and_earlier":
+      return ["DAY", "WEEK", "MONTH", "YEAR"];
     case "week":
       return ["DAY", "WEEK"];
     case "month":
@@ -91,6 +93,13 @@ export function unfinishedTaskPlanDateFilter(start: Date, end: Date) {
   };
 }
 
+/** Plans whose planning period has started by `end` (no lower bound). */
+export function unfinishedTaskPlanStartedByFilter(end: Date) {
+  return {
+    dateStart: { lte: end },
+  };
+}
+
 export function unfinishedTaskPlanWhere(
   userId: string,
   range: UnfinishedTaskRange,
@@ -106,6 +115,17 @@ export function unfinishedTaskPlanWhere(
     return base;
   }
 
+  // Include every plan whose period has already started (dateStart ≤ end of
+  // today in APP_TIMEZONE). No lower bound — yesterday, last month, and prior
+  // years all match. Future day/week/month/year plans are excluded even if
+  // they were created earlier. Undated plans (null dateStart) do not match.
+  if (range === "today_and_earlier") {
+    return {
+      ...base,
+      ...unfinishedTaskPlanStartedByFilter(getTodayRange(now).end),
+    };
+  }
+
   const { start, end } = resolveUnfinishedTaskRange(range, now);
   return {
     ...base,
@@ -118,6 +138,7 @@ export function normalizeUnfinishedTaskRange(
 ): UnfinishedTaskRange {
   if (
     value === "today" ||
+    value === "today_and_earlier" ||
     value === "week" ||
     value === "month" ||
     value === "recent" ||
