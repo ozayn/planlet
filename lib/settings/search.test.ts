@@ -64,15 +64,15 @@ describe("searchSettings", () => {
     );
   });
 
-  it("finds Manage Life Areas under Planning when searching life areas", () => {
+  it("finds Life Areas under Planning when searching life areas", () => {
     const results = searchSettings(
       buildSettingsSearchIndex(fullAccess),
       "life areas",
     );
 
     assert.ok(
-      results.some((result) => result.title === "Manage Life Areas"),
-      "expected Manage Life Areas in life areas search results",
+      results.some((result) => result.title === "Life Areas"),
+      "expected Life Areas in life areas search results",
     );
   });
 

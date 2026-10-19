@@ -44,14 +44,32 @@ describe("Life Areas feature wiring", () => {
       join(root, "components/plans/plan-life-area-sections.tsx"),
       "utf8",
     );
+    const card = readFileSync(
+      join(root, "components/plans/plan-item-card.tsx"),
+      "utf8",
+    );
+    const assign = readFileSync(
+      join(root, "components/plans/item-life-area-assign-control.tsx"),
+      "utf8",
+    );
 
     assert.match(sections, /organizeView === "LIFE_AREAS"/);
     assert.match(sections, /SortablePlanItemList/);
     assert.match(sections, /PlanLifeAreaSections/);
+    assert.doesNotMatch(sections, /showLifeAreaAssign/);
     assert.match(lifeSections, /SortablePlanItemList/);
     assert.match(lifeSections, /groupPlanItemsByPrimaryLifeArea/);
+    assert.match(lifeSections, /UNCATEGORIZED_LIFE_AREA_ID/);
+    assert.match(lifeSections, /showLifeAreaAssign=/);
     assert.match(lifeSections, /overflow-x-hidden/);
     assert.match(lifeSections, /min-h-11/);
+    assert.match(card, /ItemLifeAreaAssignControl/);
+    assert.match(card, /showLifeAreaAssign && canEdit && !isNested/);
+    assert.match(assign, /\+ Area/);
+    assert.match(assign, /\+ Create new area/);
+    assert.match(assign, /createPortal/);
+    assert.match(assign, /setPlanItemLifeAreasAction/);
+    assert.match(assign, /createLifeAreaAction/);
   });
 
   it("wires day/week/month/year/today plans with lifeAreas props", () => {
@@ -138,8 +156,11 @@ describe("Life Areas feature wiring", () => {
 
     assert.match(details, /ItemLifeAreaPicker/);
     assert.doesNotMatch(details, /lifeAreas\.length > 0 && !isNote/);
+    assert.match(details, /Theme \/ project/);
     assert.match(picker, /Life Area/);
-    assert.match(picker, /Select area/);
+    assert.match(picker, /Select an area/);
+    assert.match(picker, /min-h-12/);
+    assert.doesNotMatch(picker, /aria-expanded/);
     assert.match(picker, /\+ Create new Life Area/);
     assert.match(picker, /createLifeAreaAction/);
     assert.match(picker, /setPlanItemLifeAreasAction/);
@@ -147,23 +168,28 @@ describe("Life Areas feature wiring", () => {
     assert.doesNotMatch(editor, /ItemLifeAreaPicker/);
   });
 
-  it("registers Settings → Planning → Manage Life Areas", () => {
+  it("registers Settings → Planner → Life Areas as a Manage link", () => {
     const registry = readFileSync(join(root, "lib/settings/registry.ts"), "utf8");
     const settings = readFileSync(
       join(root, "components/settings/settings-category-content.tsx"),
       "utf8",
     );
+    const page = readFileSync(join(root, "app/(app)/life-areas/page.tsx"), "utf8");
     const manage = readFileSync(
       join(root, "components/settings/life-area-settings.tsx"),
       "utf8",
     );
 
     assert.match(registry, /id: "life-areas"/);
-    assert.match(registry, /title: "Manage Life Areas"/);
+    assert.match(registry, /title: "Life Areas"/);
     assert.match(registry, /categorySlug: "planner"/);
-    assert.match(settings, /LifeAreaSettings/);
     assert.match(settings, /id="life-areas"/);
-    assert.match(settings, /Manage Life Areas/);
+    assert.match(settings, /href="\/life-areas"/);
+    assert.match(settings, /Manage →/);
+    assert.doesNotMatch(settings, /LifeAreaSettings/);
+    assert.match(page, /LifeAreaSettings/);
+    assert.match(page, /backHref="\/settings\/planner"/);
+    assert.match(page, /backLabel="Planner"/);
     assert.match(manage, /createLifeAreaAction/);
     assert.match(manage, /archiveLifeAreaAction/);
     assert.match(manage, /restoreLifeAreaAction/);

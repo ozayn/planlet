@@ -420,8 +420,8 @@ export const SETTINGS_ITEMS: SettingsItemDefinition[] = [
   {
     id: "life-areas",
     categorySlug: "planner",
-    title: "Manage Life Areas",
-    subtitle: "Add, rename, reorder, and archive domains",
+    title: "Life Areas",
+    subtitle: "Organize tasks by different parts of your life",
     keywords: [
       "life areas",
       "manage life areas",

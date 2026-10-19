@@ -4,6 +4,7 @@ import { useState } from "react";
 import type { PlanItemView, TaskOrganizationDisplay } from "@/app/generated/prisma/client";
 
 import { SortablePlanItemList } from "@/components/plans/sortable-plan-item-list";
+import { UNCATEGORIZED_LIFE_AREA_ID } from "@/lib/life-areas/constants";
 import { groupPlanItemsByPrimaryLifeArea } from "@/lib/life-areas/group";
 import type { SerializedLifeArea } from "@/lib/life-areas/types";
 import { partitionPlanItems } from "@/lib/plan-item-sections";
@@ -94,6 +95,9 @@ export function PlanLifeAreaSections({
                 themeProjectCatalog={themeProjectCatalog}
                 taskOrganizationDisplay={taskOrganizationDisplay}
                 moveCompletedToTop={moveCompletedToTop}
+                showLifeAreaAssign={
+                  canEdit && group.areaId === UNCATEGORIZED_LIFE_AREA_ID
+                }
               />
             ) : null}
           </section>

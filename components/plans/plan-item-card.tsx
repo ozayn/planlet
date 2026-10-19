@@ -20,6 +20,7 @@ import { getItemActionLabels } from "@/components/plans/item-action-labels";
 import { InlineTaskNoteSection } from "@/components/plans/inline-task-note-section";
 import { ItemCommentsButton } from "@/components/plans/item-comments-button";
 import { ItemActionsMenu } from "@/components/plans/item-actions-menu";
+import { ItemLifeAreaAssignControl } from "@/components/plans/item-life-area-assign-control";
 import { ItemDetailsSheet } from "@/components/plans/item-details-sheet";
 import { InlineItemTitle } from "@/components/plans/inline-item-title";
 import { ItemPriorityButton } from "@/components/plans/item-priority-button";
@@ -60,6 +61,8 @@ type PlanItemCardProps = {
   sourcePlanDate?: string;
   themeProjectCatalog?: ThemeProjectCatalog;
   taskOrganizationDisplay?: TaskOrganizationDisplay;
+  /** Life Areas view only: show + Area for uncategorized root tasks. */
+  showLifeAreaAssign?: boolean;
 };
 
 export function PlanItemCard({
@@ -82,6 +85,7 @@ export function PlanItemCard({
   sourcePlanDate,
   themeProjectCatalog = EMPTY_THEME_PROJECT_CATALOG,
   taskOrganizationDisplay = "ASSIGNED_ONLY",
+  showLifeAreaAssign = false,
 }: PlanItemCardProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -255,6 +259,9 @@ export function PlanItemCard({
             </div>
 
             <div className="ui-item-card-actions ui-plan-item-actions flex shrink-0 items-center gap-0.5">
+              {showLifeAreaAssign && canEdit && !isNested ? (
+                <ItemLifeAreaAssignControl planId={planId} itemId={item.id} />
+              ) : null}
               <ItemThemeProjectRowControl
                 planId={planId}
                 item={item}

@@ -262,24 +262,26 @@ export function ItemDetailsSheet({
           )}
         </Field>
 
-        <div className="space-y-1">
-          <p className="text-sm font-medium text-foreground">Theme / project</p>
-          <ItemThemeProjectPicker
-            planId={planId}
-            item={item}
-            catalog={themeProjectCatalog}
-            canEdit
-            emptyOptionLabel="+ Theme"
-          />
-        </div>
+        <div className="space-y-4">
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-foreground">Theme / project</p>
+            <ItemThemeProjectPicker
+              planId={planId}
+              item={item}
+              catalog={themeProjectCatalog}
+              canEdit
+              emptyOptionLabel="+ Theme"
+            />
+          </div>
 
-        {!isNote ? (
-          <ItemLifeAreaPicker
-            planId={planId}
-            item={item}
-            lifeAreas={lifeAreas}
-          />
-        ) : null}
+          {!isNote ? (
+            <ItemLifeAreaPicker
+              planId={planId}
+              item={item}
+              lifeAreas={lifeAreas}
+            />
+          ) : null}
+        </div>
 
         <Field label="Type" fieldId={typeFieldId}>
           <select

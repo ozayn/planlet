@@ -65,6 +65,7 @@ type SortablePlanItemListProps = {
   themeProjectCatalog?: ThemeProjectCatalog;
   taskOrganizationDisplay?: TaskOrganizationDisplay;
   moveCompletedToTop?: boolean;
+  showLifeAreaAssign?: boolean;
 };
 
 type DragState = {
@@ -91,6 +92,7 @@ function StaticPlanItemList({
   itemDepth,
   themeProjectCatalog,
   taskOrganizationDisplay,
+  showLifeAreaAssign,
 }: {
   planId: string;
   items: SerializedPlanItem[];
@@ -99,6 +101,7 @@ function StaticPlanItemList({
   itemDepth: number;
   themeProjectCatalog: ThemeProjectCatalog;
   taskOrganizationDisplay: TaskOrganizationDisplay;
+  showLifeAreaAssign: boolean;
 }) {
   return (
     <>
@@ -114,6 +117,7 @@ function StaticPlanItemList({
           canMoveDown={canEdit && index < items.length - 1}
           themeProjectCatalog={themeProjectCatalog}
           taskOrganizationDisplay={taskOrganizationDisplay}
+          showLifeAreaAssign={showLifeAreaAssign}
         />
       ))}
     </>
@@ -166,6 +170,7 @@ function SortablePlanItemRow({
   sourcePlanDate,
   themeProjectCatalog,
   taskOrganizationDisplay,
+  showLifeAreaAssign,
 }: {
   planId: string;
   item: SerializedPlanItem;
@@ -182,6 +187,7 @@ function SortablePlanItemRow({
   sourcePlanDate?: string;
   themeProjectCatalog: ThemeProjectCatalog;
   taskOrganizationDisplay: TaskOrganizationDisplay;
+  showLifeAreaAssign: boolean;
 }) {
   const {
     attributes,
@@ -220,6 +226,7 @@ function SortablePlanItemRow({
         sourcePlanDate={sourcePlanDate}
         themeProjectCatalog={themeProjectCatalog}
         taskOrganizationDisplay={taskOrganizationDisplay}
+        showLifeAreaAssign={showLifeAreaAssign}
         subtasksContent={
           showNestedSubtasks
             ? renderSubtasksList(
@@ -259,6 +266,7 @@ function SortablePlanItemRows({
   sourcePlanDate,
   themeProjectCatalog,
   taskOrganizationDisplay,
+  showLifeAreaAssign,
 }: {
   planId: string;
   items: SerializedPlanItem[];
@@ -280,6 +288,7 @@ function SortablePlanItemRows({
   sourcePlanDate?: string;
   themeProjectCatalog: ThemeProjectCatalog;
   taskOrganizationDisplay: TaskOrganizationDisplay;
+  showLifeAreaAssign: boolean;
 }) {
   const dndId = useId();
   const dragNestingEnabled = isDragNestingEnabled(
@@ -351,6 +360,7 @@ function SortablePlanItemRows({
             sourcePlanDate={sourcePlanDate}
             themeProjectCatalog={themeProjectCatalog}
             taskOrganizationDisplay={taskOrganizationDisplay}
+            showLifeAreaAssign={showLifeAreaAssign}
           />
         ))}
       </SortableContext>
@@ -380,6 +390,7 @@ export function SortablePlanItemList({
   themeProjectCatalog = EMPTY_THEME_PROJECT_CATALOG,
   taskOrganizationDisplay = "ASSIGNED_ONLY",
   moveCompletedToTop = true,
+  showLifeAreaAssign = false,
 }: SortablePlanItemListProps) {
   const router = useRouter();
   const [items, setItems] = useState(initialItems);
@@ -628,6 +639,7 @@ export function SortablePlanItemList({
           sourcePlanDate={sourcePlanDate}
           themeProjectCatalog={themeProjectCatalog}
           taskOrganizationDisplay={taskOrganizationDisplay}
+          showLifeAreaAssign={showLifeAreaAssign}
         />
       ) : (
         <StaticPlanItemList
@@ -638,6 +650,7 @@ export function SortablePlanItemList({
           itemDepth={itemDepth}
           themeProjectCatalog={themeProjectCatalog}
           taskOrganizationDisplay={taskOrganizationDisplay}
+          showLifeAreaAssign={showLifeAreaAssign}
         />
       )}
 

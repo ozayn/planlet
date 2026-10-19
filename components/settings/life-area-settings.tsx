@@ -106,10 +106,6 @@ export function LifeAreaSettings({ areas: initial }: LifeAreaSettingsProps) {
 
   return (
     <div className="space-y-3">
-      <p className="text-sm text-muted">
-        Add, rename, reorder, archive, or restore. Tasks can stay uncategorized.
-      </p>
-
       {active.length === 0 ? (
         <p className="rounded-xl border border-dashed border-border-soft px-3 py-3 text-sm text-muted">
           No active Life Areas.

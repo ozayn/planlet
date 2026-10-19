@@ -28,6 +28,7 @@ async function requireUserId() {
 function revalidatePlans() {
   revalidatePath("/today");
   revalidatePath("/plans");
+  revalidatePath("/life-areas");
   revalidatePath("/settings/planner");
 }
 
