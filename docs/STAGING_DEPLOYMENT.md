@@ -155,7 +155,7 @@ git merge staging
 git push origin main
 ```
 
-Production Railway should deploy from `main`. Run `npm run db:migrate` on production only when new migrations ship (same as today).
+Production Railway should deploy from `main`. Run `railway run npm run db:migrate` on production when new migrations ship — see [PRODUCTION_MIGRATIONS.md](./PRODUCTION_MIGRATIONS.md). Migrations are never applied automatically on deploy.
 
 ---
 

@@ -24,7 +24,7 @@ Prerequisites: `.env` configured, PostgreSQL running, migrations applied (`./scr
 
 ## Production (Railway)
 
-Prerequisites: env vars set, `npx prisma migrate deploy` run once against production DB.
+Prerequisites: env vars set; pending migrations applied with `railway run npm run db:migrate` (see [PRODUCTION_MIGRATIONS.md](./PRODUCTION_MIGRATIONS.md)).
 
 - [ ] App URL loads over HTTPS
 - [ ] Sign in with Google (redirect URI configured for production domain)

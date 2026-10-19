@@ -152,11 +152,14 @@ Evening (other users):
 
 ## Production deploy
 
-After deploy, run migrations inside the Planlet web service shell:
+Railway does **not** apply Prisma migrations on deploy. After shipping schema changes (including `PomodoroPushJob`), run migrate deploy against the **production web** service so web and `planlet-reminders` share the updated Postgres schema:
 
 ```bash
-npm run db:migrate
+railway link          # production project + web service
+railway run npm run db:migrate
 ```
+
+See **[docs/PRODUCTION_MIGRATIONS.md](./PRODUCTION_MIGRATIONS.md)** for verification (`PomodoroPushJob` exists) and what not to run.
 
 ## iPhone notes
 

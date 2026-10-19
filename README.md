@@ -197,7 +197,9 @@ Railway auto-detects Next.js. This repo also includes `railway.json` with explic
 |-------|---------|
 | Install | `npm install` (runs `postinstall` → `prisma generate`) |
 | Build | `npm run build` |
-| Start | `npm run start` |
+| Start | `npm run start:railway` (web → `next start`; reminders → `npm run cron:reminders`) |
+
+**Migrations are not part of deploy.** Apply them manually after schema changes — see [docs/PRODUCTION_MIGRATIONS.md](docs/PRODUCTION_MIGRATIONS.md).
 
 ### 2. Environment variables
 
@@ -230,19 +232,16 @@ For the OAuth consent screen app logo, upload **`public/oauth-logo.png`** (512×
 
 ### 4. Database migrations
 
-After the first successful deploy, run migrations against the **production** database once:
+Railway **does not** run migrations on deploy. After shipping new files under `prisma/migrations/`, apply them once against production Postgres:
 
 ```bash
+railway link          # production project + web service
 railway run npm run db:migrate
 ```
 
-Or from your machine with production `DATABASE_URL`:
+That runs `prisma migrate deploy` with the web service’s `DATABASE_URL` (shared with `planlet-reminders`). Full procedure, verification SQL, and forbidden commands: **[docs/PRODUCTION_MIGRATIONS.md](docs/PRODUCTION_MIGRATIONS.md)**.
 
-```bash
-npx prisma migrate deploy
-```
-
-Do **not** use `migrate dev` or `migrate reset` in production.
+Do **not** use `migrate dev`, `migrate reset`, or `db push` in production.
 
 ### 5. Verify
 
