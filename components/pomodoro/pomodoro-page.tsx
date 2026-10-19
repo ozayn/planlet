@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { Maximize2, Settings2, X } from "lucide-react";
+import {
+  Maximize2,
+  Minimize2,
+  Settings2,
+  SkipForward,
+  X,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import {
   useCallback,
@@ -13,10 +19,12 @@ import {
 } from "react";
 
 import {
+  adjustPomodoroRemainingAction,
   completePomodoroPhaseAction,
   pausePomodoroAction,
   reconcilePomodoroAction,
   resumePomodoroAction,
+  skipPomodoroBreakAction,
   startPomodoroBreakAction,
   startPomodoroFocusAction,
   stopPomodoroAction,
@@ -26,8 +34,10 @@ import { ActivityTimerRing } from "@/components/activity-timer/activity-timer-ri
 import { useActivityTimerClock } from "@/components/activity-timer/use-activity-timer-clock";
 import { VoiceTextField } from "@/components/audio/voice-text-field";
 import { InfoIcon } from "@/components/ui/action-icons";
+import { DurationMinutesInput } from "@/components/ui/duration-minutes-input";
 import { formatActivityClock, formatActivityDuration } from "@/lib/activity-timer/format";
 import {
+  POMODORO_COMPACT_STORAGE_KEY,
   POMODORO_SETTINGS_PATH,
   type PomodoroActivityOption,
   type PomodoroPageData,
@@ -35,7 +45,7 @@ import {
   type PomodoroTaskOption,
   type SerializedPomodoroActiveRun,
 } from "@/lib/pomodoro/constants";
-import { cycleDotsState, phaseLabel } from "@/lib/pomodoro/cycle";
+import { cycleDotsState, isBreakPhase, phaseLabel } from "@/lib/pomodoro/cycle";
 import {
   playPomodoroCompletionFeedback,
   warmPomodoroCompletionAudio,
@@ -86,6 +96,127 @@ function resolveWorkingOnLabel(input: {
 
   const custom = input.customDraft.trim() || input.run?.customTitle?.trim();
   return custom || null;
+}
+
+function AdjustTimePopover({
+  open,
+  customMinutes,
+  pending,
+  onClose,
+  onCustomMinutesChange,
+  onAdjustDelta,
+  onApplyCustom,
+}: {
+  open: boolean;
+  customMinutes: string;
+  pending: boolean;
+  onClose: () => void;
+  onCustomMinutesChange: (value: string) => void;
+  onAdjustDelta: (deltaSeconds: number) => void;
+  onApplyCustom: () => void;
+}) {
+  const [showCustom, setShowCustom] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) {
+      setShowCustom(false);
+    }
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, onClose]);
+
+  useEffect(() => {
+    if (!open || !dialogRef.current) {
+      return;
+    }
+    const first = dialogRef.current.querySelector<HTMLElement>(
+      "button:not([disabled]), input:not([disabled])",
+    );
+    first?.focus();
+  }, [open]);
+
+  if (!open) {
+    return null;
+  }
+
+  return (
+    <div
+      ref={dialogRef}
+      className="ui-pomodoro-adjust-popover w-full max-w-sm space-y-2 px-1"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Adjust remaining time"
+    >
+      <div className="flex flex-wrap items-center justify-center gap-1.5">
+        <button
+          type="button"
+          className="ui-btn-secondary min-h-11 px-3 text-sm"
+          disabled={pending}
+          onClick={() => onAdjustDelta(-5 * 60)}
+        >
+          −5 min
+        </button>
+        <button
+          type="button"
+          className="ui-btn-secondary min-h-11 px-3 text-sm"
+          disabled={pending}
+          onClick={() => onAdjustDelta(5 * 60)}
+        >
+          +5 min
+        </button>
+        <button
+          type="button"
+          className="ui-btn-secondary min-h-11 px-3 text-sm"
+          disabled={pending}
+          aria-pressed={showCustom}
+          onClick={() => setShowCustom((current) => !current)}
+        >
+          Custom
+        </button>
+      </div>
+      {showCustom ? (
+        <div className="flex flex-wrap items-center justify-center gap-2">
+          <DurationMinutesInput
+            value={customMinutes}
+            min={0}
+            max={180}
+            disabled={pending}
+            aria-label="Remaining minutes"
+            onChange={onCustomMinutesChange}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                onApplyCustom();
+              }
+            }}
+          />
+          <button
+            type="button"
+            className="ui-btn-primary min-h-11 px-3 text-sm"
+            disabled={pending || customMinutes.trim() === ""}
+            onClick={onApplyCustom}
+          >
+            Set
+          </button>
+        </div>
+      ) : null}
+    </div>
+  );
 }
 
 function HeaderIconButton({
@@ -332,9 +463,11 @@ export function PomodoroPage({ data }: PomodoroPageProps) {
   const [pending, startTransition] = useTransition();
   const [run, setRun] = useState(data.activeRun);
   const [preferences] = useState(data.preferences);
-  const [focusMode, setFocusMode] = useState(false);
+  const [compactMode, setCompactMode] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [taskEditorOpen, setTaskEditorOpen] = useState(false);
+  const [timeEditorOpen, setTimeEditorOpen] = useState(false);
+  const [customRemainingMinutes, setCustomRemainingMinutes] = useState("");
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
   const [taskId, setTaskId] = useState(data.activeRun?.taskId ?? "");
   const [customTitle, setCustomTitle] = useState(
@@ -343,7 +476,6 @@ export function PomodoroPage({ data }: PomodoroPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [todaySummary, setTodaySummary] = useState(data.todaySummary);
   const [recentLogs, setRecentLogs] = useState(data.recentLogs);
-  const [fullscreenAvailable, setFullscreenAvailable] = useState(false);
   const completingRef = useRef(false);
   const defaultTitleRef = useRef<string | null>(null);
 
@@ -354,11 +486,33 @@ export function PomodoroPage({ data }: PomodoroPageProps) {
   }, [data.activeRun, data.todaySummary, data.recentLogs]);
 
   useEffect(() => {
-    setFullscreenAvailable(
-      typeof document !== "undefined" &&
-        typeof document.documentElement.requestFullscreen === "function",
-    );
+    try {
+      setCompactMode(
+        window.localStorage.getItem(POMODORO_COMPACT_STORAGE_KEY) === "1",
+      );
+    } catch {
+      setCompactMode(false);
+    }
   }, []);
+
+  useEffect(() => {
+    document.documentElement.dataset.pomodoroCompact = compactMode
+      ? "true"
+      : "false";
+    try {
+      if (compactMode) {
+        window.localStorage.setItem(POMODORO_COMPACT_STORAGE_KEY, "1");
+      } else {
+        window.localStorage.removeItem(POMODORO_COMPACT_STORAGE_KEY);
+      }
+    } catch {
+      // Ignore quota / private-mode failures.
+    }
+
+    return () => {
+      delete document.documentElement.dataset.pomodoroCompact;
+    };
+  }, [compactMode]);
 
   useEffect(() => {
     if (!run) {
@@ -429,10 +583,28 @@ export function PomodoroPage({ data }: PomodoroPageProps) {
   });
 
   const focusSessionNumber = Math.max(1, run?.focusIndex ?? 1);
-  const sessionAccessibleLabel =
+  const sessionLabel =
     phase === "focus"
       ? `Session ${focusSessionNumber} of ${preferences.sessionsBeforeLongBreak}`
       : phaseLabel(phase);
+  const targetSeconds =
+    run?.targetDurationSeconds ?? preferences.focusDurationSeconds;
+  const displaySeconds =
+    isTiming && run
+      ? clock.displaySeconds
+      : previewSeconds ?? targetSeconds;
+  const progressRatio =
+    targetSeconds > 0
+      ? Math.min(1, Math.max(0, 1 - displaySeconds / targetSeconds))
+      : 0;
+  const clockLabel = formatActivityClock(displaySeconds);
+  const phaseHeading = awaiting ? `Next: ${phaseLabel(phase)}` : phaseLabel(phase);
+  const remainingSeconds =
+    isTiming && run
+      ? (clock.remainingSeconds ?? displaySeconds)
+      : displaySeconds;
+  const needsExplicitFinish =
+    isTiming && Boolean(run) && remainingSeconds <= 0;
 
   const runRef = useRef(run);
   runRef.current = run;
@@ -444,6 +616,7 @@ export function PomodoroPage({ data }: PomodoroPageProps) {
 
     const current = runRef.current;
     // Paused / awaiting sessions must not auto-complete or notify.
+    // Zero remaining after an adjustment stays paused until Finish.
     if (!current || current.status !== "running") {
       return;
     }
@@ -568,19 +741,19 @@ export function PomodoroPage({ data }: PomodoroPageProps) {
   }, [clock.displaySeconds, isTiming, run]);
 
   useEffect(() => {
-    if (!focusMode) {
+    if (!compactMode) {
       return;
     }
 
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
-        setFocusMode(false);
+        setCompactMode(false);
       }
     };
 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [focusMode]);
+  }, [compactMode]);
 
   const runAction = useCallback(
     (action: () => Promise<void>) => {
@@ -662,6 +835,82 @@ export function PomodoroPage({ data }: PomodoroPageProps) {
     });
   }
 
+  function handleSkipBreak() {
+    if (!run || !isBreakPhase(phase)) {
+      return;
+    }
+    const token = run.transitionToken;
+    runAction(async () => {
+      const result = await skipPomodoroBreakAction({
+        transitionToken: token,
+      });
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
+      setRun(result.activeRun);
+      router.refresh();
+    });
+  }
+
+  function handleAdjustRemaining(input: {
+    remainingSeconds?: number | null;
+    deltaSeconds?: number | null;
+  }) {
+    runAction(async () => {
+      const result = await adjustPomodoroRemainingAction(input);
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
+      setRun(result.activeRun);
+      setTimeEditorOpen(false);
+      setCustomRemainingMinutes("");
+      router.refresh();
+    });
+  }
+
+  function handleApplyCustomRemaining() {
+    const minutes = Number(customRemainingMinutes.trim());
+    if (!Number.isFinite(minutes) || minutes < 0) {
+      setError("Enter a valid remaining duration.");
+      return;
+    }
+    handleAdjustRemaining({
+      remainingSeconds: Math.round(minutes * 60),
+    });
+  }
+
+  function handleFinishPhase() {
+    if (!run) {
+      return;
+    }
+    runAction(async () => {
+      const result = await completePomodoroPhaseAction({
+        transitionToken: run.transitionToken,
+      });
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
+      setRun(result.activeRun);
+      if (result.didComplete) {
+        playPomodoroCompletionFeedback(preferences.completionSound);
+        // Explicit Finish after adjust-to-zero — notify like a normal completion.
+        void showPomodoroPhaseNotification({
+          kind:
+            result.completedPhase === "focus"
+              ? "focus-complete"
+              : "break-complete",
+          enabled: preferences.notificationsEnabled,
+          transitionToken: result.completedTransitionToken,
+        });
+      }
+      setTimeEditorOpen(false);
+      router.refresh();
+    });
+  }
+
   function persistAssociation(nextTaskId = taskId, nextTitle = customTitle) {
     if (!run) {
       return;
@@ -688,64 +937,255 @@ export function PomodoroPage({ data }: PomodoroPageProps) {
     persistAssociation("", "");
   }
 
-  async function enterFullscreen() {
-    try {
-      await document.documentElement.requestFullscreen?.();
-    } catch {
-      // Optional; ignore denials.
-    }
-  }
-
   const hasTodaySessions = todaySummary.sessionCount > 0;
 
-  return (
-    <section
-      className={`ui-pomodoro-page mx-auto w-full max-w-lg space-y-5 px-1 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:space-y-6 sm:px-0 sm:pb-4 ${
-        focusMode ? "ui-pomodoro-focus-mode" : ""
-      }`}
-      data-pomodoro-focus-mode={focusMode ? "true" : undefined}
+  const primaryBtn = "ui-btn-primary";
+  const secondaryBtn = "ui-btn-secondary";
+  /** Active or pending break (running, paused, or waiting to start). */
+  const showSkipBreak = Boolean(
+    run && isBreakPhase(phase) && !needsExplicitFinish,
+  );
+  const onActiveBreak = Boolean(
+    run && isBreakPhase(phase) && !awaiting && !needsExplicitFinish,
+  );
+
+  const skipBreakButton = showSkipBreak ? (
+    <button
+      type="button"
+      className={`${secondaryBtn} inline-flex items-center justify-center gap-1.5`}
+      disabled={pending}
+      onClick={handleSkipBreak}
+      aria-label="Skip break"
     >
-      {!focusMode ? (
-        <header className="flex items-center justify-between gap-3">
-          <h1 className="text-xl font-semibold tracking-tight text-foreground">
-            Pomodoro
-          </h1>
-          <div className="flex items-center gap-0.5">
-            <HeaderIconButton
-              label="Focus mode"
-              onClick={() => setFocusMode(true)}
+      <SkipForward className="h-4 w-4" aria-hidden="true" strokeWidth={1.75} />
+      Skip
+    </button>
+  ) : null;
+
+  const timerControls = (
+    <>
+      {!run || awaiting ? (
+        awaiting && isBreakPhase(phase) ? (
+          <>
+            <button
+              type="button"
+              className={primaryBtn}
+              disabled={pending}
+              onClick={handleStartBreak}
             >
-              <Maximize2 className="h-4 w-4" aria-hidden="true" strokeWidth={1.75} />
-            </HeaderIconButton>
-            <HeaderIconButton label="Settings" href={POMODORO_SETTINGS_PATH}>
-              <Settings2 className="h-4 w-4" aria-hidden="true" strokeWidth={1.75} />
-            </HeaderIconButton>
-          </div>
-        </header>
-      ) : (
-        <header className="flex items-center justify-end gap-0.5">
-          {fullscreenAvailable ? (
-            <HeaderIconButton
-              label="Fullscreen"
-              onClick={() => {
-                void enterFullscreen();
-              }}
-            >
-              <Maximize2 className="h-4 w-4" aria-hidden="true" strokeWidth={1.75} />
-            </HeaderIconButton>
-          ) : null}
-          <HeaderIconButton
-            label="Exit focus mode"
-            onClick={() => setFocusMode(false)}
+              Start break
+            </button>
+            {skipBreakButton}
+          </>
+        ) : (
+          <button
+            type="button"
+            className={primaryBtn}
+            disabled={pending}
+            onClick={handleStartFocus}
           >
-            <X className="h-4 w-4" aria-hidden="true" strokeWidth={1.75} />
+            {awaiting ? "Start focus" : "Start"}
+          </button>
+        )
+      ) : needsExplicitFinish ? (
+        <>
+          <button
+            type="button"
+            className={primaryBtn}
+            disabled={pending}
+            onClick={handleFinishPhase}
+          >
+            Finish
+          </button>
+          <button
+            type="button"
+            className={secondaryBtn}
+            disabled={pending}
+            onClick={handleStop}
+          >
+            Stop
+          </button>
+        </>
+      ) : run.status === "paused" ? (
+        <>
+          <button
+            type="button"
+            className={primaryBtn}
+            disabled={pending}
+            onClick={handleResume}
+          >
+            Resume
+          </button>
+          {skipBreakButton}
+          {!onActiveBreak ? (
+            <button
+              type="button"
+              className={secondaryBtn}
+              disabled={pending}
+              onClick={handleStop}
+            >
+              Stop
+            </button>
+          ) : null}
+        </>
+      ) : (
+        <>
+          <button
+            type="button"
+            className={secondaryBtn}
+            disabled={pending}
+            onClick={handlePause}
+          >
+            Pause
+          </button>
+          {skipBreakButton}
+          {!onActiveBreak ? (
+            <button
+              type="button"
+              className={secondaryBtn}
+              disabled={pending}
+              onClick={handleStop}
+            >
+              Stop
+            </button>
+          ) : null}
+        </>
+      )}
+    </>
+  );
+
+  // Visible for Focus/Break while running, paused, or awaiting start — not after
+  // zero-remaining Finish prompt, and not before a session row exists.
+  const canAdjustRemaining = Boolean(run && !needsExplicitFinish);
+
+  const adjustTimeToggle = useCallback(() => {
+    setTimeEditorOpen((open) => !open);
+    setCustomRemainingMinutes(
+      String(Math.max(0, Math.round(remainingSeconds / 60))),
+    );
+  }, [remainingSeconds]);
+
+  const closeTimeEditor = useCallback(() => {
+    setTimeEditorOpen(false);
+  }, []);
+
+  const clockAction = canAdjustRemaining
+    ? {
+        onClick: adjustTimeToggle,
+        open: timeEditorOpen,
+        disabled: pending,
+        label: "Adjust remaining time",
+      }
+    : null;
+
+  const adjustTimePopover = canAdjustRemaining ? (
+    <AdjustTimePopover
+      open={timeEditorOpen}
+      customMinutes={customRemainingMinutes}
+      pending={pending}
+      onClose={closeTimeEditor}
+      onCustomMinutesChange={setCustomRemainingMinutes}
+      onAdjustDelta={(deltaSeconds) =>
+        handleAdjustRemaining({ deltaSeconds })
+      }
+      onApplyCustom={handleApplyCustomRemaining}
+    />
+  ) : null;
+
+  const compactClock = canAdjustRemaining ? (
+    <button
+      type="button"
+      className="ui-pomodoro-compact-clock ui-pomodoro-clock-action"
+      aria-live="polite"
+      aria-atomic="true"
+      aria-expanded={timeEditorOpen}
+      aria-label="Adjust remaining time"
+      disabled={pending}
+      onClick={adjustTimeToggle}
+    >
+      {clockLabel}
+    </button>
+  ) : (
+    <p className="ui-pomodoro-compact-clock" aria-live="polite">
+      {clockLabel}
+    </p>
+  );
+
+  if (compactMode) {
+    return (
+      <section
+        className="ui-pomodoro-compact"
+        data-pomodoro-compact="true"
+        aria-label="Pomodoro compact timer"
+      >
+        <header className="flex w-full min-w-0 items-center justify-between gap-2">
+          <HeaderIconButton
+            label="Standard view"
+            onClick={() => setCompactMode(false)}
+          >
+            <Maximize2 className="h-4 w-4" aria-hidden="true" strokeWidth={1.75} />
+          </HeaderIconButton>
+          <HeaderIconButton label="Settings" href={POMODORO_SETTINGS_PATH}>
+            <Settings2 className="h-4 w-4" aria-hidden="true" strokeWidth={1.75} />
           </HeaderIconButton>
         </header>
-      )}
+
+        <div className="ui-pomodoro-compact-stage">
+          <p className="ui-pomodoro-compact-phase">{phaseHeading}</p>
+          {compactClock}
+          {adjustTimePopover}
+          <div
+            className="ui-pomodoro-compact-progress"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={Math.round(progressRatio * 100)}
+            aria-label="Session progress"
+          >
+            <div
+              className="ui-pomodoro-compact-progress-fill"
+              style={{ width: `${progressRatio * 100}%` }}
+            />
+          </div>
+          <div className="ui-pomodoro-compact-controls">{timerControls}</div>
+          <p className="ui-pomodoro-compact-meta">{sessionLabel}</p>
+          {displayWorkingOn ? (
+            <p className="ui-pomodoro-compact-task" dir="auto" title={displayWorkingOn}>
+              {displayWorkingOn}
+            </p>
+          ) : null}
+          {error ? (
+            <p className="text-sm text-accent-red" role="alert">
+              {error}
+            </p>
+          ) : null}
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="ui-pomodoro-page mx-auto w-full max-w-lg space-y-5 px-1 pb-[calc(1rem+env(safe-area-inset-bottom,0px))] sm:space-y-6 sm:px-0 sm:pb-4">
+      <header className="flex items-center justify-between gap-3">
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">
+          Pomodoro
+        </h1>
+        <div className="flex items-center gap-0.5">
+          <HeaderIconButton
+            label="Compact mode"
+            onClick={() => setCompactMode(true)}
+          >
+            <Minimize2 className="h-4 w-4" aria-hidden="true" strokeWidth={1.75} />
+          </HeaderIconButton>
+          <HeaderIconButton label="Settings" href={POMODORO_SETTINGS_PATH}>
+            <Settings2 className="h-4 w-4" aria-hidden="true" strokeWidth={1.75} />
+          </HeaderIconButton>
+        </div>
+      </header>
 
       <div className="ui-pomodoro-stage">
         <p className="text-sm font-medium uppercase tracking-[0.14em] text-muted">
-          {awaiting ? `Next: ${phaseLabel(phase)}` : phaseLabel(phase)}
+          {phaseHeading}
         </p>
 
         <div className="ui-pomodoro-ring mt-4">
@@ -753,82 +1193,25 @@ export function PomodoroPage({ data }: PomodoroPageProps) {
             startedAt={isTiming ? run?.startedAt : null}
             running={isTiming && run?.status === "running"}
             timerMode="countDown"
-            targetDurationSeconds={
-              run?.targetDurationSeconds ?? preferences.focusDurationSeconds
-            }
+            targetDurationSeconds={targetSeconds}
             pausedAt={run?.pausedAt}
             accumulatedPausedSeconds={run?.accumulatedPausedSeconds ?? 0}
             previewSeconds={previewSeconds}
             className={phase === "focus" ? "" : "opacity-90"}
+            clockAction={clockAction}
           />
         </div>
 
-        <div className="ui-pomodoro-controls mt-5">
-          {!run || awaiting ? (
-            awaiting && phase !== "focus" ? (
-              <button
-                type="button"
-                className="ui-btn-primary min-h-11 min-w-[7.5rem]"
-                disabled={pending}
-                onClick={handleStartBreak}
-              >
-                Start break
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="ui-btn-primary min-h-11 min-w-[7.5rem]"
-                disabled={pending}
-                onClick={handleStartFocus}
-              >
-                {awaiting ? "Start focus" : "Start"}
-              </button>
-            )
-          ) : run.status === "paused" ? (
-            <>
-              <button
-                type="button"
-                className="ui-btn-primary min-h-11 min-w-[7.5rem]"
-                disabled={pending}
-                onClick={handleResume}
-              >
-                Resume
-              </button>
-              <button
-                type="button"
-                className="ui-btn-secondary min-h-11 min-w-[7.5rem]"
-                disabled={pending}
-                onClick={handleStop}
-              >
-                Stop
-              </button>
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                className="ui-btn-secondary min-h-11 min-w-[7.5rem]"
-                disabled={pending}
-                onClick={handlePause}
-              >
-                Pause
-              </button>
-              <button
-                type="button"
-                className="ui-btn-secondary min-h-11 min-w-[7.5rem]"
-                disabled={pending}
-                onClick={handleStop}
-              >
-                Stop
-              </button>
-            </>
-          )}
-        </div>
+        {adjustTimePopover ? (
+          <div className="mt-3 w-full max-w-sm">{adjustTimePopover}</div>
+        ) : null}
+
+        <div className="ui-pomodoro-controls mt-5">{timerControls}</div>
 
         <div
           className="ui-pomodoro-dots mt-4"
           role="img"
-          aria-label={sessionAccessibleLabel}
+          aria-label={sessionLabel}
         >
           {Array.from({ length: dots.total }, (_, index) => {
             const n = index + 1;
@@ -846,144 +1229,129 @@ export function PomodoroPage({ data }: PomodoroPageProps) {
           })}
         </div>
 
-        {focusMode && displayWorkingOn ? (
-          <p
-            className="mt-5 max-w-sm truncate text-sm font-medium text-foreground"
-            dir="auto"
-          >
-            {displayWorkingOn}
-          </p>
-        ) : null}
-
-        {!focusMode ? (
-          <div className="mt-5 w-full max-w-sm">
-            {!taskEditorOpen && displayWorkingOn ? (
-              <div className="flex items-center justify-center gap-2 text-sm">
-                <button
-                  type="button"
-                  className="min-w-0 truncate font-medium text-foreground transition-colors hover:text-muted"
-                  dir="auto"
-                  onClick={() => setTaskEditorOpen(true)}
-                  title="Change task"
-                >
-                  {displayWorkingOn}
-                </button>
-                <button
-                  type="button"
-                  className="shrink-0 text-muted transition-colors hover:text-foreground"
-                  onClick={clearTaskAssociation}
-                  aria-label="Remove task"
-                  title="Remove task"
-                >
-                  <X className="h-3.5 w-3.5" aria-hidden="true" strokeWidth={1.75} />
-                </button>
-              </div>
-            ) : null}
-
-            {!taskEditorOpen && !displayWorkingOn ? (
+        <div className="mt-5 w-full max-w-sm">
+          {!taskEditorOpen && displayWorkingOn ? (
+            <div className="flex items-center justify-center gap-2 text-sm">
               <button
                 type="button"
-                className="text-sm text-muted transition-colors hover:text-foreground"
+                className="min-w-0 truncate font-medium text-foreground transition-colors hover:text-muted"
+                dir="auto"
                 onClick={() => setTaskEditorOpen(true)}
+                title="Change task"
               >
-                + Choose today&apos;s task
+                {displayWorkingOn}
               </button>
-            ) : null}
+              <button
+                type="button"
+                className="shrink-0 text-muted transition-colors hover:text-foreground"
+                onClick={clearTaskAssociation}
+                aria-label="Remove task"
+                title="Remove task"
+              >
+                <X className="h-3.5 w-3.5" aria-hidden="true" strokeWidth={1.75} />
+              </button>
+            </div>
+          ) : null}
 
-            {taskEditorOpen ? (
-              <TodayTaskPicker
-                taskId={taskId}
-                customTitle={customTitle}
-                taskOptions={data.taskOptions}
-                activities={data.activities}
-                showCompleted={showCompletedTasks}
-                onShowCompletedChange={setShowCompletedTasks}
-                onSelectNone={() => {
+          {!taskEditorOpen && !displayWorkingOn ? (
+            <button
+              type="button"
+              className="text-sm text-muted transition-colors hover:text-foreground"
+              onClick={() => setTaskEditorOpen(true)}
+            >
+              + Choose today&apos;s task
+            </button>
+          ) : null}
+
+          {taskEditorOpen ? (
+            <TodayTaskPicker
+              taskId={taskId}
+              customTitle={customTitle}
+              taskOptions={data.taskOptions}
+              activities={data.activities}
+              showCompleted={showCompletedTasks}
+              onShowCompletedChange={setShowCompletedTasks}
+              onSelectNone={() => {
+                setTaskId("");
+                setCustomTitle("");
+                persistAssociation("", "");
+              }}
+              onSelectTask={(id) => {
+                setTaskId(id);
+                setCustomTitle("");
+                persistAssociation(id, "");
+              }}
+              onSelectActivity={(title) => {
+                setTaskId("");
+                setCustomTitle(title);
+                persistAssociation("", title);
+              }}
+              onCustomTitleChange={(value) => {
+                setCustomTitle(value);
+                if (value.trim()) {
                   setTaskId("");
-                  setCustomTitle("");
-                  persistAssociation("", "");
-                }}
-                onSelectTask={(id) => {
-                  setTaskId(id);
-                  setCustomTitle("");
-                  persistAssociation(id, "");
-                }}
-                onSelectActivity={(title) => {
-                  setTaskId("");
-                  setCustomTitle(title);
-                  persistAssociation("", title);
-                }}
-                onCustomTitleChange={(value) => {
-                  setCustomTitle(value);
-                  if (value.trim()) {
-                    setTaskId("");
-                  }
-                }}
-                onCustomTitleApplied={() => persistAssociation()}
-                onClear={clearTaskAssociation}
-                onDone={() => setTaskEditorOpen(false)}
-              />
-            ) : null}
-          </div>
-        ) : null}
+                }
+              }}
+              onCustomTitleApplied={() => persistAssociation()}
+              onClear={clearTaskAssociation}
+              onDone={() => setTaskEditorOpen(false)}
+            />
+          ) : null}
+        </div>
       </div>
 
       {error ? (
         <p className="text-center text-sm text-accent-red">{error}</p>
       ) : null}
 
-      {!focusMode ? (
-        <>
-          {hasTodaySessions || recentLogs.length > 0 ? (
-            <div className="space-y-3 border-t border-border-soft pt-4">
-              {hasTodaySessions ? (
-                <div>
-                  <p className="text-sm font-medium text-foreground">Today</p>
-                  <p className="mt-1 text-sm text-muted">
-                    {formatPomodoroFocusedSummary(todaySummary)}
-                  </p>
-                </div>
-              ) : null}
-
-              {recentLogs.length > 0 ? (
-                <div>
-                  <button
-                    type="button"
-                    className="text-sm font-medium text-muted transition-colors hover:text-foreground"
-                    onClick={() => setHistoryOpen((open) => !open)}
-                    aria-expanded={historyOpen}
-                  >
-                    History
-                  </button>
-                  {historyOpen ? (
-                    <ul className="mt-2 space-y-2">
-                      {recentLogs.map((log) => (
-                        <li
-                          key={log.id}
-                          className="flex items-baseline justify-between gap-3 text-sm"
-                        >
-                          <span
-                            className="min-w-0 truncate text-foreground"
-                            dir="auto"
-                          >
-                            {log.displayTitle}
-                          </span>
-                          <span className="shrink-0 text-muted">
-                            {formatActivityDuration(log.actualFocusedSeconds)}
-                            {log.completed ? "" : " · stopped"}
-                          </span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : null}
-                </div>
-              ) : null}
+      {hasTodaySessions || recentLogs.length > 0 ? (
+        <div className="space-y-3 border-t border-border-soft pt-4">
+          {hasTodaySessions ? (
+            <div>
+              <p className="text-sm font-medium text-foreground">Today</p>
+              <p className="mt-1 text-sm text-muted">
+                {formatPomodoroFocusedSummary(todaySummary)}
+              </p>
             </div>
           ) : null}
 
-          <HowPomodoroWorks preferences={preferences} />
-        </>
+          {recentLogs.length > 0 ? (
+            <div>
+              <button
+                type="button"
+                className="text-sm font-medium text-muted transition-colors hover:text-foreground"
+                onClick={() => setHistoryOpen((open) => !open)}
+                aria-expanded={historyOpen}
+              >
+                History
+              </button>
+              {historyOpen ? (
+                <ul className="mt-2 space-y-2">
+                  {recentLogs.map((log) => (
+                    <li
+                      key={log.id}
+                      className="flex items-baseline justify-between gap-3 text-sm"
+                    >
+                      <span
+                        className="min-w-0 truncate text-foreground"
+                        dir="auto"
+                      >
+                        {log.displayTitle}
+                      </span>
+                      <span className="shrink-0 text-muted">
+                        {formatActivityDuration(log.actualFocusedSeconds)}
+                        {log.completed ? "" : " · stopped"}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
       ) : null}
+
+      <HowPomodoroWorks preferences={preferences} />
     </section>
   );
 }

@@ -91,19 +91,95 @@ export function urlBase64ToUint8Array(base64String: string): BufferSource {
   return outputArray;
 }
 
+/**
+ * Register `/sw.js` at root scope and wait until an active worker is ready.
+ * Prefer this over `getRegistration()` before `showNotification()`.
+ */
 export async function registerPushServiceWorker(): Promise<ServiceWorkerRegistration> {
-  await navigator.serviceWorker.register("/sw.js");
-  return navigator.serviceWorker.ready;
+  const registration = await navigator.serviceWorker.register("/sw.js", {
+    scope: "/",
+  });
+
+  const ready = await navigator.serviceWorker.ready;
+
+  if (ready.active) {
+    return ready;
+  }
+
+  if (registration.active) {
+    return registration;
+  }
+
+  const pending = registration.installing ?? registration.waiting;
+  if (pending) {
+    await new Promise<void>((resolve, reject) => {
+      const timeout = window.setTimeout(() => {
+        reject(new Error("Service worker activation timed out."));
+      }, 8_000);
+
+      pending.addEventListener("statechange", () => {
+        if (pending.state === "activated" || registration.active) {
+          window.clearTimeout(timeout);
+          resolve();
+        }
+        if (pending.state === "redundant") {
+          window.clearTimeout(timeout);
+          reject(new Error("Service worker became redundant."));
+        }
+      });
+    });
+  }
+
+  const activeRegistration = await navigator.serviceWorker.ready;
+  if (!activeRegistration.active) {
+    throw new Error("Service worker is registered but not active.");
+  }
+
+  return activeRegistration;
 }
 
 export async function getExistingPushSubscription(): Promise<PushSubscription | null> {
-  const registration = await navigator.serviceWorker.getRegistration();
+  const registration =
+    (await navigator.serviceWorker.getRegistration("/")) ??
+    (await navigator.serviceWorker.getRegistration());
 
   if (!registration) {
     return null;
   }
 
   return registration.pushManager.getSubscription();
+}
+
+export type ServiceWorkerRegistrationState = {
+  supported: boolean;
+  controller: boolean;
+  registration: boolean;
+  active: boolean;
+  scope: string | null;
+};
+
+export async function getServiceWorkerRegistrationState(): Promise<ServiceWorkerRegistrationState> {
+  if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) {
+    return {
+      supported: false,
+      controller: false,
+      registration: false,
+      active: false,
+      scope: null,
+    };
+  }
+
+  const registration =
+    (await navigator.serviceWorker.getRegistration("/")) ??
+    (await navigator.serviceWorker.getRegistration());
+
+  return {
+    supported: true,
+    controller: Boolean(navigator.serviceWorker.controller),
+    registration: Boolean(registration),
+    active: Boolean(registration?.active),
+    scope: registration?.scope ?? null,
+  };
 }
 
 export function subscriptionToJson(subscription: PushSubscription) {

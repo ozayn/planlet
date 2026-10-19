@@ -20,6 +20,16 @@ type ActivityTimerRingProps = {
   /** Static display when armed but not yet started (countdown presets). */
   previewSeconds?: number | null;
   className?: string;
+  /**
+   * When set, the centered countdown becomes an accessible button
+   * (e.g. Pomodoro remaining-time adjustment) without changing layout.
+   */
+  clockAction?: {
+    onClick: () => void;
+    open?: boolean;
+    disabled?: boolean;
+    label?: string;
+  } | null;
 };
 
 /** Fixed SVG coordinate space; the ring scales via responsive container width. */
@@ -38,6 +48,7 @@ export function ActivityTimerRing({
   accumulatedPausedSeconds = 0,
   previewSeconds = null,
   className = "",
+  clockAction = null,
 }: ActivityTimerRingProps) {
   const gradientId = useId();
   const clock = useActivityTimerClock(
@@ -133,13 +144,28 @@ export function ActivityTimerRing({
         )}
       </svg>
 
-      <p
-        className="ui-activity-timer-clock absolute inset-0 flex items-center justify-center font-mono font-semibold leading-none tracking-tight text-foreground"
-        aria-live="polite"
-        aria-atomic="true"
-      >
-        {displayLabel}
-      </p>
+      {clockAction ? (
+        <button
+          type="button"
+          className="ui-activity-timer-clock ui-pomodoro-clock-action absolute inset-0 flex items-center justify-center font-mono font-semibold leading-none tracking-tight text-foreground"
+          aria-live="polite"
+          aria-atomic="true"
+          aria-expanded={clockAction.open ?? false}
+          aria-label={clockAction.label ?? "Adjust remaining time"}
+          disabled={clockAction.disabled}
+          onClick={clockAction.onClick}
+        >
+          {displayLabel}
+        </button>
+      ) : (
+        <p
+          className="ui-activity-timer-clock absolute inset-0 flex items-center justify-center font-mono font-semibold leading-none tracking-tight text-foreground"
+          aria-live="polite"
+          aria-atomic="true"
+        >
+          {displayLabel}
+        </p>
+      )}
     </div>
   );
 }

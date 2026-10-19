@@ -4,11 +4,13 @@ import { revalidatePath } from "next/cache";
 
 import { auth } from "@/auth";
 import {
+  adjustPomodoroRemaining,
   completePomodoroPhase,
   pausePomodoroRun,
   PomodoroError,
   reconcilePomodoroRun,
   resumePomodoroRun,
+  skipPomodoroBreak,
   startPomodoroBreak,
   startPomodoroFocus,
   stopPomodoroRun,
@@ -109,6 +111,43 @@ export async function stopPomodoroAction() {
     return {
       success: false as const,
       error: error instanceof Error ? error.message : "Could not stop.",
+    };
+  }
+}
+
+export async function skipPomodoroBreakAction(input?: {
+  transitionToken?: string | null;
+}) {
+  try {
+    const userId = await requirePomodoroUser();
+    const result = await skipPomodoroBreak(userId, input ?? {});
+    revalidatePomodoro();
+    return { success: true as const, ...result };
+  } catch (error) {
+    return {
+      success: false as const,
+      error:
+        error instanceof Error ? error.message : "Could not skip break.",
+    };
+  }
+}
+
+export async function adjustPomodoroRemainingAction(input: {
+  remainingSeconds?: number | null;
+  deltaSeconds?: number | null;
+}) {
+  try {
+    const userId = await requirePomodoroUser();
+    const result = await adjustPomodoroRemaining(userId, input);
+    revalidatePomodoro();
+    return { success: true as const, ...result };
+  } catch (error) {
+    return {
+      success: false as const,
+      error:
+        error instanceof Error
+          ? error.message
+          : "Could not adjust the timer.",
     };
   }
 }

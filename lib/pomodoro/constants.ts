@@ -23,6 +23,8 @@ export const POMODORO_OPEN_PATH = "/pomodoro";
 export const POMODORO_SETTINGS_PATH = "/settings/pomodoro?from=/pomodoro";
 export const POMODORO_NOTIFICATION_TAG = "planlet-pomodoro";
 export const POMODORO_NOTIFICATION_STORAGE_KEY = "pomodoro-notifications";
+/** localStorage: compact desktop/PWA timer layout on /pomodoro. */
+export const POMODORO_COMPACT_STORAGE_KEY = "planlet-pomodoro-compact";
 
 export type PomodoroPreferences = {
   focusDurationSeconds: number;

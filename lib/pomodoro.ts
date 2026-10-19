@@ -20,6 +20,7 @@ import {
   type SerializedPomodoroActiveRun,
   type SerializedPomodoroFocusLog,
 } from "@/lib/pomodoro/constants";
+import { computeAdjustedPomodoroTarget } from "@/lib/pomodoro/adjust-remaining";
 import {
   durationSecondsForPhase,
   nextBreakPhaseAfterFocus,
@@ -91,6 +92,18 @@ async function syncPomodoroPushSchedule(
   row: ActiveRunRow | null,
 ): Promise<void> {
   if (!row || row.status !== "running" || !row.startedAt || !row.transitionToken) {
+    await cancelPendingPomodoroPushJobs(userId);
+    return;
+  }
+
+  const elapsed = activeElapsedSecondsFromSession({
+    startedAt: row.startedAt,
+    pausedAt: row.pausedAt,
+    accumulatedPausedSeconds: row.accumulatedPausedSeconds,
+  });
+  const remaining = Math.max(0, row.targetDurationSeconds - elapsed);
+  if (remaining <= 0) {
+    // Zero remaining awaits an explicit Finish — do not fire completion push.
     await cancelPendingPomodoroPushJobs(userId);
     return;
   }
@@ -546,6 +559,16 @@ export async function resumePomodoroRun(
     );
   }
 
+  const elapsed = activeElapsedSecondsFromSession({
+    startedAt: existing.startedAt,
+    pausedAt: null,
+    accumulatedPausedSeconds: accumulated,
+    nowMs: now.getTime(),
+  });
+  if (elapsed >= existing.targetDurationSeconds) {
+    throw new PomodoroError("Use Finish to end this session.");
+  }
+
   const row = await prisma.pomodoroActiveRun.update({
     where: { userId },
     data: {
@@ -557,6 +580,181 @@ export async function resumePomodoroRun(
 
   await syncPomodoroPushSchedule(userId, row);
   return serializeActiveRun(row);
+}
+
+/**
+ * Adjust remaining time on a Focus/Break without restarting or changing defaults.
+ * Supports running, paused, and awaiting_next (ready to start).
+ * Preserves elapsed time by rewriting targetDurationSeconds.
+ * Zero remaining pauses a running session and cancels completion push until Finish.
+ */
+export async function adjustPomodoroRemaining(
+  userId: string,
+  input: {
+    remainingSeconds?: number | null;
+    deltaSeconds?: number | null;
+  },
+): Promise<{
+  activeRun: SerializedPomodoroActiveRun;
+  remainingSeconds: number;
+  requiresExplicitFinish: boolean;
+}> {
+  const existing = await getActiveRunRow(userId);
+
+  if (!existing) {
+    throw new PomodoroError("No active Pomodoro session.");
+  }
+
+  const isAwaiting = existing.status === "awaiting_next";
+  const isActive =
+    existing.status === "running" || existing.status === "paused";
+
+  if (!isAwaiting && !isActive) {
+    throw new PomodoroError("Start a session before adjusting the timer.");
+  }
+
+  if (isActive && !existing.startedAt) {
+    throw new PomodoroError("No active Pomodoro session.");
+  }
+
+  const nowMs = Date.now();
+  const elapsed =
+    isAwaiting || !existing.startedAt
+      ? 0
+      : activeElapsedSecondsFromSession({
+          startedAt: existing.startedAt,
+          pausedAt: existing.pausedAt,
+          accumulatedPausedSeconds: existing.accumulatedPausedSeconds,
+          nowMs,
+        });
+
+  let adjusted;
+  try {
+    adjusted = computeAdjustedPomodoroTarget({
+      activeElapsedSeconds: elapsed,
+      currentTargetDurationSeconds: existing.targetDurationSeconds,
+      remainingSeconds: input.remainingSeconds,
+      deltaSeconds: input.deltaSeconds,
+    });
+  } catch (error) {
+    throw new PomodoroError(
+      error instanceof Error ? error.message : "Invalid duration.",
+    );
+  }
+
+  // Awaiting sessions cannot finish at zero remaining — require at least 1 minute.
+  if (isAwaiting && adjusted.remainingSeconds <= 0) {
+    throw new PomodoroError("Set at least 1 minute before starting.");
+  }
+
+  const pauseForFinish =
+    adjusted.requiresExplicitFinish && existing.status === "running";
+
+  const row = await prisma.pomodoroActiveRun.update({
+    where: { userId },
+    data: {
+      targetDurationSeconds: adjusted.targetDurationSeconds,
+      ...(pauseForFinish
+        ? {
+            status: "paused" as const,
+            pausedAt: new Date(nowMs),
+          }
+        : {}),
+    },
+  });
+
+  await syncPomodoroPushSchedule(userId, row);
+
+  return {
+    activeRun: serializeActiveRun(row),
+    remainingSeconds: adjusted.remainingSeconds,
+    requiresExplicitFinish: adjusted.requiresExplicitFinish,
+  };
+}
+
+/**
+ * End a short/long break early and park on the next Focus phase (awaiting start).
+ * Does not auto-start focus, does not log the break, and cancels pending push jobs.
+ * Idempotent for stale tokens and when already awaiting the next focus.
+ */
+export async function skipPomodoroBreak(
+  userId: string,
+  options: { transitionToken?: string | null } = {},
+): Promise<{
+  activeRun: SerializedPomodoroActiveRun;
+  skipped: boolean;
+}> {
+  const preferences = await getPomodoroPreferences(userId);
+  const existing = await getActiveRunRow(userId);
+
+  if (!existing) {
+    throw new PomodoroError("No active Pomodoro session.");
+  }
+
+  const phase = asPhase(existing.phase);
+
+  if (existing.status === "awaiting_next" && phase === "focus") {
+    await cancelPendingPomodoroPushJobs(userId);
+    return {
+      activeRun: serializeActiveRun(existing),
+      skipped: false,
+    };
+  }
+
+  if (!isBreakPhase(phase)) {
+    throw new PomodoroError("Only breaks can be skipped.");
+  }
+
+  // running / paused active break, or awaiting_next break before Start break.
+  if (
+    existing.status !== "running" &&
+    existing.status !== "paused" &&
+    existing.status !== "awaiting_next"
+  ) {
+    throw new PomodoroError("No break to skip.");
+  }
+
+  if (
+    options.transitionToken &&
+    existing.transitionToken &&
+    options.transitionToken !== existing.transitionToken
+  ) {
+    return {
+      activeRun: serializeActiveRun(existing),
+      skipped: false,
+    };
+  }
+
+  const completedToken = existing.transitionToken;
+  const nextFocus = nextFocusStateAfterBreak({
+    phase,
+    focusIndex: existing.focusIndex,
+    completedFocusCount: existing.completedFocusCount,
+    sessionsBeforeLongBreak: preferences.sessionsBeforeLongBreak,
+  });
+
+  const row = await prisma.pomodoroActiveRun.update({
+    where: { userId },
+    data: {
+      phase: "focus",
+      status: "awaiting_next",
+      focusIndex: nextFocus.focusIndex,
+      completedFocusCount: nextFocus.completedFocusCount,
+      startedAt: null,
+      pausedAt: null,
+      accumulatedPausedSeconds: 0,
+      targetDurationSeconds: preferences.focusDurationSeconds,
+      transitionToken: randomUUID(),
+    },
+  });
+
+  await cancelPomodoroPushJobByToken(completedToken);
+  await cancelPendingPomodoroPushJobs(userId);
+
+  return {
+    activeRun: serializeActiveRun(row),
+    skipped: true,
+  };
 }
 
 export async function stopPomodoroRun(

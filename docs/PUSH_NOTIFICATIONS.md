@@ -192,6 +192,7 @@ Local completion cancels the pending push job for that phase. Both layers use a 
 3. Background push also needs `WEB_PUSH_*` env vars and a saved `/api/push/subscribe` subscription.
 4. Optional: Settings → Notifications (same subscription store).
 5. Use **Test notification** to verify permission / OS delivery without starting a Pomodoro.
+   Prefer `registration.showNotification()` via the active `/sw.js` worker (required while the Settings tab is focused — Chrome often suppresses `new Notification()` for focused pages). Success is reported only after `getNotifications({ tag })` confirms a visible notification entry. Development builds log structured diagnostics (permission, SW state, method, confirmation) without task titles.
 
 ### Local development vs Railway
 
@@ -250,3 +251,11 @@ Verified delivery depends on the OS and browser. Expect gaps when:
 - Battery / focus modes suppress notifications
 
 **Do not claim reliable background delivery until verified on the target desktop browsers, Android Chrome, and an installed iOS Home Screen PWA.** Manual checks should include: Planlet open, another tab active, browser minimized, phone locked, and installed PWA.
+
+### Compact desktop / PWA timer
+
+`/pomodoro` supports a **Compact mode** (toolbar control) for installed desktop PWAs and narrow windows (~320–380px): large monospace countdown, thin progress bar, essential controls only, app chrome hidden. Preference persists in `localStorage`. Escape returns to standard view.
+
+**Window sizing:** Installed Chromium PWAs (`display: standalone`) can usually be resized by the user. Planlet cannot programmatically set or lock window size from the web app.
+
+**Future (not implemented):** Document Picture-in-Picture could float just the timer over other apps where the API is available; treat as a separate enhancement.

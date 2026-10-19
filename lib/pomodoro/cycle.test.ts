@@ -95,6 +95,31 @@ describe("pomodoro cycle", () => {
     );
   });
 
+  it("preserves completed focus count when skipping a short break", () => {
+    // Skip mid-cycle short break → next focus index advances, history count stays.
+    assert.deepEqual(
+      nextFocusStateAfterBreak({
+        phase: "short_break",
+        focusIndex: 1,
+        completedFocusCount: 1,
+        sessionsBeforeLongBreak: 4,
+      }),
+      { focusIndex: 2, completedFocusCount: 1 },
+    );
+  });
+
+  it("resets the cycle when skipping a long break", () => {
+    assert.deepEqual(
+      nextFocusStateAfterBreak({
+        phase: "long_break",
+        focusIndex: 4,
+        completedFocusCount: 4,
+        sessionsBeforeLongBreak: 4,
+      }),
+      { focusIndex: 1, completedFocusCount: 0 },
+    );
+  });
+
   it("exposes calm phase labels", () => {
     assert.equal(phaseLabel("focus"), "Focus");
     assert.equal(phaseLabel("short_break"), "Short break");

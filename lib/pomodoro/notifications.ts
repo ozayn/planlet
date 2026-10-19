@@ -8,6 +8,7 @@ import {
 import {
   getExistingPushSubscription,
   getPushSupportIssue,
+  getServiceWorkerRegistrationState,
   isSecurePushContext,
   registerPushServiceWorker,
   subscriptionToJson,
@@ -20,6 +21,39 @@ export type PomodoroNotificationCopy = {
   title: string;
   body: string;
   kind: PomodoroNotificationKind;
+};
+
+export type PomodoroNotificationMethod =
+  | "service-worker"
+  | "notification-constructor"
+  | "none";
+
+export type PomodoroNotificationDelivery = {
+  /** Browser accepted the show request without throwing. */
+  accepted: boolean;
+  /** A notification with the expected tag was found via getNotifications(). */
+  confirmed: boolean;
+  method: PomodoroNotificationMethod;
+  error?: string;
+};
+
+export type PomodoroNotificationDiagnostics = {
+  permission: NotificationPermission | "unsupported";
+  secureContext: boolean;
+  documentHidden: boolean;
+  serviceWorker: {
+    supported: boolean;
+    controller: boolean;
+    registration: boolean;
+    active: boolean;
+    scope: string | null;
+  };
+  pushSubscription: boolean | null;
+  method: PomodoroNotificationMethod;
+  accepted: boolean;
+  confirmed: boolean;
+  getNotificationsCount: number;
+  error?: string;
 };
 
 export function getPomodoroNotificationCopy(
@@ -103,6 +137,323 @@ export function claimPomodoroNotificationDelivery(
     return true;
   } catch {
     return true;
+  }
+}
+
+function logPomodoroNotificationDiagnostics(
+  diagnostics: PomodoroNotificationDiagnostics,
+) {
+  if (process.env.NODE_ENV !== "development") {
+    return;
+  }
+
+  console.info("[pomodoro-notification]", {
+    permission: diagnostics.permission,
+    secureContext: diagnostics.secureContext,
+    documentHidden: diagnostics.documentHidden,
+    serviceWorker: diagnostics.serviceWorker,
+    pushSubscription: diagnostics.pushSubscription,
+    method: diagnostics.method,
+    accepted: diagnostics.accepted,
+    confirmed: diagnostics.confirmed,
+    getNotificationsCount: diagnostics.getNotificationsCount,
+    error: diagnostics.error,
+  });
+}
+
+async function collectBaseDiagnostics(): Promise<
+  Omit<
+    PomodoroNotificationDiagnostics,
+    | "method"
+    | "accepted"
+    | "confirmed"
+    | "getNotificationsCount"
+    | "error"
+  >
+> {
+  const sw = await getServiceWorkerRegistrationState();
+  let pushSubscription: boolean | null = null;
+
+  try {
+    if (sw.supported && sw.active) {
+      pushSubscription = Boolean(await getExistingPushSubscription());
+    }
+  } catch {
+    pushSubscription = null;
+  }
+
+  return {
+    permission: getPomodoroNotificationPermission(),
+    secureContext: isSecurePushContext(),
+    documentHidden:
+      typeof document !== "undefined" ? document.visibilityState === "hidden" : false,
+    serviceWorker: sw,
+    pushSubscription,
+  };
+}
+
+async function countNotificationsWithTag(
+  registration: ServiceWorkerRegistration,
+  tag: string,
+): Promise<number> {
+  try {
+    // Allow the browser a tick to register the notification.
+    await new Promise<void>((resolve) => {
+      window.setTimeout(resolve, 50);
+    });
+    const notifications = await registration.getNotifications({ tag });
+    return notifications.length;
+  } catch {
+    return 0;
+  }
+}
+
+async function showViaServiceWorker(input: {
+  title: string;
+  body: string;
+  kind: PomodoroNotificationKind | "test";
+  tag: string;
+  renotify: boolean;
+  requireInteraction: boolean;
+}): Promise<PomodoroNotificationDelivery & { getNotificationsCount: number }> {
+  const registration = await registerPushServiceWorker();
+
+  if (!registration.active) {
+    return {
+      accepted: false,
+      confirmed: false,
+      method: "none",
+      getNotificationsCount: 0,
+      error: "Service worker is registered but not active.",
+    };
+  }
+
+  try {
+    const existing = await registration.getNotifications({ tag: input.tag });
+    await Promise.all(existing.map((notification) => notification.close()));
+  } catch {
+    // Best-effort cleanup before showing a fresh test/phase alert.
+  }
+
+  const options = {
+    body: input.body,
+    tag: input.tag,
+    renotify: input.renotify,
+    requireInteraction: input.requireInteraction,
+    icon: "/icon-192.png",
+    badge: "/icon-192.png",
+    data: {
+      url: POMODORO_OPEN_PATH,
+      kind: input.kind,
+    },
+  } as NotificationOptions;
+
+  await registration.showNotification(input.title, options);
+  const count = await countNotificationsWithTag(registration, input.tag);
+
+  return {
+    accepted: true,
+    confirmed: count > 0,
+    method: "service-worker",
+    getNotificationsCount: count,
+    error:
+      count > 0
+        ? undefined
+        : "Browser accepted the notification, but none is visible yet. Check Focus / Do Not Disturb and site notification settings.",
+  };
+}
+
+async function showViaNotificationConstructor(input: {
+  title: string;
+  body: string;
+  kind: PomodoroNotificationKind | "test";
+  tag: string;
+  renotify: boolean;
+  requireInteraction: boolean;
+}): Promise<PomodoroNotificationDelivery & { getNotificationsCount: number }> {
+  const options = {
+    body: input.body,
+    tag: input.tag,
+    renotify: input.renotify,
+    requireInteraction: input.requireInteraction,
+    icon: "/icon-192.png",
+    badge: "/icon-192.png",
+    data: {
+      url: POMODORO_OPEN_PATH,
+      kind: input.kind,
+    },
+  } as NotificationOptions;
+
+  const notification = new Notification(input.title, options);
+
+  // Chrome often suppresses constructor notifications while the tab is focused.
+  let confirmed = false;
+  let count = 0;
+  try {
+    if ("serviceWorker" in navigator) {
+      const registration =
+        (await navigator.serviceWorker.getRegistration("/")) ??
+        (await navigator.serviceWorker.getRegistration());
+      if (registration) {
+        count = await countNotificationsWithTag(registration, input.tag);
+        confirmed = count > 0;
+      }
+    }
+  } catch {
+    // Keep accepted=true; confirmation unknown.
+  }
+
+  if (!confirmed && typeof document !== "undefined" && !document.hidden) {
+    notification.close();
+    return {
+      accepted: true,
+      confirmed: false,
+      method: "notification-constructor",
+      getNotificationsCount: count,
+      error:
+        "Chrome may hide page notifications while this tab is focused. Enable the service worker path or check OS Focus settings.",
+    };
+  }
+
+  return {
+    accepted: true,
+    confirmed,
+    method: "notification-constructor",
+    getNotificationsCount: count,
+  };
+}
+
+async function showBrowserNotification(input: {
+  title: string;
+  body: string;
+  kind: PomodoroNotificationKind | "test";
+  tag: string;
+  renotify?: boolean;
+  requireInteraction?: boolean;
+}): Promise<
+  PomodoroNotificationDelivery & {
+    diagnostics: PomodoroNotificationDiagnostics;
+  }
+> {
+  const base = await collectBaseDiagnostics();
+  const renotify = input.renotify ?? false;
+  const requireInteraction = input.requireInteraction ?? false;
+
+  if (typeof window === "undefined" || !("Notification" in window)) {
+    const diagnostics: PomodoroNotificationDiagnostics = {
+      ...base,
+      method: "none",
+      accepted: false,
+      confirmed: false,
+      getNotificationsCount: 0,
+      error: "This browser does not support notifications.",
+    };
+    logPomodoroNotificationDiagnostics(diagnostics);
+    return {
+      accepted: false,
+      confirmed: false,
+      method: "none",
+      error: diagnostics.error,
+      diagnostics,
+    };
+  }
+
+  if (Notification.permission !== "granted") {
+    const diagnostics: PomodoroNotificationDiagnostics = {
+      ...base,
+      method: "none",
+      accepted: false,
+      confirmed: false,
+      getNotificationsCount: 0,
+      error: "Notification permission is not granted.",
+    };
+    logPomodoroNotificationDiagnostics(diagnostics);
+    return {
+      accepted: false,
+      confirmed: false,
+      method: "none",
+      error: diagnostics.error,
+      diagnostics,
+    };
+  }
+
+  let swError: string | undefined;
+
+  if ("serviceWorker" in navigator) {
+    try {
+      const viaSw = await showViaServiceWorker({
+        title: input.title,
+        body: input.body,
+        kind: input.kind,
+        tag: input.tag,
+        renotify,
+        requireInteraction,
+      });
+
+      const diagnostics: PomodoroNotificationDiagnostics = {
+        ...(await collectBaseDiagnostics()),
+        method: viaSw.method,
+        accepted: viaSw.accepted,
+        confirmed: viaSw.confirmed,
+        getNotificationsCount: viaSw.getNotificationsCount,
+        error: viaSw.error,
+      };
+      logPomodoroNotificationDiagnostics(diagnostics);
+
+      if (viaSw.confirmed || viaSw.accepted) {
+        return { ...viaSw, diagnostics };
+      }
+
+      swError = viaSw.error;
+    } catch (error) {
+      swError =
+        error instanceof Error
+          ? error.message
+          : "Service worker notification failed.";
+    }
+  }
+
+  try {
+    const viaCtor = await showViaNotificationConstructor({
+      title: input.title,
+      body: input.body,
+      kind: input.kind,
+      tag: input.tag,
+      renotify,
+      requireInteraction,
+    });
+
+    const diagnostics: PomodoroNotificationDiagnostics = {
+      ...(await collectBaseDiagnostics()),
+      method: viaCtor.method,
+      accepted: viaCtor.accepted,
+      confirmed: viaCtor.confirmed,
+      getNotificationsCount: viaCtor.getNotificationsCount,
+      error: viaCtor.error ?? swError,
+    };
+    logPomodoroNotificationDiagnostics(diagnostics);
+    return { ...viaCtor, diagnostics };
+  } catch (error) {
+    const message =
+      error instanceof Error
+        ? error.message
+        : "Could not show a notification in this browser.";
+    const diagnostics: PomodoroNotificationDiagnostics = {
+      ...(await collectBaseDiagnostics()),
+      method: "none",
+      accepted: false,
+      confirmed: false,
+      getNotificationsCount: 0,
+      error: swError ? `${swError} Fallback failed: ${message}` : message,
+    };
+    logPomodoroNotificationDiagnostics(diagnostics);
+    return {
+      accepted: false,
+      confirmed: false,
+      method: "none",
+      error: diagnostics.error,
+      diagnostics,
+    };
   }
 }
 
@@ -204,56 +555,6 @@ export async function ensurePomodoroWebPushSubscription(): Promise<{
   }
 }
 
-async function showBrowserNotification(input: {
-  title: string;
-  body: string;
-  kind: PomodoroNotificationKind | "test";
-  tag: string;
-}): Promise<boolean> {
-  if (typeof window === "undefined" || !("Notification" in window)) {
-    return false;
-  }
-
-  if (Notification.permission !== "granted") {
-    return false;
-  }
-
-  const options = {
-    body: input.body,
-    tag: input.tag,
-    renotify: false,
-    icon: "/icon-192.png",
-    badge: "/icon-192.png",
-    data: {
-      url: POMODORO_OPEN_PATH,
-      kind: input.kind,
-    },
-  } as NotificationOptions;
-
-  try {
-    let registration: ServiceWorkerRegistration | undefined;
-    if ("serviceWorker" in navigator) {
-      registration =
-        (await navigator.serviceWorker.getRegistration()) ??
-        (await registerPushServiceWorker().catch(() => undefined));
-    }
-
-    if (registration?.showNotification) {
-      await registration.showNotification(input.title, options);
-      return true;
-    }
-  } catch {
-    // Fall through to Notification constructor.
-  }
-
-  try {
-    new Notification(input.title, options);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 export async function showPomodoroPhaseNotification(input: {
   kind: PomodoroNotificationKind;
   enabled: boolean;
@@ -268,12 +569,16 @@ export async function showPomodoroPhaseNotification(input: {
   }
 
   const copy = getPomodoroNotificationCopy(input.kind);
-  return showBrowserNotification({
+  const result = await showBrowserNotification({
     title: copy.title,
     body: copy.body,
     kind: copy.kind,
     tag: pomodoroNotificationTagForPhase(input.transitionToken),
+    renotify: false,
+    requireInteraction: false,
   });
+
+  return result.confirmed || result.accepted;
 }
 
 /**
@@ -281,13 +586,17 @@ export async function showPomodoroPhaseNotification(input: {
  */
 export async function showTestPomodoroNotification(): Promise<{
   ok: boolean;
+  /** True only when a notification with the test tag was found after show. */
+  confirmed: boolean;
   permission: NotificationPermission | "unsupported";
   error?: string;
+  diagnostics?: PomodoroNotificationDiagnostics;
 }> {
   const supportIssue = getPomodoroNotificationSupportIssue();
   if (supportIssue) {
     return {
       ok: false,
+      confirmed: false,
       permission: getPomodoroNotificationPermission(),
       error: supportIssue,
     };
@@ -297,6 +606,7 @@ export async function showTestPomodoroNotification(): Promise<{
   if (permission === "unsupported") {
     return {
       ok: false,
+      confirmed: false,
       permission,
       error: "This browser does not support notifications.",
     };
@@ -309,6 +619,7 @@ export async function showTestPomodoroNotification(): Promise<{
   if (permission !== "granted") {
     return {
       ok: false,
+      confirmed: false,
       permission,
       error:
         permission === "denied"
@@ -317,20 +628,43 @@ export async function showTestPomodoroNotification(): Promise<{
     };
   }
 
-  const shown = await showBrowserNotification({
+  // Unique tag so repeated tests reappear; renotify keeps the banner visible.
+  const tag = `${POMODORO_NOTIFICATION_TAG}-test-${Date.now()}`;
+  const result = await showBrowserNotification({
     title: "Focus complete",
     body: "Time for a short break.",
     kind: "test",
-    tag: `${POMODORO_NOTIFICATION_TAG}-test`,
+    tag,
+    renotify: true,
+    requireInteraction: true,
   });
 
-  if (!shown) {
+  if (!result.accepted) {
     return {
       ok: false,
+      confirmed: false,
       permission,
-      error: "Could not show a notification in this browser.",
+      error: result.error ?? "Could not show a notification in this browser.",
+      diagnostics: result.diagnostics,
     };
   }
 
-  return { ok: true, permission };
+  if (!result.confirmed) {
+    return {
+      ok: false,
+      confirmed: false,
+      permission,
+      error:
+        result.error ??
+        "Notification request was accepted, but nothing is visible. Check Focus / Do Not Disturb and Chrome notification settings for Planlet.",
+      diagnostics: result.diagnostics,
+    };
+  }
+
+  return {
+    ok: true,
+    confirmed: true,
+    permission,
+    diagnostics: result.diagnostics,
+  };
 }

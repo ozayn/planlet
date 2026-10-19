@@ -3898,6 +3898,45 @@ body {
   margin-inline: 0;
 }
 
+/* Countdown-as-button: plain digits; subtle hover/focus only. */
+.ui-pomodoro-clock-action {
+  margin: 0;
+  padding: 0.2em 0.35em;
+  border: none;
+  border-radius: 0.4rem;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    background-color 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.ui-pomodoro-clock-action:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--foreground) 5%, transparent);
+}
+
+.ui-pomodoro-clock-action:focus {
+  outline: none;
+}
+
+.ui-pomodoro-clock-action:focus-visible {
+  background: color-mix(in srgb, var(--foreground) 6%, transparent);
+  box-shadow: 0 0 0 2px var(--focus-ring-subtle);
+}
+
+.ui-pomodoro-clock-action:disabled {
+  cursor: default;
+  opacity: 1;
+}
+
+.ui-pomodoro-adjust-popover {
+  width: 100%;
+  max-width: min(100%, 20rem);
+}
+
 .ui-pomodoro-controls {
   display: flex;
   width: 100%;
@@ -3907,6 +3946,12 @@ body {
   gap: 0.5rem;
 }
 
+.ui-pomodoro-controls .ui-btn-primary,
+.ui-pomodoro-controls .ui-btn-secondary {
+  min-height: 2.75rem;
+  min-width: 7.5rem;
+}
+
 .ui-pomodoro-dots {
   display: flex;
   align-items: center;
@@ -3914,31 +3959,123 @@ body {
   gap: 0.5rem;
 }
 
-.ui-pomodoro-focus-mode {
-  padding-block-start: 0.5rem;
+/* Compact desktop/PWA timer: hide app chrome while /pomodoro owns the window. */
+html[data-pomodoro-compact="true"] .ui-desktop-topnav,
+html[data-pomodoro-compact="true"] .ui-mobile-app-bar,
+html[data-pomodoro-compact="true"] .ui-bottom-nav,
+html[data-pomodoro-compact="true"] .ui-app-nav-sidebar,
+html[data-pomodoro-compact="true"] .ui-activity-timer-floating-pill {
+  display: none !important;
 }
 
-.ui-pomodoro-focus-mode .ui-pomodoro-ring {
-  width: min(80vw, 18rem);
+html[data-pomodoro-compact="true"] .ui-app-main {
+  max-width: none;
+  padding: 0.5rem;
+  padding-bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+.ui-pomodoro-compact {
+  display: flex;
+  min-height: 100dvh;
+  width: 100%;
+  max-width: 24rem;
+  margin-inline: auto;
+  flex-direction: column;
+  overflow-x: hidden;
+  padding-inline: 0.75rem;
+  padding-block: 0.5rem calc(0.75rem + env(safe-area-inset-bottom, 0px));
+}
+
+.ui-pomodoro-compact-stage {
+  display: flex;
+  flex: 1;
+  width: 100%;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.875rem;
+  text-align: center;
+}
+
+.ui-pomodoro-compact-phase {
+  font-size: var(--density-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.ui-pomodoro-compact-clock {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas,
+    "Liberation Mono", "Courier New", monospace;
+  font-size: clamp(2.75rem, 18vw, 3.75rem);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--foreground);
+}
+
+.ui-pomodoro-compact-progress {
+  width: min(100%, 14rem);
+  height: 0.1875rem;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--border-soft);
+}
+
+.ui-pomodoro-compact-progress-fill {
+  height: 100%;
+  border-radius: inherit;
+  background: var(--foreground);
+  transition: width 200ms linear;
+}
+
+.ui-pomodoro-compact-controls {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.ui-pomodoro-compact-controls .ui-btn-primary,
+.ui-pomodoro-compact-controls .ui-btn-secondary {
+  min-height: 2.75rem;
+  min-width: 5.25rem;
+  max-width: 100%;
+  padding-inline: 0.875rem;
+  font-size: var(--density-text-sm);
+}
+
+.ui-pomodoro-compact-meta {
+  max-width: 100%;
+  font-size: var(--density-text-xs);
+  color: var(--muted);
+}
+
+.ui-pomodoro-compact-task {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--density-text-sm);
+  font-weight: 500;
+  color: var(--foreground);
 }
 
 @media (min-width: 640px) {
   .ui-pomodoro-ring {
     width: min(100%, 16.5rem);
   }
-
-  .ui-pomodoro-focus-mode .ui-pomodoro-ring {
-    width: min(100%, 20rem);
-  }
 }
 
 @media (min-width: 768px) {
   .ui-pomodoro-ring {
     width: min(100%, 18rem);
-  }
-
-  .ui-pomodoro-focus-mode .ui-pomodoro-ring {
-    width: min(100%, 22rem);
   }
 }
 

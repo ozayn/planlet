@@ -11,6 +11,7 @@ import {
   getPomodoroNotificationSupportIssue,
   requestPomodoroNotificationPermission,
   showTestPomodoroNotification,
+  type PomodoroNotificationDiagnostics,
 } from "@/lib/pomodoro/notifications";
 import {
   secondsToMinutes,
@@ -106,6 +107,9 @@ export function PomodoroSettings({
     NotificationPermission | "unsupported"
   >("default");
   const [supportIssue, setSupportIssue] = useState<string | null>(null);
+  const [diagnostics, setDiagnostics] =
+    useState<PomodoroNotificationDiagnostics | null>(null);
+  const showDiagnostics = process.env.NODE_ENV === "development";
 
   useEffect(() => {
     setPermission(getPomodoroNotificationPermission());
@@ -175,14 +179,18 @@ export function PomodoroSettings({
   function handleTestNotification() {
     setError(null);
     setStatus(null);
+    setDiagnostics(null);
     startTransition(async () => {
       const result = await showTestPomodoroNotification();
       setPermission(result.permission);
+      if (result.diagnostics) {
+        setDiagnostics(result.diagnostics);
+      }
       if (!result.ok) {
         setError(result.error ?? "Could not show a test notification.");
         return;
       }
-      setStatus("Test notification sent.");
+      setStatus("Notification shown.");
     });
   }
 
@@ -300,8 +308,37 @@ export function PomodoroSettings({
         </div>
       </div>
 
-      {status ? <p className="text-sm text-muted">{status}</p> : null}
-      {error ? <p className="text-sm text-accent-red">{error}</p> : null}
+      {status ? (
+        <p className="text-sm text-muted" role="status">
+          {status}
+        </p>
+      ) : null}
+      {error ? (
+        <p className="text-sm text-accent-red" role="alert">
+          {error}
+        </p>
+      ) : null}
+
+      {showDiagnostics && diagnostics ? (
+        <pre className="overflow-x-auto rounded-lg border border-border-soft bg-surface-muted p-3 text-[length:var(--density-text-caption)] text-muted">
+          {JSON.stringify(
+            {
+              permission: diagnostics.permission,
+              secureContext: diagnostics.secureContext,
+              documentHidden: diagnostics.documentHidden,
+              serviceWorker: diagnostics.serviceWorker,
+              pushSubscription: diagnostics.pushSubscription,
+              method: diagnostics.method,
+              accepted: diagnostics.accepted,
+              confirmed: diagnostics.confirmed,
+              getNotificationsCount: diagnostics.getNotificationsCount,
+              error: diagnostics.error,
+            },
+            null,
+            2,
+          )}
+        </pre>
+      ) : null}
     </div>
   );
 }
