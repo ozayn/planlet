@@ -39,15 +39,18 @@ describe("pomodoro push job scheduling math", () => {
   });
 
   it("builds generic payloads without task titles", () => {
-    const focus = buildPomodoroPushPayload("focus");
+    const focus = buildPomodoroPushPayload("focus", "token-abc");
     assert.equal(focus.title, "Focus complete");
-    assert.equal(focus.body, "Time for a break.");
+    assert.equal(focus.body, "Time for a short break.");
     assert.equal(focus.url, POMODORO_OPEN_PATH);
     assert.equal(focus.kind, "focus-complete");
+    assert.equal(focus.tag, "planlet-pomodoro-token-abc");
     assert.doesNotMatch(focus.body, /task|planlet development/i);
 
     const brk = buildPomodoroPushPayload("short_break");
     assert.equal(brk.kind, "break-complete");
+    assert.equal(brk.body, "Ready for another focus session?");
     assert.equal(brk.url, POMODORO_OPEN_PATH);
+    assert.equal(brk.tag, "planlet-pomodoro");
   });
 });

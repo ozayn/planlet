@@ -36,7 +36,10 @@ import {
   type SerializedPomodoroActiveRun,
 } from "@/lib/pomodoro/constants";
 import { cycleDotsState, phaseLabel } from "@/lib/pomodoro/cycle";
-import { playPomodoroCompletionFeedback } from "@/lib/pomodoro/feedback";
+import {
+  playPomodoroCompletionFeedback,
+  warmPomodoroCompletionAudio,
+} from "@/lib/pomodoro/feedback";
 import { formatPomodoroFocusedSummary } from "@/lib/pomodoro/format";
 import { showPomodoroPhaseNotification } from "@/lib/pomodoro/notifications";
 import { secondsToMinutes } from "@/lib/pomodoro/preferences";
@@ -440,11 +443,8 @@ export function PomodoroPage({ data }: PomodoroPageProps) {
     }
 
     const current = runRef.current;
-    if (
-      !current ||
-      current.status === "awaiting_next" ||
-      (current.status !== "running" && current.status !== "paused")
-    ) {
+    // Paused / awaiting sessions must not auto-complete or notify.
+    if (!current || current.status !== "running") {
       return;
     }
 
@@ -461,14 +461,17 @@ export function PomodoroPage({ data }: PomodoroPageProps) {
       }
 
       setRun(result.activeRun);
-      playPomodoroCompletionFeedback(preferences.completionSound);
-      void showPomodoroPhaseNotification({
-        kind:
-          result.completedPhase === "focus"
-            ? "focus-complete"
-            : "break-complete",
-        enabled: preferences.notificationsEnabled,
-      });
+      if (result.didComplete) {
+        playPomodoroCompletionFeedback(preferences.completionSound);
+        void showPomodoroPhaseNotification({
+          kind:
+            result.completedPhase === "focus"
+              ? "focus-complete"
+              : "break-complete",
+          enabled: preferences.notificationsEnabled,
+          transitionToken: result.completedTransitionToken,
+        });
+      }
       router.refresh();
     })();
   }, [
@@ -483,7 +486,7 @@ export function PomodoroPage({ data }: PomodoroPageProps) {
     const reconcile = () => {
       startTransition(async () => {
         const result = await reconcilePomodoroAction();
-        if (result.success && result.result) {
+        if (result.success && result.result?.didComplete) {
           setRun(result.result.activeRun);
           playPomodoroCompletionFeedback(preferences.completionSound);
           void showPomodoroPhaseNotification({
@@ -492,8 +495,11 @@ export function PomodoroPage({ data }: PomodoroPageProps) {
                 ? "focus-complete"
                 : "break-complete",
             enabled: preferences.notificationsEnabled,
+            transitionToken: result.result.completedTransitionToken,
           });
           router.refresh();
+        } else if (result.success && result.result?.activeRun) {
+          setRun(result.result.activeRun);
         }
       });
     };
@@ -593,6 +599,7 @@ export function PomodoroPage({ data }: PomodoroPageProps) {
   );
 
   function handleStartFocus() {
+    warmPomodoroCompletionAudio();
     runAction(async () => {
       const result = await startPomodoroFocusAction({
         taskId: taskId || null,
@@ -608,6 +615,7 @@ export function PomodoroPage({ data }: PomodoroPageProps) {
   }
 
   function handleStartBreak() {
+    warmPomodoroCompletionAudio();
     runAction(async () => {
       const result = await startPomodoroBreakAction();
       if (!result.success) {
@@ -631,6 +639,7 @@ export function PomodoroPage({ data }: PomodoroPageProps) {
   }
 
   function handleResume() {
+    warmPomodoroCompletionAudio();
     runAction(async () => {
       const result = await resumePomodoroAction();
       if (!result.success) {

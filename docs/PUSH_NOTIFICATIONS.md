@@ -176,15 +176,41 @@ Safari tabs that are not installed as a Home Screen app cannot receive Web Push.
 
 ---
 
-## Pomodoro completion push
+## Pomodoro completion notifications
 
-Pomodoro can schedule a **one-shot Web Push** when a focus or break phase starts. The send time is stored in Postgres (`PomodoroPushJob`) and processed by the same Railway reminders cron worker — not by an in-memory `setTimeout`.
+Pomodoro uses **two layers**:
+
+1. **Local browser notification** — when Planlet is open (or the timer tab can still run JS), the client shows a system notification on phase complete via the service worker / Notification API. This works on `localhost` without Railway.
+2. **Web Push (`PomodoroPushJob`)** — when a focus or break phase starts, Planlet schedules a one-shot push in Postgres. The Railway reminders cron delivers it if the browser was backgrounded or closed.
+
+Local completion cancels the pending push job for that phase. Both layers use a token-scoped notification `tag` and client-side delivery claims so the same phase does not produce duplicate alerts.
 
 ### Opt-in
 
-1. Settings → Pomodoro → **Completion notifications** (requests permission only after the toggle; registers `/api/push/subscribe`).
-2. Web Push must be configured (`WEB_PUSH_*` env vars).
-3. Optional: Settings → Notifications → phone notifications (same subscription store).
+1. Settings → Pomodoro → **Notifications → Enable** (requests permission only after the user gesture).
+2. Local alerts work as soon as permission is granted — even if Web Push keys are missing.
+3. Background push also needs `WEB_PUSH_*` env vars and a saved `/api/push/subscribe` subscription.
+4. Optional: Settings → Notifications (same subscription store).
+5. Use **Test notification** to verify permission / OS delivery without starting a Pomodoro.
+
+### Local development vs Railway
+
+| Surface | Local `localhost` | Production (Railway) |
+|---------|-------------------|----------------------|
+| Timer completion while tab open / runnable | Client local notification | Same |
+| Web Push job row in Postgres | Written to **local** DB | Written to **prod** DB |
+| Reminders / Pomodoro push cron | Does **not** run unless you start it | `planlet-reminders` cron |
+
+The Railway reminders cron **never** reads your local Postgres. Background push for a local session only fires if you run the cron against that same local database:
+
+```bash
+# Optional: configure WEB_PUSH_* in .env, enable Notifications, start a short Pomodoro
+npm run cron:reminders
+# or
+npm run cron:reminders:debug
+```
+
+Without that, rely on the in-browser completion path (and **Test notification**) when developing locally.
 
 ### Lifecycle
 
@@ -200,7 +226,7 @@ Jobs are unique on `transitionToken` so a phase can produce at most one successf
 
 ### Payload (generic — no task titles)
 
-- Focus: title `Focus complete`, body `Time for a break.`, url `/pomodoro`, kind `focus-complete`
+- Focus: title `Focus complete`, body `Time for a short break.`, url `/pomodoro`, kind `focus-complete`
 - Break: title `Break complete`, body `Ready for another focus session?`, url `/pomodoro`, kind `break-complete`
 
 ### Cron schedule recommendation

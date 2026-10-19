@@ -17,7 +17,7 @@ export async function runPomodoroPushCron(options?: {
           transitionToken,
         });
         return {
-          completed: true,
+          completed: completion.didComplete,
           phase: completion.completedPhase,
         };
       } catch (error) {

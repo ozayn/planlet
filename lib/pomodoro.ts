@@ -613,6 +613,10 @@ export async function stopPomodoroRun(
 export type CompletePomodoroPhaseResult = {
   activeRun: SerializedPomodoroActiveRun | null;
   completedPhase: PomodoroPhase;
+  /** Token for the phase that just finished; null when nothing completed. */
+  completedTransitionToken: string | null;
+  /** False when the phase was already completed (idempotent / other tab). */
+  didComplete: boolean;
   savedFocus: boolean;
   underMinimum: boolean;
   autoStartedNext: boolean;
@@ -638,6 +642,8 @@ export async function completePomodoroPhase(
     return {
       activeRun: serializeActiveRun(existing),
       completedPhase: asPhase(existing.phase),
+      completedTransitionToken: null,
+      didComplete: false,
       savedFocus: false,
       underMinimum: false,
       autoStartedNext: false,
@@ -653,6 +659,8 @@ export async function completePomodoroPhase(
     return {
       activeRun: serializeActiveRun(existing),
       completedPhase: asPhase(existing.phase),
+      completedTransitionToken: null,
+      didComplete: false,
       savedFocus: false,
       underMinimum: false,
       autoStartedNext: false,
@@ -733,6 +741,8 @@ export async function completePomodoroPhase(
       return {
         activeRun: serializeActiveRun(row),
         completedPhase: phase,
+        completedTransitionToken: completedToken,
+        didComplete: true,
         savedFocus,
         underMinimum,
         autoStartedNext: true,
@@ -766,6 +776,8 @@ export async function completePomodoroPhase(
     return {
       activeRun: serializeActiveRun(row),
       completedPhase: phase,
+      completedTransitionToken: completedToken,
+      didComplete: true,
       savedFocus,
       underMinimum,
       autoStartedNext: true,
@@ -812,6 +824,8 @@ export async function completePomodoroPhase(
   return {
     activeRun: serializeActiveRun(row),
     completedPhase: phase,
+    completedTransitionToken: completedToken,
+    didComplete: true,
     savedFocus,
     underMinimum,
     autoStartedNext: false,

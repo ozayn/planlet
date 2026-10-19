@@ -45,18 +45,25 @@ export function computePomodoroPushSendAt(input: {
   return new Date(nowMs + remainingSeconds * 1000);
 }
 
-export function buildPomodoroPushPayload(phase: PomodoroPhase): PushPayload {
+export function buildPomodoroPushPayload(
+  phase: PomodoroPhase,
+  transitionToken?: string | null,
+): PushPayload {
   const isFocus = phase === "focus";
+  const token = transitionToken?.trim();
 
   return {
     title: isFocus ? "Focus complete" : "Break complete",
     // Generic copy only — never include task titles or personal notes.
     body: isFocus
-      ? "Time for a break."
+      ? "Time for a short break."
       : "Ready for another focus session?",
     url: POMODORO_OPEN_PATH,
     kind: isFocus ? "focus-complete" : "break-complete",
-    tag: POMODORO_NOTIFICATION_TAG,
+    // Token-scoped tag coalesces local + push duplicates for the same phase.
+    tag: token
+      ? `${POMODORO_NOTIFICATION_TAG}-${token}`
+      : POMODORO_NOTIFICATION_TAG,
   };
 }
 
@@ -247,7 +254,10 @@ export async function dispatchDuePomodoroPushJobs(
         }
       }
 
-      const payload = buildPomodoroPushPayload(asPhase(job.phase));
+      const payload = buildPomodoroPushPayload(
+        asPhase(job.phase),
+        job.transitionToken,
+      );
       const pushResult = await sendPush(job.userId, payload);
       result.staleRemoved += pushResult.staleRemoved;
 

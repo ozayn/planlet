@@ -107,7 +107,9 @@ describe("Pomodoro feature wiring", () => {
     assert.match(pushJobs, /schedulePomodoroPhasePush/);
     assert.match(pushJobs, /dispatchDuePomodoroPushJobs/);
     assert.match(sw, /kind: payload\.kind/);
-    assert.match(docs, /Pomodoro completion push/);
+    assert.match(docs, /Pomodoro completion notifications/);
+    assert.match(docs, /Local development vs Railway/);
     assert.match(docs, /Do not claim reliable background delivery/);
+    assert.match(docs, /Test notification/);
   });
 });

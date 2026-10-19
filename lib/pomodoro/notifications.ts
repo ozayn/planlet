@@ -1,12 +1,14 @@
 "use client";
 
 import {
+  POMODORO_NOTIFICATION_STORAGE_KEY,
   POMODORO_NOTIFICATION_TAG,
   POMODORO_OPEN_PATH,
 } from "@/lib/pomodoro/constants";
 import {
   getExistingPushSubscription,
   getPushSupportIssue,
+  isSecurePushContext,
   registerPushServiceWorker,
   subscriptionToJson,
   urlBase64ToUint8Array,
@@ -14,49 +16,116 @@ import {
 
 export type PomodoroNotificationKind = "focus-complete" | "break-complete";
 
+export type PomodoroNotificationCopy = {
+  title: string;
+  body: string;
+  kind: PomodoroNotificationKind;
+};
+
+export function getPomodoroNotificationCopy(
+  kind: PomodoroNotificationKind,
+): PomodoroNotificationCopy {
+  if (kind === "focus-complete") {
+    return {
+      title: "Focus complete",
+      body: "Time for a short break.",
+      kind,
+    };
+  }
+
+  return {
+    title: "Break complete",
+    body: "Ready for another focus session?",
+    kind,
+  };
+}
+
+export function pomodoroNotificationTagForPhase(
+  transitionToken?: string | null,
+): string {
+  const token = transitionToken?.trim();
+  return token
+    ? `${POMODORO_NOTIFICATION_TAG}-${token}`
+    : POMODORO_NOTIFICATION_TAG;
+}
+
+/** Browser Notification API support (local alerts). Independent of Web Push. */
 export function getPomodoroNotificationSupportIssue(): string | null {
   if (typeof window === "undefined") {
     return "Notifications are unavailable.";
   }
 
-  const pushIssue = getPushSupportIssue();
-  if (pushIssue === "requires-https") {
+  if (!isSecurePushContext()) {
     return "Notifications require HTTPS.";
-  }
-  if (pushIssue === "ios-requires-install") {
-    return "On iPhone, install Planlet to your Home Screen first.";
-  }
-  if (pushIssue === "no-push-manager" || pushIssue === "no-service-worker") {
-    return "This browser does not support push notifications.";
   }
 
   if (!("Notification" in window)) {
     return "This browser does not support notifications.";
   }
 
+  const pushIssue = getPushSupportIssue();
+  if (pushIssue === "ios-requires-install") {
+    return "On iPhone, install Planlet to your Home Screen first.";
+  }
+
   return null;
 }
 
+export function getPomodoroNotificationPermission():
+  | NotificationPermission
+  | "unsupported" {
+  if (typeof window === "undefined" || !("Notification" in window)) {
+    return "unsupported";
+  }
+
+  return Notification.permission;
+}
+
+export function claimPomodoroNotificationDelivery(
+  transitionToken?: string | null,
+): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  const token = transitionToken?.trim();
+  if (!token) {
+    return true;
+  }
+
+  const key = `${POMODORO_NOTIFICATION_STORAGE_KEY}:${token}`;
+
+  try {
+    if (window.localStorage.getItem(key)) {
+      return false;
+    }
+    window.localStorage.setItem(key, "1");
+    return true;
+  } catch {
+    return true;
+  }
+}
+
 /**
- * Request permission (user gesture only) and register a Web Push subscription
- * so server-scheduled Pomodoro completion alerts can deliver in the background.
+ * Request permission (user gesture only). Best-effort Web Push subscribe
+ * for background delivery — failure must not block local notifications.
  */
 export async function requestPomodoroNotificationPermission(): Promise<
   NotificationPermission | "unsupported"
 > {
-  const issue = getPomodoroNotificationSupportIssue();
-  if (issue && !issue.includes("Home Screen") && !issue.includes("HTTPS")) {
-    // Still allow Notification permission on platforms without PushManager.
+  if (typeof window === "undefined" || !("Notification" in window)) {
+    return "unsupported";
   }
 
-  if (typeof window === "undefined" || !("Notification" in window)) {
+  const supportIssue = getPomodoroNotificationSupportIssue();
+  if (supportIssue?.includes("HTTPS") || supportIssue?.includes("Home Screen")) {
     return "unsupported";
   }
 
   try {
     await registerPushServiceWorker();
   } catch {
-    // Registration may fail on insecure origins; permission can still work.
+    // Registration may fail; Notification API can still work.
   }
 
   let permission = Notification.permission;
@@ -64,12 +133,12 @@ export async function requestPomodoroNotificationPermission(): Promise<
     permission = await Notification.requestPermission();
   }
 
-  if (permission !== "granted") {
-    return permission;
+  if (permission === "granted") {
+    // Best-effort only — local completion alerts do not depend on this.
+    await ensurePomodoroWebPushSubscription();
   }
 
-  await ensurePomodoroWebPushSubscription();
-  return "granted";
+  return permission;
 }
 
 export async function ensurePomodoroWebPushSubscription(): Promise<{
@@ -135,49 +204,133 @@ export async function ensurePomodoroWebPushSubscription(): Promise<{
   }
 }
 
-export async function showPomodoroPhaseNotification(input: {
-  kind: PomodoroNotificationKind;
-  enabled: boolean;
-}): Promise<void> {
-  if (!input.enabled || typeof window === "undefined") {
-    return;
+async function showBrowserNotification(input: {
+  title: string;
+  body: string;
+  kind: PomodoroNotificationKind | "test";
+  tag: string;
+}): Promise<boolean> {
+  if (typeof window === "undefined" || !("Notification" in window)) {
+    return false;
   }
 
-  if (!("Notification" in window) || Notification.permission !== "granted") {
-    return;
+  if (Notification.permission !== "granted") {
+    return false;
   }
 
-  const title =
-    input.kind === "focus-complete" ? "Focus complete" : "Break complete";
-  const body =
-    input.kind === "focus-complete"
-      ? "Time for a break."
-      : "Ready for another focus session?";
+  const options = {
+    body: input.body,
+    tag: input.tag,
+    renotify: false,
+    icon: "/icon-192.png",
+    badge: "/icon-192.png",
+    data: {
+      url: POMODORO_OPEN_PATH,
+      kind: input.kind,
+    },
+  } as NotificationOptions;
 
   try {
-    const registration = await navigator.serviceWorker.getRegistration();
+    let registration: ServiceWorkerRegistration | undefined;
+    if ("serviceWorker" in navigator) {
+      registration =
+        (await navigator.serviceWorker.getRegistration()) ??
+        (await registerPushServiceWorker().catch(() => undefined));
+    }
+
     if (registration?.showNotification) {
-      await registration.showNotification(title, {
-        body,
-        tag: POMODORO_NOTIFICATION_TAG,
-        data: {
-          url: POMODORO_OPEN_PATH,
-          kind: input.kind,
-        },
-      });
-      return;
+      await registration.showNotification(input.title, options);
+      return true;
     }
   } catch {
     // Fall through to Notification constructor.
   }
 
   try {
-    new Notification(title, {
-      body,
-      tag: POMODORO_NOTIFICATION_TAG,
-      data: { url: POMODORO_OPEN_PATH, kind: input.kind },
-    });
+    new Notification(input.title, options);
+    return true;
   } catch {
-    // Best-effort only.
+    return false;
   }
+}
+
+export async function showPomodoroPhaseNotification(input: {
+  kind: PomodoroNotificationKind;
+  enabled: boolean;
+  transitionToken?: string | null;
+}): Promise<boolean> {
+  if (!input.enabled || typeof window === "undefined") {
+    return false;
+  }
+
+  if (!claimPomodoroNotificationDelivery(input.transitionToken)) {
+    return false;
+  }
+
+  const copy = getPomodoroNotificationCopy(input.kind);
+  return showBrowserNotification({
+    title: copy.title,
+    body: copy.body,
+    kind: copy.kind,
+    tag: pomodoroNotificationTagForPhase(input.transitionToken),
+  });
+}
+
+/**
+ * Settings → Pomodoro “Test notification”. Never creates a session or push job.
+ */
+export async function showTestPomodoroNotification(): Promise<{
+  ok: boolean;
+  permission: NotificationPermission | "unsupported";
+  error?: string;
+}> {
+  const supportIssue = getPomodoroNotificationSupportIssue();
+  if (supportIssue) {
+    return {
+      ok: false,
+      permission: getPomodoroNotificationPermission(),
+      error: supportIssue,
+    };
+  }
+
+  let permission = getPomodoroNotificationPermission();
+  if (permission === "unsupported") {
+    return {
+      ok: false,
+      permission,
+      error: "This browser does not support notifications.",
+    };
+  }
+
+  if (permission === "default") {
+    permission = await Notification.requestPermission();
+  }
+
+  if (permission !== "granted") {
+    return {
+      ok: false,
+      permission,
+      error:
+        permission === "denied"
+          ? "Notifications are blocked. Enable them in your browser settings for this site."
+          : "Notification permission was not granted.",
+    };
+  }
+
+  const shown = await showBrowserNotification({
+    title: "Focus complete",
+    body: "Time for a short break.",
+    kind: "test",
+    tag: `${POMODORO_NOTIFICATION_TAG}-test`,
+  });
+
+  if (!shown) {
+    return {
+      ok: false,
+      permission,
+      error: "Could not show a notification in this browser.",
+    };
+  }
+
+  return { ok: true, permission };
 }

@@ -109,6 +109,7 @@ self.addEventListener("notificationclick", (event) => {
     kind === "complete" ||
     kind === "focus-complete" ||
     kind === "break-complete" ||
+    kind === "test" ||
     action === "open-timer" ||
     action === "default"
   ) {

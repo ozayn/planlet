@@ -1,14 +1,16 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 import { updatePomodoroPreferencesAction } from "@/app/(app)/pomodoro/actions";
 import type { PomodoroPreferences } from "@/lib/pomodoro/constants";
 import {
   ensurePomodoroWebPushSubscription,
+  getPomodoroNotificationPermission,
   getPomodoroNotificationSupportIssue,
   requestPomodoroNotificationPermission,
+  showTestPomodoroNotification,
 } from "@/lib/pomodoro/notifications";
 import {
   secondsToMinutes,
@@ -70,9 +72,25 @@ function ToggleRow({
         checked={checked}
         disabled={disabled}
         onChange={(event) => onChange(event.target.checked)}
+        aria-label={label}
       />
     </label>
   );
+}
+
+function permissionStatusLabel(
+  permission: NotificationPermission | "unsupported",
+): string | null {
+  if (permission === "granted") {
+    return null;
+  }
+  if (permission === "denied") {
+    return "Blocked in browser settings for this site.";
+  }
+  if (permission === "default") {
+    return "Permission not requested yet.";
+  }
+  return "Unavailable in this browser.";
 }
 
 export function PomodoroSettings({
@@ -83,6 +101,16 @@ export function PomodoroSettings({
   const [pending, startTransition] = useTransition();
   const [preferences, setPreferences] = useState(initial);
   const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
+  const [permission, setPermission] = useState<
+    NotificationPermission | "unsupported"
+  >("default");
+  const [supportIssue, setSupportIssue] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPermission(getPomodoroNotificationPermission());
+    setSupportIssue(getPomodoroNotificationSupportIssue());
+  }, []);
 
   function save(patch: Partial<PomodoroPreferences>) {
     const next = { ...preferences, ...patch };
@@ -101,35 +129,66 @@ export function PomodoroSettings({
     });
   }
 
-  async function enableNotifications(next: boolean) {
-    if (next) {
-      const supportIssue = getPomodoroNotificationSupportIssue();
-      if (supportIssue?.includes("Home Screen") || supportIssue?.includes("HTTPS")) {
-        setError(supportIssue);
-        return;
-      }
+  async function enableNotifications() {
+    setError(null);
+    setStatus(null);
 
-      const permission = await requestPomodoroNotificationPermission();
-      if (permission !== "granted") {
-        setError(
-          permission === "unsupported"
-            ? supportIssue ?? "Notifications are unavailable."
-            : "Notification permission was not granted.",
-        );
-        return;
-      }
-
-      const push = await ensurePomodoroWebPushSubscription();
-      if (!push.subscribed) {
-        setError(
-          push.error ??
-            "Could not enable background push. Check Settings → Notifications.",
-        );
-        return;
-      }
+    if (supportIssue?.includes("Home Screen") || supportIssue?.includes("HTTPS")) {
+      setError(supportIssue);
+      return;
     }
-    save({ notificationsEnabled: next });
+
+    const nextPermission = await requestPomodoroNotificationPermission();
+    setPermission(nextPermission);
+    setSupportIssue(getPomodoroNotificationSupportIssue());
+
+    if (nextPermission !== "granted") {
+      setError(
+        nextPermission === "denied"
+          ? "Notifications are blocked. Enable them in your browser settings for this site."
+          : supportIssue ?? "Notification permission was not granted.",
+      );
+      return;
+    }
+
+    save({ notificationsEnabled: true });
+
+    const push = await ensurePomodoroWebPushSubscription();
+    if (!push.subscribed) {
+      setStatus(
+        push.error
+          ? `Enabled for this browser. Background push unavailable: ${push.error}`
+          : "Enabled for this browser. Background push is unavailable locally.",
+      );
+      return;
+    }
+
+    setStatus("Enabled.");
   }
+
+  function disableNotifications() {
+    setError(null);
+    setStatus(null);
+    save({ notificationsEnabled: false });
+  }
+
+  function handleTestNotification() {
+    setError(null);
+    setStatus(null);
+    startTransition(async () => {
+      const result = await showTestPomodoroNotification();
+      setPermission(result.permission);
+      if (!result.ok) {
+        setError(result.error ?? "Could not show a test notification.");
+        return;
+      }
+      setStatus("Test notification sent.");
+    });
+  }
+
+  const notificationsOn =
+    preferences.notificationsEnabled && permission === "granted";
+  const permissionHint = permissionStatusLabel(permission);
 
   return (
     <div className={embedded ? "space-y-4" : "ui-card-padded space-y-4"}>
@@ -190,25 +249,58 @@ export function PomodoroSettings({
       </div>
 
       <div className="space-y-3 border-t border-border-soft pt-4" id="pomodoro-completion">
+        <div className="flex items-center justify-between gap-3 text-sm">
+          <span className="text-foreground">Notifications</span>
+          {notificationsOn ? (
+            <button
+              type="button"
+              className="ui-btn-secondary"
+              disabled={pending}
+              onClick={disableNotifications}
+            >
+              Disable
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="ui-btn-primary"
+              disabled={pending || Boolean(supportIssue)}
+              onClick={() => {
+                void enableNotifications();
+              }}
+            >
+              Enable
+            </button>
+          )}
+        </div>
+
+        {supportIssue ? (
+          <p className="text-xs text-muted">{supportIssue}</p>
+        ) : permissionHint && !notificationsOn ? (
+          <p className="text-xs text-muted">{permissionHint}</p>
+        ) : null}
+
         <ToggleRow
-          label="Quiet completion sound"
+          label="Completion sound"
           checked={preferences.completionSound}
           disabled={pending}
           onChange={(completionSound) => save({ completionSound })}
         />
-        <ToggleRow
-          label="Completion notifications"
-          checked={preferences.notificationsEnabled}
-          disabled={pending}
-          onChange={(value) => {
-            void enableNotifications(value);
-          }}
-        />
-        <p className="text-xs text-muted">
-          Background alerts when possible. Task titles are never included.
-        </p>
+
+        <div className="flex items-center justify-between gap-3 text-sm">
+          <span className="text-foreground">Test notification</span>
+          <button
+            type="button"
+            className="ui-btn-secondary"
+            disabled={pending}
+            onClick={handleTestNotification}
+          >
+            Send
+          </button>
+        </div>
       </div>
 
+      {status ? <p className="text-sm text-muted">{status}</p> : null}
       {error ? <p className="text-sm text-accent-red">{error}</p> : null}
     </div>
   );
