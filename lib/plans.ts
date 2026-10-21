@@ -45,6 +45,7 @@ import {
   resolvePlanTitle,
 } from "@/lib/plan-titles";
 import { STALE_LIST_MESSAGE } from "@/lib/action-errors";
+import { normalizeLifeAreaSelection } from "@/lib/life-areas/group";
 import { touchPlan } from "@/lib/touch-plan";
 import { touchUserSeen } from "@/lib/user-activity";
 import { prisma } from "@/lib/prisma";
@@ -549,13 +550,27 @@ export type CreatePlanItemInput = {
   projectId?: string | null;
   /** Optional primary Life Area assigned on create. */
   primaryLifeAreaId?: string | null;
+  /** Optional secondary Life Areas (must not include primary). */
+  secondaryLifeAreaIds?: string[] | null;
 };
 
-export async function createPlanItem(input: CreatePlanItemInput) {
+type CreatePlanItemPrepared = {
+  input: CreatePlanItemInput;
+  status: PlanItemStatus;
+  progressLevel: number;
+  sortOrder: number;
+  assignment: { themeId: string | null; projectId: string | null };
+  lifeAreaLinks: Array<{ lifeAreaId: string; isPrimary: boolean }>;
+};
+
+async function prepareCreatePlanItemInput(
+  input: CreatePlanItemInput,
+  db: PlanItemDbClient = prisma,
+): Promise<CreatePlanItemPrepared> {
   await requirePlanForUser(input.planId, input.userId);
 
   if (input.parentItemId) {
-    const parent = await prisma.planItem.findFirst({
+    const parent = await db.planItem.findFirst({
       where: {
         id: input.parentItemId,
         planId: input.planId,
@@ -574,7 +589,7 @@ export async function createPlanItem(input: CreatePlanItemInput) {
   let sortOrder = input.sortOrder;
 
   if (sortOrder === undefined) {
-    const lastItem = await prisma.planItem.findFirst({
+    const lastItem = await db.planItem.findFirst({
       where: {
         planId: input.planId,
         parentItemId: input.parentItemId ?? null,
@@ -591,61 +606,91 @@ export async function createPlanItem(input: CreatePlanItemInput) {
     input.projectId,
   );
 
-  const primaryLifeAreaId = input.primaryLifeAreaId?.trim() || null;
-  if (primaryLifeAreaId) {
-    const owned = await prisma.lifeArea.findFirst({
-      where: { id: primaryLifeAreaId, userId: input.userId },
+  const normalized = normalizeLifeAreaSelection({
+    primaryLifeAreaId: input.primaryLifeAreaId ?? null,
+    secondaryLifeAreaIds: input.secondaryLifeAreaIds ?? [],
+  });
+  const desiredLifeAreaIds = [
+    ...(normalized.primaryLifeAreaId ? [normalized.primaryLifeAreaId] : []),
+    ...normalized.secondaryLifeAreaIds,
+  ];
+
+  if (desiredLifeAreaIds.length > 0) {
+    const owned = await db.lifeArea.findMany({
+      where: { id: { in: desiredLifeAreaIds }, userId: input.userId },
       select: { id: true },
     });
-    if (!owned) {
+    if (owned.length !== desiredLifeAreaIds.length) {
       throw new PlanError("Life Area not found.");
     }
   }
 
-  const item = await prisma.$transaction(async (tx) => {
-    const created = await tx.planItem.create({
-      data: {
-        planId: input.planId,
-        parentItemId: input.parentItemId,
-        title: input.title,
-        description: input.description,
-        type: input.type,
-        status,
-        progressLevel,
-        satisfactionLevel: input.satisfactionLevel,
-        confidenceLevel: input.confidenceLevel,
-        excitementLevel: input.excitementLevel,
-        importance: input.importance,
-        urgency: input.urgency,
-        timeHint: input.timeHint,
-        startTime: input.startTime,
-        endTime: input.endTime,
-        durationMinutes: input.durationMinutes,
-        comment: input.comment,
-        shareable: input.shareable,
-        sortOrder,
-        themeId: assignment.themeId,
-        projectId: assignment.projectId,
-        ...(primaryLifeAreaId
-          ? {
-              lifeAreaLinks: {
-                create: {
-                  lifeAreaId: primaryLifeAreaId,
-                  isPrimary: true,
-                },
-              },
-            }
-          : {}),
-      },
-      include: planItemInclude,
-    });
+  return {
+    input,
+    status,
+    progressLevel,
+    sortOrder,
+    assignment,
+    lifeAreaLinks: desiredLifeAreaIds.map((lifeAreaId) => ({
+      lifeAreaId,
+      isPrimary: lifeAreaId === normalized.primaryLifeAreaId,
+    })),
+  };
+}
 
-    if (input.parentItemId) {
-      await syncParentStatusFromSubtasks(input.parentItemId, input.userId, tx);
-    }
+async function createPlanItemRecord(
+  db: PlanItemDbClient,
+  prepared: CreatePlanItemPrepared,
+) {
+  const { input, status, progressLevel, sortOrder, assignment, lifeAreaLinks } =
+    prepared;
 
-    return created;
+  const created = await db.planItem.create({
+    data: {
+      planId: input.planId,
+      parentItemId: input.parentItemId,
+      title: input.title,
+      description: input.description,
+      type: input.type,
+      status,
+      progressLevel,
+      satisfactionLevel: input.satisfactionLevel,
+      confidenceLevel: input.confidenceLevel,
+      excitementLevel: input.excitementLevel,
+      importance: input.importance,
+      urgency: input.urgency,
+      timeHint: input.timeHint,
+      startTime: input.startTime,
+      endTime: input.endTime,
+      durationMinutes: input.durationMinutes,
+      comment: input.comment,
+      shareable: input.shareable,
+      sortOrder,
+      themeId: assignment.themeId,
+      projectId: assignment.projectId,
+      ...(lifeAreaLinks.length > 0
+        ? {
+            lifeAreaLinks: {
+              create: lifeAreaLinks,
+            },
+          }
+        : {}),
+    },
+    include: planItemInclude,
   });
+
+  if (input.parentItemId) {
+    await syncParentStatusFromSubtasks(input.parentItemId, input.userId, db);
+  }
+
+  return created;
+}
+
+export async function createPlanItem(input: CreatePlanItemInput) {
+  const prepared = await prepareCreatePlanItemInput(input);
+  const item = await prisma.$transaction(async (tx) =>
+    createPlanItemRecord(tx, prepared),
+  );
 
   await touchPlan(input.planId);
   await touchUserSeen(input.userId);
@@ -1126,8 +1171,11 @@ export type MovePlanItemToDateResult = {
   movedOpenSubtasksOnly: boolean;
 };
 
-async function nextRootTaskSortOrder(planId: string): Promise<number> {
-  const lastTask = await prisma.planItem.findFirst({
+async function nextRootTaskSortOrder(
+  planId: string,
+  db: PlanItemDbClient = prisma,
+): Promise<number> {
+  const lastTask = await db.planItem.findFirst({
     where: {
       planId,
       parentItemId: null,
@@ -1168,22 +1216,55 @@ type CopyablePlanItemFields = {
   comment: string | null;
   shareable: boolean;
   sortOrder: number;
+  themeId: string | null;
+  projectId: string | null;
+  satisfactionLevel: SatisfactionLevel | null;
+  confidenceLevel: ConfidenceLevel | null;
+  excitementLevel: ExcitementLevel | null;
+  primaryLifeAreaId: string | null;
+  secondaryLifeAreaIds: string[];
 };
 
 function isMovableSubtaskStatus(status: PlanItemStatus): boolean {
   return status === "OPEN" || status === "PARTIAL";
 }
 
-async function copyRootItemToPlan(
-  userId: string,
-  targetPlanId: string,
-  item: CopyablePlanItemFields,
-) {
-  const rootSortOrder = await nextRootTaskSortOrder(targetPlanId);
+/** Pure helper: map PlanItemLifeArea rows into primary + secondary ids. */
+export function associationsFromLifeAreaLinks(
+  links: Array<{ lifeAreaId: string; isPrimary: boolean }>,
+): {
+  primaryLifeAreaId: string | null;
+  secondaryLifeAreaIds: string[];
+} {
+  return normalizeLifeAreaSelection({
+    primaryLifeAreaId:
+      links.find((link) => link.isPrimary)?.lifeAreaId ?? null,
+    secondaryLifeAreaIds: links
+      .filter((link) => !link.isPrimary)
+      .map((link) => link.lifeAreaId),
+  });
+}
 
-  return createPlanItem({
+function createInputFromCopyableFields(
+  userId: string,
+  planId: string,
+  item: CopyablePlanItemFields,
+  options?: {
+    parentItemId?: string;
+    /** When set (including null), overrides the source item comment. */
+    commentOverride?: string | null;
+    sortOrder?: number;
+  },
+): CreatePlanItemInput {
+  const comment =
+    options && "commentOverride" in options
+      ? options.commentOverride
+      : item.comment;
+
+  return {
     userId,
-    planId: targetPlanId,
+    planId,
+    parentItemId: options?.parentItemId,
     title: item.title,
     description: item.description ?? undefined,
     type: item.type,
@@ -1194,10 +1275,33 @@ async function copyRootItemToPlan(
     startTime: item.startTime ?? undefined,
     endTime: item.endTime ?? undefined,
     durationMinutes: item.durationMinutes ?? undefined,
-    comment: item.comment ?? undefined,
+    comment: comment ?? undefined,
     shareable: item.shareable,
-    sortOrder: rootSortOrder,
-  });
+    sortOrder: options?.sortOrder ?? item.sortOrder,
+    themeId: item.themeId,
+    projectId: item.projectId,
+    satisfactionLevel: item.satisfactionLevel ?? undefined,
+    confidenceLevel: item.confidenceLevel ?? undefined,
+    excitementLevel: item.excitementLevel ?? undefined,
+    primaryLifeAreaId: item.primaryLifeAreaId,
+    secondaryLifeAreaIds: item.secondaryLifeAreaIds,
+  };
+}
+
+async function copyRootItemToPlan(
+  userId: string,
+  targetPlanId: string,
+  item: CopyablePlanItemFields,
+  db: PlanItemDbClient = prisma,
+) {
+  const rootSortOrder = await nextRootTaskSortOrder(targetPlanId, db);
+  const prepared = await prepareCreatePlanItemInput(
+    createInputFromCopyableFields(userId, targetPlanId, item, {
+      sortOrder: rootSortOrder,
+    }),
+    db,
+  );
+  return createPlanItemRecord(db, prepared);
 }
 
 async function copyParentWithMovableSubtasksToPlan(
@@ -1205,39 +1309,54 @@ async function copyParentWithMovableSubtasksToPlan(
   targetPlanId: string,
   parent: CopyablePlanItemFields,
   movableSubtasks: CopyablePlanItemFields[],
+  db: PlanItemDbClient = prisma,
 ) {
-  const createdRoot = await copyRootItemToPlan(userId, targetPlanId, {
-    ...parent,
-    comment: null,
-  });
+  const rootSortOrder = await nextRootTaskSortOrder(targetPlanId, db);
+  const preparedRoot = await prepareCreatePlanItemInput(
+    createInputFromCopyableFields(userId, targetPlanId, parent, {
+      commentOverride: null,
+      sortOrder: rootSortOrder,
+    }),
+    db,
+  );
+  const createdRoot = await createPlanItemRecord(db, preparedRoot);
 
   for (const subtask of movableSubtasks) {
-    await createPlanItem({
-      userId,
-      planId: targetPlanId,
-      parentItemId: createdRoot.id,
-      title: subtask.title,
-      description: subtask.description ?? undefined,
-      type: subtask.type,
-      status: "OPEN",
-      importance: subtask.importance ?? undefined,
-      urgency: subtask.urgency ?? undefined,
-      timeHint: subtask.timeHint ?? undefined,
-      startTime: subtask.startTime ?? undefined,
-      endTime: subtask.endTime ?? undefined,
-      durationMinutes: subtask.durationMinutes ?? undefined,
-      comment: subtask.comment ?? undefined,
-      shareable: subtask.shareable,
-      sortOrder: subtask.sortOrder,
-    });
+    const prepared = await prepareCreatePlanItemInput(
+      createInputFromCopyableFields(userId, targetPlanId, subtask, {
+        parentItemId: createdRoot.id,
+        sortOrder: subtask.sortOrder,
+      }),
+      db,
+    );
+    await createPlanItemRecord(db, prepared);
   }
 
   return createdRoot;
 }
 
-function toCopyablePlanItemFields(
-  item: CopyablePlanItemFields & { id?: string },
-): CopyablePlanItemFields {
+export function toCopyablePlanItemFields(item: {
+  title: string;
+  description: string | null;
+  type: PlanItemType;
+  importance: PriorityLevel | null;
+  urgency: PriorityLevel | null;
+  timeHint: TimeHint | null;
+  startTime: Date | null;
+  endTime: Date | null;
+  durationMinutes: number | null;
+  comment: string | null;
+  shareable: boolean;
+  sortOrder: number;
+  themeId?: string | null;
+  projectId?: string | null;
+  satisfactionLevel?: SatisfactionLevel | null;
+  confidenceLevel?: ConfidenceLevel | null;
+  excitementLevel?: ExcitementLevel | null;
+  lifeAreaLinks?: Array<{ lifeAreaId: string; isPrimary: boolean }>;
+}): CopyablePlanItemFields {
+  const associations = associationsFromLifeAreaLinks(item.lifeAreaLinks ?? []);
+
   return {
     title: item.title,
     description: item.description,
@@ -1251,6 +1370,13 @@ function toCopyablePlanItemFields(
     comment: item.comment,
     shareable: item.shareable,
     sortOrder: item.sortOrder,
+    themeId: item.themeId ?? null,
+    projectId: item.projectId ?? null,
+    satisfactionLevel: item.satisfactionLevel ?? null,
+    confidenceLevel: item.confidenceLevel ?? null,
+    excitementLevel: item.excitementLevel ?? null,
+    primaryLifeAreaId: associations.primaryLifeAreaId,
+    secondaryLifeAreaIds: associations.secondaryLifeAreaIds,
   };
 }
 
@@ -1268,8 +1394,16 @@ export async function movePlanItemToDate(
     where: { id: itemId, plan: { userId } },
     include: {
       plan: true,
+      lifeAreaLinks: {
+        select: { lifeAreaId: true, isPrimary: true },
+      },
       subtasks: {
         orderBy: itemOrderBy,
+        include: {
+          lifeAreaLinks: {
+            select: { lifeAreaId: true, isPrimary: true },
+          },
+        },
       },
     },
   });
@@ -1306,18 +1440,20 @@ export async function movePlanItemToDate(
   let movedOpenSubtasksOnly = false;
 
   if (!hasSubtasks) {
-    await copyRootItemToPlan(userId, targetPlan.id, parentFields);
+    await prisma.$transaction(async (tx) => {
+      await copyRootItemToPlan(userId, targetPlan.id, parentFields, tx);
 
-    if (!keepCopy) {
-      await prisma.planItem.update({
-        where: { id: itemId },
-        data: {
-          status: "MOVED",
-          progressLevel: normalizeProgressForStatus("MOVED"),
-          comment: appendMovedNote(item.comment, targetDateLabel),
-        },
-      });
-    }
+      if (!keepCopy) {
+        await tx.planItem.update({
+          where: { id: itemId },
+          data: {
+            status: "MOVED",
+            progressLevel: normalizeProgressForStatus("MOVED"),
+            comment: appendMovedNote(item.comment, targetDateLabel),
+          },
+        });
+      }
+    });
   } else {
     const movableSubtasks = item.subtasks.filter((subtask) =>
       isMovableSubtaskStatus(subtask.status),
@@ -1329,27 +1465,30 @@ export async function movePlanItemToDate(
 
     movedOpenSubtasksOnly = true;
 
-    await copyParentWithMovableSubtasksToPlan(
-      userId,
-      targetPlan.id,
-      parentFields,
-      movableSubtasks.map(toCopyablePlanItemFields),
-    );
+    await prisma.$transaction(async (tx) => {
+      await copyParentWithMovableSubtasksToPlan(
+        userId,
+        targetPlan.id,
+        parentFields,
+        movableSubtasks.map(toCopyablePlanItemFields),
+        tx,
+      );
 
-    if (!keepCopy) {
-      for (const subtask of movableSubtasks) {
-        await prisma.planItem.update({
-          where: { id: subtask.id },
-          data: {
-            status: "MOVED",
-            progressLevel: normalizeProgressForStatus("MOVED"),
-            comment: appendMovedNote(subtask.comment, targetDateLabel),
-          },
-        });
+      if (!keepCopy) {
+        for (const subtask of movableSubtasks) {
+          await tx.planItem.update({
+            where: { id: subtask.id },
+            data: {
+              status: "MOVED",
+              progressLevel: normalizeProgressForStatus("MOVED"),
+              comment: appendMovedNote(subtask.comment, targetDateLabel),
+            },
+          });
+        }
+
+        await syncParentStatusFromSubtasks(itemId, userId, tx);
       }
-
-      await syncParentStatusFromSubtasks(itemId, userId);
-    }
+    });
   }
 
   await touchPlan(item.planId);
