@@ -27,12 +27,26 @@ describe("Focus Priorities feature wiring", () => {
     assert.match(schema, /description\s+String\?\s+@db\.Text/);
     assert.match(schema, /subtopics\s+String\[\]/);
     assert.match(schema, /autoAddToDailyPlan\s+Boolean\s+@default\(false\)/);
+    assert.match(schema, /programWindowMonths\s+Int\?/);
+    assert.match(schema, /programStartsOn\s+String\?/);
+    assert.match(schema, /programEndsOn\s+String\?/);
     assert.match(schema, /model FocusPriorityDailyPlacement/);
     assert.match(schema, /@@unique\(\[userId, focusPriorityId, dayDate\]\)/);
     assert.match(migration, /ADD COLUMN "description"/);
     assert.match(migration, /ADD COLUMN "subtopics"/);
     assert.match(autoAddMigration, /autoAddToDailyPlan/);
     assert.match(autoAddMigration, /FocusPriorityDailyPlacement/);
+
+    const programMigration = readFileSync(
+      join(
+        root,
+        "prisma/migrations/20261021120000_focus_priority_program_window/migration.sql",
+      ),
+      "utf8",
+    );
+    assert.match(programMigration, /programWindowMonths/);
+    assert.match(programMigration, /programStartsOn/);
+    assert.match(programMigration, /programEndsOn/);
   });
 
   it("exposes admin-only Settings manage link and dedicated page", () => {
@@ -106,11 +120,23 @@ describe("Focus Priorities feature wiring", () => {
     assert.doesNotMatch(suggestions, /addFocusPriorityToTodayAction/);
     assert.match(sections, /LifeAreaColorDot/);
     assert.match(sections, /\+ Add/);
+    assert.match(lib, /addSingleFocusPriorityToToday/);
     assert.match(lib, /confirmFocusPriorityTaskDraft/);
     assert.match(lib, /resolveUserTodayDateString/);
     assert.match(lib, /getUserTimezone/);
     assert.match(lib, /getOrCreateDayPlan/);
     assert.match(lib, /parseDateString\(dayDate\)/);
+    assert.match(lib, /linkFocusPriorityDailyPlacement/);
+    assert.doesNotMatch(
+      lib.slice(
+        lib.indexOf("export async function addSingleFocusPriorityToToday"),
+        lib.indexOf("export async function confirmFocusPriorityTaskDraft"),
+      ),
+      /ensureAutomaticDailyPriorityTasks|ensureAutoFocusPriorityTasksForToday/,
+    );
+    assert.match(actions, /addSingleFocusPriorityToToday/);
+    assert.doesNotMatch(actions, /cookies\(|SKIP_FOCUS_AUTO_ADD/);
+    assert.doesNotMatch(actions, /await ensureAutomaticDailyPriorityTasks/);
     assert.match(actions, /revalidatePath\(`\/plans\/day\/\$\{dayDate\}`\)/);
     assert.match(actions, /revalidatePath\("\/today", "layout"\)/);
   });
@@ -159,6 +185,9 @@ describe("Focus Priorities feature wiring", () => {
     assert.match(settings, /subtopics/);
     assert.match(settings, /Add to daily plan automatically/);
     assert.match(settings, /autoAddToDailyPlan/);
+    assert.match(settings, /Program window/);
+    assert.match(settings, /programStartsOn/);
+    assert.match(settings, /programEndsOn/);
   });
 
   it("wires idempotent auto-add onto today using the user timezone", () => {
@@ -171,26 +200,67 @@ describe("Focus Priorities feature wiring", () => {
       join(root, "app/(app)/today/page.tsx"),
       "utf8",
     );
+    const dayPage = readFileSync(
+      join(root, "app/(app)/plans/day/[date]/page.tsx"),
+      "utf8",
+    );
+    const weekPage = readFileSync(
+      join(root, "app/(app)/plans/week/[date]/page.tsx"),
+      "utf8",
+    );
+    const plansActions = readFileSync(
+      join(root, "app/(app)/plans/actions.ts"),
+      "utf8",
+    );
+    const prismaClient = readFileSync(join(root, "lib/prisma.ts"), "utf8");
     const constants = readFileSync(
       join(root, "lib/focus-priorities/constants.ts"),
       "utf8",
     );
 
+    assert.match(autoAdd, /ensureAutomaticDailyPriorityTasks/);
     assert.match(autoAdd, /ensureAutoFocusPriorityTasksForToday/);
     assert.match(autoAdd, /FocusPriorityDailyPlacement|focusPriorityDailyPlacement/);
     assert.match(autoAdd, /getUserTimezone/);
     assert.match(autoAdd, /getTodayDateString/);
     assert.match(autoAdd, /getOrCreateDayPlan/);
     assert.match(autoAdd, /decideAutoAddPlacement/);
-    assert.match(lib, /ensureAutoFocusPriorityTasksForToday/);
+    assert.match(lib, /ensureAutomaticDailyPriorityTasks/);
     assert.match(lib, /loadFocusPrioritiesForAdminUser/);
-    // Today loads priorities (auto-add) before getTodayPlan.
+    // Listing priorities must not batch-create daily tasks.
+    const loadFn = lib.slice(
+      lib.indexOf("export async function loadFocusPrioritiesForAdminUser"),
+      lib.indexOf("function seedCreateData"),
+    );
+    assert.doesNotMatch(loadFn, /ensureAutomaticDailyPriorityTasks/);
+    assert.doesNotMatch(loadFn, /ensureAutoFocusPriorityTasksForToday/);
+    // Page render must not create tasks or mutate cookies.
+    assert.doesNotMatch(todayPage, /ensureAutomaticDailyPriorityTasks/);
+    assert.doesNotMatch(todayPage, /cookies\(/);
+    assert.doesNotMatch(dayPage, /ensureAutomaticDailyPriorityTasks/);
+    assert.doesNotMatch(dayPage, /cookies\(/);
+    assert.doesNotMatch(weekPage, /ensureAutomaticDailyPriorityTasks/);
+    // Auto-add only from plan-creation Server Actions.
+    assert.match(plansActions, /createTodayPlanAction/);
+    assert.match(plansActions, /ensureAutomaticDailyPriorityTasks/);
+    assert.match(
+      plansActions.slice(
+        plansActions.indexOf("export async function createTodayPlanAction"),
+        plansActions.indexOf("export async function createDayPlanForDateAction"),
+      ),
+      /ensureAutomaticDailyPriorityTasks/,
+    );
+    assert.match(prismaClient, /new Pool/);
+    assert.match(prismaClient, /PrismaPg\(pool\)/);
     const focusLoad = todayPage.indexOf("loadFocusPrioritiesForAdminUser");
     const planLoad = todayPage.indexOf("getTodayPlan");
     assert.ok(focusLoad >= 0 && planLoad >= 0 && focusLoad < planLoad);
     assert.match(constants, /Shoulder physical therapy/);
     assert.match(constants, /Foot physical therapy/);
+    assert.match(constants, /BetterMe Calisthenics/);
     assert.match(constants, /autoAddToDailyPlan: true/);
+    assert.match(constants, /programWindowMonths: 3/);
+    assert.match(autoAdd, /evaluateProgramWindow|programWindowMonths/);
   });
 
   it("passes Focus Priorities only into the Life Areas sections branch", () => {

@@ -8,9 +8,9 @@ import {
   FocusPriorityAuthError,
   FocusPriorityError,
   addFocusPriorityToToday,
+  addSingleFocusPriorityToToday,
   archiveFocusPriority,
   assertFocusPrioritiesAdminAccess,
-  confirmFocusPriorityTaskDraft,
   createFocusPriority,
   ensureDefaultFocusPriorities,
   reorderFocusPriorities,
@@ -149,6 +149,10 @@ export async function reorderFocusPrioritiesAction(orderedIds: string[]) {
   }
 }
 
+/**
+ * Manual Add to today — exactly one priorityId.
+ * Does not call ensureAutomaticDailyPriorityTasks.
+ */
 export async function confirmFocusPriorityTaskDraftAction(
   input: FocusPriorityTaskDraftInput,
 ) {
@@ -159,7 +163,7 @@ export async function confirmFocusPriorityTaskDraftAction(
       return { success: false as const, error: "Not authorized." };
     }
 
-    const result = await confirmFocusPriorityTaskDraft(userId, input);
+    const result = await addSingleFocusPriorityToToday(userId, input);
     revalidateTodayPlanPaths(result.planId, result.dayDate);
     return { success: true as const, ...result };
   } catch (error) {

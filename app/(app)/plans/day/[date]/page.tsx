@@ -47,7 +47,7 @@ export default async function DayPlanPage({ params }: DayPlanPageProps) {
   const firstName = session.user?.name?.split(" ")[0];
   const timezone = session.user?.timezone ?? FALLBACK_TIMEZONE;
 
-  // Seeds + today's auto-add (admin-only) before plan load so new items appear.
+  // List only — never create tasks during RSC render/refresh.
   const focusPriorities = await loadFocusPrioritiesForAdminUser(
     userId,
     session.user.role,

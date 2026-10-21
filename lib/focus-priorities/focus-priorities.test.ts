@@ -29,6 +29,9 @@ function priority(
     defaultDurationMinutes: 30,
     subtopics: [],
     autoAddToDailyPlan: false,
+    programWindowMonths: null,
+    programStartsOn: null,
+    programEndsOn: null,
     sortOrder: 0,
     archivedAt: null,
     ...overrides,
@@ -52,11 +55,11 @@ describe("focus priorities helpers", () => {
     );
   });
 
-  it("defines six active canonical priorities including PT auto-add seeds", () => {
+  it("defines seven active canonical priorities including PT and BetterMe", () => {
     const active = CANONICAL_FOCUS_PRIORITY_SEEDS.filter((seed) => !seed.archived);
     const archived = CANONICAL_FOCUS_PRIORITY_SEEDS.filter((seed) => seed.archived);
 
-    assert.equal(active.length, 6);
+    assert.equal(active.length, 7);
     assert.deepEqual(
       active.map((seed) => seed.title),
       [
@@ -66,6 +69,7 @@ describe("focus priorities helpers", () => {
         "Interview Stories & Mock Practice",
         "Shoulder physical therapy",
         "Foot physical therapy",
+        "BetterMe Calisthenics",
       ],
     );
     assert.deepEqual(
@@ -104,16 +108,38 @@ describe("focus priorities helpers", () => {
     assert.equal(foot.suggestedTaskTitle, "Do foot physical therapy exercises");
     assert.equal(shoulder.autoAddToDailyPlan, true);
     assert.equal(foot.autoAddToDailyPlan, true);
+    assert.equal(shoulder.programWindowMonths, null);
+    assert.equal(foot.programWindowMonths, null);
+
+    const betterMe = active.find(
+      (seed) => seed.title === "BetterMe Calisthenics",
+    );
+    assert.ok(betterMe);
+    assert.equal(betterMe.lifeAreaName, "Health & Wellbeing");
+    assert.equal(betterMe.autoAddToDailyPlan, true);
+    assert.equal(betterMe.programWindowMonths, 3);
+    assert.equal(
+      betterMe.description,
+      "Follow my three-month BetterMe calisthenics program.",
+    );
+    assert.equal(
+      betterMe.suggestedTaskTitle,
+      "Complete today's BetterMe calisthenics workout.",
+    );
+    assert.doesNotMatch(betterMe.description ?? "", /Sahar/i);
+    assert.doesNotMatch(betterMe.suggestedTaskTitle, /Sahar/i);
+
     assert.ok(
       active
         .filter(
           (seed) =>
             seed.title !== "Shoulder physical therapy" &&
-            seed.title !== "Foot physical therapy",
+            seed.title !== "Foot physical therapy" &&
+            seed.title !== "BetterMe Calisthenics",
         )
         .every((seed) => seed.autoAddToDailyPlan === false),
     );
-    assert.ok(MAX_FOCUS_PRIORITIES_PER_USER >= 7);
+    assert.ok(MAX_FOCUS_PRIORITIES_PER_USER >= 8);
   });
 
   it("consolidates exact legacy defaults without touching customized rows", () => {
@@ -171,6 +197,23 @@ describe("focus priorities helpers", () => {
     assert.deepEqual(plan.createSeeds, []);
     assert.equal(plan.syncIds.length, CANONICAL_FOCUS_PRIORITY_SEEDS.length);
     assert.deepEqual(plan.ambiguous, []);
+  });
+
+  it("syncs BetterMe when the suggested task is the prior Sahar default", () => {
+    const betterMe = CANONICAL_FOCUS_PRIORITY_SEEDS.find(
+      (seed) => seed.title === "BetterMe Calisthenics",
+    );
+    assert.ok(betterMe);
+    const existing = [
+      {
+        id: "bm",
+        title: "BetterMe Calisthenics",
+        suggestedTaskTitle: "Do BetterMe calisthenics with Sahar",
+      },
+    ];
+    const plan = planFocusPriorityConsolidation(existing);
+    assert.deepEqual(plan.syncIds, ["bm"]);
+    assert.doesNotMatch(betterMe.suggestedTaskTitle, /Sahar/i);
   });
 
   it("recognizes exact legacy defaults only", () => {
@@ -259,11 +302,18 @@ describe("focus priorities helpers", () => {
 
   it("skips auto-add when a placement already exists for the day", () => {
     assert.deepEqual(
-      decideAutoAddPlacement({ hasPlacementForDay: true }),
+      decideAutoAddPlacement({
+        hasPlacementForDay: true,
+        dayDate: "2026-10-21",
+      }),
       { action: "skip", reason: "already_placed" },
     );
-    assert.deepEqual(decideAutoAddPlacement({ hasPlacementForDay: false }), {
-      action: "create",
-    });
+    assert.deepEqual(
+      decideAutoAddPlacement({
+        hasPlacementForDay: false,
+        dayDate: "2026-10-21",
+      }),
+      { action: "create" },
+    );
   });
 });

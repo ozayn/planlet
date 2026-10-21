@@ -809,6 +809,12 @@ model FocusPriority {
   subtopics              String[]  @default([])
   /// When true, ensure one suggested task on today's day plan (user timezone).
   autoAddToDailyPlan     Boolean   @default(false)
+  /// When set (e.g. 3), auto-add only runs inside programStartsOn…programEndsOn.
+  programWindowMonths    Int?
+  /// Inclusive program start (YYYY-MM-DD). Null until the user sets it.
+  programStartsOn        String?
+  /// Inclusive program end (YYYY-MM-DD). Usually start + programWindowMonths.
+  programEndsOn          String?
   sortOrder              Int       @default(0)
   archivedAt             DateTime?
   createdAt              DateTime  @default(now())

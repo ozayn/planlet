@@ -12,11 +12,16 @@ export type FocusPrioritySeed = {
   subtopics: readonly string[];
   /** Default for new seeds only; user preference is never overwritten on sync. */
   autoAddToDailyPlan: boolean;
+  /**
+   * When set, auto-add only runs inside an editable program window of this
+   * many months. Start/end dates are never seeded — the user sets them.
+   */
+  programWindowMonths: number | null;
   archived: boolean;
 };
 
 /**
- * Canonical admin Focus Priorities (6 active + 1 archived).
+ * Canonical admin Focus Priorities (7 active + 1 archived).
  * Seeded / consolidated idempotently; never overwrites customized rows.
  */
 export const CANONICAL_FOCUS_PRIORITY_SEEDS: readonly FocusPrioritySeed[] = [
@@ -29,6 +34,7 @@ export const CANONICAL_FOCUS_PRIORITY_SEEDS: readonly FocusPrioritySeed[] = [
     defaultDurationMinutes: null,
     subtopics: [],
     autoAddToDailyPlan: false,
+    programWindowMonths: null,
     archived: false,
   },
   {
@@ -40,6 +46,7 @@ export const CANONICAL_FOCUS_PRIORITY_SEEDS: readonly FocusPrioritySeed[] = [
     defaultDurationMinutes: 30,
     subtopics: [],
     autoAddToDailyPlan: false,
+    programWindowMonths: null,
     archived: false,
   },
   {
@@ -57,6 +64,7 @@ export const CANONICAL_FOCUS_PRIORITY_SEEDS: readonly FocusPrioritySeed[] = [
       "Analytical Case Studies",
     ],
     autoAddToDailyPlan: false,
+    programWindowMonths: null,
     archived: false,
   },
   {
@@ -68,6 +76,7 @@ export const CANONICAL_FOCUS_PRIORITY_SEEDS: readonly FocusPrioritySeed[] = [
     defaultDurationMinutes: null,
     subtopics: [],
     autoAddToDailyPlan: false,
+    programWindowMonths: null,
     archived: false,
   },
   {
@@ -78,6 +87,7 @@ export const CANONICAL_FOCUS_PRIORITY_SEEDS: readonly FocusPrioritySeed[] = [
     defaultDurationMinutes: null,
     subtopics: [],
     autoAddToDailyPlan: true,
+    programWindowMonths: null,
     archived: false,
   },
   {
@@ -88,6 +98,18 @@ export const CANONICAL_FOCUS_PRIORITY_SEEDS: readonly FocusPrioritySeed[] = [
     defaultDurationMinutes: null,
     subtopics: [],
     autoAddToDailyPlan: true,
+    programWindowMonths: null,
+    archived: false,
+  },
+  {
+    title: "BetterMe Calisthenics",
+    lifeAreaName: "Health & Wellbeing",
+    description: "Follow my three-month BetterMe calisthenics program.",
+    suggestedTaskTitle: "Complete today's BetterMe calisthenics workout.",
+    defaultDurationMinutes: null,
+    subtopics: [],
+    autoAddToDailyPlan: true,
+    programWindowMonths: 3,
     archived: false,
   },
   {
@@ -99,6 +121,7 @@ export const CANONICAL_FOCUS_PRIORITY_SEEDS: readonly FocusPrioritySeed[] = [
     defaultDurationMinutes: null,
     subtopics: [],
     autoAddToDailyPlan: false,
+    programWindowMonths: null,
     archived: true,
   },
 ] as const;
@@ -176,6 +199,16 @@ export function findCanonicalFocusPrioritySeed(
   return CANONICAL_FOCUS_PRIORITY_SEEDS.find((seed) => seed.title === title);
 }
 
+/**
+ * Prior canonical suggested-task copy that should still be treated as
+ * uncustomized so seed sync can roll forward (e.g. Sahar → neutral wording).
+ */
+export const PREVIOUS_CANONICAL_SUGGESTED_TASK_TITLES: Readonly<
+  Record<string, readonly string[]>
+> = {
+  "BetterMe Calisthenics": ["Do BetterMe calisthenics with Sahar"],
+};
+
 /** True when the row still looks like an unedited canonical seed. */
 export function isUncustomizedCanonicalFocusPriority(
   priority: {
@@ -184,10 +217,14 @@ export function isUncustomizedCanonicalFocusPriority(
   },
   seed: FocusPrioritySeed,
 ): boolean {
-  return (
-    priority.title === seed.title &&
-    priority.suggestedTaskTitle === seed.suggestedTaskTitle
-  );
+  if (priority.title !== seed.title) {
+    return false;
+  }
+  if (priority.suggestedTaskTitle === seed.suggestedTaskTitle) {
+    return true;
+  }
+  const previous = PREVIOUS_CANONICAL_SUGGESTED_TASK_TITLES[seed.title];
+  return Boolean(previous?.includes(priority.suggestedTaskTitle));
 }
 
 /**

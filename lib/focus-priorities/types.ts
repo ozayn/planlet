@@ -8,6 +8,9 @@ export type SerializedFocusPriority = {
   defaultDurationMinutes: number | null;
   subtopics: string[];
   autoAddToDailyPlan: boolean;
+  programWindowMonths: number | null;
+  programStartsOn: string | null;
+  programEndsOn: string | null;
   sortOrder: number;
   archivedAt: string | null;
 };
@@ -20,6 +23,9 @@ export type FocusPriorityWriteInput = {
   defaultDurationMinutes?: number | null;
   subtopics?: string[] | null;
   autoAddToDailyPlan?: boolean | null;
+  programWindowMonths?: number | null;
+  programStartsOn?: string | null;
+  programEndsOn?: string | null;
 };
 
 export type FocusPriorityTaskDraftInput = {

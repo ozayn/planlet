@@ -1,4 +1,4 @@
-import { ensureAutoFocusPriorityTasksForToday } from "@/lib/focus-priorities/auto-add";
+import { linkFocusPriorityDailyPlacement } from "@/lib/focus-priorities/auto-add";
 import {
   CANONICAL_FOCUS_PRIORITY_SEEDS,
   MAX_FOCUS_PRIORITIES_PER_USER,
@@ -9,6 +9,7 @@ import {
   planFocusPriorityConsolidation,
   type FocusPrioritySeed,
 } from "@/lib/focus-priorities/constants";
+import { normalizeProgramWindowInput } from "@/lib/focus-priorities/program-window";
 import type {
   FocusPriorityTaskDraftInput,
   FocusPriorityWriteInput,
@@ -44,6 +45,9 @@ type FocusPriorityRow = {
   defaultDurationMinutes: number | null;
   subtopics: string[];
   autoAddToDailyPlan: boolean;
+  programWindowMonths: number | null;
+  programStartsOn: string | null;
+  programEndsOn: string | null;
   sortOrder: number;
   archivedAt: Date | null;
   lifeArea: { name: string };
@@ -122,6 +126,9 @@ function serializePriority(row: FocusPriorityRow): SerializedFocusPriority {
     defaultDurationMinutes: row.defaultDurationMinutes,
     subtopics: row.subtopics ?? [],
     autoAddToDailyPlan: Boolean(row.autoAddToDailyPlan),
+    programWindowMonths: row.programWindowMonths ?? null,
+    programStartsOn: row.programStartsOn ?? null,
+    programEndsOn: row.programEndsOn ?? null,
     sortOrder: row.sortOrder,
     archivedAt: row.archivedAt?.toISOString() ?? null,
   };
@@ -183,6 +190,12 @@ export async function listActiveFocusPrioritiesForView(
   return rows.map(serializePriority);
 }
 
+/**
+ * Admin Focus Priority list for plan views.
+ * Seeds defaults only — does not run automatic daily addition.
+ * Automatic daily addition runs from createTodayPlanAction / create day
+ * Server Actions, never during page render or manual Add to today.
+ */
 export async function loadFocusPrioritiesForAdminUser(
   userId: string,
   role: string | null | undefined,
@@ -191,7 +204,6 @@ export async function loadFocusPrioritiesForAdminUser(
     return [];
   }
   await ensureDefaultFocusPriorities(userId);
-  await ensureAutoFocusPriorityTasksForToday(userId);
   return listActiveFocusPrioritiesForView(userId);
 }
 
@@ -210,6 +222,10 @@ function seedCreateData(
     defaultDurationMinutes: seed.defaultDurationMinutes,
     subtopics: [...seed.subtopics],
     autoAddToDailyPlan: seed.autoAddToDailyPlan,
+    programWindowMonths: seed.programWindowMonths,
+    // Start/end are never seeded — user sets the editable window.
+    programStartsOn: null,
+    programEndsOn: null,
     sortOrder,
     archivedAt: seed.archived ? new Date() : null,
   };
@@ -301,8 +317,9 @@ export async function ensureDefaultFocusPriorities(
         defaultDurationMinutes: seed.defaultDurationMinutes,
         subtopics: [...seed.subtopics],
         lifeAreaId: area.id,
+        programWindowMonths: seed.programWindowMonths,
         // Intentionally does not re-archive restored priorities (e.g. Portfolio Polish).
-        // Intentionally does not overwrite autoAddToDailyPlan — user preference.
+        // Intentionally does not overwrite autoAddToDailyPlan or program dates.
       },
     });
   }
@@ -324,6 +341,18 @@ export async function createFocusPriority(
   const defaultDurationMinutes = sanitizeDuration(input.defaultDurationMinutes);
   const subtopics = sanitizeSubtopics(input.subtopics);
   const autoAddToDailyPlan = Boolean(input.autoAddToDailyPlan);
+  let programWindow;
+  try {
+    programWindow = normalizeProgramWindowInput({
+      programWindowMonths: input.programWindowMonths,
+      programStartsOn: input.programStartsOn,
+      programEndsOn: input.programEndsOn,
+    });
+  } catch (error) {
+    throw new FocusPriorityError(
+      error instanceof Error ? error.message : "Invalid program window.",
+    );
+  }
   await requireOwnedLifeArea(userId, input.lifeAreaId);
 
   const count = await prisma.focusPriority.count({ where: { userId } });
@@ -349,6 +378,9 @@ export async function createFocusPriority(
       defaultDurationMinutes,
       subtopics,
       autoAddToDailyPlan,
+      programWindowMonths: programWindow.programWindowMonths,
+      programStartsOn: programWindow.programStartsOn,
+      programEndsOn: programWindow.programEndsOn,
       sortOrder: last ? last.sortOrder + 1 : 0,
     },
     include: priorityInclude,
@@ -372,6 +404,18 @@ export async function updateFocusPriority(
   const defaultDurationMinutes = sanitizeDuration(input.defaultDurationMinutes);
   const subtopics = sanitizeSubtopics(input.subtopics);
   const autoAddToDailyPlan = Boolean(input.autoAddToDailyPlan);
+  let programWindow;
+  try {
+    programWindow = normalizeProgramWindowInput({
+      programWindowMonths: input.programWindowMonths,
+      programStartsOn: input.programStartsOn,
+      programEndsOn: input.programEndsOn,
+    });
+  } catch (error) {
+    throw new FocusPriorityError(
+      error instanceof Error ? error.message : "Invalid program window.",
+    );
+  }
   await requireOwnedLifeArea(userId, input.lifeAreaId);
 
   // Updates only FocusPriority rows — never PlanItem / task history.
@@ -384,6 +428,9 @@ export async function updateFocusPriority(
       defaultDurationMinutes,
       subtopics,
       autoAddToDailyPlan,
+      programWindowMonths: programWindow.programWindowMonths,
+      programStartsOn: programWindow.programStartsOn,
+      programEndsOn: programWindow.programEndsOn,
       lifeAreaId: input.lifeAreaId,
     },
     include: priorityInclude,
@@ -467,10 +514,12 @@ export async function resolveUserTodayDateString(
 }
 
 /**
- * Confirms an edited task draft onto today's day plan.
- * Does not create duplicates when a same-titled root task already exists today.
+ * Manual "Add to today" for exactly one Focus Priority.
+ * Never runs ensureAutomaticDailyPriorityTasks / batch auto-add.
+ * Links the daily placement ledger for this priority only so auto-add
+ * will not recreate it (or a title duplicate) later the same day.
  */
-export async function confirmFocusPriorityTaskDraft(
+export async function addSingleFocusPriorityToToday(
   userId: string,
   input: FocusPriorityTaskDraftInput,
 ): Promise<AddFocusPriorityToTodayResult> {
@@ -508,6 +557,12 @@ export async function confirmFocusPriorityTaskDraft(
   });
 
   if (existing) {
+    await linkFocusPriorityDailyPlacement({
+      userId,
+      focusPriorityId: priority.id,
+      dayDate,
+      planItemId: existing.id,
+    });
     return {
       planId: plan.id,
       itemId: existing.id,
@@ -525,6 +580,13 @@ export async function confirmFocusPriorityTaskDraft(
     primaryLifeAreaId,
   });
 
+  await linkFocusPriorityDailyPlacement({
+    userId,
+    focusPriorityId: priority.id,
+    dayDate,
+    planItemId: item.id,
+  });
+
   return {
     planId: plan.id,
     itemId: item.id,
@@ -532,7 +594,16 @@ export async function confirmFocusPriorityTaskDraft(
     dayDate,
   };
 }
-/** @deprecated Prefer confirmFocusPriorityTaskDraft with an edited draft. */
+
+/** @deprecated Prefer addSingleFocusPriorityToToday. */
+export async function confirmFocusPriorityTaskDraft(
+  userId: string,
+  input: FocusPriorityTaskDraftInput,
+): Promise<AddFocusPriorityToTodayResult> {
+  return addSingleFocusPriorityToToday(userId, input);
+}
+
+/** @deprecated Prefer addSingleFocusPriorityToToday with an edited draft. */
 export async function addFocusPriorityToToday(
   userId: string,
   priorityId: string,
@@ -548,7 +619,7 @@ export async function addFocusPriorityToToday(
   if (!priority) {
     throw new FocusPriorityError("Focus Priority not found.");
   }
-  return confirmFocusPriorityTaskDraft(userId, {
+  return addSingleFocusPriorityToToday(userId, {
     priorityId,
     title: priority.suggestedTaskTitle,
     durationMinutes: priority.defaultDurationMinutes,
@@ -560,8 +631,18 @@ export { groupFocusPrioritiesByLifeArea } from "@/lib/focus-priorities/group";
 
 export {
   decideAutoAddPlacement,
+  ensureAutomaticDailyPriorityTasks,
   ensureAutoFocusPriorityTasksForToday,
+  linkFocusPriorityDailyPlacement,
 } from "@/lib/focus-priorities/auto-add";
+
+export {
+  BETTERME_CALISTHENICS_TITLE,
+  DEFAULT_PROGRAM_WINDOW_MONTHS,
+  evaluateProgramWindow,
+  normalizeProgramWindowInput,
+  programEndDateFromStart,
+} from "@/lib/focus-priorities/program-window";
 
 export type {
   FocusPriorityTaskDraftInput,

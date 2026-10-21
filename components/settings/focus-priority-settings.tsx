@@ -21,6 +21,10 @@ import {
   formatSubtopicsInput,
   parseSubtopicsInput,
 } from "@/lib/focus-priorities/constants";
+import {
+  DEFAULT_PROGRAM_WINDOW_MONTHS,
+  programEndDateFromStart,
+} from "@/lib/focus-priorities/program-window";
 import type { SerializedFocusPriority } from "@/lib/focus-priorities/types";
 import type { SerializedLifeArea } from "@/lib/life-areas/types";
 import { passwordManagerSafeControlProps } from "@/lib/password-manager-ignore";
@@ -38,6 +42,9 @@ type DraftFields = {
   defaultDurationMinutes: string;
   subtopics: string;
   autoAddToDailyPlan: boolean;
+  programWindowMonths: string;
+  programStartsOn: string;
+  programEndsOn: string;
 };
 
 function emptyDraft(lifeAreaId: string): DraftFields {
@@ -49,6 +56,9 @@ function emptyDraft(lifeAreaId: string): DraftFields {
     defaultDurationMinutes: "",
     subtopics: "",
     autoAddToDailyPlan: false,
+    programWindowMonths: "",
+    programStartsOn: "",
+    programEndsOn: "",
   };
 }
 
@@ -64,6 +74,12 @@ function toDraft(priority: SerializedFocusPriority): DraftFields {
         : String(priority.defaultDurationMinutes),
     subtopics: formatSubtopicsInput(priority.subtopics),
     autoAddToDailyPlan: priority.autoAddToDailyPlan,
+    programWindowMonths:
+      priority.programWindowMonths == null
+        ? ""
+        : String(priority.programWindowMonths),
+    programStartsOn: priority.programStartsOn ?? "",
+    programEndsOn: priority.programEndsOn ?? "",
   };
 }
 
@@ -74,6 +90,15 @@ function parseDuration(value: string): number | null {
   }
   const minutes = Number(trimmed);
   return Number.isFinite(minutes) ? minutes : null;
+}
+
+function parseOptionalMonths(value: string): number | null {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const months = Number(trimmed);
+  return Number.isFinite(months) ? months : null;
 }
 
 function toWriteInput(draft: DraftFields) {
@@ -87,6 +112,9 @@ function toWriteInput(draft: DraftFields) {
     defaultDurationMinutes: parseDuration(draft.defaultDurationMinutes),
     subtopics: parseSubtopicsInput(draft.subtopics),
     autoAddToDailyPlan: draft.autoAddToDailyPlan,
+    programWindowMonths: parseOptionalMonths(draft.programWindowMonths),
+    programStartsOn: draft.programStartsOn.trim() || null,
+    programEndsOn: draft.programEndsOn.trim() || null,
   };
 }
 
@@ -247,7 +275,11 @@ export function FocusPrioritySettings({
                       </p>
                       {priority.autoAddToDailyPlan ? (
                         <p className="text-xs text-muted-light">
-                          Adds to daily plan automatically
+                          {priority.programWindowMonths
+                            ? priority.programStartsOn && priority.programEndsOn
+                              ? `Daily add ${priority.programStartsOn} → ${priority.programEndsOn}`
+                              : `${priority.programWindowMonths}-month program — set start date to begin daily tasks`
+                            : "Adds to daily plan automatically"}
                         </p>
                       ) : null}
                       {priority.subtopics.length > 0 ? (
@@ -523,6 +555,93 @@ function PriorityFields({
           </span>
         </span>
       </label>
+      {draft.autoAddToDailyPlan || draft.programWindowMonths.trim() !== "" ? (
+        <div className="space-y-2 rounded-xl border border-border-soft px-2.5 py-2">
+          <p className="text-xs font-medium text-foreground">
+            Program window
+          </p>
+          <p className="text-xs text-muted">
+            Optional bounded schedule. Leave empty for ongoing auto-add. Setting
+            a start date derives a {DEFAULT_PROGRAM_WINDOW_MONTHS}-month end
+            when the window length is set.
+          </p>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <label className="space-y-1 text-xs text-muted">
+              <span>Months</span>
+              <input
+                type="number"
+                min={1}
+                max={36}
+                className="ui-input w-full"
+                value={draft.programWindowMonths}
+                disabled={pending}
+                placeholder="e.g. 3"
+                aria-label="Program window months"
+                onChange={(event) => {
+                  const programWindowMonths = event.target.value;
+                  const months = parseOptionalMonths(programWindowMonths);
+                  const nextEnds =
+                    draft.programStartsOn.trim() && months
+                      ? programEndDateFromStart(
+                          draft.programStartsOn.trim(),
+                          months,
+                        )
+                      : draft.programEndsOn;
+                  onChange({
+                    ...draft,
+                    programWindowMonths,
+                    programEndsOn: nextEnds,
+                  });
+                }}
+                {...passwordManagerSafeControlProps}
+              />
+            </label>
+            <label className="space-y-1 text-xs text-muted">
+              <span>Starts on</span>
+              <input
+                type="date"
+                className="ui-input w-full"
+                value={draft.programStartsOn}
+                disabled={pending}
+                aria-label="Program start date"
+                onChange={(event) => {
+                  const programStartsOn = event.target.value;
+                  const months =
+                    parseOptionalMonths(draft.programWindowMonths) ??
+                    (programStartsOn ? DEFAULT_PROGRAM_WINDOW_MONTHS : null);
+                  const programEndsOn =
+                    programStartsOn && months
+                      ? programEndDateFromStart(programStartsOn, months)
+                      : draft.programEndsOn;
+                  onChange({
+                    ...draft,
+                    programStartsOn,
+                    programWindowMonths:
+                      draft.programWindowMonths.trim() ||
+                      (months ? String(months) : ""),
+                    programEndsOn,
+                  });
+                }}
+                {...passwordManagerSafeControlProps}
+              />
+            </label>
+            <label className="space-y-1 text-xs text-muted">
+              <span>Ends on</span>
+              <input
+                type="date"
+                className="ui-input w-full"
+                value={draft.programEndsOn}
+                disabled={pending}
+                aria-label="Program end date"
+                onChange={(event) =>
+                  onChange({ ...draft, programEndsOn: event.target.value })
+                }
+                {...passwordManagerSafeControlProps}
+              />
+            </label>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

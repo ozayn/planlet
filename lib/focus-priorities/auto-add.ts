@@ -1,22 +1,46 @@
 import { getTodayDateString, parseDateString } from "@/lib/dates";
+import { evaluateProgramWindow } from "@/lib/focus-priorities/program-window";
 import { createPlanItem, getOrCreateDayPlan } from "@/lib/plans";
 import { prisma } from "@/lib/prisma";
 import { getUserTimezone } from "@/lib/user-timezone";
 
 export type AutoAddPlacementDecision =
-  | { action: "skip"; reason: "already_placed" }
+  | {
+      action: "skip";
+      reason:
+        | "already_placed"
+        | "not_configured"
+        | "before_start"
+        | "after_end";
+    }
   | { action: "create" };
 
 /**
- * Pure gate used by ensure + tests: a ledger row for (priority, day)
- * means do not create again — even if the PlanItem was deleted.
+ * Pure gate used by ensure + tests: ledger + optional program window.
+ * Outside the window (or before dates are set for windowed priorities),
+ * no task is created — existing history is left alone.
  */
 export function decideAutoAddPlacement(input: {
   hasPlacementForDay: boolean;
+  dayDate: string;
+  programWindowMonths?: number | null;
+  programStartsOn?: string | null;
+  programEndsOn?: string | null;
 }): AutoAddPlacementDecision {
   if (input.hasPlacementForDay) {
     return { action: "skip", reason: "already_placed" };
   }
+
+  const window = evaluateProgramWindow({
+    dayDate: input.dayDate,
+    programWindowMonths: input.programWindowMonths,
+    programStartsOn: input.programStartsOn,
+    programEndsOn: input.programEndsOn,
+  });
+  if (!window.active) {
+    return { action: "skip", reason: window.reason };
+  }
+
   return { action: "create" };
 }
 
@@ -57,16 +81,58 @@ async function claimDailyPlacement(input: {
 }
 
 /**
+ * Record (or refresh) the daily placement for a single manually added task.
+ * Does not create other priorities' tasks. Upserts so a prior auto-add row
+ * (including after an intentional delete) can point at the new item.
+ */
+export async function linkFocusPriorityDailyPlacement(input: {
+  userId: string;
+  focusPriorityId: string;
+  dayDate: string;
+  planItemId: string;
+}): Promise<void> {
+  await prisma.focusPriorityDailyPlacement.upsert({
+    where: {
+      userId_focusPriorityId_dayDate: {
+        userId: input.userId,
+        focusPriorityId: input.focusPriorityId,
+        dayDate: input.dayDate,
+      },
+    },
+    create: {
+      userId: input.userId,
+      focusPriorityId: input.focusPriorityId,
+      dayDate: input.dayDate,
+      planItemId: input.planItemId,
+    },
+    update: {
+      planItemId: input.planItemId,
+    },
+  });
+}
+
+export type EnsureAutomaticDailyPriorityTasksResult = {
+  dayDate: string;
+  createdCount: number;
+  skippedCount: number;
+};
+
+/**
+ * Automatic daily addition only.
+ *
  * For each active Focus Priority with autoAddToDailyPlan, ensure one task
  * exists on today's day plan (user timezone). Idempotent across refresh,
  * devices, and intentional deletes via FocusPriorityDailyPlacement.
  *
+ * Must not be invoked from manual "Add to today" — that path uses
+ * addSingleFocusPriorityToToday for exactly one priorityId.
+ *
  * Does not backfill missed days.
  */
-export async function ensureAutoFocusPriorityTasksForToday(
+export async function ensureAutomaticDailyPriorityTasks(
   userId: string,
   now = new Date(),
-): Promise<{ dayDate: string; createdCount: number; skippedCount: number }> {
+): Promise<EnsureAutomaticDailyPriorityTasksResult> {
   const timezone = await getUserTimezone(userId);
   const dayDate = getTodayDateString(timezone, now);
   const plan = await getOrCreateDayPlan(userId, parseDateString(dayDate));
@@ -83,6 +149,9 @@ export async function ensureAutoFocusPriorityTasksForToday(
       lifeAreaId: true,
       suggestedTaskTitle: true,
       defaultDurationMinutes: true,
+      programWindowMonths: true,
+      programStartsOn: true,
+      programEndsOn: true,
     },
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
   });
@@ -109,6 +178,10 @@ export async function ensureAutoFocusPriorityTasksForToday(
   for (const priority of priorities) {
     const decision = decideAutoAddPlacement({
       hasPlacementForDay: placedIds.has(priority.id),
+      dayDate,
+      programWindowMonths: priority.programWindowMonths,
+      programStartsOn: priority.programStartsOn,
+      programEndsOn: priority.programEndsOn,
     });
     if (decision.action === "skip") {
       skippedCount += 1;
@@ -152,3 +225,7 @@ export async function ensureAutoFocusPriorityTasksForToday(
 
   return { dayDate, createdCount, skippedCount };
 }
+
+/** @deprecated Prefer ensureAutomaticDailyPriorityTasks. */
+export const ensureAutoFocusPriorityTasksForToday =
+  ensureAutomaticDailyPriorityTasks;

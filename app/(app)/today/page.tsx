@@ -29,8 +29,8 @@ export default async function TodayPage() {
     redirect("/");
   }
 
-  // Seed + auto-add Focus Priority tasks before loading today's plan so new
-  // items appear on the first paint (admin-only; no-op for other roles).
+  // List only — never create tasks during RSC render/refresh.
+  // Automatic daily addition runs from createTodayPlanAction (Server Action).
   const focusPriorities = await loadFocusPrioritiesForAdminUser(
     userId,
     session.user.role,

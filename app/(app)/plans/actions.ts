@@ -10,7 +10,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { auth } from "@/auth";
-import { loadFocusPrioritiesForAdminUser } from "@/lib/focus-priorities";
+import { ensureAutomaticDailyPriorityTasks } from "@/lib/focus-priorities";
+import { isAdminRole } from "@/lib/auth-roles";
 import { requireUserId } from "@/lib/require-auth";
 import { parsePlanFromText } from "@/lib/ai/parse-plan";
 import { AI_USAGE_FEATURES } from "@/lib/ai/usage";
@@ -178,10 +179,10 @@ export async function createTodayPlanAction() {
   const timezone = await getUserTimezone(userId);
   const dayDate = getTodayDateString(timezone);
   const plan = await getOrCreateDayPlan(userId, parseDateString(dayDate));
-  // Admin Focus Priority auto-add (no-op for other roles).
+  // Automatic daily Focus Priority tasks only — not a manual Add path.
   const session = await auth();
-  if (session?.user?.id === userId) {
-    await loadFocusPrioritiesForAdminUser(userId, session.user.role);
+  if (session?.user?.id === userId && isAdminRole(session.user.role)) {
+    await ensureAutomaticDailyPriorityTasks(userId);
   }
   await recordUserActivity(userId);
   revalidatePlanPaths(plan.id, { dayDate });
@@ -191,6 +192,15 @@ export async function createDayPlanForDateAction(dateString: string) {
   const userId = await requireUserId();
   const date = parseActionDateString(dateString);
   const plan = await getOrCreateDayPlan(userId, date);
+
+  const timezone = await getUserTimezone(userId);
+  const todayDate = getTodayDateString(timezone);
+  if (dateString === todayDate) {
+    const session = await auth();
+    if (session?.user?.id === userId && isAdminRole(session.user.role)) {
+      await ensureAutomaticDailyPriorityTasks(userId);
+    }
+  }
 
   await recordUserActivity(userId);
   revalidatePlanPaths(plan.id, { dayDate: dateString });
