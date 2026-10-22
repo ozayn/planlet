@@ -12,8 +12,10 @@ const isReminders =
 
 const command = isReminders ? "npm run cron:reminders" : "npm run start";
 
+const commit = process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7) || "(local)";
+
 console.log(
-  `[railway-start] serviceKind=${serviceKind ?? "(unset)"} serviceName=${serviceName || "(unset)"} -> ${command}`,
+  `[railway-start] commit=${commit} serviceKind=${serviceKind ?? "(unset)"} serviceName=${serviceName || "(unset)"} -> ${command}`,
 );
 
 execSync(command, { stdio: "inherit" });
