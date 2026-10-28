@@ -320,6 +320,9 @@ export type LifeLabDiagnostic = {
   folderMapLoaded: boolean;
   errorName?: string;
   errorMessage?: string;
+  /** Google API error.errors[].reason when available (e.g. insufficientPermissions). */
+  errorReason?: string | null;
+  errorHttpStatus?: number;
 };
 
 export type LifeLabAvailability =

@@ -187,7 +187,7 @@ describe("life lab listing cache keys", () => {
     );
     assert.equal(
       lifeLabFolderMapCacheKey(),
-      "life-lab-section-folder-map:v3-flashcards",
+      "life-lab-section-folder-map:v4-no-error-cache",
     );
     assert.equal(
       lifeLabFlashcardSummaryCacheKey(),

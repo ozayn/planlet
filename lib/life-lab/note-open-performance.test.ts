@@ -191,7 +191,7 @@ describe("Life Lab note-open performance wiring", () => {
     await runLifeLabRequestTelemetry(async () => {
       finishLifeLabCacheLookup({
         type: "folder-map",
-        key: "life-lab-section-folder-map:v3-flashcards",
+        key: "life-lab-section-folder-map:v4-no-error-cache",
         durationMs: 1,
       });
       finishLifeLabCacheLookup({

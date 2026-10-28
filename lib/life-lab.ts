@@ -230,6 +230,8 @@ type LifeLabFolderMapEntries = Array<[LifeLabSectionId, string]>;
 type LifeLabFolderMapError = {
   name: string;
   message: string;
+  reason?: string | null;
+  httpStatus?: number;
 };
 
 export type LifeLabFolderMapResult =
@@ -253,9 +255,16 @@ export function lifeLabFolderEntriesToMap(
 }
 
 function serializeLifeLabError(error: Error): LifeLabFolderMapError {
+  const driveError =
+    error instanceof LifeLabDriveError
+      ? error
+      : null;
+
   return {
     name: error.name,
     message: error.message,
+    reason: driveError?.reason ?? null,
+    httpStatus: driveError?.httpStatus,
   };
 }
 
@@ -272,13 +281,21 @@ function buildLifeLabDiagnostic(
   } = {},
 ): LifeLabDiagnostic {
   const credentials = getLifeLabDriveCredentials();
+  const error = options.error;
+  const driveError = error instanceof LifeLabDriveError ? error : null;
+  const folderMapError =
+    error && !(error instanceof Error)
+      ? (error as LifeLabFolderMapError)
+      : null;
 
   return {
     driveCredentialsPresent: credentials !== null,
     rootFolderIdPresent: Boolean(process.env.LIFE_LAB_DRIVE_FOLDER_ID?.trim()),
     folderMapLoaded: options.folderMapLoaded ?? false,
-    errorName: options.error?.name,
-    errorMessage: options.error?.message,
+    errorName: error?.name,
+    errorMessage: error?.message,
+    errorReason: driveError?.reason ?? folderMapError?.reason ?? null,
+    errorHttpStatus: driveError?.httpStatus ?? folderMapError?.httpStatus,
   };
 }
 
@@ -331,6 +348,14 @@ export function normalizeLifeLabFolderMapResult(
           typeof error.message === "string"
             ? error.message
             : "Failed to load Life Lab folder map.",
+        reason:
+          "reason" in error && typeof error.reason === "string"
+            ? error.reason
+            : null,
+        httpStatus:
+          "httpStatus" in error && typeof error.httpStatus === "number"
+            ? error.httpStatus
+            : undefined,
       },
     };
   }
@@ -665,30 +690,60 @@ async function getSectionFolderMapCached(): Promise<LifeLabFolderMapResult> {
   const cacheKey = lifeLabFolderMapCacheKey();
   const startedAt = Date.now();
 
-  const result = await unstable_cache(
-    async () => {
-      beginLifeLabCacheMiss({
-        type: "folder-map",
-        key: cacheKey,
+  try {
+    // Only successful folder maps are cached. Throwing on failure prevents
+    // Next.js Data Cache from sticky-serving a Drive 403 for up to 30 minutes.
+    const result = await unstable_cache(
+      async () => {
+        beginLifeLabCacheMiss({
+          type: "folder-map",
+          key: cacheKey,
+          tags: [LIFE_LAB_SECTIONS_CACHE_TAG, LIFE_LAB_CACHE_TAG],
+        });
+        const loaded = await loadSectionFolderMap();
+        if (!loaded.ok) {
+          const err = new LifeLabDriveError(loaded.error.message, {
+            reason: loaded.error.reason,
+            httpStatus: loaded.error.httpStatus,
+          });
+          throw err;
+        }
+        return loaded;
+      },
+      ["life-lab-section-folder-map", LIFE_LAB_FOLDER_MAP_CACHE_VERSION],
+      {
+        revalidate: getLifeLabListCacheSeconds(),
         tags: [LIFE_LAB_SECTIONS_CACHE_TAG, LIFE_LAB_CACHE_TAG],
-      });
-      return loadSectionFolderMap();
-    },
-    ["life-lab-section-folder-map", LIFE_LAB_FOLDER_MAP_CACHE_VERSION],
-    {
-      revalidate: getLifeLabListCacheSeconds(),
+      },
+    )();
+
+    finishLifeLabCacheLookup({
+      type: "folder-map",
+      key: cacheKey,
+      durationMs: Date.now() - startedAt,
       tags: [LIFE_LAB_SECTIONS_CACHE_TAG, LIFE_LAB_CACHE_TAG],
-    },
-  )();
+    });
 
-  finishLifeLabCacheLookup({
-    type: "folder-map",
-    key: cacheKey,
-    durationMs: Date.now() - startedAt,
-    tags: [LIFE_LAB_SECTIONS_CACHE_TAG, LIFE_LAB_CACHE_TAG],
-  });
+    return result;
+  } catch (error) {
+    finishLifeLabCacheLookup({
+      type: "folder-map",
+      key: cacheKey,
+      durationMs: Date.now() - startedAt,
+      tags: [LIFE_LAB_SECTIONS_CACHE_TAG, LIFE_LAB_CACHE_TAG],
+    });
 
-  return result;
+    const normalized =
+      error instanceof Error
+        ? error
+        : new LifeLabDriveError("Failed to load Life Lab folder map.");
+    logLifeLabFolderMapFailure(normalized);
+
+    return {
+      ok: false,
+      error: serializeLifeLabError(normalized),
+    };
+  }
 }
 
 async function getSectionFolderMap(): Promise<LifeLabFolderMapResult> {

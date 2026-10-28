@@ -37,6 +37,21 @@ function LifeLabDiagnosticDetails({
         ? `${diagnostic.errorName ?? "Error"}: ${diagnostic.errorMessage}`
         : "None",
     },
+    ...(diagnostic.errorReason || diagnostic.errorHttpStatus
+      ? [
+          {
+            label: "Google API reason",
+            value: [
+              diagnostic.errorHttpStatus
+                ? `HTTP ${diagnostic.errorHttpStatus}`
+                : null,
+              diagnostic.errorReason,
+            ]
+              .filter(Boolean)
+              .join(" · "),
+          },
+        ]
+      : []),
   ];
 
   return (

@@ -2,7 +2,8 @@ import type { LifeLabSectionId } from "@/lib/life-lab/constants";
 
 export const LIFE_LAB_CACHE_TAG = "life-lab";
 export const LIFE_LAB_SECTIONS_CACHE_TAG = "life-lab:sections";
-export const LIFE_LAB_FOLDER_MAP_CACHE_VERSION = "v3-flashcards";
+/** Bump when folder-map load semantics change (e.g. stop caching Drive failures). */
+export const LIFE_LAB_FOLDER_MAP_CACHE_VERSION = "v4-no-error-cache";
 
 /** Bump when section listing or playlist browse logic changes materially. */
 export const LIFE_LAB_SECTION_FILE_INDEX_CACHE_VERSION = "v10-uncapped-listings";

@@ -6,6 +6,13 @@ import {
   LIFE_LAB_MAX_FOLDER_DEPTH,
 } from "@/lib/life-lab/constants";
 import { recordLifeLabDriveCall } from "@/lib/life-lab/cache-telemetry";
+import {
+  formatGoogleDriveErrorMessage,
+  isPermissionDeniedReason,
+  isRateLimitReason,
+  parseGoogleApiErrorBody,
+  type ParsedGoogleApiError,
+} from "@/lib/life-lab/google-drive-errors";
 
 type DriveCredentials = {
   clientEmail: string;
@@ -35,10 +42,71 @@ export type DriveListingStats = {
 };
 
 export class LifeLabDriveError extends Error {
-  constructor(message: string) {
+  readonly httpStatus?: number;
+  readonly reason?: string | null;
+  readonly googleStatus?: string | null;
+  readonly googleMessage?: string | null;
+
+  constructor(
+    message: string,
+    details: {
+      httpStatus?: number;
+      reason?: string | null;
+      googleStatus?: string | null;
+      googleMessage?: string | null;
+    } = {},
+  ) {
     super(message);
     this.name = "LifeLabDriveError";
+    this.httpStatus = details.httpStatus;
+    this.reason = details.reason;
+    this.googleStatus = details.googleStatus;
+    this.googleMessage = details.googleMessage;
   }
+}
+
+/** Skip repeated Drive calls briefly after a confirmed auth/permission failure. */
+const PERMISSION_FAILURE_COOLDOWN_MS = 60_000;
+let permissionFailureUntil = 0;
+let lastPermissionFailure: LifeLabDriveError | null = null;
+
+function rememberPermissionFailure(error: LifeLabDriveError): void {
+  if (
+    !isPermissionDeniedReason(error.reason) &&
+    error.httpStatus !== 403 &&
+    error.httpStatus !== 401
+  ) {
+    return;
+  }
+  // Rate limits are temporary — do not treat them as sticky permission denials.
+  if (isRateLimitReason(error.reason)) {
+    return;
+  }
+  permissionFailureUntil = Date.now() + PERMISSION_FAILURE_COOLDOWN_MS;
+  lastPermissionFailure = error;
+}
+
+function throwIfPermissionFailureCooldown(): void {
+  if (Date.now() >= permissionFailureUntil || !lastPermissionFailure) {
+    return;
+  }
+  throw lastPermissionFailure;
+}
+
+export function clearLifeLabDrivePermissionFailureCooldownForTests(): void {
+  permissionFailureUntil = 0;
+  lastPermissionFailure = null;
+}
+
+function lifeLabDriveErrorFromParsed(
+  parsed: ParsedGoogleApiError,
+): LifeLabDriveError {
+  return new LifeLabDriveError(formatGoogleDriveErrorMessage(parsed), {
+    httpStatus: parsed.httpStatus,
+    reason: parsed.reason,
+    googleStatus: parsed.status,
+    googleMessage: parsed.message,
+  });
 }
 
 export function getLifeLabDriveCredentials(): DriveCredentials | null {
@@ -95,6 +163,8 @@ let cachedAccessToken: { token: string; expiresAt: number } | null = null;
 async function getAccessToken(
   credentials: DriveCredentials,
 ): Promise<string> {
+  throwIfPermissionFailureCooldown();
+
   if (cachedAccessToken && cachedAccessToken.expiresAt > Date.now() + 60_000) {
     return cachedAccessToken.token;
   }
@@ -112,7 +182,21 @@ async function getAccessToken(
   });
 
   if (!response.ok) {
-    throw new LifeLabDriveError("Failed to authenticate with Google Drive.");
+    const bodyText = await response.text();
+    const parsed = parseGoogleApiErrorBody(response.status, bodyText);
+    const error = new LifeLabDriveError(
+      `Failed to authenticate with Google Drive (${response.status})${
+        parsed.reason ? ` — reason=${parsed.reason}` : ""
+      }.`,
+      {
+        httpStatus: response.status,
+        reason: parsed.reason ?? "authError",
+        googleStatus: parsed.status,
+        googleMessage: parsed.message,
+      },
+    );
+    rememberPermissionFailure(error);
+    throw error;
   }
 
   const data = (await response.json()) as {
@@ -121,7 +205,10 @@ async function getAccessToken(
   };
 
   if (!data.access_token) {
-    throw new LifeLabDriveError("Google Drive authentication returned no token.");
+    throw new LifeLabDriveError(
+      "Google Drive authentication returned no token.",
+      { reason: "authError", httpStatus: response.status },
+    );
   }
 
   cachedAccessToken = {
@@ -136,6 +223,7 @@ async function driveRequest<T>(
   credentials: DriveCredentials,
   path: string,
 ): Promise<T> {
+  throwIfPermissionFailureCooldown();
   recordLifeLabDriveCall("list");
   const accessToken = await getAccessToken(credentials);
   const response = await fetch(`https://www.googleapis.com/drive/v3${path}`, {
@@ -146,9 +234,11 @@ async function driveRequest<T>(
   });
 
   if (!response.ok) {
-    throw new LifeLabDriveError(
-      `Google Drive request failed (${response.status}).`,
-    );
+    const bodyText = await response.text();
+    const parsed = parseGoogleApiErrorBody(response.status, bodyText);
+    const error = lifeLabDriveErrorFromParsed(parsed);
+    rememberPermissionFailure(error);
+    throw error;
   }
 
   return (await response.json()) as T;
@@ -158,6 +248,7 @@ async function driveDownload(
   credentials: DriveCredentials,
   fileId: string,
 ): Promise<string> {
+  throwIfPermissionFailureCooldown();
   recordLifeLabDriveCall("download", fileId);
   const accessToken = await getAccessToken(credentials);
   const response = await fetch(
@@ -171,7 +262,21 @@ async function driveDownload(
   );
 
   if (!response.ok) {
-    throw new LifeLabDriveError("Failed to download note from Google Drive.");
+    const bodyText = await response.text();
+    const parsed = parseGoogleApiErrorBody(response.status, bodyText);
+    const error = new LifeLabDriveError(
+      `Failed to download note from Google Drive (${response.status})${
+        parsed.reason ? ` — reason=${parsed.reason}` : ""
+      }.`,
+      {
+        httpStatus: parsed.httpStatus,
+        reason: parsed.reason,
+        googleStatus: parsed.status,
+        googleMessage: parsed.message,
+      },
+    );
+    rememberPermissionFailure(error);
+    throw error;
   }
 
   return response.text();
@@ -181,6 +286,7 @@ async function driveDownloadBytes(
   credentials: DriveCredentials,
   fileId: string,
 ): Promise<Uint8Array> {
+  throwIfPermissionFailureCooldown();
   recordLifeLabDriveCall("download", fileId);
   const accessToken = await getAccessToken(credentials);
   const response = await fetch(
@@ -194,7 +300,21 @@ async function driveDownloadBytes(
   );
 
   if (!response.ok) {
-    throw new LifeLabDriveError("Failed to download asset from Google Drive.");
+    const bodyText = await response.text();
+    const parsed = parseGoogleApiErrorBody(response.status, bodyText);
+    const error = new LifeLabDriveError(
+      `Failed to download asset from Google Drive (${response.status})${
+        parsed.reason ? ` — reason=${parsed.reason}` : ""
+      }.`,
+      {
+        httpStatus: parsed.httpStatus,
+        reason: parsed.reason,
+        googleStatus: parsed.status,
+        googleMessage: parsed.message,
+      },
+    );
+    rememberPermissionFailure(error);
+    throw error;
   }
 
   return new Uint8Array(await response.arrayBuffer());
