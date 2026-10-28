@@ -423,6 +423,26 @@ export function writeStoredSpeechVoiceId(voiceId: string): void {
   }
 }
 
+export function pickSpeechVoiceForContentLanguage(
+  voices: SpeechSynthesisVoice[],
+  contentLanguage: "en" | "fa" | null | undefined,
+): { voice: SpeechSynthesisVoice | null; unavailableMessage: string | null } {
+  if (!contentLanguage || contentLanguage === "en") {
+    return { voice: pickSpeechVoice(voices), unavailableMessage: null };
+  }
+
+  const persian = pickPreferredVoiceForLang(voices, "fa-IR");
+  if (persian) {
+    return { voice: persian, unavailableMessage: null };
+  }
+
+  return {
+    voice: null,
+    unavailableMessage:
+      "No Persian voice is available on this device. Choose a Persian system voice, or read the English version instead.",
+  };
+}
+
 export function pickSpeechVoice(
   voices: SpeechSynthesisVoice[],
 ): SpeechSynthesisVoice | null {
@@ -569,7 +589,7 @@ export function decodeDeviceVoiceId(
   return { voiceURI, name, lang };
 }
 
-function pickPreferredVoiceForLang(
+export function pickPreferredVoiceForLang(
   voices: SpeechSynthesisVoice[],
   lang: string,
 ): SpeechSynthesisVoice | null {

@@ -29,6 +29,7 @@ import {
   plainTextToSpeechText,
   primeSpeechSynthesis,
   readStoredSpeechVoiceId,
+  pickSpeechVoiceForContentLanguage,
   resolveDeviceVoiceWithFallback,
   SPEECH_AUTO_VOICE_ID,
   SPEECH_START_TIMEOUT_MS,
@@ -44,6 +45,7 @@ type UseSpeechSynthesisOptions = {
   initialVoiceId?: string;
   autoContinue?: boolean;
   onSectionChange?: (sectionId: string | null) => void;
+  contentLanguage?: "en" | "fa" | null;
 };
 
 // Uses browser-native speechSynthesis only.
@@ -53,6 +55,7 @@ let activeSpeechOwnerId: string | null = null;
 
 export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
   const instanceId = useId();
+  const contentLanguage = options.contentLanguage ?? null;
   const [isSupported, setIsSupported] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -149,6 +152,18 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
   useEffect(() => {
     playbackOptionsRef.current.autoContinue = options.autoContinue ?? true;
   }, [options.autoContinue]);
+
+  // Language switch must stop the current reading cleanly (never continue in the
+  // previous voice/content language).
+  useEffect(() => {
+    return () => {
+      if (activeSpeechOwnerId === instanceId) {
+        intentionalCancelRef.current = "unmount";
+        window.speechSynthesis?.cancel();
+        activeSpeechOwnerId = null;
+      }
+    };
+  }, [contentLanguage, instanceId]);
 
   const notifySectionChange = useCallback(
     (sectionId: string | null) => {
@@ -501,15 +516,46 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
       }
 
       const voiceId = selectedVoiceIdRef.current;
-      const { voice: resolvedVoice, usedFallback } =
-        resolveDeviceVoiceWithFallback(voices, voiceId);
+      let resolvedVoice: SpeechSynthesisVoice | null = null;
+      let usedFallback = false;
+      let languageUnavailableMessage: string | null = null;
+
+      if (contentLanguage === "fa" && voiceId === SPEECH_AUTO_VOICE_ID) {
+        const persianVoice = pickSpeechVoiceForContentLanguage(voices, "fa");
+        resolvedVoice = persianVoice.voice;
+        languageUnavailableMessage = persianVoice.unavailableMessage;
+        if (!resolvedVoice) {
+          setVoiceUnavailableNotice(languageUnavailableMessage);
+          return;
+        }
+      } else {
+        const resolved = resolveDeviceVoiceWithFallback(voices, voiceId);
+        resolvedVoice = resolved.voice;
+        usedFallback = resolved.usedFallback;
+
+        if (contentLanguage === "fa" && resolvedVoice) {
+          const lang = resolvedVoice.lang.toLowerCase();
+          if (!lang.startsWith("fa") && !lang.startsWith("per")) {
+            const persianVoice = pickSpeechVoiceForContentLanguage(voices, "fa");
+            if (persianVoice.voice) {
+              resolvedVoice = persianVoice.voice;
+              usedFallback = true;
+            } else {
+              setVoiceUnavailableNotice(persianVoice.unavailableMessage);
+              return;
+            }
+          }
+        }
+      }
 
       // Lock the resolved voice for the entire session so every chunk speaks
       // with the same voice.
       sessionVoiceRef.current = resolvedVoice;
       sessionUsesVoiceRef.current = resolvedVoice !== null;
 
-      if (voiceId !== SPEECH_AUTO_VOICE_ID && usedFallback) {
+      if (languageUnavailableMessage) {
+        setVoiceUnavailableNotice(languageUnavailableMessage);
+      } else if (voiceId !== SPEECH_AUTO_VOICE_ID && usedFallback) {
         setVoiceUnavailableNotice(
           formatVoiceUnavailableMessage(
             resolvedVoice
@@ -541,7 +587,13 @@ export function useSpeechSynthesis(options: UseSpeechSynthesisOptions = {}) {
         speakNextInSequence(generation);
       }, 0);
     },
-    [clearStartTimeout, instanceId, speakNextInSequence, syncSectionIndexForChunk],
+    [
+      clearStartTimeout,
+      contentLanguage,
+      instanceId,
+      speakNextInSequence,
+      syncSectionIndexForChunk,
+    ],
   );
 
   const speakPlan = useCallback(

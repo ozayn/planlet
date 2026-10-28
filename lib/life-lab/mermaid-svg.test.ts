@@ -16,6 +16,7 @@ import {
   diagramAssetNameFromSource,
 } from "@/lib/life-lab/diagram-assets";
 import {
+  ensureMermaidPersianFontSupport,
   fixMermaidHtmlLabelStyles,
   prepareMermaidSvg,
   sanitizeGeneratedMermaidSvg,
@@ -24,6 +25,15 @@ import {
 const root = join(import.meta.dirname, "../..");
 
 describe("life lab mermaid svg", () => {
+  it("injects Vazirmatn for Persian diagram labels", () => {
+    const svg =
+      '<svg xmlns="http://www.w3.org/2000/svg"><text>جبرگرایی فناورانه</text></svg>';
+    const withFont = ensureMermaidPersianFontSupport(svg);
+    assert.match(withFont, /Vazirmatn/);
+    const prepared = prepareMermaidSvg(svg);
+    assert.match(prepared.html, /Vazirmatn/);
+  });
+
   it("removes nowrap and max-width clipping from html label styles", () => {
     const svg = `<svg><foreignObject><div xmlns="http://www.w3.org/1999/xhtml" style="display: table-cell; white-space: nowrap; line-height: 1.5; max-width: 180px; text-align: center;"><span class="nodeLabel">Heuristics and subconscious processing</span></div></foreignObject></svg>`;
 

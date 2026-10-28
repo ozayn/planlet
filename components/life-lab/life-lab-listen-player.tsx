@@ -34,6 +34,7 @@ type LifeLabListenPlayerProps = {
   preferences: LifeLabReadAloudPreferences;
   openAiNarrationAvailable: boolean;
   includeFlashcards?: boolean;
+  contentLanguage?: "en" | "fa" | null;
   className?: string;
   onSwitchToDevice?: () => void;
 };
@@ -56,6 +57,7 @@ export function LifeLabListenPlayer({
   preferences,
   openAiNarrationAvailable,
   includeFlashcards = true,
+  contentLanguage = null,
   className = "",
   onSwitchToDevice,
 }: LifeLabListenPlayerProps) {
@@ -96,6 +98,7 @@ export function LifeLabListenPlayer({
         enabled: false,
         mediaSessionAlbum: "Life Lab",
       }}
+      contentLanguage={contentLanguage}
       className={className}
       onSwitchToDevice={onSwitchToDevice}
     />

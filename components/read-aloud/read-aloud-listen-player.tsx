@@ -43,6 +43,7 @@ type ReadAloudListenPlayerProps = {
   preferences: LifeLabReadAloudPreferences;
   openAiNarrationAvailable: boolean;
   openAiNarrationOptions: Parameters<typeof useOpenAiNarration>[0];
+  contentLanguage?: "en" | "fa" | null;
   className?: string;
   onSwitchToDevice?: () => void;
 };
@@ -135,6 +136,7 @@ export function ReadAloudListenPlayer({
   preferences,
   openAiNarrationAvailable,
   openAiNarrationOptions,
+  contentLanguage = null,
   className = "",
   onSwitchToDevice,
 }: ReadAloudListenPlayerProps) {
@@ -186,6 +188,7 @@ export function ReadAloudListenPlayer({
     initialVoiceId: preferences.speechVoiceId,
     autoContinue,
     onSectionChange: handleSectionChange,
+    contentLanguage,
   });
 
   const openAiNarration = useOpenAiNarration({

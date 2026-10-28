@@ -33,10 +33,29 @@ import {
   lifeLabFilterOptionLabel,
   parseLifeLabFilterValues,
 } from "@/lib/life-lab/filters";
+import {
+  LIFE_LAB_READING_LANGUAGE_STORAGE_KEY,
+  parsePreferredReadingLanguage,
+  type LifeLabContentLanguage,
+} from "@/lib/life-lab/bilingual";
 import { groupLifeLabNotes } from "@/lib/life-lab/organization";
 import { noteMatchesSearch } from "@/lib/life-lab/search";
 import { buildLifeLabSectionView } from "@/lib/life-lab/section-view";
 import { buildNoteItemKey } from "@/lib/life-lab/item-key";
+
+function readPreferredReadingLanguage(): LifeLabContentLanguage {
+  if (typeof window === "undefined") {
+    return "en";
+  }
+
+  try {
+    return parsePreferredReadingLanguage(
+      window.localStorage.getItem(LIFE_LAB_READING_LANGUAGE_STORAGE_KEY),
+    );
+  } catch {
+    return "en";
+  }
+}
 
 const FILTER_PARAM_KEYS: LifeLabFilterKey[] = [
   "subfolder",
@@ -176,6 +195,9 @@ export function LifeLabSectionBrowser({
   const [localArchived, setLocalArchived] = useState<Set<string>>(
     () => new Set(archivedItemKeys),
   );
+  const [preferredReadingLanguage] = useState<LifeLabContentLanguage>(() =>
+    readPreferredReadingLanguage(),
+  );
 
   const searchQuery = searchParams.get("q")?.trim() ?? "";
   const rawSort = searchParams.get("sort")?.trim() ?? "";
@@ -213,6 +235,7 @@ export function LifeLabSectionBrowser({
             sectionId,
             relativePath: note.relativePath,
             slug: note.slug,
+            metadata: note.metadata,
           });
           return !localArchived.has(key);
         });
@@ -234,8 +257,13 @@ export function LifeLabSectionBrowser({
   ]);
 
   const groups = useMemo(
-    () => groupLifeLabNotes(filteredNotes, { sectionId, sort }),
-    [filteredNotes, sectionId, sort],
+    () =>
+      groupLifeLabNotes(filteredNotes, {
+        sectionId,
+        sort,
+        preferredReadingLanguage,
+      }),
+    [filteredNotes, preferredReadingLanguage, sectionId, sort],
   );
 
   const hasActiveQuery =

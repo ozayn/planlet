@@ -445,6 +445,76 @@ describe("life lab section view", () => {
     assert.equal(recentBlock?.notes.length, 1);
   });
 
+  it("dedupes recently-added entries that share a slug", () => {
+    const english = noteSummary({
+      slug: "videos__2026-10-22",
+      title: "History of Science",
+      subfolderLabel: "videos",
+      relativePath: "videos/2026-10-22.md",
+      fileId: "file-en",
+      dateLabel: "Oct 22, 2026",
+      metadata: {
+        language: "en",
+        translation_group_id: "history-2026-10-22",
+      },
+    });
+    const persian = noteSummary({
+      slug: "videos__2026-10-22",
+      title: "تاریخ علم",
+      subfolderLabel: "videos",
+      relativePath: "videos/2026-10-22-fa.md",
+      fileId: "file-fa",
+      dateLabel: "Oct 22, 2026",
+      metadata: {
+        language: "fa",
+        translation_group_id: "history-2026-10-22",
+      },
+    });
+
+    const view = buildLifeLabSectionView({
+      sectionId: "youtube-learning",
+      notes: [english, persian],
+      groups: [],
+      hasActiveQuery: false,
+    });
+
+    const recentBlock = view.blocks.find((block) => block.kind === "recently-added");
+
+    assert.equal(recentBlock?.kind, "recently-added");
+    assert.equal(recentBlock?.notes.length, 1);
+    assert.equal(recentBlock?.notes[0]?.fileId, "file-en");
+  });
+
+  it("dedupes recently-added slug collisions even without translation_group_id", () => {
+    const first = noteSummary({
+      slug: "videos__2026-10-22",
+      title: "First",
+      subfolderLabel: "videos",
+      relativePath: "videos/2026-10-22.md",
+      fileId: "file-a",
+      dateLabel: "Oct 22, 2026",
+    });
+    const second = noteSummary({
+      slug: "videos__2026-10-22",
+      title: "Second",
+      subfolderLabel: "videos",
+      relativePath: "videos/2026_10_22.md",
+      fileId: "file-b",
+      dateLabel: "Oct 22, 2026",
+    });
+
+    const view = buildLifeLabSectionView({
+      sectionId: "youtube-learning",
+      notes: [first, second],
+      groups: [],
+      hasActiveQuery: false,
+    });
+
+    const recentBlock = view.blocks.find((block) => block.kind === "recently-added");
+
+    assert.equal(recentBlock?.notes.length, 1);
+  });
+
   it("returns grouped search results when a query is active", () => {
     const view = buildLifeLabSectionView({
       sectionId: "youtube-learning",

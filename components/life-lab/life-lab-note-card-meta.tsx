@@ -10,7 +10,11 @@ type LifeLabNoteCardMetaProps = {
   sectionId: LifeLabSectionId;
   note: Pick<
     LifeLabNoteSummary,
-    "slug" | "metadata" | "hasFlashcards" | "flashcardCount"
+    | "slug"
+    | "metadata"
+    | "hasFlashcards"
+    | "flashcardCount"
+    | "bilingualAvailabilityLabel"
   >;
   className?: string;
 };
@@ -29,14 +33,18 @@ export function LifeLabNoteCardMeta({
   className = "",
 }: LifeLabNoteCardMetaProps) {
   const statusLabel = resolveStudyStatusLabel(note.metadata);
+  const bilingualLabel = note.bilingualAvailabilityLabel?.trim() || null;
   const showStudy = noteShowsFlashcardAction(note);
 
-  if (!statusLabel && !showStudy) {
+  if (!statusLabel && !showStudy && !bilingualLabel) {
     return null;
   }
 
   return (
     <div className={`flex flex-wrap items-center gap-2 ${className}`}>
+      {bilingualLabel ? (
+        <span className="text-[0.6875rem] text-muted">{bilingualLabel}</span>
+      ) : null}
       {statusLabel ? <StudyStatusBadge label={statusLabel} /> : null}
       {showStudy ? (
         <Link

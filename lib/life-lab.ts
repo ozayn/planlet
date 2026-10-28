@@ -83,6 +83,12 @@ import {
 } from "@/lib/life-lab/source-url";
 import { isLifeLabDevToolsEnabled } from "@/lib/life-lab/dev";
 import {
+  collectTranslationSiblings,
+  findFilenameLanguageSiblings,
+  resolveNoteContentLanguage,
+  type TranslationSibling,
+} from "@/lib/life-lab/bilingual";
+import {
   downloadDriveFile,
   downloadDriveFileBytes,
   findDriveFileByRelativePath,
@@ -2050,9 +2056,15 @@ const getLifeLabNoteDataCached = cache(
             refresh,
           );
 
+          const withMeta = attachLifeLabNoteLoadMeta(note, cacheDiagnostic);
+          const withTranslations = await attachLifeLabNoteTranslations(
+            sectionId,
+            withMeta,
+          );
+
           return {
             availability,
-            note: attachLifeLabNoteLoadMeta(note, cacheDiagnostic),
+            note: withTranslations,
           };
         } catch (error) {
           const normalized =
@@ -2265,6 +2277,54 @@ function buildLifeLabNote(
   }
 
   return note;
+}
+
+async function attachLifeLabNoteTranslations(
+  sectionId: LifeLabSectionId,
+  note: LifeLabNote,
+): Promise<LifeLabNote> {
+  const contentLanguage = resolveNoteContentLanguage(note);
+  let siblings: TranslationSibling[] = [];
+
+  try {
+    const { records } = await getSectionFileIndexCached(sectionId);
+    const fromMeta = collectTranslationSiblings(records, note);
+    const fromFilename = findFilenameLanguageSiblings(
+      note.relativePath,
+      records,
+    );
+
+    const byLanguage = new Map<string, TranslationSibling>();
+    for (const sibling of [...fromMeta, ...fromFilename]) {
+      byLanguage.set(sibling.language, sibling);
+    }
+
+    if (contentLanguage && !byLanguage.has(contentLanguage)) {
+      byLanguage.set(contentLanguage, {
+        language: contentLanguage,
+        slug: note.slug,
+        relativePath: note.relativePath,
+        fileId: note.fileId,
+        title: note.title,
+      });
+    }
+
+    siblings = ["en", "fa"]
+      .map((language) => byLanguage.get(language))
+      .filter((entry): entry is TranslationSibling => Boolean(entry));
+  } catch {
+    siblings = [];
+  }
+
+  return {
+    ...note,
+    contentLanguage,
+    translationSiblings: siblings.length > 0 ? siblings : undefined,
+    bilingualLanguages:
+      siblings.length > 1
+        ? siblings.map((sibling) => sibling.language)
+        : note.bilingualLanguages,
+  };
 }
 
 function attachLifeLabNoteLoadMeta(

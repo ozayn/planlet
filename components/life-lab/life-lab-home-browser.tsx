@@ -7,6 +7,12 @@ import { useMemo, useState } from "react";
 import type {
   LifeLabBrowseNote,
 } from "@/lib/life-lab";
+import {
+  collapseNotesByTranslationGroup,
+  LIFE_LAB_READING_LANGUAGE_STORAGE_KEY,
+  parsePreferredReadingLanguage,
+  type LifeLabContentLanguage,
+} from "@/lib/life-lab/bilingual";
 import type { LifeLabFilterKey } from "@/lib/life-lab/filters";
 import { filterLifeLabNotes } from "@/lib/life-lab/filters";
 import { noteMatchesSearch } from "@/lib/life-lab/search";
@@ -16,6 +22,20 @@ import {
   isPodcastEpisodeNote,
   isPodcastShowIndex,
 } from "@/lib/life-lab/podcasts";
+
+function readPreferredReadingLanguage(): LifeLabContentLanguage {
+  if (typeof window === "undefined") {
+    return "en";
+  }
+
+  try {
+    return parsePreferredReadingLanguage(
+      window.localStorage.getItem(LIFE_LAB_READING_LANGUAGE_STORAGE_KEY),
+    );
+  } catch {
+    return "en";
+  }
+}
 
 const FILTER_PARAM_KEYS: LifeLabFilterKey[] = [
   "subfolder",
@@ -72,6 +92,9 @@ export function LifeLabHomeBrowser({ notes }: LifeLabHomeBrowserProps) {
   const [searchInput, setSearchInput] = useState(
     () => searchParams.get("q")?.trim() ?? "",
   );
+  const [preferredReadingLanguage] = useState<LifeLabContentLanguage>(() =>
+    readPreferredReadingLanguage(),
+  );
 
   const searchQuery = searchParams.get("q")?.trim() ?? "";
   const filters = useMemo(() => readFilters(searchParams), [searchParams]);
@@ -79,12 +102,16 @@ export function LifeLabHomeBrowser({ notes }: LifeLabHomeBrowserProps) {
   const filteredNotes = useMemo(() => {
     const metadataFiltered = filterLifeLabNotes(notes, filters) as LifeLabBrowseNote[];
 
-    if (!searchQuery) {
-      return metadataFiltered;
-    }
+    const matched = searchQuery
+      ? metadataFiltered.filter((note) => noteMatchesSearch(note, searchQuery))
+      : metadataFiltered;
 
-    return metadataFiltered.filter((note) => noteMatchesSearch(note, searchQuery));
-  }, [filters, notes, searchQuery]);
+    // One result per translation group (English + فارسی still searchable).
+    return collapseNotesByTranslationGroup(
+      matched,
+      preferredReadingLanguage,
+    ) as LifeLabBrowseNote[];
+  }, [filters, notes, preferredReadingLanguage, searchQuery]);
 
   function submitSearch(): void {
     router.replace(

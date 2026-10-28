@@ -17,12 +17,15 @@ import {
   suppressExactHeaderMetadataLines,
   suppressExactLifeLabMarkdownDuplicates,
 } from "@/lib/life-lab/note-quality";
+import { resolveNoteContentLanguage } from "@/lib/life-lab/bilingual";
 
 type LifeLabNoteContentProps = {
   content: string;
   sectionId?: LifeLabSectionId;
   metadata?: LifeLabNoteMetadata;
   noteTitle?: string;
+  relativePath?: string | null;
+  contentLanguage?: "en" | "fa" | null;
   /** `print` omits flashcards/Q&A and expands collapsible study content. */
   variant?: "reading" | "print";
 };
@@ -105,6 +108,8 @@ export function LifeLabNoteContent({
   sectionId,
   metadata,
   noteTitle = "",
+  relativePath = null,
+  contentLanguage = null,
   variant = "reading",
 }: LifeLabNoteContentProps) {
   const deduplicatedContent = suppressExactLifeLabMarkdownDuplicates(
@@ -117,6 +122,10 @@ export function LifeLabNoteContent({
       forPrint: variant === "print",
     }),
   );
+  const language =
+    contentLanguage ??
+    resolveNoteContentLanguage({ metadata, relativePath });
+  const isPersian = language === "fa";
 
   return (
     <div
@@ -124,6 +133,9 @@ export function LifeLabNoteContent({
       data-life-lab-note-content=""
       data-life-lab-content-order="learning-map-first"
       data-life-lab-content-variant={variant}
+      data-life-lab-content-language={language ?? undefined}
+      dir={isPersian ? "rtl" : undefined}
+      lang={isPersian ? "fa" : undefined}
     >
       {blocks.map((block, index) => (
         <LifeLabNoteContentBlockView

@@ -29,6 +29,7 @@ export function LifeLabNoteMoreMenu({
     sectionId,
     relativePath: note.relativePath,
     slug: note.slug,
+    metadata: note.metadata,
   });
 
   async function copyLink() {

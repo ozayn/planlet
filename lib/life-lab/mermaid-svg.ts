@@ -49,13 +49,37 @@ export function sanitizeGeneratedMermaidSvg(svgString: string): string | null {
     );
 }
 
+const MERMAID_PERSIAN_FONT_STACK =
+  "Vazirmatn, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif";
+
+/** Ensure Persian labels render with a readable font in SVG/PNG exports. */
+export function ensureMermaidPersianFontSupport(svgString: string): string {
+  if (!/[\u0600-\u06FF]/.test(svgString)) {
+    return svgString;
+  }
+
+  if (/font-family:\s*Vazirmatn/i.test(svgString)) {
+    return svgString;
+  }
+
+  const styleTag = `<style type="text/css"><![CDATA[text,tspan,foreignObject,div,span,p{font-family:${MERMAID_PERSIAN_FONT_STACK}!important}]]></style>`;
+
+  if (/<svg\b[^>]*>/i.test(svgString)) {
+    return svgString.replace(/<svg\b[^>]*>/i, (openTag) => `${openTag}${styleTag}`);
+  }
+
+  return svgString;
+}
+
 export function prepareMermaidSvg(svgString: string): PreparedMermaidSvg {
   const viewBoxMatch = svgString.match(/viewBox=(["'])([^"']+)\1/i);
   const viewBoxParts = viewBoxMatch?.[2]?.split(/\s+/).map(Number) ?? [];
   const viewWidth = viewBoxParts[2] ?? 0;
   const viewHeight = viewBoxParts[3] ?? 0;
 
-  let html = fixMermaidHtmlLabelStyles(svgString);
+  let html = ensureMermaidPersianFontSupport(
+    fixMermaidHtmlLabelStyles(svgString),
+  );
 
   if (viewWidth > 0 && viewHeight > 0) {
     const widthMatch = html.match(/\bwidth=(["'])([^"']+)\1/i);

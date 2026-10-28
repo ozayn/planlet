@@ -435,6 +435,7 @@ function LifeLabNoteCard({
     sectionId,
     relativePath: note.relativePath,
     slug: note.slug,
+    metadata: note.metadata,
   });
 
   return (
@@ -545,6 +546,7 @@ function LifeLabNoteList({
             sectionId,
             relativePath: note.relativePath,
             slug: note.slug,
+            metadata: note.metadata,
           });
           const archived = archivedSet.has(itemKey);
 

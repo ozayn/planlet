@@ -1,3 +1,7 @@
+import {
+  collapseNotesByTranslationGroup,
+  type LifeLabContentLanguage,
+} from "@/lib/life-lab/bilingual";
 import type {
   LifeLabNoteGroup,
   LifeLabNoteSummary,
@@ -287,6 +291,8 @@ function groupLabelForId(
 export type GroupLifeLabNotesOptions = {
   sectionId?: LifeLabSectionId;
   sort?: LifeLabSortKey;
+  /** Preferred reading language for bilingual library cards (default English). */
+  preferredReadingLanguage?: LifeLabContentLanguage;
 };
 
 // When a dated primary group grows large, split it into month groups so the
@@ -469,12 +475,17 @@ export function groupLifeLabNotes(
 ): LifeLabNoteGroup[] {
   const seenKeys = new Set<string>();
   const groups = new Map<string, LifeLabNoteSummary[]>();
+  // One card per translation group (preferred language version).
+  const libraryNotes = collapseNotesByTranslationGroup(
+    notes,
+    options.preferredReadingLanguage ?? "en",
+  );
   const classifier =
     options.sectionId === "youtube-learning"
-      ? createYoutubeLibraryClassifier(notes)
+      ? createYoutubeLibraryClassifier(libraryNotes)
       : null;
 
-  const classified = notes
+  const classified = libraryNotes
     .map((note) => ({
       note,
       groupId: classifyNoteGroupForSection(note, options.sectionId, classifier ?? undefined),

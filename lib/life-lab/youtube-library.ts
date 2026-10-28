@@ -1,3 +1,4 @@
+import { noteTranslationDedupeKey } from "@/lib/life-lab/bilingual";
 import type { LifeLabNoteSummary } from "@/lib/life-lab/constants";
 import { isPlaylistIndexNote } from "@/lib/life-lab/playlist-index";
 import { isReadmeSlug, relativePathFilename } from "@/lib/life-lab/slug";
@@ -147,16 +148,22 @@ export function isPlaylistYoutubeVideo(
 }
 
 export function noteLibraryDedupeKey(note: LifeLabNoteSummary): string {
-  const fileId = note.fileId?.trim();
-
-  if (fileId) {
-    return fileId;
+  // Bilingual pairs share one library card via translation_group_id (or .en/.fa stems).
+  const translationKey = noteTranslationDedupeKey(note);
+  if (translationKey) {
+    return translationKey;
   }
 
   const videoId = resolveNoteYoutubeVideoId(note);
 
   if (videoId) {
     return `yt:${videoId}`;
+  }
+
+  const fileId = note.fileId?.trim();
+
+  if (fileId) {
+    return fileId;
   }
 
   if (note.relativePath) {

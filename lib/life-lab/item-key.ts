@@ -3,6 +3,9 @@
  * Source Markdown/Drive files are never modified.
  */
 
+import { buildTranslationAwareNoteIdentityPath } from "@/lib/life-lab/bilingual";
+import type { LifeLabNoteMetadata } from "@/lib/life-lab/constants";
+
 export type LifeLabItemType =
   | "note"
   | "flashcard-deck"
@@ -73,10 +76,18 @@ export function buildNoteItemKey(input: {
   sectionId: string;
   relativePath?: string | null;
   slug: string;
+  metadata?: LifeLabNoteMetadata | null;
 }): string {
+  // Share archive/study identity across EN/FA versions of one learning item.
+  const identityPath = buildTranslationAwareNoteIdentityPath({
+    metadata: input.metadata,
+    relativePath: input.relativePath,
+    slug: input.slug,
+  });
+
   return buildLifeLabItemKey({
     section: input.sectionId,
-    relativePath: input.relativePath,
+    relativePath: identityPath,
     slug: input.slug,
     itemType:
       input.sectionId === "learning-dictionary"

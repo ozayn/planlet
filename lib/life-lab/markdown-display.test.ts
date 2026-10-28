@@ -208,6 +208,25 @@ Context: this remains ordinary prose.`,
 
     assert.doesNotMatch(rendered, /^# Political Capital/m);
     assert.match(rendered, /^## Summary/m);
+
+    const withLeadingBlank = suppressExactLifeLabMarkdownDuplicates(
+      "\n\n# Political Capital\n\n## Summary\n\nUseful context.",
+      "Political Capital",
+    );
+    assert.doesNotMatch(withLeadingBlank, /# Political Capital/);
+    assert.match(withLeadingBlank, /^## Summary/m);
+  });
+
+  it("does not flag auto-hidden duplicate titles in the quality audit", () => {
+    const issues = auditLifeLabNoteQuality({
+      content: "# Political Capital\n\n## Summary\n\nUseful context.",
+      title: "Political Capital",
+    });
+
+    assert.equal(
+      issues.filter((issue) => issue.kind === "duplicate-title").length,
+      0,
+    );
   });
 
   it("suppresses exact repeated paragraphs but preserves meaningful variants", () => {

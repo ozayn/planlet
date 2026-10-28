@@ -1,4 +1,7 @@
-import type { LifeLabSectionId } from "@/lib/life-lab/constants";
+import type {
+  LifeLabNoteMetadata,
+  LifeLabSectionId,
+} from "@/lib/life-lab/constants";
 import { LIFE_LAB_MAX_FILES_PER_SECTION } from "@/lib/life-lab/constants";
 import {
   formatSectionContentMeta,
@@ -13,11 +16,13 @@ export const LIFE_LAB_LEGACY_SECTION_FILE_CAP = 300;
 export type CountableSectionNote = {
   relativePath: string;
   slug: string;
+  metadata?: LifeLabNoteMetadata | null;
 };
 
 /**
  * Count notes from an already-loaded record list (e.g. browse payload).
  * Does not fetch Drive or parse files.
+ * Bilingual twins share one identity key and count once.
  */
 export function countVisibleSectionNotes(
   sectionId: LifeLabSectionId,
@@ -32,10 +37,22 @@ export function countVisibleSectionNotes(
         sectionId,
         relativePath: record.relativePath,
         slug: record.slug,
+        metadata: record.metadata,
       }),
   );
 
-  return visible.length;
+  const uniqueKeys = new Set(
+    visible.map((record) =>
+      buildNoteItemKey({
+        sectionId,
+        relativePath: record.relativePath,
+        slug: record.slug,
+        metadata: record.metadata,
+      }),
+    ),
+  );
+
+  return uniqueKeys.size;
 }
 
 /** Group already-loaded browse notes by section — O(n), no I/O. */

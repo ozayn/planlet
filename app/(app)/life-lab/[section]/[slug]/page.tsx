@@ -66,6 +66,7 @@ import {
 } from "@/lib/life-lab/print-document";
 import { lectureNoteSourceLabel } from "@/lib/life-lab/lecture-notes";
 import { resolveRawStandaloneChannelName } from "@/lib/life-lab/standalone-channel";
+import { lifeLabNoteDisplayTitle } from "@/lib/life-lab/youtube-learning";
 import { isAdminRole } from "@/lib/auth-roles";
 import { canAccessLifeLabPage } from "@/lib/roles";
 
@@ -112,6 +113,7 @@ export default async function LifeLabNotePage({
       sectionId: note.sectionId,
       relativePath: note.relativePath,
       slug: note.slug,
+      metadata: note.metadata,
     }),
   );
 
@@ -135,6 +137,7 @@ export default async function LifeLabNotePage({
         note.slug,
       )
     : null;
+  const displayTitle = lifeLabNoteDisplayTitle(note);
   const noteBodyContent = stripLeadingMarkdownH1(note.content);
   const diagramAssetBindings = buildMermaidDiagramAssetBindings(note.content);
   const podcastNotes =
@@ -286,6 +289,8 @@ export default async function LifeLabNotePage({
                   sectionId={note.sectionId}
                   metadata={note.metadata}
                   noteTitle={printTitle}
+                  relativePath={note.relativePath}
+                  contentLanguage={note.contentLanguage}
                   variant="print"
                 />
               ) : (
@@ -294,6 +299,8 @@ export default async function LifeLabNotePage({
                   sectionId={note.sectionId}
                   metadata={note.metadata}
                   noteTitle={printTitle}
+                  relativePath={note.relativePath}
+                  contentLanguage={note.contentLanguage}
                   variant="print"
                 />
               )}
@@ -357,6 +364,7 @@ export default async function LifeLabNotePage({
           openAiNarrationAvailable={openAiNarrationAvailable}
           archived={noteArchived}
           activeMode="overview"
+          view={view ?? null}
           hero={
             showNoteImage ? (
               <LifeLabNoteImageFigure
@@ -432,7 +440,9 @@ export default async function LifeLabNotePage({
                   content={noteBodyContent}
                   sectionId={note.sectionId}
                   metadata={note.metadata}
-                  noteTitle={note.title}
+                  noteTitle={displayTitle}
+                  relativePath={note.relativePath}
+                  contentLanguage={note.contentLanguage}
                 />
                 <LifeLabNoteDetailsSection
                   note={note}

@@ -57,6 +57,14 @@ describe("Life Lab note detail header chrome", () => {
     assert.match(moreMenu, /Share/);
   });
 
+  it("wires bilingual English|فارسی switch into the note action row", () => {
+    assert.match(header, /LifeLabLanguageSwitch/);
+    assert.match(header, /contentLanguage/);
+    assert.match(header, /translationSiblings/);
+    assert.match(notePage, /contentLanguage=\{note\.contentLanguage\}/);
+    assert.match(notePage, /view=\{view \?\? null\}/);
+  });
+
   it("renders Flashcards as mode navigation, not an action button", () => {
     assert.match(header, /LifeLabModeTabs/);
     assert.match(header, /label: "Flashcards"/);

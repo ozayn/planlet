@@ -20,6 +20,7 @@ type LifeLabNoteListenProps = {
   preferences: LifeLabReadAloudPreferences;
   openAiNarrationAvailable: boolean;
   includeFlashcards?: boolean;
+  contentLanguage?: "en" | "fa" | null;
   className?: string;
 };
 
@@ -33,6 +34,7 @@ export function LifeLabNoteListen({
   preferences,
   openAiNarrationAvailable,
   includeFlashcards = true,
+  contentLanguage = null,
   className = "",
 }: LifeLabNoteListenProps) {
   const router = useRouter();
@@ -71,6 +73,7 @@ export function LifeLabNoteListen({
       preferences={preferences}
       openAiNarrationAvailable={openAiNarrationAvailable}
       includeFlashcards={includeFlashcards}
+      contentLanguage={contentLanguage}
       className={className}
       onSwitchToDevice={handleSwitchToDevice}
     />

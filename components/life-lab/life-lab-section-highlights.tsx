@@ -1,6 +1,7 @@
 import { LifeLabSectionHeading } from "@/components/life-lab/life-lab-section-heading";
 import { LifeLabVideoRow } from "@/components/life-lab/life-lab-video-row";
 import type { LifeLabNoteSummary, LifeLabSectionId } from "@/lib/life-lab/constants";
+import { noteLibraryDedupeKey } from "@/lib/life-lab/youtube-library";
 
 type LifeLabRecentlyAddedProps = {
   sectionId: LifeLabSectionId;
@@ -11,6 +12,10 @@ type LifeLabContinueLearningProps = {
   sectionId: LifeLabSectionId;
   notes: LifeLabNoteSummary[];
 };
+
+function noteListKey(note: LifeLabNoteSummary): string {
+  return noteLibraryDedupeKey(note) || note.fileId || note.relativePath || note.slug;
+}
 
 export function LifeLabContinueLearning({
   sectionId,
@@ -25,7 +30,11 @@ export function LifeLabContinueLearning({
       <LifeLabSectionHeading>Continue learning</LifeLabSectionHeading>
       <ul className="space-y-0.5">
         {notes.map((note) => (
-          <LifeLabVideoRow key={note.slug} sectionId={sectionId} note={note} />
+          <LifeLabVideoRow
+            key={noteListKey(note)}
+            sectionId={sectionId}
+            note={note}
+          />
         ))}
       </ul>
     </section>
@@ -45,7 +54,11 @@ export function LifeLabRecentlyAdded({
       <LifeLabSectionHeading>Recently added</LifeLabSectionHeading>
       <ul className="space-y-0.5">
         {notes.map((note) => (
-          <LifeLabVideoRow key={note.slug} sectionId={sectionId} note={note} />
+          <LifeLabVideoRow
+            key={noteListKey(note)}
+            sectionId={sectionId}
+            note={note}
+          />
         ))}
       </ul>
     </section>

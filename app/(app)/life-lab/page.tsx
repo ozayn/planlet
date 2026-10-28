@@ -9,6 +9,7 @@ import { LifeLabSectionCard } from "@/components/life-lab/life-lab-section-card"
 import { LifeLabStatusPanel } from "@/components/life-lab/life-lab-status-panel";
 import { PageHeader } from "@/components/page-header";
 import { getLifeLabBrowseData, getLifeLabHomeData } from "@/lib/life-lab";
+import { collapseNotesByTranslationGroup } from "@/lib/life-lab/bilingual";
 import { buildNoteItemKey } from "@/lib/life-lab/item-key";
 import {
   excludeArchivedByKey,
@@ -43,12 +44,14 @@ export default async function LifeLabPage() {
         sectionId: note.sectionId,
         relativePath: note.relativePath,
         slug: note.slug,
+        metadata: note.metadata,
       }),
   );
+  const dedupedBrowseNotes = collapseNotesByTranslationGroup(visibleBrowseNotes);
   // Counts only when browse already loaded the same notes (no extra Drive/parsing).
   const browseCounts =
     availability.status === "ready"
-      ? countBrowseNotesBySection(visibleBrowseNotes)
+      ? countBrowseNotesBySection(dedupedBrowseNotes)
       : null;
 
   return (

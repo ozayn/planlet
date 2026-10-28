@@ -111,6 +111,15 @@ export type LifeLabNoteMetadata = {
   feed_name?: string;
   input_source?: string;
   language?: string;
+  /** Original source language (e.g. fa when English is a translation). */
+  source_language?: string;
+  /**
+   * Stable id linking language versions of one learning item.
+   * Primary relationship for bilingual notes (preferred over filename suffixes).
+   */
+  translation_group_id?: string;
+  /** Relative path or filename of the alternate language Markdown note. */
+  alternate_language_note?: string;
   transcript_available?: boolean;
   speaker_count?: number;
   privacy?: string;
@@ -216,6 +225,10 @@ export type LifeLabNoteSummary = {
   podcastIndexContent?: string;
   hasFlashcards?: boolean;
   flashcardCount?: number;
+  /** Languages available when this card represents a translation group. */
+  bilingualLanguages?: Array<"en" | "fa">;
+  /** e.g. "Persian source · English + فارسی" */
+  bilingualAvailabilityLabel?: string | null;
   dev?: LifeLabNoteDevMeta;
 };
 
@@ -300,12 +313,24 @@ export type LifeLabStudyCard = LifeLabFlashcard & {
   source?: string;
 };
 
+export type LifeLabTranslationSibling = {
+  language: "en" | "fa";
+  slug: string;
+  relativePath: string;
+  fileId: string;
+  title: string;
+};
+
 export type LifeLabNote = LifeLabNoteSummary & {
   sectionId: LifeLabSectionId;
   sectionLabel: string;
   content: string;
   flashcards?: LifeLabFlashcard[];
   technicalProvenance?: string[];
+  /** Resolved content language for this note file (en/fa). */
+  contentLanguage?: "en" | "fa" | null;
+  /** Language versions of the same learning item (includes current). */
+  translationSiblings?: LifeLabTranslationSibling[];
   dev?: LifeLabNoteDevMeta & LifeLabNoteLoadMeta;
 };
 

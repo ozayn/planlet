@@ -114,6 +114,7 @@ import {
   listSelectableSpeechVoices,
   markdownToSpeechText,
   pickSpeechVoice,
+  pickSpeechVoiceForContentLanguage,
   plainTextToSpeechText,
   prepareFlashcardSpeechText,
   prepareNoteSpeechText,
@@ -1074,6 +1075,25 @@ describe("life lab speech", () => {
     ]);
 
     assert.equal(voice?.name, "Serena");
+  });
+
+  it("selects a Persian voice for fa content and explains when missing", () => {
+    const withPersian = pickSpeechVoiceForContentLanguage(
+      [
+        { name: "Serena", lang: "en-GB" } as SpeechSynthesisVoice,
+        { name: "Microsoft Dilara", lang: "fa-IR" } as SpeechSynthesisVoice,
+      ],
+      "fa",
+    );
+    assert.equal(withPersian.voice?.name, "Microsoft Dilara");
+    assert.equal(withPersian.unavailableMessage, null);
+
+    const missing = pickSpeechVoiceForContentLanguage(
+      [{ name: "Serena", lang: "en-GB" } as SpeechSynthesisVoice],
+      "fa",
+    );
+    assert.equal(missing.voice, null);
+    assert.match(missing.unavailableMessage ?? "", /No Persian voice/);
   });
 
   it("prefers Flo over Serena and Daniel for auto voice on Safari", () => {
@@ -2380,6 +2400,14 @@ Opening lecture on moral philosophy.`;
       "## Short version\n\nOpening lecture on moral philosophy.",
     );
     assert.equal(stripLeadingMarkdownH1("No heading here"), "No heading here");
+    assert.equal(
+      stripLeadingMarkdownH1("\n\n# Title only"),
+      "",
+    );
+    assert.equal(
+      stripLeadingMarkdownH1("# Title with trailing hashes ##\n\nBody"),
+      "Body",
+    );
   });
 
   it("shortens long youtube video titles for display only", () => {

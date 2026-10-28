@@ -95,6 +95,8 @@ export function getMermaidInitializeOptions(
     htmlLabels: true,
     theme: isDark ? ("dark" as const) : ("base" as const),
     themeVariables: {
+      fontFamily:
+        "Vazirmatn, ui-sans-serif, system-ui, -apple-system, Segoe UI, sans-serif",
       fontSize: layout.fontSize,
       primaryColor: isDark ? "#2a2621" : "#f8f5ef",
       primaryTextColor: isDark ? "#f4efe8" : "#171412",

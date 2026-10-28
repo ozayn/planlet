@@ -1,3 +1,4 @@
+import { collapseNotesByTranslationGroup } from "@/lib/life-lab/bilingual";
 import type {
   LifeLabNoteGroup,
   LifeLabNoteSummary,
@@ -126,16 +127,23 @@ export type LifeLabSectionView = {
 
 function dedupeNotesByIdentity(notes: LifeLabNoteSummary[]): LifeLabNoteSummary[] {
   const seen = new Set<string>();
+  const seenSlugs = new Set<string>();
   const result: LifeLabNoteSummary[] = [];
 
-  for (const note of notes) {
+  for (const note of collapseNotesByTranslationGroup(notes)) {
     const key = noteLibraryDedupeKey(note);
+    const slug = note.slug.trim();
 
-    if (seen.has(key)) {
+    // Identity key catches bilingual/YouTube twins; slug catch is a safety net for
+    // colliding stems that still produce duplicate React list keys.
+    if (seen.has(key) || (slug && seenSlugs.has(slug))) {
       continue;
     }
 
     seen.add(key);
+    if (slug) {
+      seenSlugs.add(slug);
+    }
     result.push(note);
   }
 

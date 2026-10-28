@@ -167,12 +167,14 @@ export function suppressExactLifeLabMarkdownDuplicates(
   content: string,
   pageTitle?: string,
 ): string {
+  const normalized = content.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");
+  const leadingH1 = normalized.match(/^\s*#\s+(.+?)\s*#*\s*(?:\n+|$)/)?.[1];
   const withoutDuplicateTitle =
     pageTitle &&
-    normalizeStructure(content.match(/^#\s+(.+?)\s*$/m)?.[1] ?? "") ===
-      normalizeStructure(pageTitle)
-      ? stripLeadingMarkdownH1(content)
-      : content;
+    leadingH1 &&
+    normalizeStructure(leadingH1) === normalizeStructure(pageTitle)
+      ? stripLeadingMarkdownH1(normalized)
+      : normalized;
 
   return suppressExactBlocks(
     suppressExactSectionBlocks(withoutDuplicateTitle),
@@ -287,20 +289,11 @@ export function auditLifeLabNoteQuality(input: {
   title?: string;
   metadata?: LifeLabNoteMetadata;
 }): LifeLabNoteQualityIssue[] {
-  const { content, title, metadata } = input;
+  const { content, metadata } = input;
   const issues: LifeLabNoteQualityIssue[] = [];
-  const leadingH1 = content.match(/^#\s+(.+?)\s*$/m)?.[1];
-
-  if (
-    leadingH1 &&
-    title &&
-    normalizeStructure(leadingH1) === normalizeStructure(title)
-  ) {
-    issues.push({
-      kind: "duplicate-title",
-      message: "The first H1 duplicates the page title.",
-    });
-  }
+  // Duplicate leading H1 is intentionally omitted: note pages strip it for
+  // display (`stripLeadingMarkdownH1` / `suppressExactLifeLabMarkdownDuplicates`),
+  // so flagging it only creates noise in the quality panel.
 
   const { sections } = listH2Sections(content);
   const seenParagraphs = new Map<string, string>();

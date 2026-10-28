@@ -6,12 +6,14 @@ import { LifeLabCompactSourceMeta } from "@/components/life-lab/life-lab-compact
 import { LifeLabContentHeader } from "@/components/life-lab/life-lab-content-header";
 import { LifeLabDetailsDisclosure } from "@/components/life-lab/life-lab-details-disclosure";
 import { LifeLabExportPdfIconButton } from "@/components/life-lab/life-lab-export-pdf-icon-button";
+import { LifeLabLanguageSwitch } from "@/components/life-lab/life-lab-language-switch";
 import { LifeLabModeTabs } from "@/components/life-lab/life-lab-mode-tabs";
 import { LifeLabNoteListen } from "@/components/life-lab/life-lab-note-listen";
 import { LifeLabNoteMoreMenu } from "@/components/life-lab/life-lab-note-more-menu";
 import { LifeLabPrimaryActions } from "@/components/life-lab/life-lab-primary-actions";
 import type { LifeLabReadAloudPreferences } from "@/lib/life-lab/read-aloud-preferences";
 import type { LifeLabNote, LifeLabSectionId } from "@/lib/life-lab/constants";
+import { resolveNoteContentLanguage } from "@/lib/life-lab/bilingual";
 import { collectAllMetadataChips } from "@/lib/life-lab/metadata-chips";
 import { resolveStudyStatusLabel } from "@/lib/life-lab/study-status";
 import {
@@ -44,6 +46,8 @@ type LifeLabNoteDetailHeaderProps = {
   activeMode?: "overview" | "flashcards" | "coaching";
   showCoaching?: boolean;
   hero?: ReactNode;
+  /** Preserve flashcards (etc.) query when switching language. */
+  view?: string | null;
 };
 
 function MetadataChip({ label }: { label: string }) {
@@ -229,8 +233,17 @@ export function LifeLabNoteDetailHeader({
   activeMode = "overview",
   showCoaching = false,
   hero,
+  view = null,
 }: LifeLabNoteDetailHeaderProps) {
   const displayTitle = lifeLabNoteDisplayTitle(note);
+  const contentLanguage =
+    note.contentLanguage ??
+    resolveNoteContentLanguage({
+      metadata: note.metadata,
+      relativePath: note.relativePath,
+    }) ??
+    "en";
+  const translationSiblings = note.translationSiblings ?? [];
   const dateLine = note.dateLabel ?? note.modifiedAtLabel;
   const lectureSourceLabel = lectureNoteSourceLabel({
     relativePath: note.relativePath,
@@ -309,7 +322,16 @@ export function LifeLabNoteDetailHeader({
             <LifeLabModeTabs tabs={modeTabs} activeId={activeMode} />
           </div>
         ) : null,
-        <div key="actions" className="print:hidden">
+        <div
+          key="actions"
+          className="flex flex-wrap items-center gap-2 print:hidden"
+        >
+          <LifeLabLanguageSwitch
+            sectionId={sectionId}
+            currentLanguage={contentLanguage}
+            siblings={translationSiblings}
+            view={view}
+          />
           <LifeLabPrimaryActions
             listen={
               <LifeLabNoteListen
@@ -322,6 +344,7 @@ export function LifeLabNoteDetailHeader({
                 preferences={readAloudPreferences}
                 openAiNarrationAvailable={openAiNarrationAvailable}
                 includeFlashcards
+                contentLanguage={contentLanguage}
               />
             }
             exportPdf={
