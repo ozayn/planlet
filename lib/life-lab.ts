@@ -145,6 +145,7 @@ import {
 } from "@/lib/life-lab/sections";
 import {
   driveRelativePathToSlug,
+  findLifeLabRecordBySlug,
   formatDateLabelFromFilename,
   markdownExcerpt,
   relativePathFilename,
@@ -787,10 +788,12 @@ async function loadSectionFileIndex(
     : await getSectionFolderMap();
 
   if (!mapResult.ok) {
-    return {
-      records: [],
-      listingDiagnostic: emptyDiagnostic,
-    };
+    // A transient Drive failure is not an empty library. Let the cache keep
+    // its previous successful index rather than caching a false empty result.
+    throw new LifeLabDriveError(mapResult.error.message, {
+      httpStatus: mapResult.error.httpStatus,
+      reason: mapResult.error.reason,
+    });
   }
 
   const credentials = getLifeLabDriveCredentials();
@@ -1239,10 +1242,12 @@ const getNoteContentCachedDeduped = cache(
     slug: string,
   ): Promise<LifeLabNote | null> => {
     const { records: baseRecords } = await getSectionFileIndexCached(sectionId);
-    const baseRecord = baseRecords.find((item) => item.slug === slug);
+    const baseRecord = findLifeLabRecordBySlug(baseRecords, slug);
 
     if (!baseRecord) {
-      return null;
+      // Newly synced notes can appear before the cached section index expires.
+      // Check Drive once before reporting a genuinely missing note.
+      return loadNoteContent(sectionId, slug);
     }
 
     const payload = await getNotePayloadCached(sectionId, baseRecord);
@@ -2019,7 +2024,7 @@ const getLifeLabNoteDataCached = cache(
           if (refresh) {
             const { records: baseRecords } =
               await getSectionFileIndexCached(sectionId);
-            const baseRecord = baseRecords.find((item) => item.slug === slug);
+            const baseRecord = findLifeLabRecordBySlug(baseRecords, slug);
 
             if (baseRecord) {
               refreshLifeLabNoteCache(sectionId, slug, baseRecord.fileId);
@@ -2105,7 +2110,7 @@ export async function getYoutubeVideoPlaylistNavigation(
   }
 
   const { records } = await getSectionNotesCached(sectionId);
-  const videoRecord = records.find((record) => record.slug === slug);
+  const videoRecord = findLifeLabRecordBySlug(records, slug);
 
   if (!videoRecord || !isYoutubeVideoNote(videoRecord)) {
     return null;
@@ -2153,7 +2158,7 @@ export async function getYoutubeVideoPlaylistNavigationLightweight(
   }
 
   const { records } = await getSectionNotesCached(sectionId);
-  const videoRecord = records.find((record) => record.slug === slug);
+  const videoRecord = findLifeLabRecordBySlug(records, slug);
 
   if (!videoRecord || !isYoutubeVideoNote(videoRecord)) {
     return null;
@@ -2203,7 +2208,7 @@ async function loadNoteContent(
   const { records: baseRecords } = await loadSectionFileIndex(sectionId, {
     useCachedFolderMap: false,
   });
-  const baseRecord = baseRecords.find((item) => item.slug === slug);
+  const baseRecord = findLifeLabRecordBySlug(baseRecords, slug);
 
   if (!baseRecord) {
     return null;
@@ -2355,7 +2360,7 @@ export async function resolveLifeLabNoteRecord(
   }
 
   const { records } = await getSectionNotesCached(sectionId);
-  return records.find((item) => item.slug === slug) ?? null;
+  return findLifeLabRecordBySlug(records, slug) ?? null;
 }
 
 export async function getLifeLabRawMarkdown(

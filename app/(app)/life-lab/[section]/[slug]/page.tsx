@@ -104,6 +104,14 @@ export default async function LifeLabNotePage({
   });
 
   if (!note) {
+    if (availability.status !== "ready") {
+      return (
+        <LifeLabStatusPanel
+          availability={availability}
+          isAdmin={isAdminRole(session.user.role)}
+        />
+      );
+    }
     notFound();
   }
 

@@ -6,10 +6,10 @@ export const LIFE_LAB_SECTIONS_CACHE_TAG = "life-lab:sections";
 export const LIFE_LAB_FOLDER_MAP_CACHE_VERSION = "v4-no-error-cache";
 
 /** Bump when section listing or playlist browse logic changes materially. */
-export const LIFE_LAB_SECTION_FILE_INDEX_CACHE_VERSION = "v10-uncapped-listings";
+export const LIFE_LAB_SECTION_FILE_INDEX_CACHE_VERSION = "v11-unicode-note-slugs";
 
 /** Bump when note payload enrichment or serialized metadata shape changes. */
-export const LIFE_LAB_NOTE_PAYLOAD_CACHE_VERSION = "v7-flashcards";
+export const LIFE_LAB_NOTE_PAYLOAD_CACHE_VERSION = "v8-unicode-note-slugs";
 
 /** Bump when browse listing metadata (thumbnail/source fields) shape changes. */
 export const LIFE_LAB_LISTING_METADATA_CACHE_VERSION = "v4-technical-filter";

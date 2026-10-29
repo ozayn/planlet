@@ -5,7 +5,7 @@ export function driveFilenameToSlug(filename: string): string {
 
   return base
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
     .replace(/^-+|-+$/g, "");
 }
 
@@ -142,4 +142,21 @@ export function markdownExcerpt(content: string, maxLength = 160): string {
   }
 
   return `${plain.slice(0, maxLength - 1).trimEnd()}…`;
+}
+
+/** Keep old ASCII-only links only when they identify exactly one source file. */
+export function findLifeLabRecordBySlug<T extends { slug: string; relativePath: string }>(
+  records: T[],
+  slug: string,
+): T | undefined {
+  const exact = records.filter((record) => record.slug === slug);
+  if (exact.length === 1) return exact[0];
+  if (exact.length > 1) return undefined;
+  const legacy = records.filter((record) =>
+    record.relativePath.replace(LIFE_LAB_NOTE_EXTENSIONS, "").trim()
+      .split("/").filter(Boolean)
+      .map((segment) => segment.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""))
+      .join("__") === slug,
+  );
+  return legacy.length === 1 ? legacy[0] : undefined;
 }
