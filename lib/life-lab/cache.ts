@@ -139,7 +139,9 @@ export function getLifeLabListCacheSeconds(): number {
     return fromEnv;
   }
 
-  return process.env.NODE_ENV === "development" ? 30 : 1800;
+  // Drive-backed data should survive normal local navigation too. A 30-second
+  // development TTL can expire before a cold scan finishes. Refresh is explicit.
+  return 1800;
 }
 
 export function getLifeLabNoteCacheSeconds(): number {

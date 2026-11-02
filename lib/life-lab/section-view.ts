@@ -564,17 +564,10 @@ function buildYoutubeBrowseView(
             })
           : [];
 
-      const channelPreviewKeys = new Set(
-        channelGroups.flatMap((group) =>
-          group.previewNotes.map((note) => noteLibraryDedupeKey(note)),
-        ),
-      );
-
+      // Channels are filters, not containers that hide video titles.
       const individualNotes = sortLifeLabNotes(
-        ungroupedNotes.filter(
-          (note) =>
-            !channelPreviewKeys.has(noteLibraryDedupeKey(note)) &&
-            !recentKeys.has(noteLibraryDedupeKey(note)),
+        channelPool.filter((note) =>
+          channelFilter || !recentKeys.has(noteLibraryDedupeKey(note)),
         ),
         sort,
       );

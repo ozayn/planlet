@@ -185,6 +185,9 @@ describe("standalone channel grouping", () => {
     const group = standaloneBlock.channelGroups[0];
     assert.equal(group?.totalCount, 8);
     assert.equal(group?.previewNotes.length, 3);
+    // A channel must not hide its videos from the direct video list.
+    assert.equal(standaloneBlock.individualNotes.length, 3);
+    assert.equal(new Set([...recentBlock.notes, ...standaloneBlock.individualNotes].map((note) => note.slug)).size, 8);
     assert.equal(
       group?.previewNotes.some((note) => note.slug === "videos__standalone-1"),
       false,

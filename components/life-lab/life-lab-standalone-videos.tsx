@@ -10,7 +10,6 @@ import {
   LifeLabSubsectionHeading,
 } from "@/components/life-lab/life-lab-section-heading";
 import { LifeLabVideoRow } from "@/components/life-lab/life-lab-video-row";
-import { sortLifeLabNotes } from "@/lib/life-lab/browse";
 import type { LifeLabNoteSummary, LifeLabSectionId } from "@/lib/life-lab/constants";
 import {
   formatChannelCollectionMetadata,
@@ -18,7 +17,6 @@ import {
 } from "@/lib/life-lab/collection-metadata";
 import type { StandaloneChannelGroup } from "@/lib/life-lab/standalone-channel";
 import type { StandaloneVideoSeries } from "@/lib/life-lab/standalone-series";
-import { resolveLifeLabThumbnail } from "@/lib/life-lab/thumbnail";
 
 type LifeLabStandaloneVideosProps = {
   sectionId: LifeLabSectionId;
@@ -72,30 +70,20 @@ function buildSeriesHref(
   return query ? `${pathname}?${query}` : pathname;
 }
 
-function channelGroupThumbnail(group: StandaloneChannelGroup) {
-  const recentNote = sortLifeLabNotes(group.notes, "recent")[0];
-
-  return recentNote ? resolveLifeLabThumbnail(recentNote) : null;
-}
-
 export function LifeLabStandaloneVideos({
   sectionId,
   seriesGroups,
   previewSeriesGroups,
   channelGroups,
-  previewChannelGroups,
   individualNotes,
   previewIndividualNotes,
   totalSeriesCount,
-  totalChannelCount,
-  totalIndividualCount,
   totalCount,
   activeChannelFilter,
   activeSeriesFilter,
 }: LifeLabStandaloneVideosProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [showAllChannels, setShowAllChannels] = useState(false);
   const [showAllSeries, setShowAllSeries] = useState(false);
   const [showAllIndividual, setShowAllIndividual] = useState(false);
 
@@ -163,7 +151,7 @@ export function LifeLabStandaloneVideos({
             href={buildChannelHref(pathname, searchParams, null)}
             className="shrink-0 text-sm text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border"
           >
-            All channels
+            All videos
           </Link>
         </div>
         <ul className="space-y-0.5">
@@ -178,20 +166,14 @@ export function LifeLabStandaloneVideos({
   const visibleSeriesGroups =
     activeSeriesFilter || showAllSeries ? seriesGroups : previewSeriesGroups;
   const hiddenSeriesCount = totalSeriesCount - previewSeriesGroups.length;
-  const visibleChannelGroups =
-    activeChannelFilter || showAllChannels ? channelGroups : previewChannelGroups;
-  const hiddenChannelCount = totalChannelCount - previewChannelGroups.length;
   const visibleIndividualNotes =
     showAllIndividual ? individualNotes : previewIndividualNotes;
-  const hiddenIndividualCount = totalIndividualCount - previewIndividualNotes.length;
+  const hiddenIndividualCount = individualNotes.length - previewIndividualNotes.length;
 
   return (
     <section className="space-y-6">
       <div className="space-y-1">
-        <LifeLabSectionHeading>Standalone videos</LifeLabSectionHeading>
-        <p className="text-sm text-muted-light">
-          Videos not currently assigned to a playlist.
-        </p>
+        <LifeLabSectionHeading>Videos</LifeLabSectionHeading>
       </div>
 
       {visibleSeriesGroups.length > 0 ? (
@@ -234,51 +216,8 @@ export function LifeLabStandaloneVideos({
         </div>
       ) : null}
 
-      {visibleChannelGroups.length > 0 ? (
-        <div className="space-y-2">
-          <LifeLabSubsectionHeading className="px-1">Channels</LifeLabSubsectionHeading>
-          <ul className="space-y-0.5">
-            {visibleChannelGroups.map((group) => {
-              const metadata = formatChannelCollectionMetadata(group);
-
-              return (
-                <LifeLabCollectionRow
-                  key={group.slug}
-                  type="channel"
-                  href={buildChannelHref(pathname, searchParams, group.slug)}
-                  title={group.label}
-                  image={channelGroupThumbnail(group)}
-                  primaryMeta={metadata.primaryMeta}
-                  secondaryMeta={metadata.secondaryMeta}
-                />
-              );
-            })}
-          </ul>
-          {!activeChannelFilter && hiddenChannelCount > 0 && !showAllChannels ? (
-            <button
-              type="button"
-              onClick={() => setShowAllChannels(true)}
-              className="px-1 text-sm text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border"
-            >
-              View all channels
-            </button>
-          ) : !activeChannelFilter && showAllChannels && hiddenChannelCount > 0 ? (
-            <button
-              type="button"
-              onClick={() => setShowAllChannels(false)}
-              className="px-1 text-sm text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border"
-            >
-              Show fewer channels
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-
       {visibleIndividualNotes.length > 0 ? (
         <div className="space-y-2">
-          <LifeLabSubsectionHeading className="px-1">
-            Individual videos
-          </LifeLabSubsectionHeading>
           <ul className="space-y-0.5">
             {visibleIndividualNotes.map((note) => (
               <LifeLabVideoRow key={note.slug} sectionId={sectionId} note={note} />
@@ -290,7 +229,7 @@ export function LifeLabStandaloneVideos({
               onClick={() => setShowAllIndividual(true)}
               className="px-1 text-sm text-muted transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-border"
             >
-              View all standalone videos
+              View all videos
             </button>
           ) : hiddenIndividualCount > 0 && showAllIndividual ? (
             <button

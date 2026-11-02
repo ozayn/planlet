@@ -1,4 +1,5 @@
 import { revalidatePath, unstable_cache } from "next/cache";
+import { singleFlight } from "@/lib/life-lab/single-flight";
 
 import { extractTechnicalProvenanceForDebug } from "@/lib/life-lab/markdown-display";
 
@@ -707,7 +708,7 @@ async function getSectionFolderMapCached(): Promise<LifeLabFolderMapResult> {
           key: cacheKey,
           tags: [LIFE_LAB_SECTIONS_CACHE_TAG, LIFE_LAB_CACHE_TAG],
         });
-        const loaded = await loadSectionFolderMap();
+        const loaded = await singleFlight("folder-map", loadSectionFolderMap);
         if (!loaded.ok) {
           const err = new LifeLabDriveError(loaded.error.message, {
             reason: loaded.error.reason,
@@ -849,7 +850,9 @@ async function getSectionFileIndexCached(
         key: cacheKey,
         tags,
       });
-      return loadSectionFileIndex(sectionId);
+      return singleFlight(`section-index:${sectionId}`, () =>
+        loadSectionFileIndex(sectionId),
+      );
     },
     [
       "life-lab-section-file-index",
@@ -1154,18 +1157,20 @@ async function prepareYoutubeBrowseRecords(
 }> {
   const { records: withIndexes, indexBodies } =
     await enrichPlaylistIndexRecordsForBrowse(sectionId, baseRecords);
-  const withPlaylistHydration = hydrateListingMetadataFromPlaylistIndexes(
-    sectionId,
-    withIndexes,
-    indexBodies,
-  );
+  // Read cached per-file metadata before thumbnail hydration. A source URL from
+  // an index table must not suppress the file's playlist/channel ownership.
   const withListingMetadata = await attachListingMetadataToBrowseRecords(
     sectionId,
-    withPlaylistHydration,
+    withIndexes,
+  );
+  const withPlaylistHydration = hydrateListingMetadataFromPlaylistIndexes(
+    sectionId,
+    withListingMetadata,
+    indexBodies,
   );
 
   return {
-    records: withListingMetadata,
+    records: withPlaylistHydration,
     indexBodies,
   };
 }
@@ -1741,6 +1746,7 @@ export async function getLifeLabHomeData(): Promise<{
 }
 
 type LifeLabSectionDataOptions = {
+  indexOnly?: boolean;
   refresh?: boolean;
   includeListingDiagnostic?: boolean;
 };
@@ -1830,7 +1836,9 @@ export async function getLifeLabSectionData(
           // and full payloads only for playlist indexes (not every video note).
           const cached = await getSectionNotesCached(sectionId);
           const { records: browseRecords, indexBodies } =
-            await prepareYoutubeBrowseRecords(sectionId, cached.records);
+            options.indexOnly
+              ? { records: cached.records, indexBodies: new Map<string, string>() }
+              : await prepareYoutubeBrowseRecords(sectionId, cached.records);
           records = filterEnrichedSectionRecords(sectionId, browseRecords);
           listingDiagnosticBase = cached.listingDiagnostic;
 

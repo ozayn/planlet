@@ -15,8 +15,9 @@ import {
   type ParsedGoogleApiError,
 } from "@/lib/life-lab/google-drive-errors";
 
-// At most four requests in flight and four starts per second per server process.
-const driveRequestGate = new DriveRequestGate(4, 250);
+// Bound concurrency and starts without making a cold library scan wait 250 ms
+// per file. Quota errors still stop queued requests for a full minute.
+const driveRequestGate = new DriveRequestGate(4, 50);
 
 type DriveCredentials = {
   clientEmail: string;
@@ -507,6 +508,7 @@ export async function listMarkdownFilesRecursive(
       stats.paginationOccurred = true;
     }
 
+    const folders: Array<{ id: string; prefix: string }> = [];
     for (const item of children) {
       if (results.length >= maxFiles) {
         stats.truncatedByMaxFiles = true;
@@ -521,7 +523,7 @@ export async function listMarkdownFilesRecursive(
         }
 
         stats.foldersTraversed += 1;
-        await walk(item.id, nextPrefix, folderDepth + 1);
+        folders.push({ id: item.id, prefix: nextPrefix });
         continue;
       }
 
@@ -533,6 +535,11 @@ export async function listMarkdownFilesRecursive(
       results.push({ file: item, relativePath });
       stats.fileCount += 1;
     }
+
+    // The shared Drive gate bounds concurrency. Do not serialize sibling folders.
+    await Promise.all(folders.map((folder) =>
+      walk(folder.id, folder.prefix, folderDepth + 1),
+    ));
   }
 
   await walk(folderId, "", 0);

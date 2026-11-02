@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { auth } from "@/auth";
+import { LifeLabYoutubePage } from "@/components/life-lab/life-lab-youtube-page";
 import { FlashcardsPageContent } from "@/components/life-lab/flashcards-page-content";
 import { LifeLabLearningDictionaryPage } from "@/components/life-lab/life-lab-learning-dictionary-page";
 import { LifeLabRefreshButton } from "@/components/life-lab/life-lab-refresh-button";
@@ -68,6 +69,11 @@ export default async function LifeLabSectionPage({
   const isAuthorized = canAccessLifeLabPage(session.user);
   const shouldRefresh = canUseLifeLabRefreshBypass(refresh, isAuthorized);
   const showDiagnostics = canViewLifeLabCacheDiagnostics(isAdmin);
+
+  if (section === "youtube-learning") {
+    return <LifeLabYoutubePage userId={session.user.id} isAdmin={isAdmin}
+      showDiagnostics={showDiagnostics} refresh={shouldRefresh} />;
+  }
 
   if (section === "flashcards") {
     const archivedKeys = await getArchivedLifeLabItemKeySet(session.user.id);
