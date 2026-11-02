@@ -6,7 +6,6 @@ import { auth } from "@/auth";
 import {
   fetchFreshLifeLabHome,
   fetchFreshLifeLabNote,
-  fetchFreshLifeLabSection,
   fetchFreshPlaylistAssets,
   refreshLifeLabCache,
   refreshLifeLabNoteCache,
@@ -49,10 +48,11 @@ export async function refreshLifeLabSectionAction(
 ): Promise<LifeLabRefreshResult> {
   try {
     await requireLifeLabRefreshAccess();
-    await fetchFreshLifeLabSection(sectionId);
+    // Invalidate once; the subsequent render rebuilds the index using cached
+    // per-file metadata. A preflight scan would discard its result and double IO.
     refreshLifeLabSectionCache(sectionId);
-    revalidatePath(`/life-lab/${sectionId}`);
-    revalidatePath("/life-lab");
+    // The client refreshes the route. Path invalidation here would also expire
+    // unchanged per-file caches used by that route. Section tags are sufficient.
     return { ok: true, message: lifeLabRefreshSuccessMessage() };
   } catch {
     return toLifeLabRefreshFailureResult();

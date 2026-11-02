@@ -159,7 +159,8 @@ describe("life lab home section counts", () => {
     );
     const lifeLab = readFileSync(join(root, "lib/life-lab.ts"), "utf8");
 
-    assert.match(page, /getLifeLabHomeData/);
+    assert.match(page, /getLifeLabAvailability/);
+    assert.doesNotMatch(page, /getLifeLabHomeData/);
     assert.match(page, /getLifeLabBrowseData/);
     assert.match(page, /countBrowseNotesBySection/);
     assert.match(page, /homeSectionCardMeta/);

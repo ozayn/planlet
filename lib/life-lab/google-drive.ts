@@ -1,4 +1,5 @@
 import { createSign } from "node:crypto";
+import { DriveRequestGate } from "@/lib/life-lab/drive-request-gate";
 
 import {
   LIFE_LAB_DRIVE_READONLY_SCOPE,
@@ -13,6 +14,9 @@ import {
   parseGoogleApiErrorBody,
   type ParsedGoogleApiError,
 } from "@/lib/life-lab/google-drive-errors";
+
+// At most four requests in flight and four starts per second per server process.
+const driveRequestGate = new DriveRequestGate(4, 250);
 
 type DriveCredentials = {
   clientEmail: string;
@@ -71,15 +75,15 @@ let permissionFailureUntil = 0;
 let lastPermissionFailure: LifeLabDriveError | null = null;
 
 function rememberPermissionFailure(error: LifeLabDriveError): void {
+  if (isRateLimitReason(error.reason) || error.httpStatus === 429) {
+    driveRequestGate.block(error);
+    return;
+  }
   if (
     !isPermissionDeniedReason(error.reason) &&
     error.httpStatus !== 403 &&
     error.httpStatus !== 401
   ) {
-    return;
-  }
-  // Rate limits are temporary — do not treat them as sticky permission denials.
-  if (isRateLimitReason(error.reason)) {
     return;
   }
   permissionFailureUntil = Date.now() + PERMISSION_FAILURE_COOLDOWN_MS;
@@ -223,101 +227,107 @@ async function driveRequest<T>(
   credentials: DriveCredentials,
   path: string,
 ): Promise<T> {
-  throwIfPermissionFailureCooldown();
-  recordLifeLabDriveCall("list");
-  const accessToken = await getAccessToken(credentials);
-  const response = await fetch(`https://www.googleapis.com/drive/v3${path}`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-    cache: "no-store",
+  return driveRequestGate.run(async () => {
+    throwIfPermissionFailureCooldown();
+    recordLifeLabDriveCall("list");
+    const accessToken = await getAccessToken(credentials);
+    const response = await fetch(`https://www.googleapis.com/drive/v3${path}`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      const bodyText = await response.text();
+      const parsed = parseGoogleApiErrorBody(response.status, bodyText);
+      const error = lifeLabDriveErrorFromParsed(parsed);
+      rememberPermissionFailure(error);
+      throw error;
+    }
+
+    return (await response.json()) as T;
   });
-
-  if (!response.ok) {
-    const bodyText = await response.text();
-    const parsed = parseGoogleApiErrorBody(response.status, bodyText);
-    const error = lifeLabDriveErrorFromParsed(parsed);
-    rememberPermissionFailure(error);
-    throw error;
-  }
-
-  return (await response.json()) as T;
 }
 
 async function driveDownload(
   credentials: DriveCredentials,
   fileId: string,
 ): Promise<string> {
-  throwIfPermissionFailureCooldown();
-  recordLifeLabDriveCall("download", fileId);
-  const accessToken = await getAccessToken(credentials);
-  const response = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-      cache: "no-store",
-    },
-  );
-
-  if (!response.ok) {
-    const bodyText = await response.text();
-    const parsed = parseGoogleApiErrorBody(response.status, bodyText);
-    const error = new LifeLabDriveError(
-      `Failed to download note from Google Drive (${response.status})${
-        parsed.reason ? ` — reason=${parsed.reason}` : ""
-      }.`,
+  return driveRequestGate.run(async () => {
+    throwIfPermissionFailureCooldown();
+    recordLifeLabDriveCall("download", fileId);
+    const accessToken = await getAccessToken(credentials);
+    const response = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
       {
-        httpStatus: parsed.httpStatus,
-        reason: parsed.reason,
-        googleStatus: parsed.status,
-        googleMessage: parsed.message,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        cache: "no-store",
       },
     );
-    rememberPermissionFailure(error);
-    throw error;
-  }
 
-  return response.text();
+    if (!response.ok) {
+      const bodyText = await response.text();
+      const parsed = parseGoogleApiErrorBody(response.status, bodyText);
+      const error = new LifeLabDriveError(
+        `Failed to download note from Google Drive (${response.status})${
+          parsed.reason ? ` — reason=${parsed.reason}` : ""
+        }.`,
+        {
+          httpStatus: parsed.httpStatus,
+          reason: parsed.reason,
+          googleStatus: parsed.status,
+          googleMessage: parsed.message,
+        },
+      );
+      rememberPermissionFailure(error);
+      throw error;
+    }
+
+    return response.text();
+  });
 }
 
 async function driveDownloadBytes(
   credentials: DriveCredentials,
   fileId: string,
 ): Promise<Uint8Array> {
-  throwIfPermissionFailureCooldown();
-  recordLifeLabDriveCall("download", fileId);
-  const accessToken = await getAccessToken(credentials);
-  const response = await fetch(
-    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
-    {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-      cache: "no-store",
-    },
-  );
-
-  if (!response.ok) {
-    const bodyText = await response.text();
-    const parsed = parseGoogleApiErrorBody(response.status, bodyText);
-    const error = new LifeLabDriveError(
-      `Failed to download asset from Google Drive (${response.status})${
-        parsed.reason ? ` — reason=${parsed.reason}` : ""
-      }.`,
+  return driveRequestGate.run(async () => {
+    throwIfPermissionFailureCooldown();
+    recordLifeLabDriveCall("download", fileId);
+    const accessToken = await getAccessToken(credentials);
+    const response = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
       {
-        httpStatus: parsed.httpStatus,
-        reason: parsed.reason,
-        googleStatus: parsed.status,
-        googleMessage: parsed.message,
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+        cache: "no-store",
       },
     );
-    rememberPermissionFailure(error);
-    throw error;
-  }
 
-  return new Uint8Array(await response.arrayBuffer());
+    if (!response.ok) {
+      const bodyText = await response.text();
+      const parsed = parseGoogleApiErrorBody(response.status, bodyText);
+      const error = new LifeLabDriveError(
+        `Failed to download asset from Google Drive (${response.status})${
+          parsed.reason ? ` — reason=${parsed.reason}` : ""
+        }.`,
+        {
+          httpStatus: parsed.httpStatus,
+          reason: parsed.reason,
+          googleStatus: parsed.status,
+          googleMessage: parsed.message,
+        },
+      );
+      rememberPermissionFailure(error);
+      throw error;
+    }
+
+    return new Uint8Array(await response.arrayBuffer());
+  });
 }
 
 export function isMarkdownDriveFile(file: DriveFile): boolean {

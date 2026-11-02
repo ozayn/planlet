@@ -8,7 +8,8 @@ import { LifeLabRefreshButton } from "@/components/life-lab/life-lab-refresh-but
 import { LifeLabSectionCard } from "@/components/life-lab/life-lab-section-card";
 import { LifeLabStatusPanel } from "@/components/life-lab/life-lab-status-panel";
 import { PageHeader } from "@/components/page-header";
-import { getLifeLabBrowseData, getLifeLabHomeData } from "@/lib/life-lab";
+import { getLifeLabAvailability, getLifeLabBrowseData } from "@/lib/life-lab";
+import { getAllowedLifeLabSectionIds, getLifeLabSectionLabel } from "@/lib/life-lab/sections";
 import { collapseNotesByTranslationGroup } from "@/lib/life-lab/bilingual";
 import { buildNoteItemKey } from "@/lib/life-lab/item-key";
 import {
@@ -23,21 +24,39 @@ import { lifeLabSectionIconMap } from "@/lib/life-lab/section-icons";
 import { isAdminRole } from "@/lib/auth-roles";
 import { canAccessLifeLabPage } from "@/lib/roles";
 
-export default async function LifeLabPage() {
+export default async function LifeLabPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const session = await auth();
 
   if (!session?.user?.id || !canAccessLifeLabPage(session.user)) {
     notFound();
   }
 
-  const archivedKeys = await getArchivedLifeLabItemKeySet(session.user.id);
-  const [{ availability, sections }, browseData] = await Promise.all([
-    getLifeLabHomeData(),
-    getLifeLabBrowseData(),
-  ]);
+  const params = await searchParams;
+  const hasSearch = ["q", "subfolder", "tag", "topic", "source", "channel", "playlist", "person", "place"]
+    .some((key) => {
+      const value = params[key];
+      return typeof value === "string" && value.trim().length > 0;
+    });
+  // Opening the section menu must not scan Drive or download the search index.
+  // Build the library-wide index only when the user actually searches/filters.
+  const [browseData, archivedKeys] = hasSearch
+    ? await Promise.all([
+        getLifeLabBrowseData(),
+        getArchivedLifeLabItemKeySet(session.user.id),
+      ])
+    : [null, new Set<string>()];
+  const availability = browseData?.availability ?? getLifeLabAvailability();
+  const sections = getAllowedLifeLabSectionIds().map((id) => ({
+    id,
+    label: getLifeLabSectionLabel(id),
+  }));
   const isAdmin = isAdminRole(session.user.role);
   const visibleBrowseNotes = excludeArchivedByKey(
-    browseData.notes,
+    browseData?.notes ?? [],
     archivedKeys,
     (note) =>
       buildNoteItemKey({
@@ -50,7 +69,7 @@ export default async function LifeLabPage() {
   const dedupedBrowseNotes = collapseNotesByTranslationGroup(visibleBrowseNotes);
   // Counts only when browse already loaded the same notes (no extra Drive/parsing).
   const browseCounts =
-    availability.status === "ready"
+    browseData && availability.status === "ready"
       ? countBrowseNotesBySection(dedupedBrowseNotes)
       : null;
 

@@ -820,52 +820,14 @@ async function loadSectionFileIndex(
     sectionId,
   );
   const visibleEntries = filterSectionMarkdownEntries(entries, sectionId);
-  let records = dedupeSectionNoteRecords(
+  const records = dedupeSectionNoteRecords(
     visibleEntries.map((entry) => summarizeMarkdownEntry(entry)),
   );
-
-  // YouTube browse cards need source/thumbnail fields on the lightweight index
-  // itself so a warm section-index hit can render thumbs with ~0 Drive calls.
-  if (sectionId === "youtube-learning") {
-    records = await attachListingMetadataInline(credentials, records);
-  }
 
   return {
     records,
     listingDiagnostic: toListingDiagnostic(stats),
   };
-}
-
-async function attachListingMetadataInline(
-  credentials: DriveCredentials,
-  baseRecords: LifeLabSectionNoteRecord[],
-): Promise<LifeLabSectionNoteRecord[]> {
-  return Promise.all(
-    baseRecords.map(async (baseRecord) => {
-      if (isPlaylistAssetRelativePath(baseRecord.relativePath)) {
-        return baseRecord;
-      }
-
-      if (hasListingThumbnailInputs(baseRecord.metadata)) {
-        return baseRecord;
-      }
-
-      try {
-        const rawContent = await downloadDriveFile(
-          credentials,
-          baseRecord.fileId,
-        );
-        const listing = extractLifeLabListingMetadata(rawContent);
-
-        return {
-          ...baseRecord,
-          metadata: mergeListingMetadata(baseRecord.metadata, listing),
-        };
-      } catch {
-        return baseRecord;
-      }
-    }),
-  );
 }
 
 async function getSectionFileIndexCached(
@@ -940,7 +902,7 @@ async function getNotePayloadCached(
   const cacheKey = lifeLabNotePayloadCacheKey(baseRecord.fileId);
   const tags = [
     lifeLabNoteCacheTag(baseRecord.fileId),
-    lifeLabSectionCacheTag(sectionId),
+    ...(sectionId === "youtube-learning" ? [] : [lifeLabSectionCacheTag(sectionId)]),
     LIFE_LAB_CACHE_TAG,
   ];
   const startedAt = Date.now();
@@ -954,9 +916,16 @@ async function getNotePayloadCached(
       });
       return loadNotePayload(sectionId, baseRecord);
     },
-    ["life-lab-note-payload", LIFE_LAB_NOTE_PAYLOAD_CACHE_VERSION, baseRecord.fileId],
+    [
+      "life-lab-note-payload",
+      LIFE_LAB_NOTE_PAYLOAD_CACHE_VERSION,
+      baseRecord.fileId,
+      baseRecord.modifiedAt ?? "unknown",
+    ],
     {
-      revalidate: getLifeLabNoteCacheSeconds(),
+      revalidate: sectionId === "youtube-learning" && baseRecord.modifiedAt
+        ? false
+        : getLifeLabNoteCacheSeconds(),
       tags,
     },
   )();
@@ -1050,7 +1019,7 @@ async function getListingMetadataCached(
   const cacheKey = lifeLabListingMetadataCacheKey(baseRecord.fileId);
   const tags = [
     lifeLabNoteCacheTag(baseRecord.fileId),
-    lifeLabSectionCacheTag(sectionId),
+    ...(sectionId === "youtube-learning" ? [] : [lifeLabSectionCacheTag(sectionId)]),
     LIFE_LAB_CACHE_TAG,
   ];
   const startedAt = Date.now();
@@ -1068,9 +1037,12 @@ async function getListingMetadataCached(
       "life-lab-listing-metadata",
       LIFE_LAB_LISTING_METADATA_CACHE_VERSION,
       baseRecord.fileId,
+      baseRecord.modifiedAt ?? "unknown",
     ],
     {
-      revalidate: getLifeLabNoteCacheSeconds(),
+      revalidate: sectionId === "youtube-learning" && baseRecord.modifiedAt
+        ? false
+        : getLifeLabNoteCacheSeconds(),
       tags,
     },
   )();
