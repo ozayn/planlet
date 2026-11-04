@@ -45,6 +45,11 @@ export function outcome(j: Job) {
 }
 export function roleCategory(j: Job) {
   if (j.trackerDetails.roleCategory) return j.trackerDetails.roleCategory;
+  if (
+    /\b(?:machine[ -]learning|ml)\b/i.test(j.title) &&
+    /\bengineer(?:ing)?\b/i.test(j.title)
+  )
+    return "Machine Learning Engineering";
   if (/data eng|analytics eng/i.test(j.title)) return "Data Engineering";
   if (/data scien|statistic/i.test(j.title)) return "Data Science";
   if (/\bai\b|genai|generative|\bllm\b|machine learning|\bml\b/i.test(j.title))

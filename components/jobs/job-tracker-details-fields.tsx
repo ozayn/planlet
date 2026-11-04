@@ -92,6 +92,7 @@ export function JobTrackerDetailsFields({
         {[
           "Data Science",
           "Applied AI",
+          "Machine Learning Engineering",
           "Software Engineering",
           "Data Engineering",
           "Data Analytics",

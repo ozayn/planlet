@@ -387,3 +387,12 @@ test("unknown sources differ from explicit other and timelines include zero days
   assert.deepEqual(applicationTimeline([submitted], "2026-11-01", "2026-11-03").map(([day, jobs]) => [day, jobs.length]), [["2026-11-01",0],["2026-11-02",1],["2026-11-03",0]]);
   assert.deepEqual(applicationTimeline([submitted], "2026-11-01", "2026-11-09", true).map(([day, jobs]) => [day, jobs.length]), [["2026-10-26",0],["2026-11-02",1],["2026-11-09",0]]);
 });
+
+test("ML engineering has its own role category while scientists, AI engineers and overrides retain theirs", () => {
+  for (const title of ["Staff Machine Learning Engineer", "Senior ML Engineer", "Artificial Intelligence/Machine Learning (AI/ML) Engineer", "Machine-Learning Engineering Lead"]) {
+    assert.equal(roleCategory(job({title})), "Machine Learning Engineering");
+  }
+  assert.equal(roleCategory(job({title: "Senior ML Data Scientist"})), "Data Science");
+  assert.equal(roleCategory(job({title: "Applied AI Engineer"})), "Applied AI");
+  assert.equal(roleCategory(job({title: "Staff Machine Learning Engineer", trackerDetails: {...emptyTrackerDetails(), roleCategory: "Research"}})), "Research");
+});
