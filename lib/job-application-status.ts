@@ -1,5 +1,9 @@
 export const JOB_APPLICATION_STATUSES = [
   "SAVED",
+  "PREPARING",
+  "NEEDS_INPUT",
+  "READY_TO_SUBMIT",
+  "SUBMISSION_FAILED",
   "APPLIED",
   "INTERVIEWING",
   "REJECTED",
@@ -13,6 +17,10 @@ export type JobApplicationStatusValue =
 
 export const JOB_APPLICATION_STATUS_LABELS = {
   SAVED: "Saved",
+  PREPARING: "Preparing",
+  NEEDS_INPUT: "Needs input",
+  READY_TO_SUBMIT: "Ready to submit",
+  SUBMISSION_FAILED: "Submission failed",
   APPLIED: "Applied",
   INTERVIEWING: "Interviewing",
   REJECTED: "Rejected",

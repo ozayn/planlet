@@ -211,6 +211,10 @@ enum ReminderType {
 }
 
 enum JobApplicationStatus {
+  PREPARING
+  NEEDS_INPUT
+  READY_TO_SUBMIT
+  SUBMISSION_FAILED
   SAVED
   APPLIED
   INTERVIEWING
@@ -948,6 +952,10 @@ model JobApplication {
   company     String
   url         String?
   normalizedUrl String?
+  trackerDetails Json @default("{}")
+  trackerHistory Json @default("[]")
+  submissionConfirmed Boolean @default(false)
+  submittedDate String?
   description String?              @db.Text
   summary     String?              @db.Text
   source      String?

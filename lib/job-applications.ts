@@ -1,3 +1,10 @@
+import {
+  trackerDetailsSchema,
+  buildTrackerEvent,
+  duplicateReason,
+  type TrackerDetails,
+  type TrackerEvent,
+} from "@/lib/job-tracker-details";
 import type { JobApplicationStatus } from "@/app/generated/prisma/client";
 
 import {
@@ -23,10 +30,7 @@ import {
   type JobApplicationFilter,
 } from "@/lib/job-application-constants";
 import { isValidDateString, getTodayDateString } from "@/lib/dates";
-import {
-  normalizeJobUrl,
-  normalizeJobUrlForStorage,
-} from "@/lib/job-url-normalization";
+import { normalizeJobUrl } from "@/lib/job-url-normalization";
 import { canUseJobTrackerFeatures } from "@/lib/roles";
 import { getUserTimezone } from "@/lib/user-timezone";
 import { prisma } from "@/lib/prisma";
@@ -42,8 +46,13 @@ export class DuplicateJobApplicationError extends JobApplicationError {
   readonly duplicateJobId: string;
   readonly duplicateSavedAt: Date;
 
-  constructor(duplicate: { id: string; createdAt: Date }) {
-    super(`You already saved this job on ${formatDuplicateJobSavedDate(duplicate.createdAt)}.`);
+  constructor(
+    duplicate: { id: string; createdAt: Date },
+    reason = "Matching URL",
+  ) {
+    super(
+      `${reason}: a record was saved on ${formatDuplicateJobSavedDate(duplicate.createdAt)}. Review it or save this as a separate role or repost.`,
+    );
     this.name = "DuplicateJobApplicationError";
     this.duplicateJobId = duplicate.id;
     this.duplicateSavedAt = duplicate.createdAt;
@@ -51,6 +60,10 @@ export class DuplicateJobApplicationError extends JobApplicationError {
 }
 
 export type SerializedJobApplication = {
+  trackerDetails: TrackerDetails;
+  trackerHistory: TrackerEvent[];
+  submissionConfirmed: boolean;
+  submittedDate: string | null;
   id: string;
   title: string;
   company: string;
@@ -69,6 +82,10 @@ export type SerializedJobApplication = {
 };
 
 export type JobApplicationInput = {
+  trackerDetails?: TrackerDetails;
+  confirmSubmission?: boolean;
+  submissionDate?: string;
+  allowDuplicate?: boolean;
   title?: string;
   company?: string;
   url?: string | null;
@@ -84,6 +101,10 @@ export type JobApplicationInput = {
 };
 
 function serializeJobApplication(job: {
+  trackerDetails: unknown;
+  trackerHistory: unknown;
+  submissionConfirmed: boolean;
+  submittedDate: string | null;
   id: string;
   title: string;
   company: string;
@@ -101,6 +122,10 @@ function serializeJobApplication(job: {
   updatedAt: Date;
 }): SerializedJobApplication {
   return {
+    trackerDetails: trackerDetailsSchema.parse(job.trackerDetails ?? {}),
+    trackerHistory: job.trackerHistory as TrackerEvent[],
+    submissionConfirmed: job.submissionConfirmed,
+    submittedDate: job.submittedDate,
     id: job.id,
     title: job.title,
     company: job.company,
@@ -132,7 +157,10 @@ function trimOptional(value: string | null | undefined, maxLength: number) {
   return trimmed.slice(0, maxLength);
 }
 
-function trimOptionalField(value: string | null | undefined, maxLength: number) {
+function trimOptionalField(
+  value: string | null | undefined,
+  maxLength: number,
+) {
   if (value == null) {
     return "";
   }
@@ -146,10 +174,7 @@ function hasMinimumJobContent(input: JobApplicationInput): boolean {
   );
 }
 
-function sanitizeJobInput(
-  input: JobApplicationInput,
-  options?: { defaultAppliedDate?: string },
-) {
+function sanitizeJobInput(input: JobApplicationInput) {
   if (!hasMinimumJobContent(input)) {
     throw new JobApplicationError(
       "Add at least a job URL, title, or description before saving.",
@@ -161,7 +186,9 @@ function sanitizeJobInput(
     try {
       const parsed = new URL(rawUrl);
       if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-        throw new JobApplicationError("Job URL must start with http:// or https://.");
+        throw new JobApplicationError(
+          "Job URL must start with http:// or https://.",
+        );
       }
     } catch (error) {
       if (error instanceof JobApplicationError) {
@@ -172,18 +199,15 @@ function sanitizeJobInput(
     }
   }
 
-  const storedUrl = rawUrl ? normalizeJobUrlForStorage(rawUrl) : null;
+  const storedUrl = rawUrl;
   const normalizedUrl = storedUrl ? normalizeJobUrl(storedUrl) : null;
 
   const title = trimOptionalField(input.title, MAX_JOB_TITLE_LENGTH);
   const company = trimOptionalField(input.company, MAX_JOB_COMPANY_LENGTH);
 
   const appliedDateInput = input.appliedDate;
-  let appliedDate =
+  const appliedDate =
     appliedDateInput === null ? null : trimOptional(appliedDateInput, 10);
-  if (!appliedDate && appliedDateInput !== null && options?.defaultAppliedDate) {
-    appliedDate = options.defaultAppliedDate;
-  }
   if (appliedDate && !isValidDateString(appliedDate)) {
     throw new JobApplicationError("Applied date must be YYYY-MM-DD.");
   }
@@ -221,7 +245,9 @@ async function requireJobTrackerUser(userId: string) {
   });
 
   if (!user || !canUseJobTrackerFeatures(user)) {
-    throw new JobApplicationError("Job tracker is not available for this account.");
+    throw new JobApplicationError(
+      "Job tracker is not available for this account.",
+    );
   }
 
   return user;
@@ -249,10 +275,8 @@ async function findDuplicateJobApplicationByUrl(
   });
 }
 
-function buildFilterWhere(
-  userId: string,
-  filter: JobApplicationFilter,
-) {
+function buildFilterWhere(userId: string, filter: JobApplicationFilter) {
+  if (filter === "EVERYTHING") return { userId };
   if (filter === "ALL") {
     return {
       userId,
@@ -299,22 +323,49 @@ export async function createJobApplication(
 ): Promise<SerializedJobApplication> {
   await requireJobTrackerUser(userId);
   const userTimezone = await getUserTimezone(userId);
-  const data = sanitizeJobInput(input, {
-    defaultAppliedDate: getTodayDateString(userTimezone),
-  });
+  validateFlags(input);
+  const data = sanitizeJobInput(input);
 
   const duplicate = await findDuplicateJobApplicationByUrl(
     userId,
     data.normalizedUrl,
   );
-  if (duplicate) {
+  if (duplicate && !input.allowDuplicate) {
     throw new DuplicateJobApplicationError(duplicate);
   }
 
+  const trackerDetails = trackerDetailsSchema.parse(input.trackerDetails ?? {});
+  const submissionDate =
+    input.submissionDate || getTodayDateString(userTimezone);
+  prepareConfirmation(
+    data,
+    trackerDetails,
+    !!input.confirmSubmission,
+    submissionDate,
+    getTodayDateString(userTimezone),
+  );
+  await warnPossibleDuplicate(
+    userId,
+    data,
+    trackerDetails,
+    input.allowDuplicate,
+  );
   const job = await prisma.jobApplication.create({
     data: {
       userId,
       ...data,
+      trackerDetails,
+      submissionConfirmed: !!input.confirmSubmission,
+      submittedDate: input.confirmSubmission ? submissionDate : null,
+      trackerHistory: [
+        buildTrackerEvent(
+          null,
+          data.status,
+          trackerDetails,
+          !!input.confirmSubmission,
+          submissionDate,
+        ),
+      ],
     },
   });
 
@@ -335,19 +386,91 @@ export async function updateJobApplication(
     throw new JobApplicationError("Job application not found.");
   }
 
-  const data = sanitizeJobInput(input);
-  const duplicate = await findDuplicateJobApplicationByUrl(
-    userId,
-    data.normalizedUrl,
-    jobId,
-  );
-  if (duplicate) {
-    throw new DuplicateJobApplicationError(duplicate);
-  }
-
-  const job = await prisma.jobApplication.update({
-    where: { id: jobId },
-    data,
+  validateFlags(input);
+  const timezone = await getUserTimezone(userId);
+  const job = await prisma.$transaction(async (tx) => {
+    // Serialize edits per record so history and submitted snapshots cannot be lost.
+    await tx.$queryRaw`SELECT id FROM "JobApplication" WHERE id = ${jobId} AND "userId" = ${userId} FOR UPDATE`;
+    const current = await tx.jobApplication.findFirstOrThrow({
+      where: { id: jobId, userId },
+    });
+    const urlChanged = input.url !== undefined && input.url !== current.url;
+    const dateChanged =
+      input.appliedDate !== undefined &&
+      input.appliedDate !== current.appliedDate;
+    const data = sanitizeJobInput({
+      ...current,
+      ...input,
+      trackerDetails: undefined,
+      url: urlChanged ? input.url : null,
+      appliedDate: dateChanged ? input.appliedDate : null,
+    });
+    // Partial updates must not rewrite legacy notes, URLs, dates, or other fields.
+    for (const key of Object.keys(data) as (keyof typeof data)[]) {
+      const supplied =
+        key === "normalizedUrl"
+          ? urlChanged
+          : input[key as keyof JobApplicationInput] !== undefined &&
+            input[key as keyof JobApplicationInput] !== current[key];
+      if (!supplied) Object.assign(data, { [key]: current[key] });
+    }
+    const trackerDetails = trackerDetailsSchema.parse(
+      input.trackerDetails ?? current.trackerDetails ?? {},
+    );
+    const previousDetails = trackerDetailsSchema.parse(
+      current.trackerDetails ?? {},
+    );
+    if (
+      data.url !== current.url ||
+      data.title !== current.title ||
+      data.company !== current.company ||
+      trackerDetails.employerJobId !== previousDetails.employerJobId
+    ) {
+      await warnPossibleDuplicate(
+        userId,
+        data,
+        trackerDetails,
+        input.allowDuplicate,
+        jobId,
+      );
+    }
+    const confirm = !!input.confirmSubmission && !current.submissionConfirmed;
+    const date = input.submissionDate || getTodayDateString(timezone);
+    prepareConfirmation(
+      data,
+      trackerDetails,
+      confirm,
+      date,
+      getTodayDateString(timezone),
+    );
+    const history = [...(current.trackerHistory as TrackerEvent[])];
+    if (!history.length)
+      history.push({
+        at: current.updatedAt.toISOString(),
+        from: null,
+        to: current.status,
+        kind: "baseline",
+      });
+    if (confirm || current.status !== data.status)
+      history.push(
+        buildTrackerEvent(
+          current.status,
+          data.status,
+          trackerDetails,
+          confirm,
+          date,
+        ),
+      );
+    return tx.jobApplication.update({
+      where: { id: jobId },
+      data: {
+        ...data,
+        trackerDetails,
+        trackerHistory: history,
+        submissionConfirmed: current.submissionConfirmed || confirm,
+        submittedDate: current.submittedDate ?? (confirm ? date : null),
+      },
+    });
   });
 
   return serializeJobApplication(job);
@@ -357,22 +480,10 @@ export async function archiveJobApplication(
   userId: string,
   jobId: string,
 ): Promise<SerializedJobApplication> {
-  await requireJobTrackerUser(userId);
-
-  const existing = await prisma.jobApplication.findFirst({
-    where: { id: jobId, userId },
+  return updateJobApplication(userId, jobId, {
+    status: "ARCHIVED",
+    allowDuplicate: true,
   });
-
-  if (!existing) {
-    throw new JobApplicationError("Job application not found.");
-  }
-
-  const job = await prisma.jobApplication.update({
-    where: { id: jobId },
-    data: { status: "ARCHIVED" },
-  });
-
-  return serializeJobApplication(job);
 }
 
 export async function deleteJobApplication(
@@ -418,7 +529,6 @@ export async function backfillJobApplicationNormalizedUrls(): Promise<number> {
     await prisma.jobApplication.update({
       where: { id: job.id },
       data: {
-        url: normalizeJobUrlForStorage(job.url),
         normalizedUrl: normalizedUrl || null,
       },
     });
@@ -426,4 +536,66 @@ export async function backfillJobApplicationNormalizedUrls(): Promise<number> {
   }
 
   return updated;
+}
+
+async function warnPossibleDuplicate(
+  userId: string,
+  data: { title: string; company: string; url: string | null },
+  details: TrackerDetails,
+  allow?: boolean,
+  excludeId?: string,
+) {
+  if (allow) return;
+  const jobs = await prisma.jobApplication.findMany({
+    where: { userId, ...(excludeId ? { id: { not: excludeId } } : {}) },
+  });
+  for (const job of jobs) {
+    const reason = duplicateReason(
+      {
+        ...data,
+        url: data.url ? normalizeJobUrl(data.url) : null,
+        trackerDetails: details,
+      },
+      {
+        ...job,
+        url: job.normalizedUrl ?? (job.url ? normalizeJobUrl(job.url) : null),
+        trackerDetails: trackerDetailsSchema.parse(job.trackerDetails ?? {}),
+      },
+    );
+    if (reason) throw new DuplicateJobApplicationError(job, reason);
+  }
+}
+
+function validateFlags(input: JobApplicationInput) {
+  if (
+    (input.confirmSubmission !== undefined &&
+      typeof input.confirmSubmission !== "boolean") ||
+    (input.allowDuplicate !== undefined &&
+      typeof input.allowDuplicate !== "boolean")
+  )
+    throw new JobApplicationError("Invalid confirmation.");
+}
+function prepareConfirmation(
+  data: { status: JobApplicationStatus },
+  details: TrackerDetails,
+  confirm: boolean,
+  date: string,
+  today: string,
+) {
+  if (!confirm) return;
+  if (!isValidDateString(date) || date > today)
+    throw new JobApplicationError(
+      "Submission date must be a valid date no later than your local today.",
+    );
+  if (
+    data.status === "SUBMISSION_FAILED" ||
+    data.status === "NEEDS_INPUT" ||
+    details.blockerType ||
+    details.blockerNote
+  )
+    throw new JobApplicationError(
+      "Resolve the blocker or failed attempt before confirming a successful submission.",
+    );
+  if (["SAVED", "PREPARING", "READY_TO_SUBMIT"].includes(data.status))
+    data.status = "APPLIED";
 }

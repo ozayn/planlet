@@ -11,8 +11,10 @@ export function readStoredJobTrackerView(): JobTrackerView | null {
     return null;
   }
 
-  const value = localStorage.getItem(JOB_TRACKER_VIEW_STORAGE_KEY);
-  return isJobTrackerView(value) ? value : null;
+  try {
+    const value = localStorage.getItem(JOB_TRACKER_VIEW_STORAGE_KEY);
+    return isJobTrackerView(value) ? value : null;
+  } catch { return null; }
 }
 
 export function storeJobTrackerView(view: JobTrackerView): void {
@@ -20,5 +22,5 @@ export function storeJobTrackerView(view: JobTrackerView): void {
     return;
   }
 
-  localStorage.setItem(JOB_TRACKER_VIEW_STORAGE_KEY, view);
+  try {localStorage.setItem(JOB_TRACKER_VIEW_STORAGE_KEY, view);} catch {}
 }

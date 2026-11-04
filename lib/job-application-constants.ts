@@ -6,6 +6,12 @@ export {
 
 export type JobApplicationFilter =
   | "ALL"
+  | "EVERYTHING"
+  | "PREPARING"
+  | "NEEDS_INPUT"
+  | "READY_TO_SUBMIT"
+  | "SUBMISSION_FAILED"
+  | "WITHDRAWN"
   | "SAVED"
   | "APPLIED"
   | "INTERVIEWING"
@@ -17,7 +23,13 @@ export const JOB_APPLICATION_FILTERS: Array<{
   value: JobApplicationFilter;
   label: string;
 }> = [
-  { value: "ALL", label: "All" },
+  { value: "ALL", label: "Active" },
+  { value: "EVERYTHING", label: "All records" },
+  { value: "PREPARING", label: "Preparing" },
+  { value: "NEEDS_INPUT", label: "Needs input" },
+  { value: "READY_TO_SUBMIT", label: "Ready to submit" },
+  { value: "SUBMISSION_FAILED", label: "Submission failed" },
+  { value: "WITHDRAWN", label: "Withdrawn" },
   { value: "SAVED", label: "Saved" },
   { value: "APPLIED", label: "Applied" },
   { value: "INTERVIEWING", label: "Interviewing" },

@@ -26,7 +26,7 @@ export function JobTrackerCardList({ jobs, onSelectJob }: JobTrackerCardListProp
                   {job.company} — {job.title}
                 </p>
                 <p className="mt-1 text-xs text-muted-light">
-                  {formatJobListMeta(job.appliedDate, job.status)}
+                  {formatJobListMeta(job.submissionConfirmed ? job.submittedDate : null, job.status)}{!job.submissionConfirmed && " · Submission unverified"}
                 </p>
                 {job.notes?.trim() ? (
                   <p className="mt-2 line-clamp-2 text-sm text-muted" dir="auto">

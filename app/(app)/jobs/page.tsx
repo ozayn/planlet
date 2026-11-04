@@ -16,7 +16,7 @@ export default async function JobsPage() {
     notFound();
   }
 
-  const jobs = await listJobApplications(userId, "ALL");
+  const jobs = await listJobApplications(userId, "EVERYTHING");
   const userTimezone = await getUserTimezone(userId);
 
   return (

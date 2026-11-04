@@ -1,6 +1,7 @@
 import type { JobApplicationStatus } from "@/app/generated/prisma/client";
 
-import { formatDateString, getWeekRange } from "@/lib/dates";
+import { localDate, weekStart } from "@/lib/job-tracker-insights";
+import { getUserTimezone } from "@/lib/user-timezone";
 import { canUseJobTrackerFeatures, type UserAccess } from "@/lib/roles";
 import { prisma } from "@/lib/prisma";
 
@@ -20,29 +21,32 @@ export async function getCareerJobSummary(
     return null;
   }
 
-  const weekRange = getWeekRange(new Date());
-  const weekStart = formatDateString(weekRange.start);
+  const today = localDate(new Date(), await getUserTimezone(userId));
+  const start = weekStart(today);
 
   const jobs = await prisma.jobApplication.findMany({
     where: { userId },
     select: {
       status: true,
-      appliedDate: true,
-      createdAt: true,
+      submissionConfirmed: true,
+      submittedDate: true,
     },
   });
 
-  const applicationsThisWeek = jobs.filter((job) => {
-    const appliedDate = job.appliedDate?.trim();
-    if (appliedDate && appliedDate >= weekStart) {
-      return true;
-    }
-
-    return formatDateString(job.createdAt) >= weekStart;
-  }).length;
+  const applicationsThisWeek = jobs.filter(
+    (job) =>
+      job.submissionConfirmed &&
+      !!job.submittedDate &&
+      job.submittedDate >= start &&
+      job.submittedDate <= today,
+  ).length;
 
   const countByStatus = (status: JobApplicationStatus) =>
-    jobs.filter((job) => job.status === status).length;
+    jobs.filter(
+      (job) =>
+        job.status === status &&
+        (status === "SAVED" || job.submissionConfirmed),
+    ).length;
 
   return {
     applicationsThisWeek,

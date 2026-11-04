@@ -20,14 +20,18 @@ export function JobTrackerEmptyState({
   return (
     <div className="ui-empty-state space-y-2">
       <p className="text-sm text-muted">
-        No jobs match &ldquo;{searchQuery}&rdquo;.
+        {searchQuery ? (
+          <>No jobs match &ldquo;{searchQuery}&rdquo;.</>
+        ) : (
+          "No jobs match these filters."
+        )}
       </p>
       <button
         type="button"
         onClick={onClearSearch}
         className="ui-text-link text-sm"
       >
-        Clear search
+        Clear filters
       </button>
     </div>
   );
