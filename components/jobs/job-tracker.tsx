@@ -23,6 +23,7 @@ import { JobApplicationEditorSheet } from "@/components/jobs/job-application-edi
 import { JobUrlExtractControls } from "@/components/jobs/job-url-extract-controls";
 import { JobTrackerCardList } from "@/components/jobs/job-tracker-card-list";
 import { JobTrackerEmptyState } from "@/components/jobs/job-tracker-empty-state";
+import { JobTrackerUpdateNotice } from "@/components/jobs/job-tracker-update-notice";
 import { JobTrackerTable } from "@/components/jobs/job-tracker-table";
 import { JobTrackerViewToggle } from "@/components/jobs/job-tracker-view-toggle";
 import {
@@ -279,6 +280,7 @@ export function JobTracker({ initialJobs, userTimezone }: JobTrackerProps) {
 
   return (
     <div className="space-y-6">
+      <JobTrackerUpdateNotice />
       <div className="flex gap-2">
         {["tracker", "insights"].map((t) => (
           <button

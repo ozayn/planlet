@@ -68,7 +68,7 @@ export function sourceCategory(j: Job) {
         if (host === domain || host.endsWith("." + domain)) return label;
       }
     } catch {}
-    return "Other";
+    return "Unknown";
   }
   const s = j.source.toLowerCase();
   const matches = [
@@ -113,4 +113,18 @@ export function groupJobs(jobs: Job[], key: (j: Job) => string) {
     groups.set(label, entries);
   }
   return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
+}
+
+// Include empty calendar buckets; date arithmetic stays independent of DST.
+export function applicationTimeline(jobs: Job[], from: string, to: string, weekly = false): [string, Job[]][] {
+  const groups = new Map(groupJobs(jobs.filter(j => confirmed(j) && j.submittedDate! >= from && j.submittedDate! <= to), j => weekly ? weekStart(j.submittedDate!) : j.submittedDate!));
+  const cursor = new Date((weekly ? weekStart(from) : from) + "T12:00:00Z");
+  const end = new Date(to + "T12:00:00Z");
+  const result: [string, Job[]][] = [];
+  while (cursor <= end) {
+    const key = cursor.toISOString().slice(0, 10);
+    result.push([key, groups.get(key) ?? []]);
+    cursor.setUTCDate(cursor.getUTCDate() + (weekly ? 7 : 1));
+  }
+  return result;
 }

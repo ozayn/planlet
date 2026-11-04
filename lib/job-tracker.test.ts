@@ -13,6 +13,7 @@ import {
   weekStart,
   insights,
   groupJobs,
+  applicationTimeline,
   outcome,
   roleCategory,
   sourceCategory,
@@ -307,11 +308,11 @@ test("source URL fallback uses board hostnames, not incidental words in a path",
   );
   assert.equal(
     sourceCategory(job({ url: "https://example.com/indeed-job" })),
-    "Other",
+    "Unknown",
   );
   assert.equal(
     sourceCategory(job({ url: "https://notlinkedin.com/jobs/123" })),
-    "Other",
+    "Unknown",
   );
 });
 
@@ -348,7 +349,7 @@ test("qualification gaps can be filtered without becoming submission blockers", 
 
 test("application-date sort uses confirmed or legacy dates, puts undated jobs last, and never mutates the list", () => {
   const undated = job({ id: "undated", updatedAt: "2026-11-05T00:00:00Z" });
-  const older = job({ id: "older", appliedDate: "2026-11-02" });
+  const older = job({ id: "older", status: "APPLIED", appliedDate: "2026-11-02" });
   const latest = job({
     id: "latest",
     submissionConfirmed: true,
@@ -370,4 +371,19 @@ test("application-date sort uses confirmed or legacy dates, puts undated jobs la
   );
   assert.equal(applicationDate(latest), "2026-11-04");
   assert.equal(older.submissionConfirmed, false);
+});
+
+test("unsubmitted legacy default dates stay hidden without discarding stored dates", () => {
+  for (const status of ["SAVED", "PREPARING", "NEEDS_INPUT", "READY_TO_SUBMIT", "SUBMISSION_FAILED"] as const) {
+    const draft = job({status, appliedDate: "2026-11-04"});
+    assert.equal(applicationDate(draft), null);
+    assert.equal(draft.appliedDate, "2026-11-04");
+  }
+});
+test("unknown sources differ from explicit other and timelines include zero days and weeks", () => {
+  assert.equal(sourceCategory(job()), "Unknown");
+  assert.equal(sourceCategory(job({source: "Other"})), "Other");
+  const submitted = job({submissionConfirmed: true, submittedDate: "2026-11-02"});
+  assert.deepEqual(applicationTimeline([submitted], "2026-11-01", "2026-11-03").map(([day, jobs]) => [day, jobs.length]), [["2026-11-01",0],["2026-11-02",1],["2026-11-03",0]]);
+  assert.deepEqual(applicationTimeline([submitted], "2026-11-01", "2026-11-09", true).map(([day, jobs]) => [day, jobs.length]), [["2026-10-26",0],["2026-11-02",1],["2026-11-09",0]]);
 });

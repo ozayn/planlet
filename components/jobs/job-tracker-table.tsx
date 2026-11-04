@@ -105,6 +105,16 @@ export function JobTrackerTable({
 }) {
   const [dateOrder, setDateOrder] = useState<"asc" | "desc">("desc");
   const sortedJobs = sortByApplicationDate(jobs, dateOrder);
+  const resultKey = JSON.stringify([dateOrder, jobs.map((job) => job.id)]);
+  const [paging, setPaging] = useState({ key: resultKey, page: 1 });
+  const [pageSize, setPageSize] = useState(20);
+  const pageCount = Math.max(1, Math.ceil(jobs.length / pageSize));
+  const page = paging.key === resultKey ? Math.min(paging.page, pageCount) : 1;
+  const start = (page - 1) * pageSize;
+  const pageJobs = sortedJobs.slice(start, start + pageSize);
+  function goToPage(next: number) {
+    setPaging({ key: resultKey, page: Math.max(1, Math.min(next, pageCount)) });
+  }
   const snapshot = useSyncExternalStore(subscribe, readColumns, () => "null");
   let visible: Column[] = defaultColumns;
   try {
@@ -128,6 +138,23 @@ export function JobTrackerTable({
   }
   return (
     <div className="space-y-3">
+      <nav aria-label="Application table pages" className="flex flex-wrap items-center justify-between gap-3 text-sm">
+        <span role="status">{jobs.length ? start + 1 : 0}–{Math.min(start + pageSize, jobs.length)} of {jobs.length} applications</span>
+        <div className="flex flex-wrap items-center gap-3">
+          <label className="flex items-center gap-2">
+            Rows per page
+            <select className="ui-input min-h-10 px-2" value={pageSize} onChange={(event) => {
+              setPageSize(Number(event.target.value));
+              goToPage(1);
+            }}>
+              {[10, 20, 50].map((size) => <option key={size} value={size}>{size}</option>)}
+            </select>
+          </label>
+          <button className="ui-input min-h-10 px-3 disabled:opacity-40" disabled={page === 1} onClick={() => goToPage(page - 1)}>Previous</button>
+          <span>Page {page} of {pageCount}</span>
+          <button className="ui-input min-h-10 px-3 disabled:opacity-40" disabled={page === pageCount} onClick={() => goToPage(page + 1)}>Next</button>
+        </div>
+      </nav>
       <details>
         <summary className="cursor-pointer text-sm">Table columns</summary>
         <div className="mt-2 flex flex-wrap gap-x-4">
@@ -178,7 +205,7 @@ export function JobTrackerTable({
             </tr>
           </thead>
           <tbody>
-            {sortedJobs.map((job) => (
+            {pageJobs.map((job) => (
               <tr
                 key={job.id}
                 tabIndex={0}

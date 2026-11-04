@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { SerializedJobApplication as Job } from "@/lib/job-applications";
 import {
   insights,
+  applicationTimeline,
   groupJobs,
   outcome,
   roleCategory,
@@ -89,9 +90,6 @@ export function JobTrackerInsights({
   );
   const cards: [string, Job[]][] = [
     ["Confirmed in range", range],
-    ["Confirmed today", data.today],
-    ["This week", data.week],
-    ["This month", data.month],
     ["Awaiting response", data.awaiting],
     ["Interviews", data.interviews],
     ["Offers", data.offers],
@@ -103,6 +101,22 @@ export function JobTrackerInsights({
       <p className="text-sm text-muted">
         {from} – {to} · Local dates · Current recorded outcomes
       </p>
+      <div className="flex flex-wrap gap-2" aria-label="Date range shortcuts">
+        {[
+          ["Today", today],
+          ["This week", weekStart(today)],
+          ["This month", `${today.slice(0, 7)}-01`],
+        ].map(([label, start]) => (
+          <button
+            key={label}
+            className="ui-input min-h-10 px-3 text-sm"
+            aria-pressed={from === start && to === today}
+            onClick={() => onRangeChange({ from: start, to: today })}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
       <div className="flex flex-wrap gap-3">
         <label className="text-xs">
           From
@@ -174,11 +188,7 @@ export function JobTrackerInsights({
         <div className="grid gap-4 sm:grid-cols-2">
           <Bars
             label="Applications over time"
-            groups={groupJobs(range, (j) =>
-              period === "weekly"
-                ? weekStart(j.submittedDate!)
-                : j.submittedDate!,
-            )}
+            groups={applicationTimeline(range, from, to, period === "weekly")}
             onSelect={onSelect}
           />
           <Bars

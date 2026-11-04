@@ -3,7 +3,8 @@ import type { SerializedJobApplication as Job } from "./job-applications";
 // Calendar dates sort independently of the browser's timezone. Legacy dates
 // remain usable for browsing without being counted as confirmed submissions.
 export function applicationDate(job: Job): string | null {
-  const date = job.submissionConfirmed ? job.submittedDate : job.appliedDate;
+  const legacySubmitted = ["APPLIED", "INTERVIEWING", "OFFER", "REJECTED", "WITHDRAWN"].includes(job.status);
+  const date = job.submissionConfirmed ? job.submittedDate : legacySubmitted ? job.appliedDate : null;
   return date && /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : null;
 }
 export function sortByApplicationDate(
