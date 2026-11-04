@@ -1,5 +1,6 @@
 "use client";
-import { useSyncExternalStore } from "react";
+import { applicationDate, sortByApplicationDate } from "@/lib/job-tracker-sort";
+import { useState, useSyncExternalStore } from "react";
 import type { SerializedJobApplication as Job } from "@/lib/job-applications";
 import { getJobApplicationStatusLabel } from "@/lib/job-application-status";
 
@@ -22,7 +23,7 @@ const labels: Record<Column, string> = {
   company: "Company",
   title: "Role",
   status: "Status",
-  submitted: "Confirmed submission",
+  submitted: "Application date",
   location: "Location",
   arrangement: "Work arrangement",
   salary: "Published salary",
@@ -46,7 +47,16 @@ function cell(job: Job, column: Column, timezone: string) {
     case "status":
       return getJobApplicationStatusLabel(job.status);
     case "submitted":
-      return job.submissionConfirmed ? job.submittedDate : "Unverified";
+      return applicationDate(job) ? (
+        <span>
+          {applicationDate(job)}
+          {!job.submissionConfirmed && (
+            <span className="block text-xs text-muted">Unverified</span>
+          )}
+        </span>
+      ) : (
+        "—"
+      );
     case "arrangement":
       return d.workArrangement || "Unknown";
     case "salary":
@@ -93,6 +103,8 @@ export function JobTrackerTable({
   onSelectJob: (job: Job) => void;
   userTimezone: string;
 }) {
+  const [dateOrder, setDateOrder] = useState<"asc" | "desc">("desc");
+  const sortedJobs = sortByApplicationDate(jobs, dateOrder);
   const snapshot = useSyncExternalStore(subscribe, readColumns, () => "null");
   let visible: Column[] = defaultColumns;
   try {
@@ -136,14 +148,37 @@ export function JobTrackerTable({
           <thead>
             <tr className="border-b border-border-soft text-start text-xs text-muted">
               {visible.map((c) => (
-                <th key={c} scope="col" className="px-3 py-2 text-start">
-                  {labels[c]}
+                <th
+                  key={c}
+                  scope="col"
+                  className="px-3 py-2 text-start"
+                  aria-sort={
+                    c === "submitted"
+                      ? dateOrder === "asc"
+                        ? "ascending"
+                        : "descending"
+                      : undefined
+                  }
+                >
+                  {c === "submitted" ? (
+                    <button
+                      className="min-h-10 text-start"
+                      onClick={() =>
+                        setDateOrder(dateOrder === "desc" ? "asc" : "desc")
+                      }
+                      aria-label={`Application date, ${dateOrder === "desc" ? "newest" : "oldest"} first; click to reverse`}
+                    >
+                      {labels[c]} {dateOrder === "desc" ? "↓" : "↑"}
+                    </button>
+                  ) : (
+                    labels[c]
+                  )}
                 </th>
               ))}
             </tr>
           </thead>
           <tbody>
-            {jobs.map((job) => (
+            {sortedJobs.map((job) => (
               <tr
                 key={job.id}
                 tabIndex={0}

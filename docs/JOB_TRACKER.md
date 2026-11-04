@@ -2,7 +2,10 @@
 
 The tracker keeps quick add to URL, title and company. More details, filters,
 column choices, materials, blockers and outreach use native disclosures and
-standard form controls. The Applications / Insights switch stays on `/jobs`.
+standard form controls. The table defaults to application date, newest first;
+click its Application date header to reverse the order. Confirmed submission dates
+take precedence; legacy applied dates remain labelled unverified. Undated records
+always appear last. The Applications / Insights switch stays on `/jobs`.
 
 ## Data and migration
 

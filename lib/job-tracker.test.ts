@@ -1,3 +1,4 @@
+import { applicationDate, sortByApplicationDate } from "./job-tracker-sort";
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
@@ -343,4 +344,30 @@ test("qualification gaps can be filtered without becoming submission blockers", 
     false,
   );
   assert.equal(trackerDetailsSchema.parse({}).qualificationGaps, "");
+});
+
+test("application-date sort uses confirmed or legacy dates, puts undated jobs last, and never mutates the list", () => {
+  const undated = job({ id: "undated", updatedAt: "2026-11-05T00:00:00Z" });
+  const older = job({ id: "older", appliedDate: "2026-11-02" });
+  const latest = job({
+    id: "latest",
+    submissionConfirmed: true,
+    submittedDate: "2026-11-04",
+    appliedDate: "2026-01-01",
+  });
+  const jobs = [undated, older, latest];
+  assert.deepEqual(
+    sortByApplicationDate(jobs).map((j) => j.id),
+    ["latest", "older", "undated"],
+  );
+  assert.deepEqual(
+    sortByApplicationDate(jobs, "asc").map((j) => j.id),
+    ["older", "latest", "undated"],
+  );
+  assert.deepEqual(
+    jobs.map((j) => j.id),
+    ["undated", "older", "latest"],
+  );
+  assert.equal(applicationDate(latest), "2026-11-04");
+  assert.equal(older.submissionConfirmed, false);
 });
