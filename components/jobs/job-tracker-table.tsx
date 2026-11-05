@@ -1,10 +1,13 @@
 "use client";
+import { missionSummary, missionReview } from "@/lib/job-missions";
 import { applicationDate, sortByApplicationDate } from "@/lib/job-tracker-sort";
 import { useState, useSyncExternalStore } from "react";
 import type { SerializedJobApplication as Job } from "@/lib/job-applications";
 import { getJobApplicationStatusLabel } from "@/lib/job-application-status";
 
 const columns = [
+  "mission",
+  "industry",
   "company",
   "title",
   "status",
@@ -20,6 +23,8 @@ const columns = [
 ] as const;
 type Column = (typeof columns)[number];
 const labels: Record<Column, string> = {
+  mission: "Role / team mission",
+  industry: "Employer industry",
   company: "Company",
   title: "Role",
   status: "Status",
@@ -39,11 +44,16 @@ const defaultColumns: Column[] = [
   "status",
   "submitted",
   "nextAction",
+  "mission",
 ];
 const storageKey = "planlet-job-tracker-columns";
 function cell(job: Job, column: Column, timezone: string) {
   const d = job.trackerDetails;
   switch (column) {
+    case "mission":
+      return <span>{missionSummary(d)}<span className="block text-xs text-muted">{missionReview(d)}</span></span>;
+    case "industry":
+      return d.employerIndustries?.join(" · ") || "Unknown";
     case "status":
       return getJobApplicationStatusLabel(job.status);
     case "submitted":
@@ -227,6 +237,7 @@ export function JobTrackerTable({
                     className="max-w-64 break-words px-3 py-3 align-top"
                   >
                     {cell(job, c, userTimezone)}
+                    {c === "title" && !visible.includes("mission") && <span className="mt-1 block text-xs text-muted">Mission: {missionSummary(job.trackerDetails)} · {missionReview(job.trackerDetails)}</span>}
                   </td>
                 ))}
               </tr>

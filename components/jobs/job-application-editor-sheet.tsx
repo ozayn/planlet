@@ -1,6 +1,7 @@
 "use client";
 
 import { emptyTrackerDetails } from "@/lib/job-tracker-details";
+import { missionReview } from "@/lib/job-missions";
 import { JobTrackerDetailsFields } from "./job-tracker-details-fields";
 import { useState, useTransition } from "react";
 
@@ -409,6 +410,13 @@ export function JobApplicationEditorSheet({
           onChange={setDetails}
           disabled={pending}
         />
+        {missionReview(details) !== "Mission recorded" && (
+          <p role="status" className="rounded-lg border border-border-soft p-3 text-sm">
+            {missionReview(details) === "Mission conflict"
+              ? "Military/defense or defense-adjacent work is outside your current preferences. Review before submitting."
+              : "Role mission is unknown. Review the team/project before submitting; the employer’s industry is not enough."}
+          </p>
+        )}
         {job.submissionConfirmed ? (
           <p className="text-sm">Confirmed submission: {job.submittedDate}</p>
         ) : (

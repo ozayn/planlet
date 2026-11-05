@@ -1,4 +1,5 @@
 "use client";
+import { JobMissionFields } from "./job-mission-fields";
 import type { TrackerDetails } from "@/lib/job-tracker-details";
 const groups = [
   {
@@ -88,6 +89,7 @@ export function JobTrackerDetailsFields({
 }) {
   return (
     <div className="space-y-3">
+      <JobMissionFields value={value} onChange={onChange} disabled={disabled} />
       <datalist id="job-role-categories">
         {[
           "Data Science",

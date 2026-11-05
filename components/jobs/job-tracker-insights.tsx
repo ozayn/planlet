@@ -1,4 +1,5 @@
 "use client";
+import { groupByMission, missionSummary } from "@/lib/job-missions";
 import { useState } from "react";
 import type { SerializedJobApplication as Job } from "@/lib/job-applications";
 import {
@@ -8,7 +9,6 @@ import {
   outcome,
   roleCategory,
   sourceCategory,
-  weekStart,
 } from "@/lib/job-tracker-insights";
 function Bars({
   label,
@@ -71,6 +71,12 @@ export function JobTrackerInsights({
   const setFrom = (from: string) => onRangeChange({ ...selectedRange, from });
   const setTo = (to: string) => onRangeChange({ ...selectedRange, to });
   const [period, setPeriod] = useState("daily");
+  const [missionTrend, setMissionTrend] = useState("");
+  const daysAgo = (days: number) => {
+    const date = new Date(today + "T12:00:00Z");
+    date.setUTCDate(date.getUTCDate() - days);
+    return date.toISOString().slice(0, 10);
+  };
   const range = jobs.filter(
     (j) =>
       j.submissionConfirmed &&
@@ -104,8 +110,8 @@ export function JobTrackerInsights({
       <div className="flex flex-wrap gap-2" aria-label="Date range shortcuts">
         {[
           ["Today", today],
-          ["This week", weekStart(today)],
-          ["This month", `${today.slice(0, 7)}-01`],
+          ["Past week", daysAgo(6)],
+          ["Past month", daysAgo(29)],
         ].map(([label, start]) => (
           <button
             key={label}
@@ -186,16 +192,24 @@ export function JobTrackerInsights({
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
-          <Bars
-            label="Applications over time"
-            groups={applicationTimeline(range, from, to, period === "weekly")}
-            onSelect={onSelect}
-          />
+          <div className="space-y-3">
+            <label className="block text-xs">Mission over time
+              <select className="ui-input mt-1 min-h-10 w-full px-3" value={missionTrend} onChange={event => setMissionTrend(event.target.value)}>
+                <option value="">All missions (unique applications)</option>
+                {[...new Set([...groupByMission(jobs).map(([label]) => label), ...(missionTrend ? [missionTrend] : [])])].sort().map(label => <option key={label} value={label}>{label}</option>)}
+              </select>
+            </label>
+            <Bars label={`Applications over time${missionTrend ? `: ${missionTrend}` : ""}`} groups={applicationTimeline(range.filter(job => !missionTrend || (missionTrend === "Unknown" ? missionSummary(job.trackerDetails) === "Unknown" : job.trackerDetails.missionFields?.includes(missionTrend))), from, to, period === "weekly")} onSelect={onSelect} />
+          </div>
           <Bars
             label="Application outcomes"
             groups={groupJobs(range, outcome)}
             onSelect={onSelect}
           />
+          <div className="space-y-3">
+            <Bars label="Applications by role / team mission" groups={groupByMission(range)} onSelect={onSelect} />
+            <p className="text-xs text-muted">Each application counts once in the confirmed total. Mixed missions count once in each label, so category totals can exceed the unique total. Unknown means no role mission has been recorded.</p>
+          </div>
           <Bars
             label="Applications by role"
             groups={groupJobs(range, roleCategory)}

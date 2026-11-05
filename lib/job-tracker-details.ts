@@ -22,6 +22,13 @@ const date = z.union([z.literal(""), z.iso.date()]).default("");
 export const trackerDetailsSchema = z
   .object({
     roleCategory: text,
+    employerIndustries: z.array(z.string().trim().min(1).max(80)).max(20).default([]),
+    missionFields: z.array(z.string().trim().min(1).max(80)).max(20).default([]),
+    employerEvidence: text,
+    employerSource: link,
+    missionEvidence: text,
+    missionSource: link,
+    classificationOrigin: z.enum(["", "manual", "backfill"]).default(""),
     qualificationGaps: text,
     blockerType: z
       .enum([

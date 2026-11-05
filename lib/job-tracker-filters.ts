@@ -1,9 +1,13 @@
+import { missionReview } from "./job-missions";
 import type { SerializedJobApplication as Job } from "./job-applications";
 import type { JobApplicationFilter } from "./job-application-constants";
 import { needsAttention } from "./job-tracker-details";
 import { followUpDue } from "./job-tracker-insights";
 export const emptyJobFilters = () => ({
   company: "",
+  mission: "",
+  industry: "",
+  missionReview: "",
   qualificationGap: "",
   role: "",
   arrangement: "",
@@ -22,6 +26,9 @@ export function matchesJobFilters(
   today: string,
 ) {
   const d = job.trackerDetails;
+  if (fields.mission && !(fields.mission === "Unknown" ? !d.missionFields?.length : d.missionFields?.includes(fields.mission))) return false;
+  if (fields.industry && !(fields.industry === "Unknown" ? !d.employerIndustries?.length : d.employerIndustries?.includes(fields.industry))) return false;
+  if (fields.missionReview && missionReview(d) !== fields.missionReview) return false;
   if (status === "ALL" && job.status === "ARCHIVED") return false;
   if (status !== "ALL" && status !== "EVERYTHING" && job.status !== status)
     return false;

@@ -1,5 +1,6 @@
 "use client";
 
+import { missionLabels } from "@/lib/job-missions";
 import { JobTrackerInsights } from "./job-tracker-insights";
 import { emptyJobFilters, matchesJobFilters } from "@/lib/job-tracker-filters";
 import { insights, localDate } from "@/lib/job-tracker-insights";
@@ -546,6 +547,9 @@ export function JobTracker({ initialJobs, userTimezone }: JobTrackerProps) {
               <summary className="cursor-pointer text-sm">Filters</summary>
               <div className="mt-3 grid gap-3 sm:grid-cols-3">
                 {Object.entries({
+                  mission: "Role / team mission",
+                  industry: "Employer industry",
+                  missionReview: "Mission review",
                   company: "Company",
                   role: "Role",
                   qualificationGap: "Missing qualification",
@@ -558,7 +562,7 @@ export function JobTracker({ initialJobs, userTimezone }: JobTrackerProps) {
                 }).map(([key, label]) => (
                   <label key={key} className="text-xs">
                     {label}
-                    {key === "arrangement" || key === "period" ? (
+                    {["arrangement", "period", "mission", "industry", "missionReview"].includes(key) ? (
                       <select
                         className="ui-input block min-h-10 w-full px-3"
                         value={fields[key as keyof typeof fields]}
@@ -566,7 +570,11 @@ export function JobTracker({ initialJobs, userTimezone }: JobTrackerProps) {
                           setFields({ ...fields, [key]: e.target.value })
                         }
                       >
-                        {(key === "arrangement"
+                        {(key === "mission" || key === "industry"
+                          ? ["", "Unknown", ...new Set([...missionLabels, ...jobs.flatMap(j => key === "mission" ? j.trackerDetails.missionFields ?? [] : j.trackerDetails.employerIndustries ?? [])])]
+                          : key === "missionReview"
+                          ? ["", "Mission needs review", "Mission conflict", "Mission recorded"]
+                          : key === "arrangement"
                           ? ["", "Remote", "Hybrid", "On-site"]
                           : ["", "Hour", "Day", "Week", "Month", "Year"]
                         ).map((v) => (
