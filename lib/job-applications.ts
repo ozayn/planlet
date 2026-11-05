@@ -2,6 +2,7 @@ import { getJobCategories } from "./job-categories";
 import { canonicalCategoryDetails, mergeJobCategories } from "./job-category-types";
 import {
   trackerDetailsSchema,
+  mergeTrackerDetails,
   buildTrackerEvent,
   duplicateReason,
   type TrackerDetails,
@@ -85,6 +86,7 @@ export type SerializedJobApplication = {
 
 export type JobApplicationInput = {
   trackerDetails?: TrackerDetails;
+  expectedUpdatedAt?: string;
   confirmSubmission?: boolean;
   submissionDate?: string;
   allowDuplicate?: boolean;
@@ -402,6 +404,7 @@ export async function updateJobApplication(
     const current = await tx.jobApplication.findFirstOrThrow({
       where: { id: jobId, userId },
     });
+    if(input.expectedUpdatedAt && input.expectedUpdatedAt!==current.updatedAt.toISOString())throw new JobApplicationError("This job changed while you were editing. Close and reopen it to review the latest record before saving.");
     const urlChanged = input.url !== undefined && input.url !== current.url;
     const dateChanged =
       input.appliedDate !== undefined &&
@@ -423,8 +426,8 @@ export async function updateJobApplication(
       if (!supplied) Object.assign(data, { [key]: current[key] });
     }
     const categorySetting = await tx.appSetting.findUnique({where:{key:`job-categories:${userId}`}});
-    const trackerDetails = canonicalCategoryDetails(trackerDetailsSchema.parse(
-      input.trackerDetails ?? current.trackerDetails ?? {},
+    const trackerDetails = canonicalCategoryDetails(mergeTrackerDetails(
+      current.trackerDetails, input.trackerDetails,
     ), mergeJobCategories(categorySetting?.value, []));
     const previousDetails = trackerDetailsSchema.parse(
       current.trackerDetails ?? {},

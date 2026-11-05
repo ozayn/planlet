@@ -31,6 +31,12 @@ export function outcome(j: Job) {
     j.status === "ARCHIVED"
       ? [...j.trackerHistory].reverse().find((e) => e.to !== "ARCHIVED")?.to
       : j.status;
+  if (!["REJECTED", "OFFER", "WITHDRAWN"].includes(status ?? "")) {
+    const stage = j.trackerDetails.responseStage;
+    if (stage === "Interview invited") return "Interview invited (not scheduled)";
+    if (stage === "Interview scheduled" || stage === "Interview completed") return stage;
+    if (stage === "Response received") return "Response received";
+  }
   return (
     (
       {
@@ -91,7 +97,7 @@ export function sourceCategory(j: Job) {
   return "Other";
 }
 export function insights(jobs: Job[], today: string) {
-  const submissions = jobs.filter(confirmed);
+  const submissions = [...new Map(jobs.filter(confirmed).map(j => [j.id, j])).values()];
   return {
     submissions,
     today: submissions.filter((j) => j.submittedDate === today),
@@ -104,7 +110,7 @@ export function insights(jobs: Job[], today: string) {
         j.submittedDate! <= today,
     ),
     awaiting: submissions.filter((j) => outcome(j) === "Awaiting response"),
-    interviews: submissions.filter((j) => j.status === "INTERVIEWING"),
+    interviews: submissions.filter((j) => ["Interviewing", "Interview scheduled", "Interview completed"].includes(outcome(j))),
     offers: submissions.filter((j) => j.status === "OFFER"),
     followups: jobs.filter((j) => followUpDue(j, today)),
   };

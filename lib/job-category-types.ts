@@ -1,6 +1,6 @@
 import { missionLabels } from "./job-missions";
-export type JobCategory = { id: string; label: string; retired: boolean; conflict: boolean; aliases?: string[] };
-export const defaultJobCategories: JobCategory[] = missionLabels.map(label=>({id:`default:${label}`,label,retired:false,conflict:label==="Military / defense"||label==="Defense-adjacent"}));
+export type JobCategory = { id: string; label: string; retired: boolean; conflict: boolean; broadGroup?: string; aliases?: string[] };
+export const defaultJobCategories: JobCategory[] = missionLabels.map(label=>({id:`default:${label}`,label,retired:label==="Productivity / planning",conflict:label==="Military / defense"||label==="Defense-adjacent"}));
 export function mergeJobCategories(saved: unknown, used: string[]): JobCategory[] {
   const stored=Array.isArray(saved) ? saved.filter((v): v is JobCategory=>!!v&&typeof v.id==="string"&&typeof v.label==="string"&&typeof v.retired==="boolean"&&typeof v.conflict==="boolean") : [];
   const byId=new Map(defaultJobCategories.map(c=>[c.id,c]));

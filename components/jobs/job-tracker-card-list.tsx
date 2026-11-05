@@ -1,5 +1,6 @@
 "use client";
 import { useJobCategories } from "./job-category-context";
+import { credibilityConcern } from "@/lib/job-credibility";
 import { missionSummary, missionReview } from "@/lib/job-missions";
 import type { SerializedJobApplication } from "@/app/(app)/jobs/actions";
 import { ExternalLinkIcon } from "@/components/ui/action-icons";
@@ -32,7 +33,8 @@ export function JobTrackerCardList({ jobs, onSelectJob }: JobTrackerCardListProp
                 <p className="mt-1 text-xs text-muted-light">
                   {formatJobListMeta(job.submissionConfirmed ? job.submittedDate : null, job.status)}{!job.submissionConfirmed && " · Submission unverified"}
                 </p>
-                <p className="mt-1 text-xs text-muted">Mission: {missionSummary(job.trackerDetails)} · {missionReview(job.trackerDetails, categories)}</p>
+                {credibilityConcern(job.trackerDetails)&&<p className="mt-1 text-xs text-accent-red">Credibility: {job.trackerDetails.credibilityCheck}</p>}
+                <p className="mt-1 text-xs text-muted">Mission: {missionSummary(job.trackerDetails)}{missionReview(job.trackerDetails,categories)!=="Mission recorded"?` · ${missionReview(job.trackerDetails,categories)}`:""}</p>
                 {job.notes?.trim() ? (
                   <p className="mt-2 line-clamp-2 text-sm text-muted" dir="auto">
                     {job.notes.trim()}

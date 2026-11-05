@@ -1,7 +1,34 @@
 "use client";
+import { credibilityStatuses } from "@/lib/job-credibility";
+import { employerSizeBands, employerSizeDescriptions, employerSizeEntities } from "@/lib/job-employer-size";
 import { JobMissionFields } from "./job-mission-fields";
 import type { TrackerDetails } from "@/lib/job-tracker-details";
 const groups = [
+  {label:"Credibility check",fields:[
+    ["credibilityCheck","Review status",...credibilityStatuses],
+    ["credibilityEvidence","Evidence: employer, exact listing / application destination, and recruiter identity"],
+    ["credibilitySources","Source links (one per line)"],
+    ["credibilityCheckedDate","Checked date"],
+  ]},
+  {label:"Employer size",fields:[
+    ["employerSizeBand","Employee count band",...employerSizeBands],
+    ["employerSizeEntity","Counted organization",...employerSizeEntities],
+    ["employerSizeEntityName","Organization name (actual employer, agency, or parent)"],
+    ["employerSizeSource","Size source URL"],
+    ["employerSizeCheckedDate","Size checked date"],
+  ]},
+  {label: "Opportunity review", fields: [
+    ["searchDecision", "My decision (separate from employer outcome)", "", "Pursue", "On hold", "Not pursuing"],
+    ["decisionReason", "My decision reason"],
+    ["locationEligibility", "DC / suitable US remote", "", "Met", "Not met", "Unknown"],
+    ["locationEvidence", "Location evidence and source (including remote restrictions)"],
+    ["interestTier", "Interest tier override (blank uses recorded missions)", "", "Preferred", "Adjacent", "Other recorded missions", "Excluded", "Unknown / review needed"],
+    ["interestReason", "Why this work matters to me"],
+    ["candidateEvidence", "Strongest relevant experience / project evidence"],
+    ["candidateEvidenceSource", "Experience evidence link"],
+    ["materialGap", "Material gap / uncertainty (interest does not establish qualifications)"],
+    ["gapSource", "Gap evidence link"],
+  ]},
   {
     label: "Workflow and blockers",
     fields: [
@@ -15,6 +42,9 @@ const groups = [
         "Other",
       ],
       ["blockerNote", "Missing answer or blocker note"],
+      ["responseStage", "Recorded response", "", "Response received", "Interview invited", "Interview scheduled", "Interview completed"],
+      ["responseEvidence", "Response evidence (invitation is not a scheduled interview)"],
+      ["responseSource", "Response source link"],
     ],
   },
   {
@@ -47,6 +77,8 @@ const groups = [
       ["deadline", "Deadline"],
       ["employerJobId", "Original employer/job ID"],
       ["roleCategory", "Role category"],
+      ["recruitmentChannel", "Recruitment channel", "", "Direct employer", "Recruiting / staffing agency", "Referral", "Unknown"],
+      ["recruitmentAgency", "Recruiting agency name (if applicable)"],
       ["qualificationGaps", "Missing qualifications (skills or certificates)"],
     ],
   },
@@ -111,24 +143,25 @@ export function JobTrackerDetailsFields({
           <summary className="cursor-pointer text-sm font-medium">
             {group.label}
           </summary>
+          {group.label==="Credibility check"&&<p className="mt-2 text-xs text-muted">A real employer can be impersonated. Review the specific destination and recruiter too; an ATS or LinkedIn receipt alone does not establish authenticity.</p>}
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             {group.fields.map(([key, label, ...options]) => {
               const field = key as keyof TrackerDetails;
               return (
                 <label key={key} className="block space-y-1 text-xs text-muted">
                   <span>{label}</span>
-                  {key === "qualificationGaps" ? (
+                  {["qualificationGaps","credibilityEvidence","credibilitySources"].includes(key) ? (
                     <textarea
                       disabled={disabled}
                       rows={3}
-                      value={value.qualificationGaps ?? ""}
+                      value={String(value[field] ?? "")}
                       onChange={(e) =>
                         onChange({
                           ...value,
-                          qualificationGaps: e.target.value,
+                          [key]: e.target.value,
                         })
                       }
-                      placeholder="One gap per line; note required or preferred if known"
+                      placeholder={key==="qualificationGaps"?"One gap per line; note required or preferred if known":undefined}
                       className="ui-input w-full px-3 py-2"
                     />
                   ) : options.length ? (
@@ -142,7 +175,7 @@ export function JobTrackerDetailsFields({
                     >
                       {options.map((o) => (
                         <option key={o} value={o}>
-                          {o || "Unknown / not set"}
+                          {key==="employerSizeBand"?`${o} · ${employerSizeDescriptions[o]}`:o || "Unknown / not set"}
                         </option>
                       ))}
                     </select>
@@ -155,7 +188,7 @@ export function JobTrackerDetailsFields({
                       }
                       disabled={disabled}
                       type={
-                        key === "deadline" || key === "dueDate"
+                        key === "deadline" || key === "dueDate" || key === "employerSizeCheckedDate" || key === "credibilityCheckedDate"
                           ? "date"
                           : "text"
                       }
@@ -170,6 +203,9 @@ export function JobTrackerDetailsFields({
               );
             })}
           </div>
+          {group.label === "Opportunity review" && (
+            <label className="flex min-h-10 items-center gap-2 text-sm"><input type="checkbox" checked={value.civilianScopeConfirmed} disabled={disabled} onChange={e=>onChange({...value,civilianScopeConfirmed:e.target.checked})}/>Civilian assignment scope reviewed (record mission evidence)</label>
+          )}
           {group.label === "Application materials" && (
             <label className="mt-3 flex min-h-10 items-center gap-2 text-sm">
               <input

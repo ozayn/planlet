@@ -7,7 +7,7 @@ export async function getJobCategories(userId:string) {
   const used=jobs.flatMap(j=>{const d=j.trackerDetails as Record<string,unknown>;return [d?.missionFields,d?.employerIndustries].flatMap(v=>Array.isArray(v)?v.filter((x):x is string=>typeof x==='string'):[]);});
   return mergeJobCategories(setting?.value,used);
 }
-export async function changeJobCategory(userId:string, input:{operation:"add"|"rename"|"retire"|"restore";id?:string;label?:string;conflict?:boolean}) {
+export async function changeJobCategory(userId:string, input:{operation:"add"|"rename"|"retire"|"restore"|"group";broadGroup?:string;id?:string;label?:string;conflict?:boolean}) {
   return prisma.$transaction(async tx=>{
     // Serialize category edits for this account; no other account's taxonomy or jobs is touched.
     await tx.$queryRaw`SELECT id FROM "User" WHERE id=${userId} FOR UPDATE`;
@@ -32,7 +32,8 @@ export async function changeJobCategory(userId:string, input:{operation:"add"|"r
           const next=renameCategoryDetails(details,before,label!);
           if(JSON.stringify(next)!==JSON.stringify(details)) await tx.jobApplication.update({where:{id:job.id,userId},data:{trackerDetails:next as never}});
         }
-      } else category.retired=input.operation==='retire';
+      } else if(input.operation==='group') category.broadGroup=input.broadGroup?.trim()||undefined;
+      else category.retired=input.operation==='retire';
     }
     await tx.appSetting.upsert({where:{key:key(userId)},create:{key:key(userId),value:categories},update:{value:categories}});
     return categories.sort((a,b)=>a.label.localeCompare(b.label));

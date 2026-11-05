@@ -1,5 +1,7 @@
 "use client";
 import { useJobCategories } from "./job-category-context";
+import { credibilityConcern, credibilityLabel } from "@/lib/job-credibility";
+import { hiringEmployerSize } from "@/lib/job-employer-size";
 import { governmentLabel } from "@/lib/job-government";
 import { missionSummary, missionReview } from "@/lib/job-missions";
 import { applicationDate, sortByApplicationDate } from "@/lib/job-tracker-sort";
@@ -11,6 +13,8 @@ const columns = [
   "government",
   "mission",
   "industry",
+  "employerSize",
+  "credibility",
   "company",
   "title",
   "status",
@@ -29,6 +33,8 @@ const labels: Record<Column, string> = {
   government: "Government relationship",
   mission: "Role / team mission",
   industry: "Employer industry",
+  employerSize: "Hiring employer size",
+  credibility: "Credibility check",
   company: "Company",
   title: "Role",
   status: "Status",
@@ -47,25 +53,28 @@ const defaultColumns: Column[] = [
   "title",
   "status",
   "submitted",
-  "nextAction",
   "mission",
-  "government",
-];
+  "credibility",
+ ];
 const storageKey = "planlet-job-tracker-columns";
 function cell(job: Job, column: Column, timezone: string, categories: ReturnType<typeof useJobCategories>) {
   const d = job.trackerDetails;
   switch (column) {
+    case "credibility":
+      return <span className={credibilityConcern(d)?"text-accent-red":""}>{credibilityConcern(d)?"⚠ ":""}{credibilityLabel(d)}</span>;
+    case "employerSize":
+      return hiringEmployerSize(job);
     case "government":
       return governmentLabel(d);
     case "mission":
-      return <span>{missionSummary(d)}<span className="block text-xs text-muted">{missionReview(d, categories)}</span></span>;
+      return <span>{missionSummary(d)}{missionReview(d,categories)!=="Mission recorded"&&<span className="block text-xs text-muted">{missionReview(d,categories)}</span>}</span>;
     case "industry":
       return d.employerIndustries?.join(" · ") || "Unknown";
     case "status":
       return getJobApplicationStatusLabel(job.status);
     case "submitted":
       return applicationDate(job) ? (
-        <span>
+        <span className="whitespace-nowrap">
           {applicationDate(job)}
           {!job.submissionConfirmed && (
             <span className="block text-xs text-muted">Unverified</span>
@@ -156,23 +165,6 @@ export function JobTrackerTable({
   }
   return (
     <div className="space-y-3">
-      <nav aria-label="Application table pages" className="flex flex-wrap items-center justify-between gap-3 text-sm">
-        <span role="status">{jobs.length ? start + 1 : 0}–{Math.min(start + pageSize, jobs.length)} of {jobs.length} applications</span>
-        <div className="flex flex-wrap items-center gap-3">
-          <label className="flex items-center gap-2">
-            Rows per page
-            <select className="ui-input min-h-10 px-2" value={pageSize} onChange={(event) => {
-              setPageSize(Number(event.target.value));
-              goToPage(1);
-            }}>
-              {[10, 20, 50].map((size) => <option key={size} value={size}>{size}</option>)}
-            </select>
-          </label>
-          <button className="ui-input min-h-10 px-3 disabled:opacity-40" disabled={page === 1} onClick={() => goToPage(page - 1)}>Previous</button>
-          <span>Page {page} of {pageCount}</span>
-          <button className="ui-input min-h-10 px-3 disabled:opacity-40" disabled={page === pageCount} onClick={() => goToPage(page + 1)}>Next</button>
-        </div>
-      </nav>
       <details>
         <summary className="cursor-pointer text-sm">Table columns</summary>
         <div className="mt-2 flex flex-wrap gap-x-4">
@@ -242,10 +234,11 @@ export function JobTrackerTable({
                 {visible.map((c) => (
                   <td
                     key={c}
-                    className="max-w-64 break-words px-3 py-3 align-top"
+                    className={`break-words px-3 py-2 align-top ${c==="submitted"||c==="created"?"whitespace-nowrap":c==="title"?"min-w-48 max-w-80":c==="mission"?"max-w-56":"max-w-48"}`}
                   >
-                    {cell(job, c, userTimezone, categories)}
-                    {c === "title" && !visible.includes("mission") && <span className="mt-1 block text-xs text-muted">Mission: {missionSummary(job.trackerDetails)} · {missionReview(job.trackerDetails, categories)}</span>}
+                    {c==="title" ? <button className="ui-text-link min-h-9 text-start font-medium" onClick={event=>{event.stopPropagation();onSelectJob(job);}}>{job.title}</button> : cell(job, c, userTimezone, categories)}
+                    {c==="title"&&!visible.includes("credibility")&&credibilityConcern(job.trackerDetails)&&<span className="block text-xs text-accent-red" title={job.trackerDetails.credibilityEvidence}>Credibility: {job.trackerDetails.credibilityCheck}</span>}
+                    {c === "title" && !visible.includes("mission") && <span className="mt-1 block text-xs text-muted">Mission: {missionSummary(job.trackerDetails)}{missionReview(job.trackerDetails,categories)!=="Mission recorded"?` · ${missionReview(job.trackerDetails,categories)}`:""}</span>}
                   </td>
                 ))}
               </tr>
@@ -253,6 +246,24 @@ export function JobTrackerTable({
           </tbody>
         </table>
       </div>
+      <nav aria-label="Application table pages" className="flex flex-wrap items-center justify-between gap-2 text-xs">
+        <span role="status">{jobs.length ? start + 1 : 0}–{Math.min(start + pageSize, jobs.length)} of {jobs.length} applications</span>
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="flex shrink-0 items-center gap-2 whitespace-nowrap">
+            Rows
+            <select className="ui-input min-h-10 px-2" value={pageSize} onChange={(event) => {
+              setPageSize(Number(event.target.value));
+              goToPage(1);
+            }}>
+              {[10, 20, 50].map((size) => <option key={size} value={size}>{size}</option>)}
+            </select>
+          </label>
+          <button className="ui-input min-h-9 px-2 disabled:opacity-40" disabled={page === 1} onClick={() => goToPage(page - 1)} aria-label="Previous page">‹</button>
+          <span className="whitespace-nowrap">{page} / {pageCount}</span>
+          <button className="ui-input min-h-9 px-2 disabled:opacity-40" disabled={page === pageCount} onClick={() => goToPage(page + 1)} aria-label="Next page">›</button>
+        </div>
+      </nav>
+
     </div>
   );
 }

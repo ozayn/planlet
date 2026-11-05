@@ -1,5 +1,10 @@
 "use client";
 
+import { defaultMissionPreferences, type MissionPreferences } from "@/lib/job-mission-summary";
+import { credibilityStatuses } from "@/lib/job-credibility";
+import { employerSizeBands } from "@/lib/job-employer-size";
+import { useJobTrackerSession } from "@/lib/job-tracker-session";
+import { JobReviewQueue } from "./job-review-queue";
 import { governmentLabels } from "@/lib/job-government";
 import { JobCategoryContext } from "./job-category-context";
 import { defaultJobCategories, type JobCategory } from "@/lib/job-category-types";
@@ -47,8 +52,10 @@ import type { JobApplicationStatusValue } from "@/lib/job-application-status";
 
 type JobTrackerProps = {
   initialJobs: SerializedJobApplication[];
+  userId: string;
   userTimezone: string;
   categories?: JobCategory[];
+  initialPreferences?: MissionPreferences;
 };
 
 type AddJobFormState = {
@@ -73,27 +80,45 @@ const emptyForm = (): AddJobFormState => ({
   confirmSubmission: false,
 });
 
-export function JobTracker({ initialJobs, userTimezone, categories = defaultJobCategories }: JobTrackerProps) {
+const jobFilterLabels = {
+                  credibility: "Credibility check",
+                  employerSize: "Hiring employer size",
+                  government: "Government relationship",
+                  mission: "Role / team mission",
+                  industry: "Employer industry",
+                  missionReview: "Mission review",
+                  company: "Company",
+                  role: "Role",
+                  qualificationGap: "Missing qualification",
+                  arrangement: "Work arrangement",
+                  salary: "Published salary at least",
+                  currency: "Salary currency",
+                  period: "Salary pay period",
+                  from: "Submitted from",
+                  to: "Submitted through",
+};
+
+export function JobTracker({ userId, initialJobs, userTimezone, categories = defaultJobCategories, initialPreferences = defaultMissionPreferences }: JobTrackerProps) {
+  const [preferences, setPreferences] = useState(initialPreferences);
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const [insightsRange, setInsightsRange] = useState(() => ({
+  const sessionKey = `planlet-job-tracker:${userId}:`;
+  const [insightsRange, setInsightsRange] = useJobTrackerSession(sessionKey+"range", {
     from: localDate(new Date(), userTimezone).slice(0, 7) + "-01",
     to: localDate(new Date(), userTimezone),
-  }));
-  const [tab, setTab] = useState("tracker");
-  const [specialView, setSpecialView] = useState("all");
-  const [insightSelection, setInsightSelection] = useState<{
+  });
+  const [tab, setTab] = useJobTrackerSession(sessionKey+"tab", "tracker");
+  const [specialView, setSpecialView] = useJobTrackerSession(sessionKey+"workflow", "all");
+  const [insightSelection, setInsightSelection] = useJobTrackerSession<{
     label: string;
     ids: string[];
-  } | null>(null);
-  const [fields, setFields] = useState(emptyJobFilters);
+  } | null>(sessionKey+"chart-selection", null);
+  const [fields, setFields] = useJobTrackerSession(sessionKey+"filters", emptyJobFilters());
 
   const [jobs, setJobs] = useState(initialJobs);
-  const [filter, setFilter] = useState<JobApplicationFilter>("ALL");
-  const [searchQuery, setSearchQuery] = useState(
-    () => searchParams.get("q")?.trim() ?? "",
-  );
+  const [filter, setFilter] = useJobTrackerSession<JobApplicationFilter>(sessionKey+"status", "ALL");
+  const [searchQuery, setSearchQuery] = useJobTrackerSession(sessionKey+"search", searchParams.get("q")?.trim() ?? "");
   const [form, setForm] = useState<AddJobFormState>(() => emptyForm());
   const [error, setError] = useState<string | null>(null);
   const [duplicateWarning, setDuplicateWarning] = useState(false);
@@ -242,6 +267,7 @@ export function JobTracker({ initialJobs, userTimezone, categories = defaultJobC
       }
 
       setForm(emptyForm());
+      document.getElementById("job-add-url")?.focus();
       clearFormErrors();
       refreshJobs();
     });
@@ -287,7 +313,7 @@ export function JobTracker({ initialJobs, userTimezone, categories = defaultJobC
     <div className="space-y-6">
       <JobTrackerUpdateNotice />
       <div className="flex gap-2">
-        {["tracker", "insights"].map((t) => (
+        {["tracker", "insights", "review"].map((t) => (
           <button
             aria-pressed={tab === t}
             className={
@@ -298,13 +324,15 @@ export function JobTracker({ initialJobs, userTimezone, categories = defaultJobC
             key={t}
             onClick={() => setTab(t)}
           >
-            {t === "tracker" ? "Applications" : "Insights"}
+            {t === "tracker" ? "Applications" : t === "review" ? "Review queue" : "Insights"}
           </button>
         ))}
       </div>
-      {tab === "insights" ? (
+      {tab === "review" ? <JobReviewQueue jobs={jobs} preferences={preferences} onSelect={setSelectedJob}/> : tab === "insights" ? (
         <JobTrackerInsights
           jobs={jobs}
+          initialPreferences={preferences}
+          onPreferencesChange={setPreferences}
           today={today}
           range={insightsRange}
           onRangeChange={setInsightsRange}
@@ -324,13 +352,8 @@ export function JobTracker({ initialJobs, userTimezone, categories = defaultJobC
             total confirmed · {unverifiedCount} drafts / unverified ·{" "}
             {blockedCount} blocked · {failedCount} failed
           </p>
-          <article className="ui-card-padded space-y-4 border border-border-soft">
-            <div className="space-y-1">
-              <h2 className="text-sm font-medium text-foreground">Add job</h2>
-              <p className="text-xs text-muted">
-                You can save a job now and complete the details later.
-              </p>
-            </div>
+          <details className="rounded-lg border border-border-soft p-3">
+            <summary className="cursor-pointer min-h-10 text-sm font-medium">Add job</summary>
             <form className="space-y-3" onSubmit={handleAddJob}>
               <label className="block space-y-1.5" htmlFor="job-add-url">
                 <span className="text-xs text-muted">URL</span>
@@ -520,7 +543,7 @@ export function JobTracker({ initialJobs, userTimezone, categories = defaultJobC
                   : "Save job"}
               </button>
             </form>
-          </article>
+          </details>
 
           <section className="space-y-3">
             {insightSelection && (
@@ -531,8 +554,35 @@ export function JobTracker({ initialJobs, userTimezone, categories = defaultJobC
                 {insightSelection.label} ({insightSelection.ids.length}) × Clear
               </button>
             )}
-            <label className="block text-sm">
-              View
+            <div className="flex flex-wrap items-end gap-2">
+            <div className="relative min-w-48 flex-1">
+              <label htmlFor="job-search" className="sr-only">
+                Search jobs
+              </label>
+              <input
+                id="job-search"
+                name="job-search"
+                type="search"
+                value={searchQuery}
+                onChange={(event) => updateSearchQuery(event.target.value)}
+                placeholder="Search jobs, companies, notes…"
+                disabled={isPending}
+                aria-label="Search jobs"
+                className="ui-input min-h-10 w-full px-3 pe-9 text-sm"
+                {...passwordManagerSafeControlProps}
+              />
+              {trimmedSearch ? (
+                <button
+                  type="button"
+                  onClick={() => updateSearchQuery("")}
+                  aria-label="Clear search"
+                  className="absolute end-1 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-muted transition-colors hover:bg-accent-cream/60 hover:text-foreground"
+                >
+                  <span aria-hidden="true">×</span>
+                </button>
+              ) : null}
+            </div>            <label className="text-xs">
+              Workflow
               <select
                 className="ui-input ms-2 min-h-10 px-3"
                 value={specialView}
@@ -547,27 +597,45 @@ export function JobTracker({ initialJobs, userTimezone, categories = defaultJobC
                 <option value="today">Applied today</option>
               </select>
             </label>
+
+
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="text-sm">
+                Status
+                <select
+                  className="ui-input ms-2 min-h-10 px-3"
+                  value={filter}
+                  onChange={(e) =>
+                    handleFilterChange(e.target.value as JobApplicationFilter)
+                  }
+                >
+                  {JOB_APPLICATION_FILTERS.map((entry) => (
+                    <option key={entry.value} value={entry.value}>
+                      {entry.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <a href="/admin/job-categories" target="_blank" rel="noreferrer" className="ui-text-link min-h-10 px-2 text-xs">Categories</a>
+              <JobTrackerViewToggle
+                view={view}
+                disabled={isPending}
+                onChange={handleViewChange}
+              />
+            </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              {Object.entries(fields).filter(([,value])=>value).map(([key,value])=><button key={key} className="ui-input min-h-9 px-2" onClick={()=>setFields({...fields,[key]:""})} aria-label={`Remove ${jobFilterLabels[key as keyof typeof jobFilterLabels]} filter: ${value}`}>{jobFilterLabels[key as keyof typeof jobFilterLabels]}: {value} ×</button>)}
+              {(Object.values(fields).some(Boolean)||trimmedSearch||filter!=="ALL"||specialView!=="all"||insightSelection)&&<button className="ui-text-link min-h-9 px-2" onClick={()=>{setFields(emptyJobFilters());setFilter("ALL");setSpecialView("all");setInsightSelection(null);updateSearchQuery("");}}>Clear all</button>}
+            </div>
             <details>
               <summary className="cursor-pointer text-sm">Filters</summary>
               <div className="mt-3 grid gap-3 sm:grid-cols-3">
-                {Object.entries({
-                  government: "Government relationship",
-                  mission: "Role / team mission",
-                  industry: "Employer industry",
-                  missionReview: "Mission review",
-                  company: "Company",
-                  role: "Role",
-                  qualificationGap: "Missing qualification",
-                  arrangement: "Work arrangement",
-                  salary: "Published salary at least",
-                  currency: "Salary currency",
-                  period: "Salary pay period",
-                  from: "Submitted from",
-                  to: "Submitted through",
-                }).map(([key, label]) => (
+                {Object.entries(jobFilterLabels).map(([key, label]) => (
                   <label key={key} className="text-xs">
                     {label}
-                    {["arrangement", "period", "mission", "industry", "missionReview", "government"].includes(key) ? (
+                    {["arrangement", "period", "mission", "industry", "missionReview", "government", "employerSize", "credibility"].includes(key) ? (
                       <select
                         className="ui-input block min-h-10 w-full px-3"
                         value={fields[key as keyof typeof fields]}
@@ -575,7 +643,7 @@ export function JobTracker({ initialJobs, userTimezone, categories = defaultJobC
                           setFields({ ...fields, [key]: e.target.value })
                         }
                       >
-                        {(key === "government" ? ["", ...Object.keys(governmentLabels)] : key === "mission" || key === "industry"
+                        {(key === "credibility" ? ["",...credibilityStatuses] : key === "employerSize" ? ["",...employerSizeBands] : key === "government" ? ["", ...Object.keys(governmentLabels)] : key === "mission" || key === "industry"
                           ? ["", "Unknown", ...new Set([...categories.filter(c => !c.retired).map(c => c.label), ...jobs.flatMap(j => key === "mission" ? j.trackerDetails.missionFields ?? [] : j.trackerDetails.employerIndustries ?? [])])]
                           : key === "missionReview"
                           ? ["", "Mission needs review", "Mission conflict", "Mission recorded"]
@@ -608,58 +676,6 @@ export function JobTracker({ initialJobs, userTimezone, categories = defaultJobC
                 ))}
               </div>
             </details>
-            <div className="relative">
-              <label htmlFor="job-search" className="sr-only">
-                Search jobs
-              </label>
-              <input
-                id="job-search"
-                name="job-search"
-                type="search"
-                value={searchQuery}
-                onChange={(event) => updateSearchQuery(event.target.value)}
-                placeholder="Search jobs, companies, notes…"
-                disabled={isPending}
-                aria-label="Search jobs"
-                className="ui-input min-h-10 w-full px-3 pe-9 text-sm"
-                {...passwordManagerSafeControlProps}
-              />
-              {trimmedSearch ? (
-                <button
-                  type="button"
-                  onClick={() => updateSearchQuery("")}
-                  aria-label="Clear search"
-                  className="absolute end-1 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-muted transition-colors hover:bg-accent-cream/60 hover:text-foreground"
-                >
-                  <span aria-hidden="true">×</span>
-                </button>
-              ) : null}
-            </div>
-
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <label className="text-sm">
-                Status
-                <select
-                  className="ui-input ms-2 min-h-10 px-3"
-                  value={filter}
-                  onChange={(e) =>
-                    handleFilterChange(e.target.value as JobApplicationFilter)
-                  }
-                >
-                  {JOB_APPLICATION_FILTERS.map((entry) => (
-                    <option key={entry.value} value={entry.value}>
-                      {entry.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <JobTrackerViewToggle
-                view={view}
-                disabled={isPending}
-                onChange={handleViewChange}
-              />
-            </div>
 
             {filteredJobs.length === 0 ? (
               <JobTrackerEmptyState
@@ -674,11 +690,7 @@ export function JobTracker({ initialJobs, userTimezone, categories = defaultJobC
                 }}
               />
             ) : view === "table" ? (
-              <JobTrackerTable
-                jobs={filteredJobs}
-                onSelectJob={setSelectedJob}
-                userTimezone={userTimezone}
-              />
+              <><div className="hidden lg:block"><JobTrackerTable jobs={filteredJobs} onSelectJob={setSelectedJob} userTimezone={userTimezone}/></div><div className="lg:hidden"><JobTrackerCardList jobs={filteredJobs} onSelectJob={setSelectedJob}/></div></>
             ) : (
               <JobTrackerCardList
                 jobs={filteredJobs}

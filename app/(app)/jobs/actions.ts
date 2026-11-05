@@ -170,3 +170,15 @@ export async function extractJobFromTextAction(
 
 export type { JobApplicationInput, SerializedJobApplication } from "@/lib/job-applications";
 export type { JobApplicationStatusValue } from "@/lib/job-application-status";
+
+export async function saveMissionPreferencesAction(input: unknown) {
+  const userId = await requireJobTrackerSession();
+  try {
+    const { saveMissionPreferences } = await import("@/lib/job-mission-preferences");
+    const preferences = await saveMissionPreferences(userId, input);
+    revalidateJobTracker();
+    return {success:true as const, preferences};
+  } catch {
+    return {success:false as const,error:"Use one mission or broad group per line, up to 80 characters each."};
+  }
+}

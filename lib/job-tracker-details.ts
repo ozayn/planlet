@@ -1,3 +1,5 @@
+import { credibilityStatuses } from "./job-credibility";
+import { employerSizeBands, employerSizeEntities } from "./job-employer-size";
 import { z } from "zod";
 const text = z.string().trim().max(2000).default("");
 const link = z
@@ -22,6 +24,32 @@ const date = z.union([z.literal(""), z.iso.date()]).default("");
 export const trackerDetailsSchema = z
   .object({
     roleCategory: text,
+    credibilityCheck: z.enum(credibilityStatuses).default("Not checked"),
+    credibilityEvidence: text,
+    credibilitySources: z.string().trim().max(8192).default("").refine(value=>value.split(/\n/).map(v=>v.trim()).filter(Boolean).every(v=>{try{return /^https?:$/.test(new URL(v).protocol);}catch{return false;}}),"Use one HTTP or HTTPS source link per line."),
+    credibilityCheckedDate: date,
+    employerSizeBand: z.enum(employerSizeBands).default("Unknown"),
+    employerSizeEntity: z.enum(employerSizeEntities).default("Unknown"),
+    employerSizeEntityName: text,
+    employerSizeEvidence: text,
+    employerSizeSource: link,
+    employerSizeCheckedDate: date,
+    searchDecision: z.enum(["", "Pursue", "On hold", "Not pursuing"]).default(""),
+    decisionReason: text,
+    locationEligibility: z.enum(["", "Met", "Not met", "Unknown"]).default(""),
+    locationEvidence: text,
+    civilianScopeConfirmed: z.boolean().default(false),
+    interestTier: z.enum(["", "Preferred", "Adjacent", "Other recorded missions", "Excluded", "Unknown / review needed"]).default(""),
+    interestReason: text,
+    candidateEvidence: text,
+    candidateEvidenceSource: link,
+    materialGap: text,
+    gapSource: link,
+    recruitmentChannel: z.enum(["", "Direct employer", "Recruiting / staffing agency", "Referral", "Unknown"]).default(""),
+    recruitmentAgency: text,
+    responseStage: z.enum(["", "Response received", "Interview invited", "Interview scheduled", "Interview completed"]).default(""),
+    responseEvidence: text,
+    responseSource: link,
     governmentRelationship: z.enum(["FEDERAL", "STATE_LOCAL", "PUBLIC_INSTITUTION", "GOVERNMENT_OWNED", "CONTRACTOR", "NON_GOVERNMENT", "INTERNATIONAL", "UNKNOWN"]).default("UNKNOWN"),
     governmentEvidence: text,
     governmentSource: link,
@@ -32,6 +60,7 @@ export const trackerDetailsSchema = z
     employerSource: link,
     missionEvidence: text,
     missionSource: link,
+    classificationHistory: z.array(z.object({at:z.string(),reason:z.string(),missionFields:z.array(z.string()),missionEvidence:z.string(),missionSource:z.string(),classificationOrigin:z.string()})).default([]),
     classificationOrigin: z.enum(["", "manual", "backfill"]).default(""),
     qualificationGaps: text,
     blockerType: z
@@ -161,4 +190,14 @@ export function duplicateReason(
       return "Possible company/title match";
   }
   return null;
+}
+
+export function mergeTrackerDetails(current:unknown, patch:unknown, now=new Date()):TrackerDetails {
+  const previous=trackerDetailsSchema.parse(current??{});
+  if(patch!==undefined&&(!patch||typeof patch!=="object"||Array.isArray(patch)))throw Error("Invalid tracker details.");
+  const next=trackerDetailsSchema.parse({...previous,...(patch as Record<string,unknown>??{}),classificationHistory:previous.classificationHistory});
+  if(["missionFields","employerIndustries","missionEvidence","missionSource","employerEvidence","employerSource"].some(key=>JSON.stringify(previous[key as keyof TrackerDetails])!==JSON.stringify(next[key as keyof TrackerDetails]))) {
+    next.classificationHistory=[...previous.classificationHistory,{at:now.toISOString(),reason:"Classification edited; prior labels and mission evidence retained.",missionFields:previous.missionFields,missionEvidence:previous.missionEvidence,missionSource:previous.missionSource,classificationOrigin:previous.classificationOrigin}];
+  }
+  return next;
 }

@@ -1,6 +1,7 @@
 "use client";
 import { useState,useTransition } from "react";
 import { changeJobCategoryAction } from "@/app/(app)/admin/job-categories/actions";
+import { broadMissionGroups } from "@/lib/job-mission-summary";
 import type { JobCategory } from "@/lib/job-category-types";
 export function AdminJobCategories({initialCategories}:{initialCategories:JobCategory[]}) {
   const [categories,setCategories]=useState(initialCategories);
@@ -20,7 +21,8 @@ export function AdminJobCategories({initialCategories}:{initialCategories:JobCat
     <ul className="divide-y divide-border-soft">
       {categories.filter(c=>showRetired||!c.retired).map(c=><li key={c.id} className="flex flex-wrap items-center justify-between gap-2 py-3">
         {edit?.id===c.id ? <form className="flex flex-wrap gap-2" onSubmit={e=>{e.preventDefault();save({operation:'rename',id:c.id,label:edit.label});}}><input aria-label="Rename category" className="ui-input min-h-10 px-3" value={edit.label} onChange={e=>setEdit({...edit,label:e.target.value})} maxLength={80} required disabled={pending}/><button className="ui-btn-primary min-h-10 px-3" disabled={pending}>Save</button><button type="button" className="ui-btn-secondary min-h-10 px-3" onClick={()=>setEdit(null)}>Cancel</button></form> : <span className="text-sm">{c.label}{c.conflict?' · Mission conflict':''}{c.retired?' · Retired':''}</span>}
-        <div className="flex gap-2"><button className="ui-text-link min-h-10 px-2 text-sm" disabled={pending} onClick={()=>setEdit({id:c.id,label:c.label})}>Rename</button><button className="ui-text-link min-h-10 px-2 text-sm" disabled={pending} onClick={()=>save({operation:c.retired?'restore':'retire',id:c.id})}>{c.retired?'Restore':'Retire'}</button></div>
+        <label className="text-xs">Broad mission group<select aria-label={`Broad group for ${c.label}`} className="ui-input block min-h-10 max-w-full px-2" value={c.broadGroup??""} disabled={pending} onChange={e=>save({operation:"group",id:c.id,broadGroup:e.target.value})}><option value="">Default mapping</option>{broadMissionGroups.filter(v=>v!=="Unknown / review needed").map(v=><option key={v}>{v}</option>)}</select></label>
+        <div className="flex gap-2"><button className="ui-text-link min-h-10 px-2 text-sm" disabled={pending} aria-label={`Rename ${c.label}`} onClick={()=>setEdit({id:c.id,label:c.label})}>Rename</button><button className="ui-text-link min-h-10 px-2 text-sm" disabled={pending} aria-label={`${c.retired?"Restore":"Retire"} ${c.label}`} onClick={()=>save({operation:c.retired?'restore':'retire',id:c.id})}>{c.retired?'Restore':'Retire'}</button></div>
       </li>)}
     </ul>
   </div>;

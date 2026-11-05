@@ -1,6 +1,11 @@
 "use client";
+import { groupByEmployerSize, employerSizeDescriptions, employerSizeEntities } from "@/lib/job-employer-size";
 import { groupByGovernment } from "@/lib/job-government";
-import { groupByMission, missionSummary } from "@/lib/job-missions";
+import { groupByMission } from "@/lib/job-missions";
+import { defaultMissionPreferences, groupByBroadMission, groupByEmployerIndustry, qualityReviewGroups, rangeContext, submissionRange, type MissionPreferences } from "@/lib/job-mission-summary";
+import { interestReview } from "@/lib/job-review-queue";
+import { useJobCategories } from "./job-category-context";
+import { JobMissionPreferences } from "./job-mission-preferences";
 import { useState } from "react";
 import type { SerializedJobApplication as Job } from "@/lib/job-applications";
 import {
@@ -14,14 +19,19 @@ import {
 function Bars({
   label,
   groups,
+  chronological = false,
+  descriptions,
   onSelect,
 }: {
   label: string;
+  chronological?: boolean;
+  descriptions?: Record<string,string>;
   groups: [string, Job[]][];
   onSelect: (label: string, jobs: Job[]) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const visibleGroups = expanded ? groups : groups.slice(0, 8);
+  const orderedGroups = chronological ? groups : [...groups].sort(([a,left],[b,right])=>right.length-left.length||a.localeCompare(b));
+  const visibleGroups = expanded ? orderedGroups : orderedGroups.slice(0, 8);
   const uniqueCount = new Set(groups.flatMap(([, jobs]) => jobs.map(job => job.id))).size;
   const max = Math.max(1, ...groups.map(([, j]) => j.length));
   return (
@@ -33,11 +43,13 @@ function Bars({
           visibleGroups.map(([key, jobs]) => (
             <button
               key={key}
-              className="block min-h-10 w-full text-start text-sm"
+              title={descriptions?.[key]}
+              className="block min-h-10 w-full rounded text-start text-sm hover:bg-accent-cream/40 focus-visible:outline-2"
+              aria-label={`Show applications — ${label}: ${key}${descriptions?.[key]?` (${descriptions[key]})`:""}, ${jobs.length}`}
               onClick={() => onSelect(`${label}: ${key}`, jobs)}
             >
               <span className="flex justify-between gap-3">
-                <span>{key}</span>
+                <span className="min-w-0 break-words">{key}</span>
                 <span>{jobs.length}</span>
               </span>
               <span className="mt-1 block h-3 rounded bg-accent-cream">
@@ -61,17 +73,23 @@ function Bars({
 }
 export function JobTrackerInsights({
   jobs,
+  initialPreferences = defaultMissionPreferences,
+  onPreferencesChange,
   today,
   onSelect,
   range: selectedRange,
   onRangeChange,
 }: {
   jobs: Job[];
+  initialPreferences?: MissionPreferences;
+  onPreferencesChange?: (value:MissionPreferences)=>void;
   today: string;
   range: { from: string; to: string };
   onRangeChange: (range: { from: string; to: string }) => void;
   onSelect: (label: string, jobs: Job[]) => void;
 }) {
+  const categories = useJobCategories();
+  const [preferences, setPreferences] = useState(initialPreferences);
   const { from, to } = selectedRange;
   const validRange =
     /^\d{4}-\d{2}-\d{2}$/.test(from) &&
@@ -79,6 +97,7 @@ export function JobTrackerInsights({
     from <= to;
   const setFrom = (from: string) => onRangeChange({ ...selectedRange, from });
   const setTo = (to: string) => onRangeChange({ ...selectedRange, to });
+  const [sizeEntity,setSizeEntity]=useState("Hiring employer");
   const [period, setPeriod] = useState("daily");
   const [missionTrend, setMissionTrend] = useState("");
   const daysAgo = (days: number) => {
@@ -86,13 +105,11 @@ export function JobTrackerInsights({
     date.setUTCDate(date.getUTCDate() - days);
     return date.toISOString().slice(0, 10);
   };
-  const range = jobs.filter(
-    (j) =>
-      j.submissionConfirmed &&
-      !!j.submittedDate &&
-      j.submittedDate >= from &&
-      j.submittedDate <= to,
-  );
+  const range = validRange ? submissionRange(jobs, from, to) : [];
+  const missionGroups = groupByBroadMission(range, categories);
+  const allMissionGroups = groupByBroadMission(jobs, categories);
+  const trendJobs = missionTrend ? (missionGroups.find(([label])=>label===missionTrend)?.[1]??[]) : range;
+  const alignmentGroups = groupJobs(range, job => interestReview(job,preferences,categories).label);
   const data = insights(range, today);
   const due = jobs.filter(
     (j) =>
@@ -177,8 +194,13 @@ export function JobTrackerInsights({
         ))}
       </div>
       <p className="text-xs text-muted">
-        Confirmed submissions only. Weeks start Monday.
+        Confirmed submissions only. Weeks start Monday. Historical submissions remain counted after rejection or withdrawal.
       </p>
+      {validRange && <details className="ui-card-padded space-y-2">
+        <summary className="cursor-pointer text-sm font-medium">Review data quality and records outside this range</summary>
+        <p className="text-xs text-muted">Review counts use confirmed submissions in this range. The outside-range and unconfirmed links include all records. An empty category means zero tagged here, not “never applied.”</p>
+        {[...qualityReviewGroups(range),...rangeContext(jobs,from,to)].map(([label,list])=><button key={label} className="flex min-h-10 w-full items-center justify-between gap-3 text-start text-sm ui-text-link" onClick={()=>onSelect(label,list)}><span>{label}</span><span>{list.length}</span></button>)}
+      </details>}
       {!validRange ? (
         <p role="alert">Choose a start date and an end date on or after it.</p>
       ) : !range.length ? (
@@ -205,20 +227,28 @@ export function JobTrackerInsights({
             <label className="block text-xs">Mission over time
               <select className="ui-input mt-1 min-h-10 w-full px-3" value={missionTrend} onChange={event => setMissionTrend(event.target.value)}>
                 <option value="">All missions (unique applications)</option>
-                {[...new Set([...groupByMission(jobs).map(([label]) => label), ...(missionTrend ? [missionTrend] : [])])].sort().map(label => <option key={label} value={label}>{label}</option>)}
+                {[...new Set([...allMissionGroups.map(([label]) => label), ...(missionTrend ? [missionTrend] : [])])].sort().map(label => <option key={label} value={label}>{label}</option>)}
               </select>
             </label>
-            <Bars label={`Applications over time${missionTrend ? `: ${missionTrend}` : ""}`} groups={applicationTimeline(range.filter(job => !missionTrend || (missionTrend === "Unknown" ? missionSummary(job.trackerDetails) === "Unknown" : job.trackerDetails.missionFields?.includes(missionTrend))), from, to, period === "weekly")} onSelect={onSelect} />
+            <Bars chronological label={`Applications over time${missionTrend ? `: ${missionTrend}` : ""}`} groups={applicationTimeline(trendJobs, from, to, period === "weekly")} onSelect={onSelect} />
           </div>
-          <Bars
-            label="Application outcomes"
-            groups={groupJobs(range, outcome)}
-            onSelect={onSelect}
-          />
+          {groupJobs(range,outcome).length===1 ? <button className="ui-card-padded min-h-10 text-start" onClick={()=>onSelect(`Recorded outcome: ${outcome(range[0])}`,range)}><span className="block text-sm font-medium">Recorded outcomes</span><span className="text-sm text-muted">{range.length} · {outcome(range[0])}</span></button> : <Bars label="Application outcomes" groups={groupJobs(range,outcome)} onSelect={onSelect}/> }
           <div className="space-y-3">
-            <Bars label="Applications by field" groups={groupByMission(range)} onSelect={onSelect} />
-            <p className="text-xs text-muted">Each application counts once in the confirmed total. Mixed missions count once in each label, so category totals can exceed the unique total. Unknown means no role mission has been recorded.</p>
+            <Bars label="Applications by mission group" groups={missionGroups} onSelect={onSelect} />
+            <details className="space-y-2"><summary className="cursor-pointer min-h-10 text-sm">Narrow mission tags</summary><Bars label="Recorded mission tags" groups={groupByMission(range)} onSelect={onSelect}/></details>
+            <p className="text-xs text-muted">Each application counts once in the confirmed total. Each broad group deduplicates its narrower tags; mixed missions can appear in multiple broad groups. Do not add groups together. Unknown includes company-only classifications. Change broad groups in Admin → Job categories.</p>
           </div>
+          <div className="space-y-3">
+            <Bars label="Mission preference alignment" groups={alignmentGroups} onSelect={onSelect}/>
+            <p className="text-xs text-muted">Based on recorded missions and your editable interests, not a fit score. Exclusions take priority. Location (DC / US remote), salary ($100k minimum), and qualifications need separate review.</p>
+            <details className="space-y-2"><summary className="cursor-pointer min-h-10 text-sm">Responses and decisions by interest</summary><p className="text-xs text-muted">Recorded stages only; invitations are not scheduled interviews. Your decision is separate from the employer’s outcome. No response rates are inferred.</p>{alignmentGroups.map(([tier,rows])=><div key={tier} className="space-y-1 border-t border-border-soft pt-2"><h4 className="text-sm font-medium">{tier} · {rows.length} unique confirmed</h4>{groupJobs(rows,outcome).map(([stage,list])=><button key={stage} className="ui-text-link min-h-10 block text-sm" onClick={()=>onSelect(`${tier}: ${stage}`,list)}>{stage} · {list.length}</button>)}{groupJobs(rows,job=>job.trackerDetails.searchDecision||"Decision not recorded").map(([decision,list])=><button key={decision} className="ui-text-link min-h-10 block text-xs" onClick={()=>onSelect(`${tier}: my decision — ${decision}`,list)}>My decision: {decision} · {list.length}</button>)}</div>)}</details>
+            <JobMissionPreferences value={preferences} onSave={value=>{setPreferences(value);onPreferencesChange?.(value);}}/>
+            <details><summary className="cursor-pointer min-h-10 text-sm">Why these alignments?</summary><ul className="divide-y divide-border-soft">{range.map(job=><li key={job.id} className="py-3 text-sm"><button className="ui-text-link min-h-10 text-start" onClick={()=>onSelect(`${job.company}: mission evidence`,[job])}>{job.company} · {job.title}</button><p>{interestReview(job,preferences,categories).label}: {interestReview(job,preferences,categories).reason}</p><p className="text-xs text-muted">{job.trackerDetails.missionEvidence || "No actual role/team mission evidence recorded."}</p></li>)}</ul></details>
+          </div>
+          <div className="space-y-3"><Bars label="Employer industry (company context)" groups={groupByEmployerIndustry(range)} onSelect={onSelect}/><p className="text-xs text-muted">Employer context is separate from the actual assignment. A staffing agency’s sector does not establish its client’s mission.</p></div>
+          <details className="space-y-3 sm:col-span-2"><summary className="cursor-pointer min-h-10 text-sm font-medium">Roles, sources, and government breakdowns</summary><div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2"><label className="text-xs">Employee count for<select className="ui-input mt-1 block min-h-10 w-full px-3" value={sizeEntity} onChange={e=>setSizeEntity(e.target.value)}>{employerSizeEntities.filter(v=>v!=="Unknown").map(v=><option key={v}>{v}</option>)}</select></label><Bars chronological descriptions={employerSizeDescriptions} label={`Applications by size: ${sizeEntity.toLowerCase()}`} groups={groupByEmployerSize(range,sizeEntity)} onSelect={onSelect}/><p className="text-xs text-muted">Unique confirmed applications in this date range, one band per application. Unknown includes missing size or a count recorded only for a different organization. Counts and checked dates are editable in job details.</p></div>
+          <Bars label="Recruitment channel" groups={groupJobs(range,job=>job.trackerDetails.recruitmentChannel||"Unknown")} onSelect={onSelect}/>
           <Bars
             label="Applications by role"
             groups={groupJobs(range, roleCategory)}
@@ -230,6 +260,7 @@ export function JobTrackerInsights({
             groups={groupJobs(range, sourceCategory)}
             onSelect={onSelect}
           />
+          </div></details>
         </div>
       )}
       <p className="text-xs text-muted">

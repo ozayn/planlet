@@ -4,7 +4,7 @@ import { emptyTrackerDetails } from "@/lib/job-tracker-details";
 import { useJobCategories } from "./job-category-context";
 import { missionReview } from "@/lib/job-missions";
 import { JobTrackerDetailsFields } from "./job-tracker-details-fields";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 
 import {
   updateJobApplicationAction,
@@ -70,11 +70,23 @@ export function JobApplicationEditorSheet({
     summary: job?.summary ?? "",
   }));
 
+  const [originalForm] = useState(()=>JSON.stringify(form));
+  const [originalDetails] = useState(()=>JSON.stringify(details));
+  const dirty = JSON.stringify(form)!==originalForm || JSON.stringify(details)!==originalDetails || confirmSubmission || submissionDate!==(job?.submittedDate??job?.appliedDate??"");
+  useEffect(()=>{
+    if(!dirty)return;
+    const warn=(event:BeforeUnloadEvent)=>{event.preventDefault();event.returnValue="";};
+    window.addEventListener("beforeunload",warn);
+    return ()=>window.removeEventListener("beforeunload",warn);
+  },[dirty]);
+  function handleClose(){if(isPending||isSaving)return;if(dirty&&!window.confirm("Discard unsaved changes?"))return;onClose();}
+
   if (!job) {
     return null;
   }
 
   const jobId = job.id;
+  const jobUpdatedAt = job.updatedAt;
   const fieldId = (name: string) => `job-edit-${jobId}-${name}`;
   const pending = isPending || isSaving;
 
@@ -89,6 +101,7 @@ export function JobApplicationEditorSheet({
         jobId,
         data: {
           ...form,
+          expectedUpdatedAt: jobUpdatedAt,
           trackerDetails: details,
           confirmSubmission,
           submissionDate,
@@ -110,6 +123,7 @@ export function JobApplicationEditorSheet({
   function openDuplicateJob(existingJobId: string) {
     const existing = jobs.find((entry) => entry.id === existingJobId);
     if (existing && onOpenJob) {
+      if(dirty&&!window.confirm("Discard unsaved changes and open the other job?"))return;
       onOpenJob(existing);
       setError(null);
       setDuplicateWarning(false);
@@ -135,7 +149,7 @@ export function JobApplicationEditorSheet({
   return (
     <SimpleSheet
       open={open}
-      onClose={onClose}
+      onClose={handleClose}
       title={sheetTitle}
       footer={
         <div className="flex flex-wrap gap-2">

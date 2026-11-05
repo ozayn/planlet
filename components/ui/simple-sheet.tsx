@@ -2,6 +2,8 @@
 
 import {
   useEffect,
+  useEffectEvent,
+  useSyncExternalStore,
   useId,
   useRef,
   useState,
@@ -48,38 +50,42 @@ export function SimpleSheet({
   overlayClassName,
   panelClassName,
 }: SimpleSheetProps) {
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(subscribeToMount,()=>true,()=>false);
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const titleId = useId();
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const requestClose = useEffectEvent(onClose);
   const wasOpenRef = useRef(false);
   const dragStartYRef = useRef(0);
   const isMobileSheet = useMediaQuery("(max-width: 767px)");
   const swipeEnabled = enableSwipeDismiss && isMobileSheet;
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    if (!open || !mounted) return;
 
-  useEffect(() => {
-    if (!open) return;
-
+    const previousFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const returnTarget = returnFocusRef?.current ?? previousFocus;
+    const previousOverflow = document.body.style.overflow;
     const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onClose();
+      if (event.key === "Escape") {event.preventDefault();requestClose();}
+      if (event.key === "Tab") {
+        const elements = [...(panelRef.current?.querySelectorAll<HTMLElement>('button:not([disabled]),a[href],input:not([disabled]),select:not([disabled]),textarea:not([disabled]),summary,[tabindex="0"]')??[])].filter(element=>element.getClientRects().length>0);
+        const first=elements[0];const last=elements.at(-1);
+        if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}
+        else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}
       }
     };
-
     document.body.style.overflow = "hidden";
     window.addEventListener("keydown", onKeyDown);
     closeButtonRef.current?.focus();
-
     return () => {
-      document.body.style.overflow = "";
+      document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", onKeyDown);
+      if(returnTarget?.isConnected)returnTarget.focus();
     };
-  }, [open, onClose]);
+  }, [open, mounted, returnFocusRef]);
 
   useEffect(() => {
     if (wasOpenRef.current && !open) {
@@ -143,6 +149,7 @@ export function SimpleSheet({
         onClick={onClose}
       />
       <div
+        ref={panelRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -227,3 +234,5 @@ export function SimpleSheet({
     document.body,
   );
 }
+
+function subscribeToMount() { return ()=>{}; }

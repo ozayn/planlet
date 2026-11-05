@@ -1,4 +1,5 @@
-import { missionReview } from "./job-missions";
+import { hiringEmployerSize } from "./job-employer-size";
+import { actualMissions, missionReview } from "./job-missions";
 import type { SerializedJobApplication as Job } from "./job-applications";
 import type { JobApplicationFilter } from "./job-application-constants";
 import { needsAttention } from "./job-tracker-details";
@@ -6,6 +7,8 @@ import { followUpDue } from "./job-tracker-insights";
 export const emptyJobFilters = () => ({
   company: "",
   government: "",
+  employerSize: "",
+  credibility: "",
   mission: "",
   industry: "",
   missionReview: "",
@@ -28,8 +31,10 @@ export function matchesJobFilters(
   categories: readonly {label:string;conflict:boolean}[] = [],
 ) {
   const d = job.trackerDetails;
+  if(fields.credibility && (d.credibilityCheck??"Not checked")!==fields.credibility)return false;
+  if(fields.employerSize && hiringEmployerSize(job)!==fields.employerSize)return false;
   if (fields.government && (d.governmentRelationship ?? "UNKNOWN") !== fields.government) return false;
-  if (fields.mission && !(fields.mission === "Unknown" ? !d.missionFields?.length : d.missionFields?.includes(fields.mission))) return false;
+  if (fields.mission && !(fields.mission === "Unknown" ? !actualMissions(d).length : actualMissions(d).includes(fields.mission))) return false;
   if (fields.industry && !(fields.industry === "Unknown" ? !d.employerIndustries?.length : d.employerIndustries?.includes(fields.industry))) return false;
   if (fields.missionReview && missionReview(d, categories) !== fields.missionReview) return false;
   if (status === "ALL" && job.status === "ARCHIVED") return false;
