@@ -1,5 +1,6 @@
 "use client";
 import { useJobCategories } from "./job-category-context";
+import { governmentLabel } from "@/lib/job-government";
 import { missionSummary, missionReview } from "@/lib/job-missions";
 import { applicationDate, sortByApplicationDate } from "@/lib/job-tracker-sort";
 import { useState, useSyncExternalStore } from "react";
@@ -7,6 +8,7 @@ import type { SerializedJobApplication as Job } from "@/lib/job-applications";
 import { getJobApplicationStatusLabel } from "@/lib/job-application-status";
 
 const columns = [
+  "government",
   "mission",
   "industry",
   "company",
@@ -24,6 +26,7 @@ const columns = [
 ] as const;
 type Column = (typeof columns)[number];
 const labels: Record<Column, string> = {
+  government: "Government relationship",
   mission: "Role / team mission",
   industry: "Employer industry",
   company: "Company",
@@ -46,11 +49,14 @@ const defaultColumns: Column[] = [
   "submitted",
   "nextAction",
   "mission",
+  "government",
 ];
 const storageKey = "planlet-job-tracker-columns";
 function cell(job: Job, column: Column, timezone: string, categories: ReturnType<typeof useJobCategories>) {
   const d = job.trackerDetails;
   switch (column) {
+    case "government":
+      return governmentLabel(d);
     case "mission":
       return <span>{missionSummary(d)}<span className="block text-xs text-muted">{missionReview(d, categories)}</span></span>;
     case "industry":

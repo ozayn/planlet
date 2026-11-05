@@ -1,4 +1,5 @@
 "use client";
+import { governmentLabels, type GovernmentRelationship } from "@/lib/job-government";
 import { useState } from "react";
 import type { TrackerDetails } from "@/lib/job-tracker-details";
 import { useJobCategories } from "./job-category-context";
@@ -14,6 +15,15 @@ export function JobMissionFields({value, onChange, disabled}: {
   return <details className="rounded-lg border border-border-soft p-3">
     <summary className="cursor-pointer text-sm font-medium">Field and mission · {missionReview(value, categories)}</summary>
     <p className="mt-2 text-xs text-muted">Classify the actual team or project separately from the employer’s industry. Leave unknown when evidence is missing; select several for mixed work. Your corrections take precedence.</p>
+    <fieldset disabled={disabled} className="mt-4 space-y-2">
+      <legend className="text-sm font-medium">Government relationship</legend>
+      <p className="text-xs text-muted">Classify the employer and actual assignment, separately from mission. A clearance, government funding, or a DC address alone does not establish government employment.</p>
+      <select aria-label="Government relationship" className="ui-input min-h-10 w-full px-3" value={value.governmentRelationship ?? "UNKNOWN"} onChange={event => onChange({...value,governmentRelationship:event.target.value as GovernmentRelationship,governmentClassificationOrigin:"manual"})}>
+        {Object.entries(governmentLabels).map(([key,label])=><option key={key} value={key}>{label}</option>)}
+      </select>
+      <label className="block text-xs">Evidence note<textarea className="ui-input mt-1 w-full px-3 py-2" rows={2} value={value.governmentEvidence ?? ""} onChange={event=>onChange({...value,governmentEvidence:event.target.value,governmentClassificationOrigin:"manual"})}/></label>
+      <label className="block text-xs">Source link<input type="url" className="ui-input mt-1 min-h-10 w-full px-3" value={value.governmentSource ?? ""} onChange={event=>onChange({...value,governmentSource:event.target.value,governmentClassificationOrigin:"manual"})}/></label>
+    </fieldset>
     {([['employerIndustries', 'Employer industry', 'employerEvidence', 'employerSource'], ['missionFields', 'Role / team mission', 'missionEvidence', 'missionSource']] as const).map(([key, label, evidence, source]) =>
       <fieldset key={key} disabled={disabled} className="mt-4 space-y-2">
         <legend className="text-sm font-medium">{label}</legend>

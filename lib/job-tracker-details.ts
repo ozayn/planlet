@@ -22,6 +22,10 @@ const date = z.union([z.literal(""), z.iso.date()]).default("");
 export const trackerDetailsSchema = z
   .object({
     roleCategory: text,
+    governmentRelationship: z.enum(["FEDERAL", "STATE_LOCAL", "PUBLIC_INSTITUTION", "GOVERNMENT_OWNED", "CONTRACTOR", "NON_GOVERNMENT", "INTERNATIONAL", "UNKNOWN"]).default("UNKNOWN"),
+    governmentEvidence: text,
+    governmentSource: link,
+    governmentClassificationOrigin: z.enum(["", "manual", "backfill"]).default(""),
     employerIndustries: z.array(z.string().trim().min(1).max(80)).max(20).default([]),
     missionFields: z.array(z.string().trim().min(1).max(80)).max(20).default([]),
     employerEvidence: text,

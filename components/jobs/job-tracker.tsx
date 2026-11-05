@@ -1,5 +1,6 @@
 "use client";
 
+import { governmentLabels } from "@/lib/job-government";
 import { JobCategoryContext } from "./job-category-context";
 import { defaultJobCategories, type JobCategory } from "@/lib/job-category-types";
 import { JobTrackerInsights } from "./job-tracker-insights";
@@ -550,6 +551,7 @@ export function JobTracker({ initialJobs, userTimezone, categories = defaultJobC
               <summary className="cursor-pointer text-sm">Filters</summary>
               <div className="mt-3 grid gap-3 sm:grid-cols-3">
                 {Object.entries({
+                  government: "Government relationship",
                   mission: "Role / team mission",
                   industry: "Employer industry",
                   missionReview: "Mission review",
@@ -565,7 +567,7 @@ export function JobTracker({ initialJobs, userTimezone, categories = defaultJobC
                 }).map(([key, label]) => (
                   <label key={key} className="text-xs">
                     {label}
-                    {["arrangement", "period", "mission", "industry", "missionReview"].includes(key) ? (
+                    {["arrangement", "period", "mission", "industry", "missionReview", "government"].includes(key) ? (
                       <select
                         className="ui-input block min-h-10 w-full px-3"
                         value={fields[key as keyof typeof fields]}
@@ -573,7 +575,7 @@ export function JobTracker({ initialJobs, userTimezone, categories = defaultJobC
                           setFields({ ...fields, [key]: e.target.value })
                         }
                       >
-                        {(key === "mission" || key === "industry"
+                        {(key === "government" ? ["", ...Object.keys(governmentLabels)] : key === "mission" || key === "industry"
                           ? ["", "Unknown", ...new Set([...categories.filter(c => !c.retired).map(c => c.label), ...jobs.flatMap(j => key === "mission" ? j.trackerDetails.missionFields ?? [] : j.trackerDetails.employerIndustries ?? [])])]
                           : key === "missionReview"
                           ? ["", "Mission needs review", "Mission conflict", "Mission recorded"]
@@ -582,7 +584,7 @@ export function JobTracker({ initialJobs, userTimezone, categories = defaultJobC
                           : ["", "Hour", "Day", "Week", "Month", "Year"]
                         ).map((v) => (
                           <option key={v} value={v}>
-                            {v || "Any"}
+                            {(key === "government" ? governmentLabels[v as keyof typeof governmentLabels] : v) || "Any"}
                           </option>
                         ))}
                       </select>

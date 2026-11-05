@@ -1,3 +1,4 @@
+import { governmentLabel, groupByGovernment } from "./job-government";
 import { missionBackfillPatch } from "./job-mission-backfill";
 import { test } from "node:test";
 import assert from "node:assert/strict";
@@ -52,4 +53,18 @@ test("curated backfill requires exact role, saved evidence and a source, and nev
  assert.equal(missionBackfillPatch({...base,trackerDetails:{classificationOrigin:"manual",missionFields:[]}}),null);
  assert.equal(missionBackfillPatch({...base,trackerDetails:{missionFields:["Other"]}}),null);
  assert.equal(missionBackfillPatch({...base,trackerDetails:patch}),null);
+});
+
+test("government relationship is independent of mission, defaults to unknown and filters explicitly", () => {
+ const legacy=job("legacy",["Government / public policy"]);
+ assert.equal(governmentLabel(legacy.trackerDetails),"Unknown");
+ const contractor=job("contract",["Healthcare"],{trackerDetails:{...emptyTrackerDetails(),missionFields:["Healthcare"],governmentRelationship:"CONTRACTOR"}});
+ assert.equal(governmentLabel(contractor.trackerDetails),"Government contractor");
+ assert.equal(missionReview(contractor.trackerDetails),"Mission recorded");
+ assert.equal(matchesJobFilters(contractor,"EVERYTHING","all",{...emptyJobFilters(),government:"CONTRACTOR"},"2026-11-05"),true);
+ assert.equal(matchesJobFilters(contractor,"EVERYTHING","all",{...emptyJobFilters(),government:"FEDERAL"},"2026-11-05"),false);
+ const groups=groupByGovernment([contractor,contractor,legacy,job("draft",[],{submissionConfirmed:false,submittedDate:null})]);
+ assert.equal(groups.length,8);
+ assert.equal(groups.reduce((total,[,rows])=>total+rows.length,0),2);
+ assert.equal(groups.find(([label])=>label==="U.S. federal government")?.[1].length,0);
 });

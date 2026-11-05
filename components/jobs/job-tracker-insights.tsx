@@ -1,4 +1,5 @@
 "use client";
+import { groupByGovernment } from "@/lib/job-government";
 import { groupByMission, missionSummary } from "@/lib/job-missions";
 import { useState } from "react";
 import type { SerializedJobApplication as Job } from "@/lib/job-applications";
@@ -223,6 +224,7 @@ export function JobTrackerInsights({
             groups={groupJobs(range, roleCategory)}
             onSelect={onSelect}
           />
+          <Bars label="Applications by government relationship" groups={groupByGovernment(range)} onSelect={onSelect} />
           <Bars
             label="Applications by source"
             groups={groupJobs(range, sourceCategory)}

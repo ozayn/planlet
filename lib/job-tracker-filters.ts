@@ -5,6 +5,7 @@ import { needsAttention } from "./job-tracker-details";
 import { followUpDue } from "./job-tracker-insights";
 export const emptyJobFilters = () => ({
   company: "",
+  government: "",
   mission: "",
   industry: "",
   missionReview: "",
@@ -27,6 +28,7 @@ export function matchesJobFilters(
   categories: readonly {label:string;conflict:boolean}[] = [],
 ) {
   const d = job.trackerDetails;
+  if (fields.government && (d.governmentRelationship ?? "UNKNOWN") !== fields.government) return false;
   if (fields.mission && !(fields.mission === "Unknown" ? !d.missionFields?.length : d.missionFields?.includes(fields.mission))) return false;
   if (fields.industry && !(fields.industry === "Unknown" ? !d.employerIndustries?.length : d.employerIndustries?.includes(fields.industry))) return false;
   if (fields.missionReview && missionReview(d, categories) !== fields.missionReview) return false;
