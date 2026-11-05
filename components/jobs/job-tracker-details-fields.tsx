@@ -1,4 +1,5 @@
 "use client";
+import { vettingRequirements } from "@/lib/job-vetting";
 import { credibilityStatuses } from "@/lib/job-credibility";
 import { employerSizeBands, employerSizeDescriptions, employerSizeEntities } from "@/lib/job-employer-size";
 import { JobMissionFields } from "./job-mission-fields";
@@ -22,6 +23,10 @@ const groups = [
     ["decisionReason", "My decision reason"],
     ["locationEligibility", "DC / suitable US remote", "", "Met", "Not met", "Unknown"],
     ["locationEvidence", "Location evidence and source (including remote restrictions)"],
+    ["vettingRequirement", "Clearance / vetting requirement",...vettingRequirements],
+    ["vettingLevel", "Level, if stated"],
+    ["vettingEvidence", "Vetting source note (Public Trust is not a security clearance)"],
+    ["vettingSource", "Vetting source URL"],
     ["interestTier", "Interest tier override (blank uses recorded missions)", "", "Preferred", "Adjacent", "Other recorded missions", "Excluded", "Unknown / review needed"],
     ["interestReason", "Why this work matters to me"],
     ["candidateEvidence", "Strongest relevant experience / project evidence"],

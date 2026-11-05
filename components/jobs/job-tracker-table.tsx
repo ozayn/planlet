@@ -67,7 +67,7 @@ function cell(job: Job, column: Column, timezone: string, categories: ReturnType
     case "government":
       return governmentLabel(d);
     case "mission":
-      return <span>{missionSummary(d)}{missionReview(d,categories)!=="Mission recorded"&&<span className="block text-xs text-muted">{missionReview(d,categories)}</span>}</span>;
+      return <span title={missionReview(d,categories)!=="Mission recorded"?missionReview(d,categories):undefined}>{missionReview(d,categories)!=="Mission recorded"&&<span aria-label={missionReview(d,categories)}>⚠ </span>}{missionSummary(d)}</span>;
     case "industry":
       return d.employerIndustries?.join(" · ") || "Unknown";
     case "status":

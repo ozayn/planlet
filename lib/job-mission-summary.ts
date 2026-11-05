@@ -81,7 +81,7 @@ export function preferenceAlignment(job: Job, preferences: MissionPreferences, c
   return {label:"Other recorded missions",reason:"Recorded mission does not match your current preference lists."};
 }
 export function outcomeNeedsReview(job: Job) {
-  return job.trackerDetails.responseStage === "Interview invited" || outcome(job)==="Unclassified" ||
+  return (job.trackerDetails.responseStage === "Interview invited" && (!job.trackerDetails.responseEvidence || !job.trackerDetails.responseSource || job.status==="INTERVIEWING")) || outcome(job)==="Unclassified" ||
     (!job.trackerDetails.responseStage && /interview.{0,35}invit|invit.{0,35}interview/i.test(job.notes??""));
 }
 export function qualityReviewGroups(jobs: Job[]): [string,Job[]][] {

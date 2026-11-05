@@ -14,7 +14,9 @@ Preference alignment uses editable preferred/adjacent/excluded missions. Exclusi
 
 ## Review queue
 
-Existing workflow status, blockers, next actions, and qualification gaps drive the queue. Readiness requires explicit location evidence, annual USD published base salary at least $100k, reviewed civilian assignment scope, and relevant experience evidence. Unpublished pay, a range crossing the minimum, or Remote without location evidence stays unknown. Requested salary never proves published salary eligibility. Most legacy records will need evidence review before appearing ready; their saved notes and statuses remain intact. User holds remain in the input queue.
+Existing workflow status, blockers, next actions, and qualification gaps drive the queue. Readiness requires explicit location evidence, annual USD published base salary at least $100k, reviewed civilian assignment scope, vetting review, relevant experience evidence, and a recorded credibility review with evidence/source/date. Unpublished pay, a range crossing the minimum, or Remote without location evidence stays unknown. Requested salary never proves published salary eligibility. Most legacy records will need evidence review before appearing ready; their saved notes and statuses remain intact. User holds remain in the input queue.
+
+Clearance requirements are optional details: None stated, Public Trust/suitability, able to obtain, active clearance required, or Unknown, with level and source evidence. Only an active-clearance requirement is a present credential blocker on the current profile; obtainability and suitability need review. Neither establishes a defense mission.
 
 An interview invitation is distinct from scheduling. Personal decisions (pursue, hold, not pursuing) do not change employer outcomes or formally withdraw applications. Review links expose missing mission, government, source and outcome evidence, plus confirmed records outside the range and unconfirmed records across all dates.
 

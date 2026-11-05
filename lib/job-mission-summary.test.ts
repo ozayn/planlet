@@ -1,7 +1,11 @@
+import {vettingReview} from "./job-vetting";
 import {credibilityConcern} from "./job-credibility";
 import {emptyJobFilters,matchesJobFilters} from "./job-tracker-filters";
 import {groupByEmployerSize,hiringEmployerSize} from "./job-employer-size";
 import {restoreJobSession} from "./job-tracker-session-state";
+import {createElement} from "react";
+import {renderToStaticMarkup} from "react-dom/server";
+import {JobTrackerTable} from "../components/jobs/job-tracker-table";
 import {test} from "node:test";
 import assert from "node:assert/strict";
 import {emptyTrackerDetails,mergeTrackerDetails} from "./job-tracker-details";
@@ -52,7 +56,7 @@ test("preferences and editable broad mappings explain interest; exclusions beat 
  assert.equal(preferenceAlignment(j,prefs,categories).label,"Preferred");assert.equal(preferenceAlignment(j,{preferred:[],adjacent:[],excluded:[]},categories).label,"Other recorded missions");assert.equal(practicalConstraints(j).every(v=>v.state==="Unknown"),true);
 });
 test("readiness requires factual constraints and evidence; failed, blocked, missing pay and crossing ranges remain distinct",()=>{
- const j=job("ready",{salaryMin:"100000",salaryMax:"120000",currency:"USD",payPeriod:"Year",locationEligibility:"Met",locationEvidence:"Official posting permits DC residents / US remote",civilianScopeConfirmed:true,missionEvidence:"Civilian learning product",missionFields:["Education / learning"],candidateEvidence:"Python/SQL analysis; AI-assisted implementation",candidateEvidenceSource:"https://example.com/project"},{status:"READY_TO_SUBMIT",submissionConfirmed:false,submittedDate:null});
+ const j=job("ready",{salaryMin:"100000",salaryMax:"120000",currency:"USD",payPeriod:"Year",locationEligibility:"Met",locationEvidence:"Official posting permits DC residents / US remote",civilianScopeConfirmed:true,missionEvidence:"Civilian learning product",missionFields:["Education / learning"],candidateEvidence:"Python/SQL analysis; AI-assisted implementation",candidateEvidenceSource:"https://example.com/project",credibilityCheck:"Checked, no concerns found",credibilityEvidence:"Employer, recruiter identity and exact destination reviewed",credibilitySources:"https://example.com/job",credibilityCheckedDate:"2026-11-05",vettingRequirement:"None stated",vettingEvidence:"Reviewed qualifications",vettingSource:"https://example.com/job"},{status:"READY_TO_SUBMIT",submissionConfirmed:false,submittedDate:null});
  assert.equal(reviewQueueGroup(j,prefs),"Ready to apply");
  for(const status of ["NEEDS_INPUT","SUBMISSION_FAILED"] as const)assert.equal(reviewQueueGroup({...j,status},prefs),"Needs input / blocked");
  for(const patch of [{salaryMin:"",salaryMax:"",requestedSalary:"130000"},{salaryMin:"90000",salaryMax:"150000"}])assert.equal(reviewQueueGroup({...j,trackerDetails:{...j.trackerDetails,...patch}},prefs),"Review next");
@@ -96,7 +100,30 @@ test("partial and old-editor updates retain new context, immutable classificatio
 test("credibility defaults stay unchecked; specific concerns filter and hold future work without changing status or historical counts",()=>{
  const old=job("old");assert.equal(old.trackerDetails.credibilityCheck,"Not checked");assert.equal(credibilityConcern(old.trackerDetails),false);
  const concern=job("concern",{credibilityCheck:"Needs review",credibilityEvidence:"Recruiter identity / application destination need checking"},{status:"READY_TO_SUBMIT",submissionConfirmed:false,submittedDate:null});
- assert.equal(reviewQueueGroup(concern,prefs),"Credibility review");assert.equal(concern.status,"READY_TO_SUBMIT");
+ assert.equal(reviewQueueGroup(concern,prefs),"Credibility review");assert.equal(reviewQueueGroup({...concern,submissionConfirmed:true,submittedDate:"2026-11-04"},prefs),"Credibility review");assert.equal(concern.status,"READY_TO_SUBMIT");
  assert.equal(matchesJobFilters(concern,"EVERYTHING","all",{...emptyJobFilters(),credibility:"Needs review"},"2026-11-05"),true);
  assert.equal(submissionRange([old,{...concern,submissionConfirmed:true,submittedDate:"2026-11-04"}],"2026-10-07","2026-11-05").length,2);
+});
+
+test("Public Trust, obtainability and active clearance remain distinct from mission and readiness",()=>{
+ const j=job("vetting",{missionFields:["Education / learning"],vettingRequirement:"Able to obtain security clearance"},{submissionConfirmed:false,submittedDate:null,status:"SAVED"});
+ assert.equal(vettingReview(j.trackerDetails).state,"Unknown");assert.equal(reviewQueueGroup(j,prefs),"Review next");assert.equal(preferenceAlignment(j,prefs).label,"Preferred");
+ assert.equal(vettingReview({...j.trackerDetails,vettingRequirement:"Public Trust or suitability investigation"}).state,"Unknown");
+ const active={...j,trackerDetails:{...j.trackerDetails,vettingRequirement:"Active security clearance required" as const}};
+ assert.equal(vettingReview(active.trackerDetails).state,"Not met");assert.equal(reviewQueueGroup(active,prefs),"Needs input / blocked");
+ const reviewed=job("invited",{responseStage:"Interview invited",responseEvidence:"Employer invitation reviewed",responseSource:"https://example.com/evidence",searchDecision:"Not pursuing"});
+ assert.equal(qualityReviewGroups([reviewed]).find(([label])=>label==="Outcomes needing reconciliation")?.[1].length,0);
+});
+
+test("table renders a compact accessible one-page footer and explicit title action without redundant normal-state prose",()=>{
+ const j=job("one",{missionFields:["Science / research"]});
+ const html=renderToStaticMarkup(createElement(JobTrackerTable,{jobs:[j],onSelectJob:()=>{},userTimezone:"America/New_York"}));
+ assert.match(html,/Credibility check/);assert.match(html,/>Scientist<\/button>/);assert.doesNotMatch(html,/Mission recorded/);
+ assert.match(html,/1–1 of 1 applications/);assert.match(html,/disabled="" aria-label="Previous page"/);assert.match(html,/disabled="" aria-label="Next page"/);
+ assert.ok(html.indexOf('aria-label="Application table pages"')>html.indexOf('</table>'));
+});
+test("empty and multi-page table rendering keeps accurate counts and accessible pagination",()=>{
+ const empty=renderToStaticMarkup(createElement(JobTrackerTable,{jobs:[],onSelectJob:()=>{},userTimezone:"America/New_York"}));assert.match(empty,/0–0 of 0 applications/);
+ const many=renderToStaticMarkup(createElement(JobTrackerTable,{jobs:Array.from({length:21},(_,i)=>job(String(i))),onSelectJob:()=>{},userTimezone:"America/New_York"}));
+ assert.match(many,/1–20 of 21 applications/);assert.equal(many.match(/>Scientist<\/button>/g)?.length,20);assert.doesNotMatch(many,/disabled="" aria-label="Next page"/);
 });

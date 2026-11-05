@@ -1,3 +1,4 @@
+import { vettingRequirements } from "./job-vetting";
 import { credibilityStatuses } from "./job-credibility";
 import { employerSizeBands, employerSizeEntities } from "./job-employer-size";
 import { z } from "zod";
@@ -24,6 +25,10 @@ const date = z.union([z.literal(""), z.iso.date()]).default("");
 export const trackerDetailsSchema = z
   .object({
     roleCategory: text,
+    vettingRequirement: z.enum(vettingRequirements).default("Unknown"),
+    vettingLevel: text,
+    vettingEvidence: text,
+    vettingSource: link,
     credibilityCheck: z.enum(credibilityStatuses).default("Not checked"),
     credibilityEvidence: text,
     credibilitySources: z.string().trim().max(8192).default("").refine(value=>value.split(/\n/).map(v=>v.trim()).filter(Boolean).every(v=>{try{return /^https?:$/.test(new URL(v).protocol);}catch{return false;}}),"Use one HTTP or HTTPS source link per line."),
