@@ -1,22 +1,24 @@
 "use client";
 import { useState } from "react";
 import type { TrackerDetails } from "@/lib/job-tracker-details";
-import { missionLabels, missionReview } from "@/lib/job-missions";
+import { useJobCategories } from "./job-category-context";
+import { missionReview } from "@/lib/job-missions";
 export function JobMissionFields({value, onChange, disabled}: {
   value: TrackerDetails; onChange: (value: TrackerDetails) => void; disabled: boolean;
 }) {
+  const categories = useJobCategories();
   const [custom, setCustom] = useState({employerIndustries: "", missionFields: ""});
   function update(patch: Partial<TrackerDetails>) {
     onChange({...value, ...patch, classificationOrigin: "manual"});
   }
   return <details className="rounded-lg border border-border-soft p-3">
-    <summary className="cursor-pointer text-sm font-medium">Field and mission · {missionReview(value)}</summary>
+    <summary className="cursor-pointer text-sm font-medium">Field and mission · {missionReview(value, categories)}</summary>
     <p className="mt-2 text-xs text-muted">Classify the actual team or project separately from the employer’s industry. Leave unknown when evidence is missing; select several for mixed work. Your corrections take precedence.</p>
     {([['employerIndustries', 'Employer industry', 'employerEvidence', 'employerSource'], ['missionFields', 'Role / team mission', 'missionEvidence', 'missionSource']] as const).map(([key, label, evidence, source]) =>
       <fieldset key={key} disabled={disabled} className="mt-4 space-y-2">
         <legend className="text-sm font-medium">{label}</legend>
         <div className="grid gap-x-3 sm:grid-cols-2">
-          {[...new Set([...missionLabels, ...(value[key] ?? [])])].map(option => <label key={option} className="flex min-h-10 items-center gap-2 text-sm">
+          {[...new Set([...categories.filter(c => !c.retired).map(c => c.label), ...(value[key] ?? [])])].map(option => <label key={option} className="flex min-h-10 items-center gap-2 text-sm">
             <input type="checkbox" checked={value[key]?.includes(option) ?? false} onChange={event => update({[key]: event.target.checked ? [...(value[key] ?? []), option] : value[key].filter(v => v !== option)})} />{option}
           </label>)}
         </div>

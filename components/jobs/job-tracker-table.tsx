@@ -1,4 +1,5 @@
 "use client";
+import { useJobCategories } from "./job-category-context";
 import { missionSummary, missionReview } from "@/lib/job-missions";
 import { applicationDate, sortByApplicationDate } from "@/lib/job-tracker-sort";
 import { useState, useSyncExternalStore } from "react";
@@ -47,11 +48,11 @@ const defaultColumns: Column[] = [
   "mission",
 ];
 const storageKey = "planlet-job-tracker-columns";
-function cell(job: Job, column: Column, timezone: string) {
+function cell(job: Job, column: Column, timezone: string, categories: ReturnType<typeof useJobCategories>) {
   const d = job.trackerDetails;
   switch (column) {
     case "mission":
-      return <span>{missionSummary(d)}<span className="block text-xs text-muted">{missionReview(d)}</span></span>;
+      return <span>{missionSummary(d)}<span className="block text-xs text-muted">{missionReview(d, categories)}</span></span>;
     case "industry":
       return d.employerIndustries?.join(" · ") || "Unknown";
     case "status":
@@ -113,6 +114,7 @@ export function JobTrackerTable({
   onSelectJob: (job: Job) => void;
   userTimezone: string;
 }) {
+  const categories = useJobCategories();
   const [dateOrder, setDateOrder] = useState<"asc" | "desc">("desc");
   const sortedJobs = sortByApplicationDate(jobs, dateOrder);
   const resultKey = JSON.stringify([dateOrder, jobs.map((job) => job.id)]);
@@ -236,8 +238,8 @@ export function JobTrackerTable({
                     key={c}
                     className="max-w-64 break-words px-3 py-3 align-top"
                   >
-                    {cell(job, c, userTimezone)}
-                    {c === "title" && !visible.includes("mission") && <span className="mt-1 block text-xs text-muted">Mission: {missionSummary(job.trackerDetails)} · {missionReview(job.trackerDetails)}</span>}
+                    {cell(job, c, userTimezone, categories)}
+                    {c === "title" && !visible.includes("mission") && <span className="mt-1 block text-xs text-muted">Mission: {missionSummary(job.trackerDetails)} · {missionReview(job.trackerDetails, categories)}</span>}
                   </td>
                 ))}
               </tr>

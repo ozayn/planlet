@@ -1,6 +1,7 @@
 "use client";
 
 import { emptyTrackerDetails } from "@/lib/job-tracker-details";
+import { useJobCategories } from "./job-category-context";
 import { missionReview } from "@/lib/job-missions";
 import { JobTrackerDetailsFields } from "./job-tracker-details-fields";
 import { useState, useTransition } from "react";
@@ -42,6 +43,7 @@ export function JobApplicationEditorSheet({
   jobs = [],
   onOpenJob,
 }: JobApplicationEditorSheetProps) {
+  const categories = useJobCategories();
   const [isSaving, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [duplicateWarning, setDuplicateWarning] = useState(false);
@@ -410,9 +412,9 @@ export function JobApplicationEditorSheet({
           onChange={setDetails}
           disabled={pending}
         />
-        {missionReview(details) !== "Mission recorded" && (
+        {missionReview(details, categories) !== "Mission recorded" && (
           <p role="status" className="rounded-lg border border-border-soft p-3 text-sm">
-            {missionReview(details) === "Mission conflict"
+            {missionReview(details, categories) === "Mission conflict"
               ? "Military/defense or defense-adjacent work is outside your current preferences. Review before submitting."
               : "Role mission is unknown. Review the team/project before submitting; the employer’s industry is not enough."}
           </p>

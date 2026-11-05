@@ -24,11 +24,12 @@ export function matchesJobFilters(
   view: string,
   fields: JobFilters,
   today: string,
+  categories: readonly {label:string;conflict:boolean}[] = [],
 ) {
   const d = job.trackerDetails;
   if (fields.mission && !(fields.mission === "Unknown" ? !d.missionFields?.length : d.missionFields?.includes(fields.mission))) return false;
   if (fields.industry && !(fields.industry === "Unknown" ? !d.employerIndustries?.length : d.employerIndustries?.includes(fields.industry))) return false;
-  if (fields.missionReview && missionReview(d) !== fields.missionReview) return false;
+  if (fields.missionReview && missionReview(d, categories) !== fields.missionReview) return false;
   if (status === "ALL" && job.status === "ARCHIVED") return false;
   if (status !== "ALL" && status !== "EVERYTHING" && job.status !== status)
     return false;

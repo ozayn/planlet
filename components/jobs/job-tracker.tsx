@@ -1,6 +1,7 @@
 "use client";
 
-import { missionLabels } from "@/lib/job-missions";
+import { JobCategoryContext } from "./job-category-context";
+import { defaultJobCategories, type JobCategory } from "@/lib/job-category-types";
 import { JobTrackerInsights } from "./job-tracker-insights";
 import { emptyJobFilters, matchesJobFilters } from "@/lib/job-tracker-filters";
 import { insights, localDate } from "@/lib/job-tracker-insights";
@@ -46,6 +47,7 @@ import type { JobApplicationStatusValue } from "@/lib/job-application-status";
 type JobTrackerProps = {
   initialJobs: SerializedJobApplication[];
   userTimezone: string;
+  categories?: JobCategory[];
 };
 
 type AddJobFormState = {
@@ -70,7 +72,7 @@ const emptyForm = (): AddJobFormState => ({
   confirmSubmission: false,
 });
 
-export function JobTracker({ initialJobs, userTimezone }: JobTrackerProps) {
+export function JobTracker({ initialJobs, userTimezone, categories = defaultJobCategories }: JobTrackerProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -122,13 +124,13 @@ export function JobTracker({ initialJobs, userTimezone }: JobTrackerProps) {
   const filteredJobs = useMemo(
     () =>
       jobs.filter((job) => {
-        if (!matchesJobFilters(job, filter, specialView, fields, today))
+        if (!matchesJobFilters(job, filter, specialView, fields, today, categories))
           return false;
         if (insightSelection && !insightSelection.ids.includes(job.id))
           return false;
         return !trimmedSearch || jobMatchesSearch(job, trimmedSearch);
       }),
-    [jobs, filter, insightSelection, specialView, fields, today, trimmedSearch],
+    [jobs, filter, insightSelection, specialView, fields, today, trimmedSearch, categories],
   );
   const counts = insights(jobs, today);
   const failedCount = jobs.filter(
@@ -280,6 +282,7 @@ export function JobTracker({ initialJobs, userTimezone }: JobTrackerProps) {
   }
 
   return (
+    <JobCategoryContext.Provider value={categories}>
     <div className="space-y-6">
       <JobTrackerUpdateNotice />
       <div className="flex gap-2">
@@ -571,7 +574,7 @@ export function JobTracker({ initialJobs, userTimezone }: JobTrackerProps) {
                         }
                       >
                         {(key === "mission" || key === "industry"
-                          ? ["", "Unknown", ...new Set([...missionLabels, ...jobs.flatMap(j => key === "mission" ? j.trackerDetails.missionFields ?? [] : j.trackerDetails.employerIndustries ?? [])])]
+                          ? ["", "Unknown", ...new Set([...categories.filter(c => !c.retired).map(c => c.label), ...jobs.flatMap(j => key === "mission" ? j.trackerDetails.missionFields ?? [] : j.trackerDetails.employerIndustries ?? [])])]
                           : key === "missionReview"
                           ? ["", "Mission needs review", "Mission conflict", "Mission recorded"]
                           : key === "arrangement"
@@ -700,6 +703,7 @@ export function JobTracker({ initialJobs, userTimezone }: JobTrackerProps) {
         }}
       />
     </div>
+    </JobCategoryContext.Provider>
   );
 }
 

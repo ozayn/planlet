@@ -65,6 +65,7 @@ export default async function AdminPage() {
         subtitle="Planlet activity and users."
       />
 
+      <Link href="/admin/job-categories" className="ui-text-link inline-flex min-h-10 items-center text-sm">Manage job categories</Link>
       <AdminSummaryLine totals={totals} />
 
       <p className="text-sm">

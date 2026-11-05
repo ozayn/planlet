@@ -8,10 +8,10 @@ export const missionLabels = [
 ] as const;
 
 // Unknown is represented by no labels, never inferred from an employer name.
-export function missionReview(details: TrackerDetails) {
+export function missionReview(details: TrackerDetails, categories: readonly {label:string;conflict:boolean}[] = []) {
   const missions = details.missionFields ?? [];
   const industries = details.employerIndustries ?? [];
-  if ([...missions, ...industries].some(label => label === "Military / defense" || label === "Defense-adjacent"))
+  if ([...missions, ...industries].some(label => label === "Military / defense" || label === "Defense-adjacent" || categories.some(c => c.label === label && c.conflict)))
     return "Mission conflict";
   if (!missions.length) return "Mission needs review";
   return "Mission recorded";

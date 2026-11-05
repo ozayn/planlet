@@ -1,3 +1,5 @@
+import { getJobCategories } from "./job-categories";
+import { canonicalCategoryDetails, mergeJobCategories } from "./job-category-types";
 import {
   trackerDetailsSchema,
   buildTrackerEvent,
@@ -301,7 +303,11 @@ export async function listJobApplications(
     orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
   });
 
-  return jobs.map(serializeJobApplication);
+  const categories = await getJobCategories(userId);
+  return jobs.map(job => {
+    const serialized = serializeJobApplication(job);
+    return {...serialized, trackerDetails: canonicalCategoryDetails(serialized.trackerDetails, categories)};
+  });
 }
 
 export async function getJobApplication(
@@ -314,7 +320,9 @@ export async function getJobApplication(
     where: { id: jobId, userId },
   });
 
-  return job ? serializeJobApplication(job) : null;
+  if (!job) return null;
+  const serialized = serializeJobApplication(job);
+  return {...serialized,trackerDetails:canonicalCategoryDetails(serialized.trackerDetails, await getJobCategories(userId))};
 }
 
 export async function createJobApplication(
@@ -334,7 +342,7 @@ export async function createJobApplication(
     throw new DuplicateJobApplicationError(duplicate);
   }
 
-  const trackerDetails = trackerDetailsSchema.parse(input.trackerDetails ?? {});
+  const trackerDetails = canonicalCategoryDetails(trackerDetailsSchema.parse(input.trackerDetails ?? {}), await getJobCategories(userId));
   const submissionDate =
     input.submissionDate || getTodayDateString(userTimezone);
   prepareConfirmation(
@@ -414,9 +422,10 @@ export async function updateJobApplication(
             input[key as keyof JobApplicationInput] !== current[key];
       if (!supplied) Object.assign(data, { [key]: current[key] });
     }
-    const trackerDetails = trackerDetailsSchema.parse(
+    const categorySetting = await tx.appSetting.findUnique({where:{key:`job-categories:${userId}`}});
+    const trackerDetails = canonicalCategoryDetails(trackerDetailsSchema.parse(
       input.trackerDetails ?? current.trackerDetails ?? {},
-    );
+    ), mergeJobCategories(categorySetting?.value, []));
     const previousDetails = trackerDetailsSchema.parse(
       current.trackerDetails ?? {},
     );

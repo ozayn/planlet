@@ -29,3 +29,9 @@ node --import tsx scripts/backfill-job-missions.ts --email=account@example.com -
 ```
 
 The script defaults to dry-run, requires an explicit account, locks that account's rows for the transaction, matches exact employer/title plus a specific saved evidence excerpt and a source link, skips existing/manual classifications, merges only new mission keys, verifies all original columns and existing detail fields are preserved, and checks confirmed totals before commit. Re-running is a no-op for classified records. Evidence-only rules are in `lib/job-mission-backfill.ts`; uncertain roles stay Unknown. No real account data or snapshots belong in git.
+
+## Category management
+
+Admin → Manage job categories (`/admin/job-categories`) manages the signed-in administrator's own tracker taxonomy. Categories are stored in an account-scoped `AppSetting`; no schema migration is needed. Used custom labels are included automatically. Add, rename, retire, and restore take effect without deployment. Retiring hides a suggestion and keeps historical labels/counts. Rename changes only that account's mission/industry label arrays, preserving original notes, statuses, submission dates, history, and materials. Stable category IDs preserve conflict flags; aliases resolve older editor labels so renamed categories are not silently reintroduced by stale tabs. Open tracker tabs should be refreshed after edits.
+
+Charts show unique totals and a visible eight-group preview with an explicit Show all groups button, rather than an unlabeled internal scroll area.

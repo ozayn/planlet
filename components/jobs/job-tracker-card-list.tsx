@@ -1,3 +1,5 @@
+"use client";
+import { useJobCategories } from "./job-category-context";
 import { missionSummary, missionReview } from "@/lib/job-missions";
 import type { SerializedJobApplication } from "@/app/(app)/jobs/actions";
 import { ExternalLinkIcon } from "@/components/ui/action-icons";
@@ -9,6 +11,7 @@ type JobTrackerCardListProps = {
 };
 
 export function JobTrackerCardList({ jobs, onSelectJob }: JobTrackerCardListProps) {
+  const categories = useJobCategories();
   return (
     <ul className="space-y-2">
       {jobs.map((job) => (
@@ -29,7 +32,7 @@ export function JobTrackerCardList({ jobs, onSelectJob }: JobTrackerCardListProp
                 <p className="mt-1 text-xs text-muted-light">
                   {formatJobListMeta(job.submissionConfirmed ? job.submittedDate : null, job.status)}{!job.submissionConfirmed && " · Submission unverified"}
                 </p>
-                <p className="mt-1 text-xs text-muted">Mission: {missionSummary(job.trackerDetails)} · {missionReview(job.trackerDetails)}</p>
+                <p className="mt-1 text-xs text-muted">Mission: {missionSummary(job.trackerDetails)} · {missionReview(job.trackerDetails, categories)}</p>
                 {job.notes?.trim() ? (
                   <p className="mt-2 line-clamp-2 text-sm text-muted" dir="auto">
                     {job.notes.trim()}

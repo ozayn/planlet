@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 
 import { auth } from "@/auth";
+import { getJobCategories } from "@/lib/job-categories";
 import { JobTracker } from "@/components/jobs/job-tracker";
 import { PageHeader } from "@/components/page-header";
 import { listJobApplications } from "@/lib/job-applications";
@@ -18,6 +19,7 @@ export default async function JobsPage() {
 
   const jobs = await listJobApplications(userId, "EVERYTHING");
   const userTimezone = await getUserTimezone(userId);
+  const categories = await getJobCategories(userId);
 
   return (
     <section className="ui-page-stack space-y-6">
@@ -34,7 +36,7 @@ export default async function JobsPage() {
           </div>
         }
       >
-        <JobTracker initialJobs={jobs} userTimezone={userTimezone} />
+        <JobTracker initialJobs={jobs} userTimezone={userTimezone} categories={categories} />
       </Suspense>
     </section>
   );
