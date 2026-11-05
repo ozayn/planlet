@@ -19,13 +19,17 @@ function Bars({
   groups: [string, Job[]][];
   onSelect: (label: string, jobs: Job[]) => void;
 }) {
+  const [expanded, setExpanded] = useState(false);
+  const visibleGroups = expanded ? groups : groups.slice(0, 8);
+  const uniqueCount = new Set(groups.flatMap(([, jobs]) => jobs.map(job => job.id))).size;
   const max = Math.max(1, ...groups.map(([, j]) => j.length));
   return (
     <article className="ui-card-padded space-y-3">
       <h3 className="text-sm font-medium">{label}</h3>
-      <div className="max-h-64 space-y-3 overflow-y-auto">
+      <p className="text-xs text-muted">{uniqueCount} unique applications · {groups.length} groups</p>
+      <div className="space-y-3">
         {groups.length ? (
-          groups.map(([key, jobs]) => (
+          visibleGroups.map(([key, jobs]) => (
             <button
               key={key}
               className="block min-h-10 w-full text-start text-sm"
@@ -47,6 +51,10 @@ function Bars({
           <p className="text-sm text-muted">No data in this range.</p>
         )}
       </div>
+      {groups.length > 8 && <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
+        <span>Showing {visibleGroups.length} of {groups.length}</span>
+        <button className="ui-text-link min-h-10 text-sm" onClick={() => setExpanded(!expanded)}>{expanded ? "Show fewer" : "Show all groups"}</button>
+      </div>}
     </article>
   );
 }
@@ -207,7 +215,7 @@ export function JobTrackerInsights({
             onSelect={onSelect}
           />
           <div className="space-y-3">
-            <Bars label="Applications by role / team mission" groups={groupByMission(range)} onSelect={onSelect} />
+            <Bars label="Applications by field" groups={groupByMission(range)} onSelect={onSelect} />
             <p className="text-xs text-muted">Each application counts once in the confirmed total. Mixed missions count once in each label, so category totals can exceed the unique total. Unknown means no role mission has been recorded.</p>
           </div>
           <Bars
