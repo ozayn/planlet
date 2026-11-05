@@ -310,9 +310,9 @@ export function JobTracker({ userId, initialJobs, userTimezone, categories = def
 
   return (
     <JobCategoryContext.Provider value={categories}>
-    <div className="space-y-6">
+    <div className="space-y-4">
       <JobTrackerUpdateNotice />
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
         {["tracker", "insights", "review"].map((t) => (
           <button
             aria-pressed={tab === t}
@@ -352,9 +352,9 @@ export function JobTracker({ userId, initialJobs, userTimezone, categories = def
             total confirmed · {unverifiedCount} drafts / unverified ·{" "}
             {blockedCount} blocked · {failedCount} failed
           </p>
-          <details className="rounded-lg border border-border-soft p-3">
-            <summary className="cursor-pointer min-h-10 text-sm font-medium">Add job</summary>
-            <form className="space-y-3" onSubmit={handleAddJob}>
+          <details>
+            <summary className="ui-btn-secondary inline-flex min-h-10 cursor-pointer items-center px-3 text-sm font-medium">Add job</summary>
+            <form className="ui-card-padded mt-3 space-y-3" onSubmit={handleAddJob}>
               <label className="block space-y-1.5" htmlFor="job-add-url">
                 <span className="text-xs text-muted">URL</span>
                 <JobUrlExtractControls
